@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Friktionsprofil - {{ session.person_name or 'Din profil' }}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 30px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        h1 {
+            color: #0f3460;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        .person-name {
+            font-size: 20px;
+            color: #666;
+        }
+        .context-badge {
+            display: inline-block;
+            padding: 6px 14px;
+            background: #e8eaf6;
+            color: #3949ab;
+            border-radius: 20px;
+            font-size: 13px;
+            margin-top: 10px;
+        }
+
+        /* Farvegrid */
+        .grid-section {
+            margin-bottom: 40px;
+        }
+        .grid-section h2 {
+            color: #333;
+            font-size: 20px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .color-grid {
+            display: grid;
+            grid-template-columns: 100px repeat(4, 1fr);
+            gap: 3px;
+            background: #e0e0e0;
+            padding: 3px;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .grid-header {
+            background: #f5f5f5;
+            padding: 12px 8px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 13px;
+            color: #333;
+        }
+        .grid-header.field-tryghed { background: #ffebee; color: #c62828; }
+        .grid-header.field-mening { background: #f3e5f5; color: #6a1b9a; }
+        .grid-header.field-kan { background: #e3f2fd; color: #1565c0; }
+        .grid-header.field-besvaer { background: #fff3e0; color: #e65100; }
+
+        .grid-row-label {
+            background: #fafafa;
+            padding: 15px 12px;
+            font-weight: 600;
+            font-size: 12px;
+            color: #666;
+            display: flex;
+            align-items: center;
+        }
+        .grid-cell {
+            padding: 20px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 14px;
+            position: relative;
+        }
+        .grid-cell.green {
+            background: #c8e6c9;
+            color: #2e7d32;
+        }
+        .grid-cell.yellow {
+            background: #fff9c4;
+            color: #f9a825;
+        }
+        .grid-cell.orange {
+            background: #ffccbc;
+            color: #d84315;
+        }
+        .grid-cell .score {
+            font-size: 18px;
+        }
+
+        /* Farveforklaring */
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+        .legend-color {
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+        }
+        .legend-color.green { background: #c8e6c9; }
+        .legend-color.yellow { background: #fff9c4; }
+        .legend-color.orange { background: #ffccbc; }
+
+        /* Sammenfatning */
+        .summary-section {
+            margin-bottom: 40px;
+            padding: 25px;
+            background: #f0f4f8;
+            border-radius: 12px;
+        }
+        .summary-section h2 {
+            color: #0f3460;
+            font-size: 18px;
+            margin-bottom: 20px;
+        }
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        .summary-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #0f3460;
+        }
+        .summary-item .label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .summary-item .value {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-top: 5px;
+        }
+        .summary-item .value.green { color: #2e7d32; }
+        .summary-item .value.yellow { color: #f9a825; }
+        .summary-item .value.orange { color: #d84315; }
+
+        /* Søjle-fortolkninger */
+        .interpretations {
+            margin-bottom: 40px;
+        }
+        .interpretations h2 {
+            color: #333;
+            font-size: 20px;
+            margin-bottom: 20px;
+        }
+        .interpretation-card {
+            padding: 20px;
+            margin-bottom: 15px;
+            border-radius: 12px;
+            border-left: 4px solid;
+        }
+        .interpretation-card.tryghed {
+            background: #ffebee;
+            border-color: #c62828;
+        }
+        .interpretation-card.mening {
+            background: #f3e5f5;
+            border-color: #6a1b9a;
+        }
+        .interpretation-card.kan {
+            background: #e3f2fd;
+            border-color: #1565c0;
+        }
+        .interpretation-card.besvaer {
+            background: #fff3e0;
+            border-color: #e65100;
+        }
+        .interpretation-card h3 {
+            font-size: 16px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .interpretation-card p {
+            color: #555;
+            line-height: 1.6;
+        }
+
+        /* Båndbredde-sektion */
+        .bandwidth-section {
+            margin-bottom: 40px;
+            padding: 25px;
+            background: linear-gradient(135deg, #e8eaf6 0%, #c5cae9 100%);
+            border-radius: 12px;
+        }
+        .bandwidth-section h2 {
+            color: #3949ab;
+            font-size: 18px;
+            margin-bottom: 15px;
+        }
+        .bandwidth-bar {
+            height: 20px;
+            background: #ddd;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 15px;
+        }
+        .bandwidth-fill {
+            height: 100%;
+            border-radius: 10px;
+            transition: width 0.5s;
+        }
+        .bandwidth-fill.high { background: linear-gradient(90deg, #66bb6a, #43a047); }
+        .bandwidth-fill.medium { background: linear-gradient(90deg, #ffee58, #fdd835); }
+        .bandwidth-fill.low { background: linear-gradient(90deg, #ff7043, #f4511e); }
+        .bandwidth-text {
+            color: #555;
+            line-height: 1.6;
+        }
+
+        /* Print og del */
+        .actions {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 40px;
+            padding-top: 30px;
+            border-top: 2px solid #e0e0e0;
+        }
+        .btn {
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+        .btn-primary {
+            background: #0f3460;
+            color: white;
+            border: none;
+        }
+        .btn-primary:hover {
+            background: #16213e;
+        }
+        .btn-secondary {
+            background: white;
+            color: #0f3460;
+            border: 2px solid #0f3460;
+        }
+        .btn-secondary:hover {
+            background: #f0f4f8;
+        }
+
+        /* Screening sektion */
+        .screening-section {
+            margin-bottom: 40px;
+            padding: 25px;
+            background: #fff8e1;
+            border-radius: 12px;
+            border: 2px solid #ffb74d;
+        }
+        .screening-section h2 {
+            color: #e65100;
+            font-size: 18px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .screening-matches {
+            display: grid;
+            gap: 15px;
+        }
+        .screening-match {
+            background: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+        }
+        .screening-match.top {
+            border: 2px solid #ff9800;
+        }
+        .match-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+        .match-info {
+            flex: 1;
+        }
+        .match-stats {
+            text-align: right;
+        }
+        .match-criteria-count {
+            font-size: 12px;
+            color: #888;
+            margin-top: 4px;
+        }
+        .match-criteria {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #eee;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .criteria-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 13px;
+            color: #555;
+            background: #f5f5f5;
+            padding: 4px 10px;
+            border-radius: 12px;
+        }
+        .criteria-check {
+            color: #4caf50;
+            font-weight: bold;
+        }
+        .match-name {
+            font-weight: 600;
+            color: #333;
+        }
+        .match-level {
+            font-size: 13px;
+            color: #666;
+        }
+        .match-bar-container {
+            width: 150px;
+            margin: 0 20px;
+        }
+        .match-bar {
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .match-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.5s;
+        }
+        .match-bar-fill.orange { background: #ff9800; }
+        .match-bar-fill.yellow { background: #fdd835; }
+        .match-bar-fill.green { background: #66bb6a; }
+        .match-bar-fill.gray { background: #bdbdbd; }
+        .match-percent {
+            font-size: 18px;
+            font-weight: 700;
+            width: 60px;
+            text-align: right;
+        }
+        .match-percent.orange { color: #e65100; }
+        .match-percent.yellow { color: #f9a825; }
+        .match-percent.green { color: #388e3c; }
+        .match-percent.gray { color: #757575; }
+
+        .screening-disclaimer {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(255,255,255,0.7);
+            border-radius: 8px;
+            font-size: 13px;
+            color: #666;
+            line-height: 1.5;
+        }
+        .screening-disclaimer strong {
+            color: #e65100;
+        }
+
+        .screening-toggle {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .screening-toggle button {
+            background: #ff9800;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .screening-toggle button:hover {
+            background: #f57c00;
+        }
+        .screening-content {
+            display: none;
+        }
+        .screening-content.visible {
+            display: block;
+        }
+
+        @media print {
+            body { background: white; padding: 0; }
+            .container { box-shadow: none; }
+            .actions { display: none; }
+            .screening-section { display: none; }
+        }
+
+        @media (max-width: 600px) {
+            .container { padding: 20px; }
+            .color-grid { font-size: 12px; }
+            .grid-cell { padding: 10px 5px; }
+            .legend { flex-direction: column; gap: 10px; }
+            .summary-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔬 Din Friktionsprofil</h1>
+            {% if session.person_name %}
+            <p class="person-name">{{ session.person_name }}</p>
+            {% endif %}
+            {% if session.context and session.context != 'general' %}
+            <span class="context-badge">
+                {% if session.context == 'mus' %}MUS-samtale
+                {% elif session.context == 'coaching' %}Coaching
+                {% elif session.context == 'konflikt' %}Konfliktløsning
+                {% elif session.context == 'onboarding' %}Onboarding
+                {% else %}{{ session.context }}{% endif %}
+            </span>
+            {% endif %}
+        </div>
+
+        <!-- Farvegrid -->
+        <div class="grid-section">
+            <h2>📊 Farvegrid</h2>
+            <div class="color-grid">
+                <!-- Header row -->
+                <div class="grid-header"></div>
+                <div class="grid-header field-tryghed">🛡️ Tryghed</div>
+                <div class="grid-header field-mening">🧭 Mening</div>
+                <div class="grid-header field-kan">⚡ Kan</div>
+                <div class="grid-header field-besvaer">🏔️ Besvær</div>
+
+                <!-- Kognition row -->
+                <div class="grid-row-label">Kognition</div>
+                {% for field in ['TRYGHED', 'MENING', 'KAN', 'BESVÆR'] %}
+                <div class="grid-cell {{ color_matrix[field]['KOGNITION'] }}">
+                    <span class="score">{{ '%.1f'|format(score_matrix[field]['KOGNITION']) }}</span>
+                </div>
+                {% endfor %}
+
+                <!-- Indre row -->
+                <div class="grid-row-label">Indre</div>
+                {% for field in ['TRYGHED', 'MENING', 'KAN', 'BESVÆR'] %}
+                <div class="grid-cell {{ color_matrix[field]['INDRE'] }}">
+                    <span class="score">{{ '%.1f'|format(score_matrix[field]['INDRE']) }}</span>
+                </div>
+                {% endfor %}
+
+                <!-- Emotion row -->
+                <div class="grid-row-label">Emotion</div>
+                {% for field in ['TRYGHED', 'MENING', 'KAN', 'BESVÆR'] %}
+                <div class="grid-cell {{ color_matrix[field]['EMOTION'] }}">
+                    <span class="score">{{ '%.1f'|format(score_matrix[field]['EMOTION']) }}</span>
+                </div>
+                {% endfor %}
+
+                <!-- Biologi row -->
+                <div class="grid-row-label">Biologi</div>
+                {% for field in ['TRYGHED', 'MENING', 'KAN', 'BESVÆR'] %}
+                <div class="grid-cell {{ color_matrix[field]['BIOLOGI'] }}">
+                    <span class="score">{{ '%.1f'|format(score_matrix[field]['BIOLOGI']) }}</span>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color green"></div>
+                    <span>Robust (1.0-2.2)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color yellow"></div>
+                    <span>Sensitiv (2.3-3.7)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color orange"></div>
+                    <span>Sårbar (3.8-5.0)</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sammenfatning -->
+        <div class="summary-section">
+            <h2>📋 Sammenfatning</h2>
+            <div class="summary-grid">
+                <div class="summary-item">
+                    <div class="label">Overordnet profil</div>
+                    <div class="value {{ summary.overall_color }}">
+                        {% if summary.overall_color == 'green' %}Robust
+                        {% elif summary.overall_color == 'yellow' %}Sensitiv
+                        {% else %}Sårbar{% endif %}
+                        ({{ summary.total_avg_score }})
+                    </div>
+                </div>
+                <div class="summary-item">
+                    <div class="label">Typisk manifestationslag</div>
+                    <div class="value">
+                        {% if summary.dominant_manifestation %}
+                            {{ summary.dominant_manifestation|capitalize }}
+                        {% else %}
+                            Intet dominerende
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="summary-item">
+                    <div class="label">Gennemsnitlig båndbredde</div>
+                    <div class="value">{{ summary.avg_bandwidth }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Båndbredde -->
+        <div class="bandwidth-section">
+            <h2>📡 Båndbredde</h2>
+            {% set bw_percent = ((summary.avg_bandwidth + 4) / 8 * 100)|int %}
+            {% set bw_class = 'high' if summary.avg_bandwidth > 0.5 else ('medium' if summary.avg_bandwidth > -0.5 else 'low') %}
+            <div class="bandwidth-bar">
+                <div class="bandwidth-fill {{ bw_class }}" style="width: {{ bw_percent }}%"></div>
+            </div>
+            <p class="bandwidth-text">{{ summary.bandwidth_interpretation }}</p>
+        </div>
+
+        <!-- Screening (eksperimentel) - kun hvis der er matches -->
+        {% if screening and screening.matches %}
+        <div class="screening-section">
+            <h2>🔬 Mønster-screening (eksperimentel)</h2>
+
+            <div class="screening-toggle">
+                <button onclick="toggleScreening()">Vis screening-resultater ({{ screening.matches|length }} mønstre fundet)</button>
+            </div>
+
+            <div class="screening-content" id="screeningContent">
+                <div class="screening-matches">
+                    {% for match in screening.matches %}
+                    <div class="screening-match {% if loop.first %}top{% endif %}">
+                        <div class="match-header">
+                            <div class="match-info">
+                                <div class="match-name">{{ match.diagnose }}</div>
+                                <div class="match-level">{{ match.niveau_tekst }}</div>
+                            </div>
+                            <div class="match-stats">
+                                <div class="match-percent {{ match.farve }}">{{ match.match_procent }}%</div>
+                                <div class="match-criteria-count">{{ match.matched_antal }}/{{ match.total_kriterier }} kriterier</div>
+                            </div>
+                        </div>
+                        {% if match.matched_kriterier %}
+                        <div class="match-criteria">
+                            {% for k in match.matched_kriterier %}
+                            <div class="criteria-item">
+                                <span class="criteria-check">✓</span>
+                                <span class="criteria-text">{{ k.navn }}</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div class="screening-disclaimer">
+                    <strong>Vigtigt:</strong> Dette er et eksperimentelt screeningsværktøj baseret på
+                    teoretiske friktionsmønstre. Det er <strong>IKKE en diagnose</strong> og kan ikke
+                    erstatte en klinisk vurdering. Match-procenten viser hvor mange kendetegn der matcher
+                    - ikke sandsynligheden for en diagnose. Hvis resultaterne resonerer med din oplevelse,
+                    kan det være værd at tale med en fagperson.
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Søjle-fortolkninger -->
+        <div class="interpretations">
+            <h2>🔍 Søjle-analyse</h2>
+
+            <div class="interpretation-card tryghed">
+                <h3>🛡️ Tryghed</h3>
+                <p>{{ interpretations.TRYGHED }}</p>
+            </div>
+
+            <div class="interpretation-card mening">
+                <h3>🧭 Mening</h3>
+                <p>{{ interpretations.MENING }}</p>
+            </div>
+
+            <div class="interpretation-card kan">
+                <h3>⚡ Kan</h3>
+                <p>{{ interpretations.KAN }}</p>
+            </div>
+
+            <div class="interpretation-card besvaer">
+                <h3>🏔️ Besvær</h3>
+                <p>{{ interpretations.BESVÆR }}</p>
+            </div>
+        </div>
+
+        <!-- Handlinger -->
+        <div class="actions">
+            <button class="btn btn-primary" onclick="window.print()">
+                🖨️ Print rapport
+            </button>
+            <a href="/profil/start" class="btn btn-secondary">
+                🔄 Tag ny profil
+            </a>
+        </div>
+    </div>
+
+    <script>
+        function toggleScreening() {
+            const content = document.getElementById('screeningContent');
+            content.classList.toggle('visible');
+            const btn = document.querySelector('.screening-toggle button');
+            if (content.classList.contains('visible')) {
+                btn.textContent = 'Skjul screening-resultater';
+            } else {
+                btn.textContent = 'Vis screening-resultater';
+            }
+        }
+    </script>
+</body>
+</html>

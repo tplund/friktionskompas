@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>{{ department.name }} - Admin</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; 
+            background: #f9fafb;
+            padding: 20px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header { 
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white; 
+            padding: 30px; 
+            border-radius: 12px; 
+            margin-bottom: 30px;
+        }
+        .card { background: white; border-radius: 12px; padding: 30px; margin-bottom: 20px; }
+        .btn { 
+            background: #3b82f6; 
+            color: white; 
+            padding: 12px 24px; 
+            border-radius: 8px; 
+            display: inline-block;
+            text-decoration: none;
+        }
+        .info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin: 20px 0; }
+        .info-item { background: #f9fafb; padding: 15px; border-radius: 8px; }
+        .info-item label { display: block; color: #6b7280; font-size: 0.875rem; margin-bottom: 5px; }
+        .info-item value { font-size: 1.25rem; font-weight: 600; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e5e7eb; }
+        th { background: #f9fafb; font-weight: 600; }
+        a { color: #3b82f6; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📁 {{ department.name }}</h1>
+            <p>{{ department.org_name }}</p>
+            <p><a href="/admin/org/{{ department.org_id }}" style="color: white; opacity: 0.9;">← Tilbage til {{ department.org_name }}</a></p>
+        </div>
+
+        <div class="card">
+            <h2>ℹ️ Afdeling info</h2>
+            <div class="info-grid">
+                <div class="info-item">
+                    <label>Leder</label>
+                    <value>{{ department.leader_name or 'Ikke angivet' }}</value>
+                </div>
+                <div class="info-item">
+                    <label>Email</label>
+                    <value>{{ department.leader_email or 'Ikke angivet' }}</value>
+                </div>
+                <div class="info-item">
+                    <label>Medarbejdere</label>
+                    <value>{{ department.employee_count }}</value>
+                </div>
+                <div class="info-item">
+                    <label>Sygefravær</label>
+                    <value>{{ department.sick_leave_percent }}%</value>
+                </div>
+            </div>
+
+            <form method="POST" action="/admin/dept/{{ department.id }}/sick_leave" style="margin-top: 20px;">
+                <label>Opdater sygefravær:</label>
+                <input type="number" name="sick_leave_percent" step="0.1" value="{{ department.sick_leave_percent }}" style="padding: 8px; margin: 0 10px;">%
+                <button type="submit" class="btn">Gem</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <h2>📞 Kontakter ({{ contacts|length }})</h2>
+            
+            <form method="POST" action="/admin/dept/{{ department.id }}/contacts/upload" enctype="multipart/form-data" style="margin-bottom: 20px;">
+                <label>Upload kontakter (CSV):</label>
+                <input type="file" name="file" accept=".csv" required style="margin: 10px 0;">
+                <button type="submit" class="btn">📤 Upload</button>
+                <p style="color: #6b7280; font-size: 0.875rem; margin-top: 10px;">
+                    Format: email,phone (én linje per person)
+                </p>
+            </form>
+
+            {% if contacts %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Email</th>
+                        <th>Telefon</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for contact in contacts %}
+                    <tr>
+                        <td>{{ contact.email or '-' }}</td>
+                        <td>{{ contact.phone or '-' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p style="color: #6b7280; font-style: italic; padding: 20px; text-align: center;">
+                Ingen kontakter endnu. Upload CSV-fil med kontakter.
+            </p>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

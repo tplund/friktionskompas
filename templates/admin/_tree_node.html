@@ -1,0 +1,47 @@
+{% macro render_tree_node(unit, units) %}
+<div class="tree-node level-{{ unit.level }}" data-unit-id="{{ unit.id }}" data-parent-id="{{ unit.parent_id or '' }}" data-level="{{ unit.level }}">
+    <div class="tree-node-header">
+        <div style="display: flex; align-items: center; flex: 1;">
+            {% if unit.child_count > 0 %}
+            <span class="toggle-btn" onclick="toggleChildren('{{ unit.id }}')">▼</span>
+            {% else %}
+            <span style="margin-right: 20px;"></span>
+            {% endif %}
+            <div>
+                <div class="tree-node-title">
+                    {% if unit.level == 0 %}🏢{% elif unit.level == 1 %}📁{% elif unit.level == 2 %}📂{% else %}📄{% endif %}
+                    {{ unit.name }}
+                </div>
+                <div class="tree-node-meta">
+                    {{ unit.total_employees or unit.employee_count }} medarbejdere
+                    {% if unit.child_count > 0 %}
+                        | {{ unit.child_count }} underorganisationer
+                    {% endif %}
+                    {% if unit.leaf_count > 0 %}
+                        | {{ unit.leaf_count }} afdelinger
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="tree-node-actions">
+            <button onclick="confirmDelete('{{ unit.id }}', '{{ unit.name }}')" class="btn-delete" title="Slet organisation">🗑️</button>
+            <a href="/admin/unit/new?parent={{ unit.id }}" class="btn-create" title="Opret underorganisation">➕</a>
+            <a href="/admin/unit/{{ unit.id }}" class="btn-detail">Detaljer →</a>
+        </div>
+    </div>
+</div>
+
+{# Recursively render children #}
+{% if unit.child_count > 0 %}
+    {% for child_unit in units %}
+        {% if child_unit.parent_id == unit.id %}
+            {{ render_tree_node(child_unit, units) }}
+        {% endif %}
+    {% endfor %}
+{% endif %}
+{% endmacro %}
+
+{# Call macro if this is being included directly #}
+{% if unit is defined %}
+    {{ render_tree_node(unit, units) }}
+{% endif %}

@@ -1,0 +1,287 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}Kunder & Brugere{% endblock %}
+
+{% block extra_css %}
+<style>
+    .card {
+        background: white;
+        border-radius: 12px;
+        padding: 30px;
+        margin-bottom: 20px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .card h2 {
+        margin-bottom: 20px;
+        color: #1f2937;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+    }
+    th, td {
+        text-align: left;
+        padding: 12px;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    th {
+        background: #f9fafb;
+        font-weight: 600;
+        color: #1f2937;
+    }
+    tr:hover {
+        background: #f9fafb;
+    }
+
+    .btn {
+        background: #3b82f6;
+        color: white;
+        padding: 12px 24px;
+        text-decoration: none;
+        border-radius: 8px;
+        display: inline-block;
+        font-weight: 500;
+        border: none;
+        cursor: pointer;
+        font-size: 0.875rem;
+    }
+    .btn:hover {
+        background: #2563eb;
+        transform: translateY(-1px);
+    }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin-bottom: 15px;
+    }
+    .form-group {
+        display: flex;
+        flex-direction: column;
+    }
+    .form-group label {
+        margin-bottom: 5px;
+        font-weight: 600;
+        color: #1f2937;
+        font-size: 0.875rem;
+    }
+    .form-group input, .form-group select {
+        padding: 10px;
+        border: 2px solid #e5e7eb;
+        border-radius: 8px;
+        font-size: 1rem;
+    }
+    .form-group input:focus, .form-group select:focus {
+        outline: none;
+        border-color: #3b82f6;
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    .badge-admin {
+        background: #ef4444;
+        color: white;
+    }
+    .badge-manager {
+        background: #3b82f6;
+        color: white;
+    }
+    .view-as-btn {
+        background: #10b981;
+        color: white;
+        padding: 6px 12px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.75rem;
+        text-decoration: none;
+        display: inline-block;
+    }
+    .view-as-btn:hover {
+        background: #059669;
+    }
+
+    .empty {
+        color: #6b7280;
+        font-style: italic;
+        padding: 40px;
+        text-align: center;
+        background: #f9fafb;
+        border-radius: 8px;
+    }
+
+    details {
+        margin-bottom: 20px;
+        border: 2px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 15px;
+    }
+    summary {
+        cursor: pointer;
+        font-weight: 600;
+        color: #1f2937;
+        user-select: none;
+    }
+    summary:hover {
+        color: #3b82f6;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>Kunder</h2>
+
+    <details>
+        <summary>Opret ny kunde</summary>
+        <form method="POST" action="/admin/customer/new">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Kunde navn *</label>
+                    <input type="text" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label>Kontakt email</label>
+                    <input type="email" name="contact_email">
+                </div>
+            </div>
+            <button type="submit" class="btn">Opret kunde</button>
+        </form>
+    </details>
+
+    {% if customers %}
+    <table>
+        <thead>
+            <tr>
+                <th>Kunde navn</th>
+                <th>Kontakt email</th>
+                <th>Antal organisationer</th>
+                <th>Oprettet</th>
+                <th>Handlinger</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for customer in customers %}
+            <tr>
+                <td><strong>{{ customer.name }}</strong></td>
+                <td>{{ customer.contact_email or '-' }}</td>
+                <td>{{ customer.unit_count }}</td>
+                <td>{{ customer.created_at[:10] }}</td>
+                <td>
+                    <a href="/admin/impersonate/{{ customer.id }}" class="view-as-btn">👁️ Se som Leder</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty">Ingen kunder endnu.</div>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h2>Brugere</h2>
+
+    <details>
+        <summary>Opret ny bruger</summary>
+        <form method="POST" action="/admin/user/new">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Brugernavn *</label>
+                    <input type="text" name="username" required>
+                </div>
+                <div class="form-group">
+                    <label>Password *</label>
+                    <input type="password" name="password" required>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Navn *</label>
+                    <input type="text" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" name="email">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Rolle *</label>
+                    <select name="role" id="role" required onchange="toggleCustomerField()">
+                        <option value="manager">Leder</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+                <div class="form-group" id="customer-field">
+                    <label>Kunde *</label>
+                    <select name="customer_id" id="customer_id" required>
+                        <option value="">Vælg kunde...</option>
+                        {% for customer in customers %}
+                        <option value="{{ customer.id }}">{{ customer.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <button type="submit" class="btn">Opret bruger</button>
+        </form>
+    </details>
+
+    <script>
+        function toggleCustomerField() {
+            const role = document.getElementById('role').value;
+            const customerField = document.getElementById('customer-field');
+            const customerSelect = document.getElementById('customer_id');
+
+            if (role === 'admin') {
+                customerField.style.display = 'none';
+                customerSelect.required = false;
+            } else {
+                customerField.style.display = 'block';
+                customerSelect.required = true;
+            }
+        }
+        // Initial call
+        toggleCustomerField();
+    </script>
+
+    {% if users %}
+    <table>
+        <thead>
+            <tr>
+                <th>Brugernavn</th>
+                <th>Navn</th>
+                <th>Email</th>
+                <th>Rolle</th>
+                <th>Kunde</th>
+                <th>Sidst logget ind</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr>
+                <td><strong>{{ user.username }}</strong></td>
+                <td>{{ user.name }}</td>
+                <td>{{ user.email or '-' }}</td>
+                <td>
+                    <span class="badge badge-{{ user.role }}">{{ user.role|upper }}</span>
+                </td>
+                <td>{{ user.customer_name or '-' }}</td>
+                <td>{{ user.last_login[:16] if user.last_login else 'Aldrig' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty">Ingen brugere endnu.</div>
+    {% endif %}
+</div>
+{% endblock %}

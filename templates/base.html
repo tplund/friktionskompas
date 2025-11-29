@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Friktionskompasset{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>🧭 Friktionskompasset</h1>
+            <nav>
+                <a href="{{ url_for('index') }}">Besvar</a>
+                <a href="{{ url_for('dashboard', team_id='team-demo', period='2025Q4') }}">Dashboard</a>
+                <a href="{{ url_for('debug', team_id='team-demo', period='2025Q4') }}" style="color:#dc3545;">🔍 Debug</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer>
+        <div class="container">
+            <small>
+                Friktionskompasset POC · Data lagres anonymt · 
+                <a href="#" onclick="document.getElementById('demo-form').style.display='block'; return false;">Demo-tools</a>
+            </small>
+        </div>
+    </footer>
+
+    <!-- Demo tools (skjult som standard) -->
+    <div id="demo-form" style="display:none; position:fixed; bottom:20px; right:20px; background:#fff; padding:20px; border:2px solid #333; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.2); max-width:320px; z-index:9999;">
+        <h3>🛠️ Demo Tools</h3>
+        <p style="font-size:0.875rem; color:#666; margin:10px 0;">Generer realistiske testsvar tilpasset en sektor</p>
+        
+        <form method="POST" action="{{ url_for('demo_quick') }}" style="margin:15px 0;">
+            <label style="display:block; margin-bottom:10px; font-size:0.875rem; font-weight:600;">
+                Vælg sektor:
+                <select name="sector" style="width:100%; padding:8px; margin-top:5px; border:1px solid #ddd; border-radius:4px; font-size:0.875rem;">
+                    <option value="generic">Generisk (alle brancher)</option>
+                    <option value="ældrepleje">Ældrepleje</option>
+                    <option value="skole">Skole/Undervisning</option>
+                </select>
+            </label>
+            
+            <button type="submit" style="width:100%; padding:12px; background:#10b981; color:white; border:none; border-radius:6px; font-weight:600; cursor:pointer; font-size:1rem; margin-top:10px;">
+                ✨ Generer 10 demo-svar
+            </button>
+        </form>
+        
+        <form method="POST" action="{{ url_for('demo_clear') }}" style="margin:10px 0;">
+            <button type="submit" style="width:100%; padding:10px; background:#dc3545; color:white; border:none; border-radius:6px; font-weight:600; cursor:pointer;">
+                🗑️ Slet alle data
+            </button>
+        </form>
+        
+        <button onclick="document.getElementById('demo-form').style.display='none'" style="width:100%; padding:8px; background:#6c757d; color:white; border:none; border-radius:6px; margin-top:10px; cursor:pointer;">
+            Luk
+        </button>
+        
+        <p style="font-size:0.75rem; color:#999; margin-top:15px; padding-top:15px; border-top:1px solid #eee;">
+            💡 Demo-data vises på team "team-demo" for periode "2025Q4"
+        </p>
+    </div>
+</body>
+</html>

@@ -1,0 +1,178 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}{{ campaign.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .header {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        color: white;
+        padding: 30px;
+        border-radius: 12px;
+        margin-bottom: 30px;
+    }
+    .breadcrumbs {
+        font-size: 0.875rem;
+        opacity: 0.9;
+        margin-bottom: 10px;
+    }
+    .breadcrumbs a { color: white; text-decoration: none; }
+    .card { background: white; border-radius: 12px; padding: 30px; margin-bottom: 20px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e5e7eb; }
+    th { background: #f9fafb; font-weight: 600; }
+    .progress-bar {
+        width: 100%;
+        height: 8px;
+        background: #e5e7eb;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+    .progress-fill {
+        height: 100%;
+        background: #10b981;
+        transition: width 0.3s;
+    }
+    .stat-box {
+        display: inline-block;
+        background: #f0f9ff;
+        padding: 15px 20px;
+        border-radius: 8px;
+        margin-right: 15px;
+        margin-bottom: 15px;
+    }
+    .stat-box strong { display: block; font-size: 1.5rem; color: #3b82f6; }
+    .aggregate-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 15px;
+        margin: 20px 0;
+    }
+    .aggregate-item {
+        background: #f9fafb;
+        padding: 15px;
+        border-radius: 8px;
+        text-align: center;
+    }
+    .aggregate-item .label { color: #6b7280; font-size: 0.875rem; margin-bottom: 5px; }
+    .aggregate-item .value { color: #1f2937; font-size: 1.5rem; font-weight: 600; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="header">
+    <div class="breadcrumbs">
+        <a href="/admin">Admin</a>
+        {% for bc in target_breadcrumbs %}
+            → <a href="/admin/unit/{{ bc.id }}">{{ bc.name }}</a>
+        {% endfor %}
+    </div>
+    <h1>📨 {{ campaign.name }}</h1>
+    <p>{{ campaign.period }} · Target: {{ target_breadcrumbs[-1].name if target_breadcrumbs else 'Unknown' }}</p>
+</div>
+
+<!-- Link til detaljeret analyse -->
+<div style="margin-bottom: 20px;">
+    <a href="/admin/campaign/{{ campaign.id }}/detailed"
+       style="display: inline-block; padding: 12px 24px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; border-radius: 8px; font-weight: 600;">
+        📊 Se Detaljeret Analyse med Lagdeling
+    </a>
+</div>
+
+<div class="card">
+    <h2>📊 Måling Status</h2>
+            <div style="margin: 20px 0;">
+                <div class="stat-box">
+                    <strong>{{ overview|length }}</strong>
+                    Afdelinger
+                </div>
+                <div class="stat-box">
+                    <strong>{{ token_stats.tokens_sent }}</strong>
+                    Invitationer sendt
+                </div>
+                <div class="stat-box">
+                    <strong>{{ token_stats.tokens_used }}</strong>
+                    Svar modtaget
+                </div>
+                <div class="stat-box">
+                    <strong>
+                        {% if token_stats.tokens_sent > 0 %}
+                        {{ "%.1f"|format((token_stats.tokens_used / token_stats.tokens_sent * 100)) }}%
+                        {% else %}
+                        0%
+                        {% endif %}
+                    </strong>
+                    Svarprocent
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>📈 Aggregeret Data (Target Organisation + Underorganisationer)</h2>
+            <div class="aggregate-stats">
+                {% for stat in aggregate_stats %}
+                <div class="aggregate-item">
+                    <div class="label">{{ stat.field }}</div>
+                    <div class="value">{{ "%.1f"|format(stat.avg_score) }}</div>
+                    <div style="font-size: 0.75rem; color: #6b7280; margin-top: 5px;">
+                        {{ stat.response_count }} svar
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            <p style="color: #6b7280; font-size: 0.875rem; margin-top: 15px;">
+                💡 Dette er gennemsnittet for alle svar fra afdelinger under target organisation (inkl. underorganisationer).
+            </p>
+        </div>
+
+        <div class="card">
+            <h2>📁 Status per Afdeling</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Organisation</th>
+                        <th>Sygefravær</th>
+                        <th>Sendt</th>
+                        <th>Svar</th>
+                        <th>%</th>
+                        <th>Besvær Score</th>
+                        <th>Progress</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for unit in overview %}
+                    <tr>
+                        <td>
+                            <strong>{{ unit.name }}</strong><br>
+                            <small style="color: #6b7280;">{{ unit.full_path }}</small>
+                        </td>
+                        <td>{{ "%.1f"|format(unit.sick_leave_percent) }}%</td>
+                        <td>{{ unit.tokens_sent }}</td>
+                        <td>{{ unit.tokens_used }}</td>
+                        <td>
+                            {% if unit.tokens_sent > 0 %}
+                            {{ "%.1f"|format((unit.tokens_used / unit.tokens_sent * 100)) }}%
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if unit.besvær_score %}
+                            {{ "%.1f"|format(unit.besvær_score) }}
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="progress-bar">
+                                {% set pct = (unit.tokens_used / unit.tokens_sent * 100) if unit.tokens_sent > 0 else 0 %}
+                                <div class="progress-fill" style="width: {{ pct }}%"></div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

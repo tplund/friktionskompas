@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Friktionskompasset{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+    <h2>Dashboard: {{ team_id }}</h2>
+    <p class="meta">Periode: <strong>{{ period }}</strong> · Antal svar: <strong>{{ count }}</strong></p>
+</div>
+
+{% if count < 5 %}
+<div class="insufficient-data">
+    <h3>⏳ Ikke nok data endnu</h3>
+    <p>
+        Der er indtil videre <strong>{{ count }} svar</strong>. 
+        Resultater vises først når mindst <strong>5 personer</strong> har svaret.
+    </p>
+    <p>
+        <small>💡 Tip: Brug <a href="#" onclick="document.getElementById('demo-form').style.display='block'; return false;">demo-tools</a> 
+        til at generere testsvar.</small>
+    </p>
+</div>
+{% else %}
+
+<!-- Søjlediagram -->
+<div class="chart-container">
+    <h3>📊 Friktion på tværs af 4 kategorier</h3>
+    <p class="chart-subtitle">Jo lavere søjle, jo højere friktion</p>
+    
+    <div class="bar-chart">
+        {% for stat in stats %}
+        <div class="bar-wrapper">
+            <div class="bar-container">
+                <div class="bar {{ get_color_class(stat.avg_score) }}" 
+                     style="height: {{ (stat.avg_score / 5 * 100)|int }}%"
+                     title="{{ format_field_name(stat.field) }}: {{ stat.avg_score }}/5">
+                    <span class="bar-value">{{ stat.avg_score }}</span>
+                </div>
+            </div>
+            <div class="bar-label">{{ format_field_name(stat.field) }}</div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <div class="chart-legend">
+        <div class="legend-item">
+            <span class="legend-color" style="background:#10b981;"></span>
+            <span>Lav friktion (over 3.5)</span>
+        </div>
+        <div class="legend-item">
+            <span class="legend-color" style="background:#f59e0b;"></span>
+            <span>Moderat (2.5-3.5)</span>
+        </div>
+        <div class="legend-item">
+            <span class="legend-color" style="background:#ef4444;"></span>
+            <span>Høj friktion (under 2.5)</span>
+        </div>
+    </div>
+</div>
+
+<!-- Rå data: Spørgsmål og svar -->
+<div class="raw-data-section">
+    <h3>📋 Hvad vi spurgte om - og hvad de svarede</h3>
+    
+    {% for field in ['MENING', 'TRYGHED', 'KAN', 'BESVÆR'] %}
+    {% if field in by_field %}
+    {% set field_score = (stats | selectattr('field', 'equalto', field) | first).avg_score %}
+    <div class="field-section {{ get_color_class(field_score) }}">
+        <div class="field-section-header">
+            <h4>{{ format_field_name(field) }}</h4>
+            <div class="field-section-score">{{ field_score }}<span>/5</span></div>
+        </div>
+        
+        {% for q in by_field[field] %}
+        <div class="question-result">
+            <div class="question-text">
+                "{{ q.text }}"
+            </div>
+            
+            <div class="response-stats">
+                {% if q.agree_count > 0 %}
+                <div class="stat-item stat-agree">
+                    <span class="stat-icon">👍</span>
+                    <span class="stat-text">{{ q.agree_count }} ud af {{ q.total }} sagde <strong>ENIG</strong></span>
+                    <span class="stat-bar">
+                        <span class="stat-fill" style="width: {{ (q.agree_count / q.total * 100)|int }}%"></span>
+                    </span>
+                </div>
+                {% endif %}
+                
+                {% if q.disagree_count > 0 %}
+                <div class="stat-item stat-disagree">
+                    <span class="stat-icon">👎</span>
+                    <span class="stat-text">{{ q.disagree_count }} ud af {{ q.total }} sagde <strong>UENIG</strong></span>
+                    <span class="stat-bar">
+                        <span class="stat-fill" style="width: {{ (q.disagree_count / q.total * 100)|int }}%"></span>
+                    </span>
+                </div>
+                {% endif %}
+            </div>
+            
+            {% if q.comments %}
+            <div class="question-comments">
+                <p class="comments-label">De skrev også:</p>
+                {% for comment in q.comments %}
+                <div class="comment-bubble">
+                    <span class="comment-icon">💭</span>
+                    <span class="comment-text">"{{ comment }}"</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endfor %}
+</div>
+
+{% endif %}
+
+{% endblock %}

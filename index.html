@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block title %}Besvar spørgsmål - Friktionskompasset{% endblock %}
+
+{% block content %}
+<div class="survey-intro">
+    <h2>Hjælp os med at fjerne friktioner</h2>
+    <p class="lead">
+        Vi vil gerne forstå, hvad der står i vejen for at du kan gøre dit arbejde godt. 
+        Dine svar er <strong>fuldstændig anonyme</strong> og bruges kun til at forbedre arbejdsmiljøet.
+    </p>
+    <div class="privacy-note">
+        🔒 <strong>Anonymitet:</strong> Undgå at nævne navne, datoer eller specifikke steder. 
+        Fokusér på <em>typen</em> af problem, ikke den konkrete hændelse.
+    </div>
+</div>
+
+<form method="POST" action="{{ url_for('submit') }}" class="survey-form">
+    <div class="form-meta">
+        <div class="form-group">
+            <label for="team_id">Team/Afdeling:</label>
+            <input type="text" id="team_id" name="team_id" value="team-demo" required>
+        </div>
+        <div class="form-group">
+            <label for="period">Periode:</label>
+            <input type="text" id="period" name="period" value="2025Q4" required>
+            <small>Fx "2025Q4" eller "Januar 2025"</small>
+        </div>
+    </div>
+
+    <hr>
+
+    {% for field in ['MENING', 'TRYGHED', 'MULIGHED', 'BESVÆR'] %}
+    <section class="field-section">
+        <h3>{{ format_field_name(field) }}</h3>
+        
+        {% for q in by_field[field] %}
+        <div class="question">
+            <div class="question-text">
+                <span class="question-number">{{ loop.index }}</span>
+                {{ q.text_da }}
+                {% if q.reverse_scored %}
+                <span class="reverse-note" title="Negativt formuleret spørgsmål">⚠️</span>
+                {% endif %}
+            </div>
+            
+            <div class="question-response">
+                <div class="scale">
+                    <label class="scale-option">
+                        <input type="radio" name="score_{{ q.id }}" value="1" required>
+                        <span>1<br><small>Helt uenig</small></span>
+                    </label>
+                    <label class="scale-option">
+                        <input type="radio" name="score_{{ q.id }}" value="2">
+                        <span>2<br><small>Delvist uenig</small></span>
+                    </label>
+                    <label class="scale-option">
+                        <input type="radio" name="score_{{ q.id }}" value="3" checked>
+                        <span>3<br><small>Neutral</small></span>
+                    </label>
+                    <label class="scale-option">
+                        <input type="radio" name="score_{{ q.id }}" value="4">
+                        <span>4<br><small>Delvist enig</small></span>
+                    </label>
+                    <label class="scale-option">
+                        <input type="radio" name="score_{{ q.id }}" value="5">
+                        <span>5<br><small>Helt enig</small></span>
+                    </label>
+                </div>
+                
+                <div class="comment-field">
+                    <textarea 
+                        name="comment_{{ q.id }}" 
+                        placeholder="Valgfri kommentar (maks 200 tegn, anonymt)" 
+                        maxlength="200"
+                        rows="2"></textarea>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+        
+        <!-- Fritekstfelt for hele kategorien -->
+        <div class="category-comment-box">
+            <label class="category-comment-label">
+                💬 Vil du uddybe noget om {{ format_field_name(field).lower() }}? <span class="optional-text">(valgfrit)</span>
+            </label>
+            <textarea 
+                name="category_comment_{{ field }}" 
+                class="category-comment-field"
+                placeholder="Skriv gerne mere her hvis du vil uddybe..."
+                rows="3"
+            ></textarea>
+        </div>
+    </section>
+    {% endfor %}
+
+    <div class="form-actions">
+        <button type="submit" class="btn-primary">Indsend svar</button>
+    </div>
+</form>
+
+<div class="info-box">
+    <h4>Hvad sker der med dine svar?</h4>
+    <ul>
+        <li>De gemmes anonymt - ingen kan se hvem der skrev hvad</li>
+        <li>Ledelsen ser kun aggregeret data når mindst 5 personer har svaret</li>
+        <li>Målet er at <strong>fjerne barrierer</strong>, ikke at finde syndebukke</li>
+    </ul>
+</div>
+{% endblock %}

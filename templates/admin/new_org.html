@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ny Organisation - Admin</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; 
+            background: #f9fafb;
+            padding: 20px;
+        }
+        .container { max-width: 800px; margin: 0 auto; }
+        .header { 
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white; 
+            padding: 30px; 
+            border-radius: 12px; 
+            margin-bottom: 30px;
+        }
+        .card { 
+            background: white; 
+            border-radius: 12px; 
+            padding: 30px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { 
+            display: block; 
+            margin-bottom: 8px; 
+            font-weight: 500;
+            color: #374151;
+        }
+        .form-group input { 
+            width: 100%; 
+            padding: 12px; 
+            border: 1px solid #d1d5db; 
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        .form-group small { 
+            display: block; 
+            margin-top: 5px; 
+            color: #6b7280;
+        }
+        .btn { 
+            background: #3b82f6; 
+            color: white; 
+            padding: 12px 24px; 
+            border: none;
+            border-radius: 8px; 
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn:hover { background: #2563eb; }
+        .btn-secondary {
+            background: #6b7280;
+            margin-left: 10px;
+        }
+        .btn-secondary:hover { background: #4b5563; }
+        a { color: #3b82f6; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>➕ Opret ny organisation</h1>
+            <p><a href="/admin" style="color: white; opacity: 0.9;">← Tilbage til oversigt</a></p>
+        </div>
+
+        <div class="card">
+            <form method="POST">
+                <div class="form-group">
+                    <label for="name">Organisations navn *</label>
+                    <input type="text" id="name" name="name" required placeholder="fx Kommune Odder">
+                </div>
+
+                <div class="form-group">
+                    <label for="contact_email">Kontakt email</label>
+                    <input type="email" id="contact_email" name="contact_email" placeholder="hr@kommune-odder.dk">
+                    <small>Bruges til system-beskeder</small>
+                </div>
+
+                <div style="margin-top: 30px;">
+                    <button type="submit" class="btn">✅ Opret organisation</button>
+                    <a href="/admin" class="btn btn-secondary">Annuller</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

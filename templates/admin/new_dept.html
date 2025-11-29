@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Ny Afdeling - Admin</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; 
+            background: #f9fafb;
+            padding: 20px;
+        }
+        .container { max-width: 800px; margin: 0 auto; }
+        .header { 
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white; 
+            padding: 30px; 
+            border-radius: 12px; 
+            margin-bottom: 30px;
+        }
+        .card { background: white; border-radius: 12px; padding: 30px; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 500; }
+        .form-group input { 
+            width: 100%; 
+            padding: 12px; 
+            border: 1px solid #d1d5db; 
+            border-radius: 8px;
+        }
+        .btn { 
+            background: #3b82f6; 
+            color: white; 
+            padding: 12px 24px; 
+            border: none;
+            border-radius: 8px; 
+            cursor: pointer;
+        }
+        a { color: #3b82f6; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>➕ Ny afdeling i {{ org.name }}</h1>
+            <p><a href="/admin/org/{{ org.id }}" style="color: white; opacity: 0.9;">← Tilbage</a></p>
+        </div>
+
+        <div class="card">
+            <form method="POST">
+                <div class="form-group">
+                    <label for="name">Afdelings navn *</label>
+                    <input type="text" id="name" name="name" required placeholder="fx Hjemmeplejen Nord">
+                </div>
+
+                <div class="form-group">
+                    <label for="leader_name">Leder navn</label>
+                    <input type="text" id="leader_name" name="leader_name" placeholder="Mette Hansen">
+                </div>
+
+                <div class="form-group">
+                    <label for="leader_email">Leder email</label>
+                    <input type="email" id="leader_email" name="leader_email" placeholder="mette@kommune.dk">
+                </div>
+
+                <div class="form-group">
+                    <label for="employee_count">Antal medarbejdere</label>
+                    <input type="number" id="employee_count" name="employee_count" value="0" min="0">
+                </div>
+
+                <button type="submit" class="btn">✅ Opret afdeling</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

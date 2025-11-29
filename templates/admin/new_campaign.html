@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Ny Analyse - Admin</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            background: #f9fafb;
+            padding: 20px;
+        }
+        .container { max-width: 900px; margin: 0 auto; }
+        .header {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+        }
+        .card { background: white; border-radius: 12px; padding: 30px; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 500; }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+        }
+        .btn {
+            background: #3b82f6;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+        .warning { background: #fef3c7; padding: 15px; border-left: 4px solid #f59e0b; border-radius: 4px; margin: 20px 0; }
+        .info-box { background: #f0f9ff; padding: 15px; border-left: 4px solid #3b82f6; border-radius: 4px; margin: 15px 0; }
+        a { color: #3b82f6; text-decoration: none; }
+        .unit-preview {
+            background: #f9fafb;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 10px;
+            display: none;
+        }
+        .unit-preview.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Ny Analyse</h1>
+            <p><a href="/admin" style="color: white; opacity: 0.9;">← Tilbage til oversigt</a></p>
+        </div>
+
+        <div class="card">
+            <form method="POST">
+                <div class="form-group">
+                    <label for="name">Analyse navn *</label>
+                    <input type="text" id="name" name="name" required placeholder="November 2025 - Friktionsanalyse">
+                </div>
+
+                <div class="form-group">
+                    <label for="period">Periode *</label>
+                    <input type="text" id="period" name="period" required placeholder="2025Q4">
+                </div>
+
+                <div class="form-group">
+                    <label for="target_unit_id">Target Organisation *</label>
+                    <select id="target_unit_id" name="target_unit_id" required onchange="updatePreview()">
+                        <option value="">-- Vælg organisation --</option>
+                        {% for unit in units %}
+                        <option value="{{ unit.id }}" data-level="{{ unit.level }}" data-path="{{ unit.full_path }}" data-employees="{{ unit.employee_count }}">
+                            {{ ('&nbsp;&nbsp;' * unit.level)|safe }}{{ unit.name }} ({{ unit.employee_count }} medarbejdere)
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <small style="color: #6b7280; margin-top: 5px; display: block;">
+                        Vælg hvilken organisation analysen skal sendes til. Alle afdelinger under denne vil modtage tokens.
+                    </small>
+
+                    <div id="unit-preview" class="unit-preview">
+                        <strong>Preview:</strong><br>
+                        <div id="preview-content"></div>
+                    </div>
+                </div>
+
+                <div class="info-box">
+                    <strong>💡 Hvordan det virker:</strong><br>
+                    Når du vælger en target organisation, genereres der tokens til alle <strong>afdelinger</strong> (organisationer uden underorganisationer) under den.<br>
+                    Eksempel: Vælger du "IT Afdeling", får alle teams under IT (Development, Support, osv.) deres egne tokens.
+                </div>
+
+                <div class="form-group">
+                    <label for="sent_from">Send fra</label>
+                    <select id="sent_from" name="sent_from">
+                        <option value="admin">HR/Admin (anbefalet)</option>
+                        <option value="leader">Enhedsleder</option>
+                    </select>
+                    <small style="color: #6b7280; margin-top: 5px; display: block;">
+                        HR = mere neutralt, Leder = mere personligt
+                    </small>
+                </div>
+
+                <div class="form-group">
+                    <label for="sender_name">Afsender navn</label>
+                    <input type="text" id="sender_name" name="sender_name" placeholder="HR, Virksomhed A">
+                </div>
+
+                <div class="warning">
+                    ⚠️ <strong>Obs:</strong> Når du klikker "Send", bliver emails/SMS sendt automatisk til alle afdelinger under target organisation!
+                </div>
+
+                <button type="submit" class="btn">📤 Opret og send analyse</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function updatePreview() {
+            const select = document.getElementById('target_unit_id');
+            const preview = document.getElementById('unit-preview');
+            const content = document.getElementById('preview-content');
+
+            if (!select.value) {
+                preview.classList.remove('active');
+                return;
+            }
+
+            const option = select.options[select.selectedIndex];
+            const path = option.getAttribute('data-path');
+            const employees = option.getAttribute('data-employees');
+
+            content.innerHTML = `
+                <div style="margin-top: 10px;">
+                    📍 <strong>Full path:</strong> ${path}<br>
+                    👥 <strong>Medarbejdere i denne organisation:</strong> ${employees}<br>
+                    <br>
+                    <em style="color: #6b7280;">Tokens vil blive genereret til alle afdelinger under denne.</em>
+                </div>
+            `;
+
+            preview.classList.add('active');
+        }
+    </script>
+</body>
+</html>

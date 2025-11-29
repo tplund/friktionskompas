@@ -1,0 +1,951 @@
+"""
+Analyse-funktioner for Friktionskompasset
+Håndterer lagdeling (ydre/indre) og avancerede analyser
+"""
+from typing import Dict, List, Optional
+from db_hierarchical import get_db
+
+
+# ============================================
+# SPØRGSMÅLS-MAPPING TIL LAG
+# ============================================
+
+QUESTION_LAYERS = {
+    # MENING - ingen lagdeling (V1.4: 1-5)
+    'MENING': {
+        'all': [1, 2, 3, 4, 5]
+    },
+
+    # TRYGHED - ydre (social) vs indre (emotionel) (V1.4: 6-10)
+    'TRYGHED': {
+        'ydre': [6, 7, 8],           # Social tryghed: holder for mig selv, opfølgning, fejl
+        'indre': [9, 10]             # Emotionel: usikkerhed, udskyder pga reaktioner
+    },
+
+    # KAN - ydre (rammer) vs indre (evne) (V1.4: 11-18)
+    'KAN': {
+        'ydre': [11, 13, 14, 15, 16, 17], # Ydre: systemer, hjælp, tid, beslutninger, cues, regler
+        'indre': [12, 18]                  # Indre: ved ikke præcist, kender ikke første skridt
+    },
+
+    # BESVÆR - mekanisk vs oplevet/flow (V1.4: 19-24)
+    'BESVÆR': {
+        'mekanisk': [19, 21, 22],    # Mekanisk friktion: dobbeltindtastning, ventetid, afbrydelser
+        'oplevet': [20, 23, 24]      # Oplevet flow: let at starte, udskyder trods tid, rimelig indsats
+    }
+}
+
+# Stealth substitution items
+SUBSTITUTION_ITEMS = {
+    'stealth_s': [5, 10, 17, 18, 23],  # Items der måler substitutionsadfærd
+    'tid_item': 14                      # "Jeg har tid nok..."
+}
+
+
+def get_unit_stats_with_layers(
+    unit_id: str,
+    campaign_id: str,
+    respondent_type: str = 'employee',
+    include_children: bool = True
+) -> Dict:
+    """
+    Hent statistik med lagdeling
+
+    Returns:
+        {
+            'MENING': {
+                'avg_score': 3.2,
+                'response_count': 45,
+                'std_dev': 1.2,  # Standardafvigelse
+                'spread': 'høj',  # 'lav', 'medium', 'høj'
+                'all': {spørgsmål}
+            },
+            'TRYGHED': {
+                'avg_score': 2.8,  # Samlet
+                'response_count': 45,
+                'std_dev': 0.8,
+                'spread': 'medium',
+                'ydre': {'avg_score': 3.1, 'response_count': 30},
+                'indre': {'avg_score': 2.4, 'response_count': 15}
+            },
+            ...
+        }
+    """
+    with get_db() as conn:
+        # Build subtree query
+        if include_children:
+            subtree_cte = """
+                WITH RECURSIVE subtree AS (
+                    SELECT id FROM organizational_units WHERE id = ?
+                    UNION ALL
+                    SELECT ou.id FROM organizational_units ou
+                    JOIN subtree st ON ou.parent_id = st.id
+                )
+            """
+            unit_filter = "r.unit_id IN (SELECT id FROM subtree)"
+            params = [unit_id, campaign_id, respondent_type]
+        else:
+            subtree_cte = ""
+            unit_filter = "r.unit_id = ?"
+            params = [unit_id, campaign_id, respondent_type]
+
+        # Query for aggregated question stats
+        query = f"""
+            {subtree_cte}
+            SELECT
+                q.id as question_id,
+                q.field,
+                q.sequence,
+                AVG(CASE
+                    WHEN q.reverse_scored = 1 THEN 6 - r.score
+                    ELSE r.score
+                END) as avg_score,
+                COUNT(r.id) as response_count
+            FROM questions q
+            LEFT JOIN responses r ON q.id = r.question_id
+                AND {unit_filter}
+                AND r.campaign_id = ?
+                AND r.respondent_type = ?
+            WHERE q.is_default = 1
+            GROUP BY q.id, q.field, q.sequence
+            ORDER BY q.sequence
+        """
+
+        rows = conn.execute(query, params).fetchall()
+
+        # Query for individual responses (for std dev calculation per field)
+        individual_query = f"""
+            {subtree_cte}
+            SELECT
+                q.field,
+                CASE
+                    WHEN q.reverse_scored = 1 THEN 6 - r.score
+                    ELSE r.score
+                END as score
+            FROM questions q
+            JOIN responses r ON q.id = r.question_id
+                AND {unit_filter}
+                AND r.campaign_id = ?
+                AND r.respondent_type = ?
+            WHERE q.is_default = 1
+        """
+
+        individual_rows = conn.execute(individual_query, params).fetchall()
+
+        # Calculate std dev per field
+        field_scores = {}
+        for row in individual_rows:
+            field = row['field']
+            if field not in field_scores:
+                field_scores[field] = []
+            field_scores[field].append(row['score'])
+
+        field_std_devs = {}
+        for field, scores in field_scores.items():
+            if len(scores) > 1:
+                mean = sum(scores) / len(scores)
+                variance = sum((x - mean) ** 2 for x in scores) / len(scores)
+                std_dev = variance ** 0.5
+                field_std_devs[field] = std_dev
+            else:
+                field_std_devs[field] = 0
+
+        # Organize by field and layer
+        results = {}
+
+        for field, layers in QUESTION_LAYERS.items():
+            field_data = {
+                'avg_score': 0,
+                'response_count': 0
+            }
+
+            all_scores = []
+            all_counts = []
+
+            for layer_name, question_ids in layers.items():
+                layer_rows = [r for r in rows if r['sequence'] in question_ids]
+
+                if layer_rows:
+                    layer_scores = [r['avg_score'] for r in layer_rows if r['avg_score'] is not None]
+                    layer_count = sum(r['response_count'] for r in layer_rows)
+
+                    if layer_scores:
+                        layer_avg = sum(layer_scores) / len(layer_scores)
+                        field_data[layer_name] = {
+                            'avg_score': round(layer_avg, 1),
+                            'response_count': layer_count,
+                            'question_count': len(layer_rows)
+                        }
+
+                        all_scores.extend(layer_scores)
+                        all_counts.append(layer_count)
+
+            # Calculate overall field score
+            if all_scores:
+                field_data['avg_score'] = round(sum(all_scores) / len(all_scores), 1)
+                field_data['response_count'] = sum(all_counts)
+
+            # Add standard deviation and spread classification
+            std_dev = field_std_devs.get(field, 0)
+            field_data['std_dev'] = round(std_dev, 2)
+
+            # Classify spread (based on 1-5 scale)
+            if std_dev < 0.5:
+                field_data['spread'] = 'lav'
+            elif std_dev < 1.0:
+                field_data['spread'] = 'medium'
+            else:
+                field_data['spread'] = 'høj'
+
+            results[field] = field_data
+
+        return results
+
+
+def get_comparison_by_respondent_type(
+    unit_id: str,
+    campaign_id: str,
+    include_children: bool = True
+) -> Dict:
+    """
+    Sammenlign scores på tværs af respondent types
+
+    Returns:
+        {
+            'MENING': {
+                'employee': 2.3,
+                'leader_assess': 3.8,
+                'leader_self': 3.0,
+                'gap': 1.5,  # employee vs leader_assess
+                'gap_severity': 'kritisk',  # 'moderat' eller 'kritisk'
+                'has_misalignment': True
+            },
+            ...
+        }
+    """
+    results = {}
+
+    # Hent for hver respondent type
+    employee_stats = get_unit_stats_with_layers(unit_id, campaign_id, 'employee', include_children)
+    leader_assess_stats = get_unit_stats_with_layers(unit_id, campaign_id, 'leader_assess', include_children)
+    leader_self_stats = get_unit_stats_with_layers(unit_id, campaign_id, 'leader_self', include_children)
+
+    for field in ['MENING', 'TRYGHED', 'KAN', 'BESVÆR']:
+        employee_score = employee_stats.get(field, {}).get('avg_score', 0)
+        leader_assess_score = leader_assess_stats.get(field, {}).get('avg_score', 0)
+        leader_self_score = leader_self_stats.get(field, {}).get('avg_score', 0)
+
+        gap = abs(employee_score - leader_assess_score) if employee_score and leader_assess_score else 0
+
+        # Gap severity levels
+        if gap >= 1.0:
+            gap_severity = 'kritisk'
+        elif gap >= 0.6:
+            gap_severity = 'moderat'
+        else:
+            gap_severity = None
+
+        results[field] = {
+            'employee': employee_score,
+            'leader_assess': leader_assess_score,
+            'leader_self': leader_self_score,
+            'gap': round(gap, 1),
+            'gap_severity': gap_severity,
+            'has_misalignment': gap >= 0.6  # Flagges ved 0.6+ (12%+)
+        }
+
+    return results
+
+
+def get_detailed_breakdown(
+    unit_id: str,
+    campaign_id: str,
+    include_children: bool = True
+) -> Dict:
+    """
+    Komplet breakdown med alle lag og respondent types
+
+    Returns struktureret data klar til dashboard
+    """
+    return {
+        'employee': get_unit_stats_with_layers(unit_id, campaign_id, 'employee', include_children),
+        'leader_assess': get_unit_stats_with_layers(unit_id, campaign_id, 'leader_assess', include_children),
+        'leader_self': get_unit_stats_with_layers(unit_id, campaign_id, 'leader_self', include_children),
+        'comparison': get_comparison_by_respondent_type(unit_id, campaign_id, include_children)
+    }
+
+
+def check_anonymity_threshold(campaign_id: str, unit_id: str) -> Dict:
+    """
+    Check om anonymitetstærskel er nået
+
+    Returns:
+        {
+            'can_show_results': True/False,
+            'response_count': 7,
+            'min_required': 5,
+            'missing': 0
+        }
+    """
+    with get_db() as conn:
+        # Hent campaign min_responses
+        campaign = conn.execute("""
+            SELECT min_responses, mode
+            FROM campaigns
+            WHERE id = ?
+        """, (campaign_id,)).fetchone()
+
+        if not campaign:
+            return {'can_show_results': False, 'error': 'Campaign not found'}
+
+        # For identified mode, always show
+        if campaign['mode'] == 'identified':
+            return {'can_show_results': True, 'mode': 'identified'}
+
+        min_required = campaign['min_responses']
+
+        # Count employee responses
+        response_count = conn.execute("""
+            SELECT COUNT(DISTINCT id) as cnt
+            FROM responses
+            WHERE campaign_id = ? AND unit_id = ? AND respondent_type = 'employee'
+        """, (campaign_id, unit_id)).fetchone()['cnt']
+
+        can_show = response_count >= min_required
+        missing = max(0, min_required - response_count)
+
+        return {
+            'can_show_results': can_show,
+            'response_count': response_count,
+            'min_required': min_required,
+            'missing': missing,
+            'mode': 'anonymous'
+        }
+
+
+def calculate_substitution(unit_id: str, campaign_id: str, respondent_type: str = 'employee') -> Dict:
+    """
+    Beregn substitution (tid) - stealth version V1.4
+
+    Returns:
+        {
+            'tid_mangel': float,
+            'proc': float,
+            'underliggende': float,
+            'kalender_gap': float,
+            'tid_bias': float,
+            'flagged': bool,
+            'response_count': int,
+            'flagged_count': int,
+            'flagged_pct': float
+        }
+    """
+    with get_db() as conn:
+        # Hent alle responses for denne unit/campaign/type
+        responses = conn.execute("""
+            SELECT
+                r.respondent_name,
+                q.sequence,
+                q.reverse_scored,
+                r.score
+            FROM responses r
+            JOIN questions q ON r.question_id = q.id
+            WHERE r.unit_id = ?
+              AND r.campaign_id = ?
+              AND r.respondent_type = ?
+              AND q.sequence IN (5, 10, 14, 17, 18, 19, 20, 21, 22, 23)
+            ORDER BY r.respondent_name, q.sequence
+        """, (unit_id, campaign_id, respondent_type)).fetchall()
+
+        if not responses:
+            return {
+                'tid_mangel': 0,
+                'proc': 0,
+                'underliggende': 0,
+                'kalender_gap': 0,
+                'tid_bias': 0,
+                'flagged': False,
+                'response_count': 0,
+                'flagged_count': 0,
+                'flagged_pct': 0
+            }
+
+        # Grupper per respondent
+        respondents = {}
+        for row in responses:
+            name = row['respondent_name']
+            if name not in respondents:
+                respondents[name] = {}
+            respondents[name][row['sequence']] = row['score']
+
+        # Beregn for hver respondent
+        flagged_count = 0
+        tid_biases = []
+
+        for name, scores in respondents.items():
+            # TID_MANGEL = 6 - item14
+            tid_mangel = 6 - scores.get(14, 3)
+
+            # PROC = gennemsnit(19, 6-20, 6-21, 6-22)
+            proc = (
+                scores.get(19, 3) +  # Allerede reverse i DB
+                (6 - scores.get(20, 3)) +
+                (6 - scores.get(21, 3)) +
+                (6 - scores.get(22, 3))
+            ) / 4
+
+            # UNDERLIGGENDE = max(5, 10, 17, 18)
+            underliggende = max(
+                scores.get(5, 1),
+                scores.get(10, 1),
+                scores.get(17, 1),
+                scores.get(18, 1)
+            )
+
+            # KALENDER_GAP = item 23
+            kalender_gap = scores.get(23, 1)
+
+            # TID_BIAS
+            tid_bias = tid_mangel - proc
+            tid_biases.append(tid_bias)
+
+            # Flag substitution
+            if tid_bias >= 0.6 and underliggende >= 3.5:
+                flagged_count += 1
+
+        # Aggreger
+        response_count = len(respondents)
+        flagged_pct = (flagged_count / response_count * 100) if response_count > 0 else 0
+        avg_tid_bias = sum(tid_biases) / len(tid_biases) if tid_biases else 0
+
+        return {
+            'response_count': response_count,
+            'flagged_count': flagged_count,
+            'flagged_pct': round(flagged_pct, 1),
+            'avg_tid_bias': round(avg_tid_bias, 2),
+            'flagged': flagged_count > 0
+        }
+
+
+def get_layer_interpretation(field: str, layer: str, score: float) -> str:
+    """
+    Få fortolkning af en layer-score
+
+    Args:
+        field: MENING, TRYGHED, MULIGHED, BESVÆR
+        layer: ydre, indre, proces, lethed, all
+        score: 1-5
+
+    Returns:
+        Menneskevenlig fortolkning
+    """
+    if score >= 4.0:
+        level = "høj"
+        implication = "god"
+    elif score >= 3.0:
+        level = "middel"
+        implication = "ok"
+    elif score >= 2.0:
+        level = "lav"
+        implication = "problematisk"
+    else:
+        level = "meget lav"
+        implication = "kritisk"
+
+    interpretations = {
+        ('TRYGHED', 'ydre'): f"Psykologisk tryghed er {level} - {implication} social sikkerhed",
+        ('TRYGHED', 'indre'): f"Emotionel robusthed er {level} - {implication} håndtering af uvished",
+        ('KAN', 'ydre'): f"Ydre kan (rammer) er {level} - {implication} ressourcer og systemer",
+        ('KAN', 'indre'): f"Indre kan (evne) er {level} - {implication} viden og kompetencer",
+        ('BESVÆR', 'proces'): f"Procesfriktion er {level} - {'lidt bøvl' if level == 'høj' else 'meget bøvl' if level == 'lav' else 'moderat bøvl'}",
+        ('BESVÆR', 'lethed'): f"Oplevet lethed er {level} - {'flyder godt' if level == 'høj' else 'opleves tungt' if level == 'lav' else 'ok flow'}",
+    }
+
+    key = (field, layer)
+    return interpretations.get(key, f"{field} {layer} er {level}")
+
+
+def get_free_text_comments(unit_id: str, campaign_id: str, include_children: bool = True) -> List[Dict]:
+    """
+    Hent alle fritekst-kommentarer for en unit/campaign
+
+    Returns:
+        [
+            {
+                'respondent_type': 'employee',
+                'respondent_name': 'Respondent #1',
+                'comment': 'SITUATION: ...\n\nGENERELT: ...',
+                'situation': '...',
+                'general': '...'
+            },
+            ...
+        ]
+    """
+    with get_db() as conn:
+        # Build subtree query
+        if include_children:
+            subtree_cte = """
+                WITH RECURSIVE subtree AS (
+                    SELECT id FROM organizational_units WHERE id = ?
+                    UNION ALL
+                    SELECT ou.id FROM organizational_units ou
+                    JOIN subtree st ON ou.parent_id = st.id
+                )
+            """
+            unit_filter = "r.unit_id IN (SELECT id FROM subtree)"
+            params = [unit_id, campaign_id]
+        else:
+            subtree_cte = ""
+            unit_filter = "r.unit_id = ?"
+            params = [unit_id, campaign_id]
+
+        query = f"""
+            {subtree_cte}
+            SELECT DISTINCT
+                r.respondent_type,
+                r.respondent_name,
+                r.comment
+            FROM responses r
+            WHERE {unit_filter}
+              AND r.campaign_id = ?
+              AND r.comment IS NOT NULL
+              AND r.comment != ''
+            ORDER BY r.respondent_type, r.respondent_name
+        """
+
+        rows = conn.execute(query, params).fetchall()
+
+        # Parse SITUATION/GENERELT fra combined comment
+        comments = []
+        for row in rows:
+            comment_text = row['comment']
+
+            # Split SITUATION og GENERELT
+            situation = ""
+            general = ""
+
+            if "SITUATION:" in comment_text and "GENERELT:" in comment_text:
+                parts = comment_text.split("GENERELT:")
+                situation = parts[0].replace("SITUATION:", "").strip()
+                general = parts[1].strip()
+            elif "SITUATION:" in comment_text:
+                situation = comment_text.replace("SITUATION:", "").strip()
+            elif "GENERELT:" in comment_text:
+                general = comment_text.replace("GENERELT:", "").strip()
+            else:
+                general = comment_text
+
+            comments.append({
+                'respondent_type': row['respondent_type'],
+                'respondent_name': row['respondent_name'],
+                'comment': comment_text,
+                'situation': situation,
+                'general': general
+            })
+
+        return comments
+
+
+# ============================================
+# KKC-INTEGRATION (Anders Trillingsgaard)
+# ============================================
+
+# Mapping fra friktionsfelter til KKC-elementer
+KKC_MAPPING = {
+    'MENING': 'KURS',
+    'TRYGHED': 'KOORDINERING',
+    'KAN': 'KOORDINERING',
+    'BESVÆR': 'COMMITMENT'
+}
+
+
+def get_kkc_recommendations(stats: Dict, comparison: Dict = None) -> List[Dict]:
+    """
+    Generer KKC-baserede anbefalinger baseret på friktions-scores
+
+    Args:
+        stats: Friktions-scores fra get_unit_stats_with_layers()
+        comparison: Optional sammenligning mellem respondent types
+
+    Returns:
+        Liste af anbefalinger sorteret efter prioritet (højeste friktion først)
+        [
+            {
+                'field': 'MENING',
+                'kkc_element': 'KURS',
+                'score': 2.1,
+                'severity': 'høj',
+                'title': 'Start med KURS',
+                'problem': '...',
+                'actions': ['...', '...', '...'],
+                'follow_up': '...',
+                'kkc_reference': '...'
+            },
+            ...
+        ]
+    """
+    recommendations = []
+
+    # Definer anbefalinger for hver friktionstype
+    kkc_actions = {
+        'MENING': {
+            'title': 'Start med KURS',
+            'problem': 'Teamet mangler en klar retning - de ved ikke hvorfor opgaverne giver værdi eller hvordan de bidrager til helheden.',
+            'actions': [
+                '🛑 STOP-øvelse (10 min): "Hvilken opgave giver MINDST mening for dig? Hvad tror du formålet er?"',
+                '🎯 Formuler kursen sammen: "Hvordan hjælper dette teams arbejde borgeren/kunden konkret?" Skriv det i ÉN sætning. Hæng den op.',
+                '🔗 Kobl opgaver til kursen: For hver tilbagevendende opgave - "Hvordan understøtter dette vores kurs?" Hvis ikke → drop eller redesign.'
+            ],
+            'follow_up': 'Gentag måling om 6-8 uger. Er Mening-scoren steget? Kan alle svare på "Hvorfor gør vi det her?"',
+            'kkc_reference': 'Anders Trillingsgaard: Kurs handler om retning og mening - "Hvorfor gør vi det?"'
+        },
+        'TRYGHED': {
+            'title': 'Styrk KOORDINERING gennem psykologisk tryghed',
+            'problem': 'Folk holder ting for sig selv eller er bange for at dele usikkerhed. Dårligt samarbejde og manglende åbenhed.',
+            'actions': [
+                '👥 "Hvem-kan-hvad"-tavle: Synliggør hvem der ved hvad. Gør det trygt at spørge.',
+                '🔄 Ugentlig check-in: 15 min - "Hvad er du i tvivl om?" Normaliser at det er OK ikke at vide.',
+                '🎓 Fejl-deling: Én gang om måneden - "Hvad lærte vi af en fejl?" Normaliser at alle laver fejl.'
+            ],
+            'follow_up': 'Observér: Begynder folk at spørge højt i stedet for at gætte? Deles fejl åbent?',
+            'kkc_reference': 'Anders Trillingsgaard: Koordinering handler om samarbejde og klarhed - "Hvem gør hvad?"'
+        },
+        'KAN': {
+            'title': 'Styrk KOORDINERING gennem bedre evne og rammer',
+            'problem': 'Folk kan ikke gøre deres arbejde ordentligt - de mangler enten evner (indre kan) eller værktøjer og rammer (ydre kan).',
+            'actions': [
+                '🗺️ Kortlæg mangler: Lav en liste - "Hvad mangler I for at KUNNE gøre jeres arbejde?" Opdel i: hvad kan I ikke? vs. hvad har I ikke?',
+                '📚 "Kan-kort": Hvem kan hvad? Hvor er viden og værktøjer? Gør det synligt.',
+                '🔧 Fikse én ting ad gangen: Vælg ÉN manglende evne eller ressource. Træn eller skaff den inden næste måned.'
+            ],
+            'follow_up': 'Kan folk bedre gøre deres arbejde? Er både evner (indre) og rammer (ydre) på plads?',
+            'kkc_reference': 'Anders Trillingsgaard: Koordinering handler om at kunne levere - både evne og ressourcer skal være til stede.'
+        },
+        'BESVÆR': {
+            'title': 'Styrk COMMITMENT gennem systemforenkling',
+            'problem': 'Systemet passer ikke til virkeligheden - folk omgår regler, laver dobbeltarbejde eller bruger workarounds.',
+            'actions': [
+                '🔍 Identificér workarounds: "Hvilke regler/procedurer følger I IKKE? Hvorfor?"',
+                '✂️ Forenkl én procedure ad gangen: Vælg den mest irriterende. Fjern unødige trin.',
+                '🤝 Skab commitment: "Kan vi alle blive enige om at gøre det på denne måde?" Hvis ikke - hvorfor?'
+            ],
+            'follow_up': 'Stopper folk med at omgå reglerne? Er procedurerne enklere? Føles systemet mere realistisk?',
+            'kkc_reference': 'Anders Trillingsgaard: Commitment handler om at systemet matcher virkeligheden - "Kan vi levere det vi siger ja til?"'
+        }
+    }
+
+    # Beregn prioritet for hver friktion
+    for field in ['MENING', 'TRYGHED', 'KAN', 'BESVÆR']:
+        score = stats.get(field, {}).get('avg_score', 0)
+
+        if score == 0:
+            continue
+
+        # Bestem severity
+        if score <= 2.5:
+            severity = 'høj'
+            severity_emoji = '🔴'
+        elif score <= 3.5:
+            severity = 'medium'
+            severity_emoji = '🟡'
+        else:
+            severity = 'lav'
+            severity_emoji = '🟢'
+
+        actions = kkc_actions.get(field, {})
+
+        recommendation = {
+            'field': field,
+            'kkc_element': KKC_MAPPING[field],
+            'score': score,
+            'severity': severity,
+            'severity_emoji': severity_emoji,
+            'title': actions.get('title', ''),
+            'problem': actions.get('problem', ''),
+            'actions': actions.get('actions', []),
+            'follow_up': actions.get('follow_up', ''),
+            'kkc_reference': actions.get('kkc_reference', '')
+        }
+
+        # Tilføj layer-info hvis relevant
+        field_data = stats.get(field, {})
+        if 'ydre' in field_data:
+            recommendation['ydre_score'] = field_data['ydre']['avg_score']
+        if 'indre' in field_data:
+            recommendation['indre_score'] = field_data['indre']['avg_score']
+
+        # Tilføj spredning
+        recommendation['std_dev'] = field_data.get('std_dev', 0)
+        recommendation['spread'] = field_data.get('spread', 'lav')
+
+        # Tilføj gap hvis comparison findes
+        if comparison and field in comparison:
+            recommendation['gap'] = comparison[field].get('gap', 0)
+            recommendation['has_misalignment'] = comparison[field].get('has_misalignment', False)
+
+        recommendations.append(recommendation)
+
+    # Sortér efter severity (høj først) og derefter score (lavest først)
+    severity_order = {'høj': 0, 'medium': 1, 'lav': 2}
+    recommendations.sort(key=lambda x: (severity_order[x['severity']], x['score']))
+
+    return recommendations
+
+
+def get_start_here_recommendation(recommendations: List[Dict]) -> Optional[Dict]:
+    """
+    Find den vigtigste anbefaling at starte med (højeste friktion)
+
+    RETURNERER DICT MED:
+    - single: True/False - om der er én klar prioritet eller flere ligeværdige
+    - primary: Dict med hovedanbefaling (hvis single=True)
+    - recommendations: List af ligeværdige anbefalinger (hvis single=False)
+    - reason: Forklaring på prioriteringen
+
+    Prioritering:
+    1. Højeste severity først
+    2. Hvis ALLE scores er meget tætte (< 0.4 range): Vis ALLE som ligeværdige
+    3. Hvis scores er tætte (< 0.3 forskel) inden for severity gruppe:
+       - Prioriter den med højest spredning (mest uensartet oplevelse)
+    4. Ellers laveste score
+
+    Returns:
+        Dict med prioriteringsinfo, eller None hvis ingen problemer
+    """
+    if not recommendations:
+        return None
+
+    # Filtrer til kun høj og medium severity (under 70%)
+    problems = [rec for rec in recommendations if rec['severity'] in ['høj', 'medium']]
+
+    if not problems:
+        return None
+
+    # Hvis kun én, returner den
+    if len(problems) == 1:
+        return {
+            'single': True,
+            'primary': problems[0],
+            'reason': 'Kun ét friktionsområde under 70%'
+        }
+
+    # Check om ALLE problemer har meget tætte scores (< 0.4 range)
+    all_scores = [r['score'] for r in problems]
+    total_range = max(all_scores) - min(all_scores)
+
+    if total_range < 0.4:
+        # Alle scores er tætte - vis alle som ligeværdige
+        # Sorter efter severity først, derefter spredning
+        problems.sort(key=lambda x: (
+            0 if x['severity'] == 'høj' else 1,
+            0 if x.get('spread') == 'høj' else 1 if x.get('spread') == 'medium' else 2,
+            x['score']
+        ))
+        return {
+            'single': False,
+            'recommendations': problems,
+            'reason': f'Alle friktioner er næsten lige høje (spænd: {total_range:.1f} point). Tackle dem i den rækkefølge der giver mening for teamet.'
+        }
+
+    # Gruppér efter severity
+    high = [r for r in problems if r['severity'] == 'høj']
+    medium = [r for r in problems if r['severity'] == 'medium']
+
+    # Start med højeste severity gruppe
+    top_group = high if high else medium
+
+    if len(top_group) == 1:
+        return {
+            'single': True,
+            'primary': top_group[0],
+            'reason': f'Eneste {top_group[0]["severity"]} friktion (under {"50%" if top_group[0]["severity"] == "høj" else "70%"})'
+        }
+
+    # Flere i samme gruppe - check om scores er tætte
+    scores = [r['score'] for r in top_group]
+    score_range = max(scores) - min(scores)
+
+    if score_range < 0.3:
+        # Scores er tætte inden for denne severity gruppe - prioriter efter spredning
+        top_group.sort(key=lambda x: (
+            0 if x.get('spread') == 'høj' else 1 if x.get('spread') == 'medium' else 2,
+            x['score']
+        ))
+        primary = top_group[0]
+        return {
+            'single': True,
+            'primary': primary,
+            'reason': f'Scores er tætte ({score_range:.1f} point forskel), prioriteret pga. ' +
+                     (f'høj spredning (σ={primary.get("std_dev", 0):.2f})' if primary.get('spread') == 'høj'
+                      else 'laveste score')
+        }
+    else:
+        # Scores er forskellige - prioriter laveste score
+        top_group.sort(key=lambda x: x['score'])
+        return {
+            'single': True,
+            'primary': top_group[0],
+            'reason': f'Laveste score ({top_group[0]["score"]}/5) i {top_group[0]["severity"]} kategori'
+        }
+
+
+def get_alerts_and_findings(breakdown: Dict, comparison: Dict, substitution: Dict = None) -> List[Dict]:
+    """
+    Saml alle vigtige advarsler og fund fra analysen
+
+    Returns:
+        Liste af alerts sorteret efter alvorlighed
+        [
+            {
+                'severity': 'kritisk' | 'moderat' | 'info',
+                'type': 'kritisk_lav_score' | 'gap' | 'spread' | 'blocked' | 'substitution' | 'paradoks',
+                'field': 'MENING' | 'TRYGHED' | ...,
+                'icon': '🔴',
+                'title': 'Kritisk lav score - MENING',
+                'description': 'Medarbejdere scorer kun 38% ...',
+                'recommendation': 'Start her - dette er det mest akutte problemområde'
+            },
+            ...
+        ]
+    """
+    alerts = []
+
+    # 1. KRITISK LAV SCORE (< 40% / 2.0)
+    for field in ['MENING', 'TRYGHED', 'KAN', 'BESVÆR']:
+        emp_score = breakdown['employee'].get(field, {}).get('avg_score', 0)
+        if emp_score > 0 and emp_score < 2.0:
+            alerts.append({
+                'severity': 'kritisk',
+                'type': 'kritisk_lav_score',
+                'field': field,
+                'icon': '🔴',
+                'title': f'Kritisk lav score - {field}',
+                'description': f'Medarbejdere scorer kun {int(emp_score/5*100)}% ({emp_score:.1f}/5). Dette er under kritisk tærskel (40%).',
+                'recommendation': 'Dette er et akut problemområde der kræver øjeblikkelig handling.'
+            })
+
+    # 2. GAP - LEDER/MEDARBEJDER UENIGHED
+    for field in ['MENING', 'TRYGHED', 'KAN', 'BESVÆR']:
+        comp = comparison.get(field, {})
+        gap_severity = comp.get('gap_severity')
+        gap = comp.get('gap', 0)
+        emp = comp.get('employee', 0)
+        leader = comp.get('leader_assess', 0)
+
+        if gap_severity:
+            direction = "undervurderer" if emp < leader else "overvurderer"
+            severity_map = {'kritisk': 'kritisk', 'moderat': 'moderat'}
+
+            alerts.append({
+                'severity': severity_map.get(gap_severity, 'moderat'),
+                'type': 'gap',
+                'field': field,
+                'icon': '⚠️',
+                'title': f'{gap_severity.title()} forskel - {field}',
+                'description': f'Medarbejdere: {int(emp/5*100)}% | Leder vurderer: {int(leader/5*100)}% (forskel: {int(gap*20)}%).',
+                'recommendation': f'Lederen {direction} teamets {field.lower()}-friktioner. Dialog nødvendig.'
+            })
+
+    # 3. HØJ SPREDNING
+    for field in ['MENING', 'TRYGHED', 'KAN', 'BESVÆR']:
+        field_data = breakdown['employee'].get(field, {})
+        spread = field_data.get('spread')
+        std_dev = field_data.get('std_dev', 0)
+
+        if spread == 'høj':
+            alerts.append({
+                'severity': 'moderat',
+                'type': 'spread',
+                'field': field,
+                'icon': '📊',
+                'title': f'Høj spredning - {field}',
+                'description': f'Standardafvigelse: {std_dev:.2f}. Meget uensartet oplevelse i teamet.',
+                'recommendation': 'Nogle har det godt, andre dårligt. Undersøg forskelle mellem medarbejdere - potentiel konflikt eller ulige arbejdsvilkår.'
+            })
+
+    # 4. BLOCKED LEADER
+    for field in ['MENING', 'TRYGHED', 'KAN', 'BESVÆR']:
+        emp = breakdown['employee'].get(field, {}).get('avg_score', 0)
+        leader_self = breakdown['leader_self'].get(field, {}).get('avg_score', 0)
+
+        if emp < 3.5 and leader_self < 3.5:
+            alerts.append({
+                'severity': 'moderat',
+                'type': 'blocked',
+                'field': field,
+                'icon': '🚧',
+                'title': f'Leder blokeret - {field}',
+                'description': f'Team: {int(emp/5*100)}% | Leder selv: {int(leader_self/5*100)}%. Begge under 70%.',
+                'recommendation': 'Lederen har samme friktioner som teamet og kan ikke effektivt hjælpe. Leder bør først adressere egne friktioner.'
+            })
+
+    # 5. LEDER PARADOKS (leder selv meget forskellig fra vurdering af team)
+    for field in ['MENING', 'TRYGHED', 'KAN', 'BESVÆR']:
+        leader_assess = breakdown['leader_assess'].get(field, {}).get('avg_score', 0)
+        leader_self = breakdown['leader_self'].get(field, {}).get('avg_score', 0)
+        paradox_gap = abs(leader_self - leader_assess)
+
+        if paradox_gap >= 1.0:  # 20% forskel
+            direction = "højere" if leader_self > leader_assess else "lavere"
+            alerts.append({
+                'severity': 'info',
+                'type': 'paradoks',
+                'field': field,
+                'icon': '🤔',
+                'title': f'Leder paradoks - {field}',
+                'description': f'Leder vurderer team: {int(leader_assess/5*100)}% | Leder selv: {int(leader_self/5*100)}% (forskel: {int(paradox_gap*20)}%).',
+                'recommendation': f'Lederen oplever {direction} {field.lower()}-friktion end teamet. Dette kan påvirke lederens forståelse af teamets situation.'
+            })
+
+    # 6. SUBSTITUTION
+    if substitution and substitution.get('flagged'):
+        count = substitution.get('flagged_count', 0)
+        total = substitution.get('response_count', 0)
+        pct = substitution.get('flagged_pct', 0)
+
+        alerts.append({
+            'severity': 'moderat',
+            'type': 'substitution',
+            'field': None,
+            'icon': '💡',
+            'title': 'Substitution detekteret',
+            'description': f'{count} af {total} medarbejdere ({pct:.0f}%) substituerer - siger "jeg mangler tid" men mener "jeg er utilfreds".',
+            'recommendation': 'Adresser MENING/TRYGHED/KAN - IKKE proces-optimering. Effektivisering vil ikke hjælpe.'
+        })
+
+    # Sortér: kritisk > moderat > info
+    severity_order = {'kritisk': 0, 'moderat': 1, 'info': 2}
+    alerts.sort(key=lambda x: severity_order.get(x['severity'], 3))
+
+    return alerts
+
+
+# ============================================
+# TEST FUNKTIONER
+# ============================================
+
+if __name__ == "__main__":
+    # Test med en campaign
+    test_campaign_id = "camp-kOh-b8KuRRM"
+    test_unit_id = "unit-jDE1s_J-Ot8"
+
+    print("="*60)
+    print("TEST: LAGDELT ANALYSE")
+    print("="*60)
+
+    breakdown = get_detailed_breakdown(test_unit_id, test_campaign_id)
+
+    print("\n[EMPLOYEE PERSPECTIVE]")
+    for field, data in breakdown['employee'].items():
+        print(f"\n{field}:")
+        print(f"  Overall: {data['avg_score']}")
+        for layer, layer_data in data.items():
+            if layer not in ['avg_score', 'response_count'] and isinstance(layer_data, dict):
+                print(f"    {layer}: {layer_data['avg_score']} ({layer_data['response_count']} svar)")
+
+    print("\n[COMPARISON]")
+    for field, comp in breakdown['comparison'].items():
+        print(f"\n{field}:")
+        print(f"  Employee: {comp['employee']}")
+        print(f"  Leader assess: {comp['leader_assess']}")
+        print(f"  Gap: {comp['gap']} {'⚠️ MISALIGNMENT' if comp['has_misalignment'] else '✓'}")

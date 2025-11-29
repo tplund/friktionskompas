@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Friktionskompasset{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+    <h2>Dashboard: {{ team_id }}</h2>
+    <p class="meta">Periode: <strong>{{ period }}</strong> · Antal svar: <strong>{{ count }}</strong></p>
+</div>
+
+{% if count < 5 %}
+<div class="insufficient-data">
+    <h3>⏳ Ikke nok data endnu</h3>
+    <p>
+        Der er indtil videre <strong>{{ count }} svar</strong>. 
+        Resultater vises først når mindst <strong>5 personer</strong> har svaret, 
+        for at beskytte anonymiteten.
+    </p>
+    <p>
+        <small>💡 Tip: Brug <a href="#" onclick="document.getElementById('demo-form').style.display='block'; return false;">demo-tools</a> 
+        til at generere testsvar og se hvordan dashboardet vil se ud.</small>
+    </p>
+</div>
+{% else %}
+
+<!-- Søjlediagram -->
+<div class="chart-container">
+    <h3>📊 Friktion på tværs af 4 kategorier</h3>
+    <p class="chart-subtitle">Jo lavere søjle, jo højere friktion</p>
+    
+    <div class="bar-chart">
+        {% for stat in stats %}
+        <div class="bar-wrapper">
+            <div class="bar-container">
+                <div class="bar {{ get_color_class(stat.avg_score) }}" 
+                     style="height: {{ (stat.avg_score / 5 * 100)|int }}%"
+                     title="{{ format_field_name(stat.field) }}: {{ stat.avg_score }}/5">
+                    <span class="bar-value">{{ stat.avg_score }}</span>
+                </div>
+            </div>
+            <div class="bar-label">{{ format_field_name(stat.field) }}</div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <div class="chart-legend">
+        <div class="legend-item">
+            <span class="legend-color" style="background:#10b981;"></span>
+            <span>Lav friktion (over 3.5)</span>
+        </div>
+        <div class="legend-item">
+            <span class="legend-color" style="background:#f59e0b;"></span>
+            <span>Moderat (2.5-3.5)</span>
+        </div>
+        <div class="legend-item">
+            <span class="legend-color" style="background:#ef4444;"></span>
+            <span>Høj friktion (under 2.5)</span>
+        </div>
+    </div>
+</div>
+
+<!-- De 4 friktionskategorier - detaljeret -->
+<div class="friction-details">
+    {% for stat in stats %}
+    <div class="friction-card {{ get_color_class(stat.avg_score) }}">
+        <div class="friction-header">
+            <h3>{{ format_field_name(stat.field) }}</h3>
+            <div class="friction-score-badge">
+                <span class="score-large">{{ stat.avg_score }}</span>
+                <span class="score-divider">/</span>
+                <span class="score-max-small">5</span>
+            </div>
+        </div>
+        
+        <!-- Citater hvis vi har dem -->
+        {% set field_comments = get_field_comments(all_responses, stat.field, 4) %}
+        
+        {% if field_comments %}
+        <div class="friction-section">
+            <h4>💬 Medarbejderne siger:</h4>
+            <div class="quotes-list">
+                {% for comment in field_comments %}
+                <div class="quote-item">
+                    <span class="quote-mark">"</span>
+                    <span class="quote-text">{{ comment }}</span>
+                    <span class="quote-mark">"</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Det betyder -->
+        <div class="friction-section impact-section">
+            <h4>⚡ Det betyder:</h4>
+            <p class="impact-text">{{ get_impact_text(stat.field, stat.avg_score) }}</p>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+{% endif %}
+
+{% endblock %}

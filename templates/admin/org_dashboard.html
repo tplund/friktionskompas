@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard - {{ org.name }}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; 
+            background: #f9fafb;
+            padding: 20px;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .header { 
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white; 
+            padding: 30px; 
+            border-radius: 12px; 
+            margin-bottom: 30px;
+        }
+        .card { background: white; border-radius: 12px; padding: 30px; margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 15px; text-align: left; border-bottom: 1px solid #e5e7eb; }
+        th { background: #f9fafb; font-weight: 600; }
+        .score-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-weight: 600;
+        }
+        .score-red { background: #fee2e2; color: #991b1b; }
+        .score-yellow { background: #fef3c7; color: #92400e; }
+        .score-green { background: #d1fae5; color: #065f46; }
+        a { color: #3b82f6; text-decoration: none; }
+        .insight-box {
+            background: #f0f9ff;
+            padding: 20px;
+            border-left: 4px solid #3b82f6;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Dashboard: {{ org.name }}</h1>
+            <p>Måling: {{ campaign.name }} ({{ campaign.period }})</p>
+            <p><a href="/admin/org/{{ org.id }}" style="color: white; opacity: 0.9;">← Tilbage til organisation</a></p>
+        </div>
+
+        <div class="card">
+            <h2>📈 Sammenligning på tværs af afdelinger</h2>
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th>Afdeling</th>
+                        <th>Besvær</th>
+                        <th>Sygefravær</th>
+                        <th>Svar</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for dept in departments %}
+                    <tr>
+                        <td><strong>{{ dept.name }}</strong></td>
+                        <td>
+                            {% if dept.besvær_score %}
+                            <span class="score-badge 
+                                {% if dept.besvær_score < 2.5 %}score-red
+                                {% elif dept.besvær_score < 3.5 %}score-yellow
+                                {% else %}score-green{% endif %}">
+                                {{ dept.besvær_score }}/5
+                            </span>
+                            {% else %}
+                            <span style="color: #6b7280;">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if dept.sick_leave_percent > 0 %}
+                            {{ dept.sick_leave_percent }}%
+                            {% else %}
+                            <span style="color: #6b7280;">Ikke angivet</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ dept.tokens_used }} / {{ dept.tokens_sent }}</td>
+                        <td>
+                            {% if dept.tokens_used >= 5 %}
+                            <a href="/admin/dept/{{ dept.id }}">Se detaljer →</a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="card">
+            <h2>💡 Indsigter</h2>
+            
+            {% set total_depts = departments|length %}
+            {% set depts_with_data = departments|selectattr('besvær_score')|list %}
+            {% set low_friction = depts_with_data|selectattr('besvær_score', '>=', 3.5)|list|length %}
+            {% set high_friction = depts_with_data|selectattr('besvær_score', '<', 2.5)|list|length %}
+            
+            <div class="insight-box">
+                <h3>📊 Status:</h3>
+                <ul style="margin-top: 10px; line-height: 2;">
+                    <li>{{ depts_with_data|length }} ud af {{ total_depts }} afdelinger har nok svar til analyse</li>
+                    {% if high_friction > 0 %}
+                    <li><strong style="color: #dc2626;">{{ high_friction }} afdelinger har kritisk høj friktion (under 2.5)</strong></li>
+                    {% endif %}
+                    {% if low_friction > 0 %}
+                    <li style="color: #059669;">{{ low_friction }} afdelinger har lav friktion (over 3.5)</li>
+                    {% endif %}
+                </ul>
+            </div>
+
+            {% if high_friction > 0 %}
+            <div class="insight-box" style="background: #fef3c7; border-left-color: #f59e0b;">
+                <h3>⚠️ Anbefaling:</h3>
+                <p style="margin-top: 10px;">
+                    Start med de afdelinger der scorer lavest på Besvær. 
+                    Se deres konkrete citater for at forstå hvor friktionen er.
+                </p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

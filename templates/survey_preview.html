@@ -1,0 +1,179 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}Spørgeskema Preview{% endblock %}
+
+{% block extra_css %}
+<style>
+    .survey-container {
+        max-width: 800px;
+        margin: 0 auto;
+        background: white;
+        border-radius: 12px;
+        padding: 40px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .survey-header {
+        text-align: center;
+        margin-bottom: 40px;
+        padding-bottom: 30px;
+        border-bottom: 2px solid #e5e7eb;
+    }
+    .survey-header h1 {
+        color: #1f2937;
+        margin-bottom: 15px;
+    }
+    .survey-header p {
+        color: #6b7280;
+        font-size: 1.1rem;
+    }
+    .question-group {
+        margin-bottom: 40px;
+    }
+    .question-group h3 {
+        color: #3b82f6;
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #3b82f6;
+    }
+    .question {
+        background: #f9fafb;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+    .question-text {
+        color: #1f2937;
+        font-weight: 500;
+        margin-bottom: 15px;
+        font-size: 1rem;
+    }
+    .likert-scale {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+    }
+    .likert-option {
+        flex: 1;
+        text-align: center;
+    }
+    .likert-option input[type="radio"] {
+        display: none;
+    }
+    .likert-option label {
+        display: block;
+        padding: 12px;
+        background: white;
+        border: 2px solid #e5e7eb;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-weight: 500;
+    }
+    .likert-option input[type="radio"]:checked + label {
+        background: #3b82f6;
+        color: white;
+        border-color: #3b82f6;
+    }
+    .likert-option label:hover {
+        border-color: #3b82f6;
+        background: #eff6ff;
+    }
+    .likert-labels {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 10px;
+        font-size: 0.875rem;
+        color: #6b7280;
+    }
+    .preview-notice {
+        background: #fef3c7;
+        border-left: 4px solid #f59e0b;
+        padding: 15px;
+        border-radius: 4px;
+        margin-bottom: 30px;
+    }
+    .preview-notice strong {
+        color: #92400e;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="survey-container">
+    {% if is_preview %}
+    <div class="preview-notice">
+        <strong>👁️ PREVIEW MODE</strong> - Dette er hvordan spørgeskemaet ser ud for medarbejdere.
+        Svar gemmes ikke.
+    </div>
+    {% endif %}
+
+    <div class="survey-header">
+        <h1>Friktionskompasset</h1>
+        <p>Hjælp os med at forbedre arbejdsmiljøet</p>
+    </div>
+
+    <form method="POST">
+        {% set current_field = None %}
+        {% for question in questions %}
+            {% if question.field != current_field %}
+                {% if current_field %}
+                    <!-- Fritekstfelt for det foregående funktionsområde -->
+                    <div class="question" style="background: #fffbeb; border-left: 3px solid #f59e0b;">
+                        <div class="question-text" style="color: #92400e;">
+                            Kommentarer til {{ current_field }}
+                        </div>
+                        <textarea name="comment_{{ current_field|lower|replace(' ', '_') }}" rows="3"
+                                  style="width: 100%; padding: 12px; border: 2px solid #fcd34d; border-radius: 8px; font-family: inherit; font-size: 0.875rem;"
+                                  placeholder="Hvad fungerer godt? Hvad kunne forbedres? (valgfrit)"
+                                  {% if is_preview %}disabled{% endif %}></textarea>
+                    </div>
+                    </div> <!-- Close previous question-group -->
+                {% endif %}
+                <div class="question-group">
+                    <h3>{{ question.field }}</h3>
+                {% set current_field = question.field %}
+            {% endif %}
+
+            <div class="question">
+                <div class="question-text">
+                    {{ question.text_da }}
+                </div>
+                <div class="likert-scale">
+                    {% for value in range(1, 6) %}
+                    <div class="likert-option">
+                        <input type="radio"
+                               id="q{{ question.id }}_{{ value }}"
+                               name="q{{ question.id }}"
+                               value="{{ value }}"
+                               {% if is_preview %}disabled{% endif %}>
+                        <label for="q{{ question.id }}_{{ value }}">{{ value }}</label>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="likert-labels">
+                    <span>Uenig</span>
+                    <span>Enig</span>
+                </div>
+            </div>
+        {% endfor %}
+
+        <!-- Fritekstfelt for det sidste funktionsområde -->
+        <div class="question" style="background: #fffbeb; border-left: 3px solid #f59e0b;">
+            <div class="question-text" style="color: #92400e;">
+                Kommentarer til {{ current_field }}
+            </div>
+            <textarea name="comment_{{ current_field|lower|replace(' ', '_') }}" rows="3"
+                      style="width: 100%; padding: 12px; border: 2px solid #fcd34d; border-radius: 8px; font-family: inherit; font-size: 0.875rem;"
+                      placeholder="Hvad fungerer godt? Hvad kunne forbedres? (valgfrit)"
+                      {% if is_preview %}disabled{% endif %}></textarea>
+        </div>
+        </div> <!-- Close last question-group -->
+
+        {% if not is_preview %}
+        <button type="submit" class="btn" style="width: 100%; padding: 15px; font-size: 1.1rem; margin-top: 20px;">
+            Send Svar
+        </button>
+        {% endif %}
+    </form>
+</div>
+{% endblock %}

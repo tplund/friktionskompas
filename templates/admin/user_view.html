@@ -1,0 +1,131 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}Brugervisning{% endblock %}
+
+{% block extra_css %}
+<style>
+    .card {
+        background: white;
+        border-radius: 12px;
+        padding: 30px;
+        margin-bottom: 20px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .survey-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 12px;
+        padding: 30px;
+        margin-bottom: 20px;
+        cursor: pointer;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .survey-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+    }
+    .survey-card h3 {
+        color: white;
+        margin-bottom: 15px;
+        font-size: 1.5rem;
+    }
+    .survey-card p {
+        color: rgba(255,255,255,0.9);
+        margin-bottom: 20px;
+        line-height: 1.6;
+    }
+    .survey-link {
+        display: inline-block;
+        background: white;
+        color: #667eea;
+        padding: 12px 24px;
+        border-radius: 8px;
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.2s;
+    }
+    .survey-link:hover {
+        background: rgba(255,255,255,0.9);
+        transform: scale(1.05);
+    }
+    .badge-employee { background: #e3f2fd; color: #1976d2; }
+    .badge-leader-assess { background: #fff3e0; color: #f57c00; }
+    .badge-leader-self { background: #f3e5f5; color: #7b1fa2; }
+    .respondent-badge {
+        display: inline-block;
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-size: 14px;
+        font-weight: 600;
+        margin-bottom: 15px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>ℹ️ Om de forskellige perspektiver</h2>
+    <div style="line-height: 1.8; color: #4b5563;">
+        <p><strong>Medarbejder:</strong> Måler medarbejdernes oplevede friktioner i deres daglige arbejde.</p>
+
+        <p><strong>Leder vurderer teamet:</strong> Måler lederens forståelse af teamets friktioner.
+        Ved at sammenligne dette med medarbejdernes faktiske svar kan vi identificere <em>misalignment</em>
+        - områder hvor lederen er ude af sync med teamets virkelighed.</p>
+
+        <p><strong>Leder egne friktioner:</strong> Måler lederens egne friktioner. Hvis lederen selv
+        er bremset i et område (f.eks. lav tryghed), kan det begrænse deres evne til at hjælpe teamet
+        i samme område. Dette kaldes en <em>leder-blocker</em>.</p>
+    </div>
+</div>
+
+<div class="card">
+    <h2>👤 Test Spørgeskemaer</h2>
+    <p style="color: #6b7280; margin-bottom: 30px;">
+        Klik på et af spørgeskemaerne nedenfor for at se, hvordan det ser ud fra forskellige perspektiver.
+    </p>
+
+    <div class="row">
+        <div class="col-md-12">
+            <div class="survey-card">
+                <span class="respondent-badge badge-employee">Medarbejder</span>
+                <h3>📝 Medarbejder-spørgeskema</h3>
+                <p>
+                    Svar ud fra din egen oplevelse af arbejdet. Dette er det mest almindelige spørgeskema,
+                    som dine medarbejdere vil udfylde.
+                </p>
+                <a href="{{ employee_url }}" target="_blank" class="survey-link">
+                    Åbn Medarbejder-skema →
+                </a>
+            </div>
+        </div>
+
+        <div class="col-md-12">
+            <div class="survey-card" style="background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);">
+                <span class="respondent-badge badge-leader-assess">Leder vurderer</span>
+                <h3>👔 Leder: Vurdering af teamet</h3>
+                <p>
+                    <strong>Svar IKKE om dig selv</strong>, men om hvad du tror dine medarbejdere oplever.
+                    Dette hjælper med at identificere misalignment mellem leder og team.
+                </p>
+                <a href="{{ leader_assess_url }}" target="_blank" class="survey-link">
+                    Åbn Leder-vurdering →
+                </a>
+            </div>
+        </div>
+
+        <div class="col-md-12">
+            <div class="survey-card" style="background: linear-gradient(135deg, #7b1fa2 0%, #9c27b0 100%);">
+                <span class="respondent-badge badge-leader-self">Leder selv</span>
+                <h3>🎯 Leder: Egne friktioner</h3>
+                <p>
+                    Svar om dine <strong>EGNE friktioner som leder</strong>. Har DU de værktøjer,
+                    den tryghed og mening du skal bruge for at lede godt?
+                </p>
+                <a href="{{ leader_self_url }}" target="_blank" class="survey-link">
+                    Åbn Leder-self →
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

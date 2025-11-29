@@ -1,0 +1,115 @@
+# Claude Code Rules for Friktionskompasset
+
+## 🚀 Session Startup
+
+**CRITICAL:** Ved start af hver ny session, læs følgende fil først:
+- `SYSTEM_DESIGN.md` - Indeholder alle analyse-kriterier, design decisions og systemdokumentation
+
+Dette sikrer at du arbejder med de korrekte værdier for:
+- Severity thresholds
+- Gap analysis kriterier
+- Spredning (standardafvigelse) levels
+- Prioriteringslogik
+- KKC framework mapping
+- Respondent types
+- Database struktur
+
+## 📝 Når Kriterier Ændres
+
+Hvis du ændrer analyse-kriterier (fx gap threshold, severity levels, spredning):
+1. Opdater koden
+2. **Opdater SYSTEM_DESIGN.md** med de nye værdier
+3. Dokumenter rationale for ændringen
+4. Test med eksisterende data
+
+## ✅ TODO Management
+
+**KRITISK:** Brug TodoWrite proaktivt for alle opgaver med 3+ steps eller ikke-trivielle tasks.
+
+**Når skal du oprette TODOs:**
+1. Når brugeren beder om en feature med flere steps
+2. Når du identificerer et problem der kræver flere ændringer
+3. Ved start af complex refactoring
+4. Når du planlægger ændringer i analyse-kriterier
+
+**TODO best practices:**
+- Opret TODOs INDEN du starter arbejdet
+- Marker én TODO som "in_progress" ad gangen
+- Marker som "completed" STRAKS når done
+- Opdater liste hvis du finder nye sub-tasks undervejs
+
+**Eksempel workflow:**
+```
+User: "Vis alle friktioner som liste når scores er tætte"
+→ Opret TODOs først: [Ændre logik, Opdater template, Opdater docs]
+→ Marker første som in_progress
+→ Implementer
+→ Marker som completed
+→ Næste task
+```
+
+## 🏗️ Projekt Konventioner
+
+### Database
+- Multi-tenant med customer isolation
+- Hierarkisk organisation (træstruktur)
+- 3 respondent types: employee, leader_assess, leader_self
+
+### Kode Stil
+- Dansk til UI tekster og kommentarer i templates
+- Engelsk til kode, funktionsnavne, variable
+- Docstrings på dansk for forretningslogik
+
+### Sprogbrug i UI
+**Brug danske udtryk** med mindre engelske er alment udbredte i daglig dansk.
+
+**Acceptable engelske udtryk:**
+- "Upload" - bredt anvendt i dansk
+- "Download" - bredt anvendt i dansk
+- "CSV" - teknisk term
+- "gap" i CSS/styling (teknisk kontekst)
+
+**SKAL oversættes:**
+- Gap → Forskel (i UI tekst)
+- Login → Log ind
+- Logout → Log ud
+- Start → Start (allerede dansk)
+- Alerts & Flags → Advarsler & Fund
+- Problem → Problemet
+- Bulk Upload → Upload CSV
+
+**Tommelfingerregel:**
+Hvis et dansk alternativ ikke virker kunstigt eller tungt, brug dansk. Hvis oversættelsen virker forceret, behold engelsk.
+
+**Eksempler:**
+- ✅ "Forskel mellem leder og medarbejder" (ikke "Gap")
+- ✅ "Upload CSV" (OK - upload er naturligt i dansk)
+- ✅ "Hent rapport" (ikke "Download rapport" - download virker OK, men hent er bedre)
+- ✅ "Log ud" (ikke "Logout")
+- ❌ "Indlæs fil" (for tungt - brug "Upload fil")
+
+### Commit Messages
+Brug dansk og vær beskrivende:
+```
+Tilføj spredning til analyse-tabellen
+
+- Beregn standardafvigelse per friktionsfelt
+- Vis spredning i sammenligningstabel med farvekodning
+- Flag høj spredning som alert
+- Opdater prioriteringslogik til at favorisere høj spredning
+```
+
+## ⚠️ Sikkerhed
+
+- Aldrig commit .env filer
+- Aldrig hardcode passwords
+- Brug bcrypt til password hashing
+- Customer isolation skal altid være aktiv (check `get_customer_filter()`)
+
+## 🧪 Testing
+
+Før større ændringer:
+1. Test med eksisterende campaigns
+2. Check at multi-tenant isolation virker
+3. Verificer at alle 3 respondent types fungerer
+4. Test både anonymous og identified mode

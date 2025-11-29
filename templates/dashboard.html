@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Friktionskompasset{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+    <h2>Dashboard: {{ team_id }}</h2>
+    <p class="meta">Periode: <strong>{{ period }}</strong> · Antal svar: <strong>{{ count }}</strong></p>
+</div>
+
+{% if count < 5 %}
+<div class="insufficient-data">
+    <h3>⏳ Ikke nok data endnu</h3>
+    <p>
+        Der er indtil videre <strong>{{ count }} svar</strong>. 
+        Resultater vises først når mindst <strong>5 personer</strong> har svaret, 
+        for at beskytte anonymiteten.
+    </p>
+    <p>
+        <small>💡 Tip: Brug <a href="#" onclick="document.getElementById('demo-form').style.display='block'; return false;">demo-tools</a> 
+        til at generere testsvar og se hvordan dashboardet vil se ud.</small>
+    </p>
+</div>
+{% else %}
+
+<!-- Søjlediagram -->
+<div class="chart-container">
+    <h3>📊 Friktion på tværs af felter</h3>
+    <p class="chart-subtitle">Jo lavere søjle, jo højere friktion (flere problemer)</p>
+    
+    <div class="bar-chart">
+        {% for stat in stats %}
+        <div class="bar-wrapper">
+            <div class="bar-container">
+                <div class="bar {{ get_color_class(stat.avg_score) }}" 
+                     style="height: {{ (stat.avg_score / 5 * 100)|int }}%"
+                     title="{{ format_field_name(stat.field) }}: {{ stat.avg_score }}/5">
+                    <span class="bar-value">{{ stat.avg_score }}</span>
+                </div>
+            </div>
+            <div class="bar-label">{{ format_field_name(stat.field) }}</div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <div class="chart-legend">
+        <div class="legend-item">
+            <span class="legend-color" style="background:#10b981;"></span>
+            <span>Lav friktion (over 3.5)</span>
+        </div>
+        <div class="legend-item">
+            <span class="legend-color" style="background:#f59e0b;"></span>
+            <span>Moderat (2.5-3.5)</span>
+        </div>
+        <div class="legend-item">
+            <span class="legend-color" style="background:#ef4444;"></span>
+            <span>Høj friktion (under 2.5)</span>
+        </div>
+    </div>
+</div>
+
+<!-- Scores pr. felt -->
+<div class="field-cards">
+    {% for stat in stats %}
+    <div class="field-card {{ get_color_class(stat.avg_score) }}">
+        <div class="field-name">{{ format_field_name(stat.field) }}</div>
+        <div class="field-score">{{ stat.avg_score }}<span class="score-max">/5</span></div>
+        <div class="field-words">
+            {% if stat.top_words %}
+                {% for word in stat.top_words %}
+                    <span class="word-tag">{{ word }}</span>
+                {% endfor %}
+            {% else %}
+                <span class="word-tag no-words">Ingen kommentarer</span>
+            {% endif %}
+        </div>
+        <div class="field-responses">{{ stat.response_count }} svar</div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Anbefaling -->
+{% if recommendation and recommendation.has_data %}
+<div class="recommendation-box">
+    <div class="rec-header">
+        <h3>🎯 Start her: {{ format_field_name(recommendation.field) }}</h3>
+        <div class="header-badges">
+            <span class="kkc-badge">KKC: {{ recommendation.kkc_element }}</span>
+            <span class="severity-badge {{ recommendation.severity }}">{{ recommendation.severity_emoji }} {{ recommendation.severity|title }} friktion · {{ recommendation.score }}/5</span>
+        </div>
+    </div>
+    
+    <div class="rec-section">
+        <h4>📊 Problemet</h4>
+        <p class="problem-text">{{ recommendation.problem }}</p>
+    </div>
+    
+    <div class="rec-section impact-section">
+        <h4>⚡ Det betyder</h4>
+        <p class="impact-text">{{ recommendation.impact }}</p>
+    </div>
+    
+    {% if recommendation.comments %}
+    <div class="rec-section">
+        <h4>💬 Det siger medarbejderne</h4>
+        <div class="comments-box">
+            {% for comment in recommendation.comments %}
+            <div class="comment-item">
+                <span class="comment-icon">💭</span>
+                <span class="comment-text">"{{ comment }}"</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    
+    <div class="rec-section">
+        <h4>✅ Konkrete handlinger</h4>
+        <div class="actions-list">
+            {% for action in recommendation.actions %}
+            <div class="action-item">
+                {{ action | safe | replace('\n', '<br>') }}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    
+    <div class="rec-section rec-followup">
+        <h4>📅 Opfølgning</h4>
+        <p>{{ recommendation.follow_up }}</p>
+    </div>
+
+    {% if recommendation.kkc_reference %}
+    <div class="rec-section kkc-reference">
+        <p class="kkc-ref-text">💡 <em>{{ recommendation.kkc_reference }}</em></p>
+    </div>
+    {% endif %}
+    
+    {% if recommendation.all_critical and recommendation.all_critical|length > 1 %}
+    <div class="rec-section other-areas">
+        <h4>⚠️ Andre kritiske områder</h4>
+        <p>Ud over {{ format_field_name(recommendation.field) }}, scorer disse områder også lavt:</p>
+        <div class="other-areas-list">
+            {% for area in recommendation.all_critical %}
+            {% if area.field != recommendation.field %}
+            <div class="other-area-item">
+                <span class="area-name">{{ format_field_name(area.field) }}</span>
+                <span class="area-score">{{ area.score }}/5</span>
+                <span class="area-severity {% if area.severity == 'høj' %}high{% else %}moderate{% endif %}">
+                    {{ area.severity }}
+                </span>
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+        <p class="other-areas-note">
+            <small>Se felt-kortene nedenfor for detaljer om disse områder.</small>
+        </p>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Forklaring -->
+<div class="info-box">
+    <h4>Sådan læser du resultaterne:</h4>
+    <ul>
+        <li><strong>Score 1-5:</strong> Jo lavere score, jo højere friktion (flere barrierer)</li>
+        <li><strong>Farver:</strong> 
+            <span class="score-demo score-red">Rød</span> = høj friktion (under 2.5), 
+            <span class="score-demo score-yellow">Gul</span> = moderat (2.5-3.5), 
+            <span class="score-demo score-green">Grøn</span> = lav (over 3.5)
+        </li>
+        <li><strong>Ord-tags:</strong> De 3 hyppigst nævnte ord i kommentarerne</li>
+        <li><strong>"Start her":</strong> Anbefaling baseret på feltet med højest friktion</li>
+    </ul>
+</div>
+
+<!-- Næste skridt -->
+<div class="next-steps">
+    <h4>Hvad gør du nu?</h4>
+    <ol>
+        <li><strong>Book teammøde (60 min)</strong> - Del resultaterne åbent</li>
+        <li><strong>Spørg teamet:</strong> "Hvad ser I? Genkender I det?"</li>
+        <li><strong>Vælg én ting at ændre</strong> denne måned (følg "Start her"-anbefalingen)</li>
+        <li><strong>Gentag målingen om 3 måneder</strong> - Blev det bedre?</li>
+    </ol>
+</div>
+
+{% endif %}
+{% endblock %}

@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Admin{% endblock %} - Friktionskompasset</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            background: #f9fafb;
+        }
+
+        /* Navigation */
+        .nav {
+            background: #1f2937;
+            color: white;
+            padding: 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .nav-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+        }
+        .nav-brand {
+            font-size: 1.25rem;
+            font-weight: 600;
+            padding: 20px 0;
+        }
+
+        /* Top menu - View switcher */
+        .view-switcher {
+            display: flex;
+            gap: 5px;
+            list-style: none;
+            background: rgba(0,0,0,0.2);
+            padding: 5px;
+            border-radius: 8px;
+        }
+        .view-switcher a {
+            color: rgba(255,255,255,0.7);
+            text-decoration: none;
+            padding: 10px 20px;
+            display: block;
+            transition: all 0.2s;
+            border-radius: 6px;
+            font-weight: 500;
+        }
+        .view-switcher a:hover {
+            background: rgba(255,255,255,0.1);
+            color: white;
+        }
+        .view-switcher a.active {
+            background: #3b82f6;
+            color: white;
+        }
+
+        /* Submenu */
+        .submenu {
+            background: #374151;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+        .submenu-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        .submenu-links {
+            display: flex;
+            gap: 5px;
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .submenu-links a {
+            color: rgba(255,255,255,0.8);
+            text-decoration: none;
+            padding: 12px 15px;
+            display: block;
+            transition: all 0.2s;
+            font-size: 0.875rem;
+        }
+        .submenu-links a:hover {
+            background: rgba(255,255,255,0.1);
+            color: white;
+        }
+        .submenu-links a.active {
+            background: rgba(59, 130, 246, 0.3);
+            color: white;
+            border-bottom: 2px solid #3b82f6;
+        }
+
+        .nav-user {
+            color: rgba(255,255,255,0.6);
+            font-size: 0.875rem;
+        }
+        .user-badge {
+            display: inline-block;
+            background: #3b82f6;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+
+        /* Customer switcher */
+        .customer-switcher {
+            margin-left: 20px;
+        }
+        .customer-switcher select {
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: 1px solid rgba(255,255,255,0.3);
+            background: rgba(255,255,255,0.1);
+            color: white;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .customer-switcher select:hover {
+            background: rgba(255,255,255,0.15);
+            border-color: rgba(255,255,255,0.5);
+        }
+        .customer-switcher select option {
+            background: #1f2937;
+            color: white;
+        }
+
+        /* Main content */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Flash messages */
+        .flash {
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .flash.success { background: #d1fae5; color: #065f46; }
+        .flash.error { background: #fee2e2; color: #991b1b; }
+        .flash.warning { background: #fef3c7; color: #92400e; }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <nav class="nav">
+        <div class="nav-container">
+            <div class="nav-brand">🏢 Friktionskompasset</div>
+
+            {% if session.user.role == 'admin' and not session.impersonating %}
+            <!-- View switcher - kun for admin -->
+            <ul class="view-switcher">
+                <li><a href="/admin/view/user" {% if session.get('view_mode') == 'user' %}class="active"{% endif %}>👤 Brugervisning</a></li>
+                <li><a href="/admin/view/manager" {% if session.get('view_mode') == 'manager' %}class="active"{% endif %}>👔 Ledervisning</a></li>
+                <li><a href="/admin/view/admin" {% if session.get('view_mode', 'admin') == 'admin' %}class="active"{% endif %}>🔧 Adminvisning</a></li>
+            </ul>
+            {% endif %}
+
+            {% if session.user.role == 'admin' %}
+            <!-- Customer switcher dropdown -->
+            <div class="customer-switcher">
+                <select id="customerSelect" onchange="switchCustomer(this.value)">
+                    <option value="">🌍 Alle kunder</option>
+                    {% for customer in customers %}
+                    <option value="{{ customer.id }}"
+                        {% if current_customer_id and current_customer_id == customer.id %}selected
+                        {% elif session.impersonating and session.user.customer_id == customer.id %}selected
+                        {% endif %}>
+                        {{ customer.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+
+            <div class="nav-user">
+                {{ session.user.name }}
+                <span class="user-badge">{{ session.user.role|upper }}</span>
+                {% if session.user.customer_name %}
+                <span style="opacity: 0.6; margin-left: 10px;">{{ session.user.customer_name }}</span>
+                {% endif %}
+                {% if session.impersonating %}
+                <a href="/admin/stop-impersonate" style="background: #ef4444; color: white; padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; margin-left: 8px; text-decoration: none;">← Tilbage til Admin</a>
+                {% endif %}
+                <a href="/logout" style="color: rgba(255,255,255,0.8); margin-left: 15px; text-decoration: none;">Log ud</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Submenu baseret på view mode -->
+    <div class="submenu">
+        <div class="submenu-container">
+            {% set view_mode = session.get('view_mode', 'admin') %}
+
+            {% if view_mode == 'user' %}
+            <!-- Brugervisning submenu -->
+            <ul class="submenu-links">
+                <li><a href="/admin/user-view/survey" {% if 'user-view' in request.path %}class="active"{% endif %}>📝 Spørgeskema</a></li>
+            </ul>
+
+            {% elif view_mode == 'manager' or session.user.role == 'manager' %}
+            <!-- Ledervisning submenu -->
+            <ul class="submenu-links">
+                <li><a href="/admin/analyser" {% if 'analyser' in request.path %}class="active"{% endif %}>📊 Analyser</a></li>
+                <li><a href="/admin" {% if request.path == '/admin' and 'campaign' not in request.path %}class="active"{% endif %}>🏢 Organisationer</a></li>
+            </ul>
+
+            {% else %}
+            <!-- Adminvisning submenu -->
+            <ul class="submenu-links">
+                <li><a href="/admin/analyser" {% if 'analyser' in request.path %}class="active"{% endif %}>📊 Analyser</a></li>
+                <li><a href="/admin" {% if request.path == '/admin' and 'campaign' not in request.path %}class="active"{% endif %}>🏢 Organisationer</a></li>
+                <li><a href="/admin/profiler" {% if 'profiler' in request.path %}class="active"{% endif %}>🔬 Friktionsprofiler</a></li>
+                <li><a href="/admin/customers" {% if 'customers' in request.path %}class="active"{% endif %}>👥 Kunder & Brugere</a></li>
+            </ul>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                <div class="flash {{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </div>
+
+    <script>
+    function switchCustomer(customerId) {
+        if (customerId === "") {
+            // Stop impersonating and go back to admin view
+            window.location.href = "/admin/stop-impersonate";
+        } else {
+            // Switch to this customer
+            window.location.href = "/admin/impersonate/" + customerId;
+        }
+    }
+    </script>
+</body>
+</html>

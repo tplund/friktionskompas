@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Opret Organisation - Admin</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            background: #f9fafb;
+            padding: 20px;
+        }
+        .container { max-width: 900px; margin: 0 auto; }
+        .header {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+        }
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 20px;
+        }
+        .btn {
+            background: #3b82f6;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+        .btn:hover { background: #2563eb; }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #1f2937;
+        }
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+        .info-box {
+            background: #f0f9ff;
+            padding: 15px;
+            border-left: 4px solid #3b82f6;
+            border-radius: 4px;
+            margin: 15px 0;
+            font-size: 0.875rem;
+        }
+        a { color: #3b82f6; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>➕ Opret ny Organisation</h1>
+            <p><a href="/admin" style="color: white; opacity: 0.9;">← Tilbage til oversigt</a></p>
+        </div>
+
+        <div class="card">
+            <div class="info-box">
+                <strong>💡 Opret organisation:</strong> Vælg en overordnet organisation (parent) fra dropdown, eller lad feltet være tomt for at oprette en top-level organisation.
+            </div>
+
+            <form method="POST">
+                <input type="hidden" name="mode" value="parent">
+
+                <div class="form-group">
+                    <label>Overordnet Organisation (valgfri - lad stå tom for top-level)</label>
+                    <select name="parent_id">
+                        <option value="">-- Ingen (Top-level) --</option>
+                        {% for unit in all_units %}
+                        <option value="{{ unit.id }}" {% if default_parent_id == unit.id %}selected{% endif %}>
+                            {{ ('&nbsp;&nbsp;' * unit.level)|safe }}{{ unit.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Navn *</label>
+                    <input type="text" name="name" placeholder="IT Afdeling" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Leder Navn</label>
+                    <input type="text" name="leader_name" placeholder="Anders Hansen">
+                </div>
+
+                <div class="form-group">
+                    <label>Leder Email</label>
+                    <input type="email" name="leader_email" placeholder="anders@virksomhed.dk">
+                </div>
+
+                <div class="form-group">
+                    <label>Antal Medarbejdere</label>
+                    <input type="number" name="employee_count" value="0" min="0">
+                </div>
+
+                <div class="form-group">
+                    <label>Sygefravær (%)</label>
+                    <input type="number" name="sick_leave_percent" step="0.1" value="0" min="0">
+                </div>
+
+                <button type="submit" class="btn">✅ Opret Organisation</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <h3>💡 Tip: Upload CSV</h3>
+            <p style="color: #6b7280; line-height: 1.6;">
+                Hvis du skal oprette mange organisationer på én gang, er det nemmere at bruge <a href="/admin/bulk-upload">Upload CSV</a>.<br>
+                Der kan du oprette hele hierarkier med en enkel fil.
+            </p>
+        </div>
+    </div>
+</body>
+</html>

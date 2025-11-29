@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Friktionsprofil</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 30px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        h1 {
+            color: #0f3460;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #666;
+            font-size: 16px;
+        }
+        .instruction {
+            background: #f0f4f8;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            border-left: 4px solid #0f3460;
+        }
+        .instruction h2 {
+            color: #333;
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+        .instruction p {
+            color: #666;
+            line-height: 1.6;
+        }
+        .scale-legend {
+            display: flex;
+            justify-content: space-between;
+            background: #f8f9fa;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            font-size: 14px;
+            color: #666;
+        }
+        .scale-legend span {
+            text-align: center;
+        }
+
+        .question-group {
+            margin-bottom: 50px;
+        }
+        .field-header {
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            font-size: 18px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .field-header .icon {
+            font-size: 24px;
+        }
+        .field-tryghed { background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); }
+        .field-mening { background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%); }
+        .field-kan { background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); }
+        .field-besvaer { background: linear-gradient(135deg, #e67e22 0%, #d35400 100%); }
+
+        .question {
+            margin-bottom: 25px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            transition: all 0.3s;
+        }
+        .question:hover {
+            background: #e9ecef;
+            transform: translateY(-2px);
+        }
+        .question-meta {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .layer-badge {
+            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .layer-biologi { background: #ffebee; color: #c62828; }
+        .layer-emotion { background: #fce4ec; color: #ad1457; }
+        .layer-indre { background: #f3e5f5; color: #6a1b9a; }
+        .layer-kognition { background: #e8eaf6; color: #283593; }
+
+        .question-text {
+            font-size: 16px;
+            color: #333;
+            margin-bottom: 15px;
+            line-height: 1.5;
+        }
+        .rating-scale {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        .rating-option {
+            flex: 1;
+            position: relative;
+        }
+        .rating-option input {
+            position: absolute;
+            opacity: 0;
+            cursor: pointer;
+        }
+        .rating-option label {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 12px 8px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: white;
+        }
+        .rating-option label:hover {
+            border-color: #0f3460;
+            background: #f0f4f8;
+        }
+        .rating-option input:checked + label {
+            border-color: #0f3460;
+            background: #0f3460;
+            color: white;
+        }
+        .rating-number {
+            font-size: 18px;
+            font-weight: 600;
+        }
+        .rating-label {
+            font-size: 10px;
+            margin-top: 4px;
+            text-align: center;
+        }
+
+        .progress-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 4px;
+            background: #0f3460;
+            transition: width 0.3s;
+            z-index: 1000;
+        }
+
+        .submit-section {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 30px;
+            border-top: 2px solid #e0e0e0;
+        }
+        .submit-btn {
+            background: linear-gradient(135deg, #0f3460 0%, #16213e 100%);
+            color: white;
+            border: none;
+            padding: 16px 48px;
+            font-size: 18px;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(15, 52, 96, 0.3);
+        }
+        .submit-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .validation-message {
+            color: #e74c3c;
+            margin-top: 15px;
+            display: none;
+        }
+
+        @media (max-width: 600px) {
+            .container { padding: 20px; }
+            .rating-scale { flex-wrap: wrap; }
+            .rating-option { flex: 0 0 18%; }
+            .scale-legend { flex-direction: column; gap: 5px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="progress-bar" id="progressBar"></div>
+
+    <div class="container">
+        <div class="header">
+            <h1>Din Friktionsprofil</h1>
+            <p class="subtitle">En mekanisk beskrivelse af hvordan pres bevæger sig gennem dig</p>
+        </div>
+
+        <div class="instruction">
+            <h2>Instruktion</h2>
+            <p>
+                Dette spørgeskema måler din personlige friktionsprofil - hvordan pres og belastning
+                bevæger sig gennem dit system. Der er ingen rigtige eller forkerte svar.
+                Svar ud fra hvordan du typisk oplever dig selv.
+            </p>
+        </div>
+
+        <div class="scale-legend">
+            <span><strong>1</strong> = Aldrig / Slet ikke</span>
+            <span><strong>3</strong> = Nogle gange / Delvist</span>
+            <span><strong>5</strong> = Meget ofte / Meget stærkt</span>
+        </div>
+
+        <form id="profilForm" action="/profil/{{ session_id }}/submit" method="POST">
+            {% for field, questions in questions_by_field.items() %}
+            <div class="question-group">
+                <div class="field-header field-{{ field.lower() }}">
+                    {% if field == 'TRYGHED' %}
+                        <span class="icon">🛡️</span> Tryghed
+                    {% elif field == 'MENING' %}
+                        <span class="icon">🧭</span> Mening
+                    {% elif field == 'KAN' %}
+                        <span class="icon">⚡</span> Kan
+                    {% elif field == 'BESVÆR' %}
+                        <span class="icon">🏔️</span> Besvær
+                    {% endif %}
+                </div>
+
+                {% for q in questions %}
+                <div class="question" data-question-id="{{ q.id }}">
+                    <div class="question-meta">
+                        <span class="layer-badge layer-{{ q.layer.lower() }}">{{ q.layer }}</span>
+                    </div>
+                    <div class="question-text">{{ q.text_da }}</div>
+                    <div class="rating-scale">
+                        {% for i in range(1, 6) %}
+                        <div class="rating-option">
+                            <input type="radio"
+                                   id="q{{ q.id }}_{{ i }}"
+                                   name="q_{{ q.id }}"
+                                   value="{{ i }}"
+                                   required>
+                            <label for="q{{ q.id }}_{{ i }}">
+                                <span class="rating-number">{{ i }}</span>
+                                <span class="rating-label">
+                                    {% if i == 1 %}Aldrig{% elif i == 3 %}Nogle gange{% elif i == 5 %}Meget ofte{% endif %}
+                                </span>
+                            </label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endfor %}
+
+            <div class="submit-section">
+                <button type="submit" class="submit-btn" id="submitBtn">
+                    Se din friktionsprofil
+                </button>
+                <p class="validation-message" id="validationMsg">
+                    Besvar venligst alle spørgsmål før du fortsætter
+                </p>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        // Progress bar
+        function updateProgress() {
+            const questions = document.querySelectorAll('.question');
+            const answered = document.querySelectorAll('input[type="radio"]:checked').length;
+            const total = questions.length;
+            const percent = (answered / total) * 100;
+            document.getElementById('progressBar').style.width = percent + '%';
+        }
+
+        // Validering
+        document.getElementById('profilForm').addEventListener('submit', function(e) {
+            const questions = document.querySelectorAll('.question');
+            const answered = document.querySelectorAll('input[type="radio"]:checked').length;
+
+            if (answered < questions.length) {
+                e.preventDefault();
+                document.getElementById('validationMsg').style.display = 'block';
+
+                // Find første ubesvaret
+                for (const q of questions) {
+                    const qId = q.dataset.questionId;
+                    const isAnswered = document.querySelector(`input[name="q_${qId}"]:checked`);
+                    if (!isAnswered) {
+                        q.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        q.style.boxShadow = '0 0 0 3px #e74c3c';
+                        setTimeout(() => q.style.boxShadow = '', 2000);
+                        break;
+                    }
+                }
+            }
+        });
+
+        // Lyt efter ændringer
+        document.querySelectorAll('input[type="radio"]').forEach(input => {
+            input.addEventListener('change', function() {
+                updateProgress();
+                document.getElementById('validationMsg').style.display = 'none';
+            });
+        });
+
+        updateProgress();
+    </script>
+</body>
+</html>

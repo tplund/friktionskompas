@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python db_multitenant.py:*)",
+      "Bash(python admin_app.py:*)",
+      "Bash(pip install:*)",
+      "Bash(python:*)",
+      "Bash(tasklist:*)",
+      "Bash(findstr:*)",
+      "Bash(taskkill:*)",
+      "Bash(dir:*)",
+      "Bash(sqlite3:*)",
+      "Bash(del update_question_15.py:*)",
+      "Bash(del reorganize_campaign_detailed.py)",
+      "Bash(del list_campaigns.py update_test_responses.py reorganize_to_clean.py)",
+      "Bash(del check_campaign_scores.py show_questions.py)",
+      "Bash(del debug_scores.py show_all_scores.py)",
+      "Bash(del check_campaigns.py update_spread.py update_test_responses_spread.py)",
+      "Bash(nul)",
+      "Bash(timeout /t 1 /nobreak)",
+      "Bash(move templatesadminhr_overview.html templatesadminanalyser.html)",
+      "Bash(ren templatesadminhr_overview.html analyser.html)",
+      "Bash(timeout /t 3 /nobreak)",
+      "Bash(if not exist \"C:\\_proj\\Friktionskompasset\\templates\\profil\" mkdir \"C:\\_proj\\Friktionskompasset\\templates\\profil\")",
+      "Bash(curl:*)",
+      "Bash(git init:*)",
+      "Bash(git add:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

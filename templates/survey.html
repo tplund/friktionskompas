@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }} - Friktionskompasset</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-bottom: 30px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        h1 {
+            color: #667eea;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+        .instruction {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            border-left: 4px solid #667eea;
+        }
+        .instruction h2 {
+            color: #333;
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+        .instruction p {
+            color: #666;
+            line-height: 1.6;
+        }
+        .respondent-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+        .badge-employee { background: #e3f2fd; color: #1976d2; }
+        .badge-leader_assess { background: #fff3e0; color: #f57c00; }
+        .badge-leader_self { background: #f3e5f5; color: #7b1fa2; }
+
+        .question-group {
+            margin-bottom: 50px;
+        }
+        .field-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+            font-size: 18px;
+            font-weight: 600;
+        }
+        .question {
+            margin-bottom: 30px;
+            padding: 25px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            transition: all 0.3s;
+        }
+        .question:hover {
+            background: #e9ecef;
+            transform: translateY(-2px);
+        }
+        .question-text {
+            font-size: 16px;
+            color: #333;
+            margin-bottom: 15px;
+            line-height: 1.5;
+        }
+        .question-text .number {
+            color: #666;
+            font-weight: normal;
+        }
+        .free-text-section {
+            margin-top: 50px;
+            padding: 30px;
+            background: #f0f4f8;
+            border-radius: 12px;
+            border-left: 4px solid #667eea;
+        }
+        .free-text-section h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+        .free-text-section textarea {
+            width: 100%;
+            min-height: 120px;
+            padding: 15px;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 15px;
+            resize: vertical;
+            transition: border-color 0.2s;
+        }
+        .free-text-section textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .scale {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .scale-option {
+            flex: 1;
+            text-align: center;
+        }
+        .scale-option input[type="radio"] {
+            display: none;
+        }
+        .scale-option label {
+            display: block;
+            padding: 12px;
+            background: white;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 600;
+            color: #666;
+        }
+        .scale-option input[type="radio"]:checked + label {
+            background: #667eea;
+            border-color: #667eea;
+            color: white;
+            transform: scale(1.05);
+        }
+        .scale-option label:hover {
+            border-color: #667eea;
+        }
+        .scale-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+            font-size: 13px;
+            color: #666;
+        }
+        .submit-section {
+            text-align: center;
+            margin-top: 50px;
+            padding-top: 30px;
+            border-top: 2px solid #e0e0e0;
+        }
+        .submit-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 16px 48px;
+            font-size: 18px;
+            font-weight: 600;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        .submit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+        .progress-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: #e0e0e0;
+            z-index: 1000;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.3s;
+        }
+    </style>
+</head>
+<body>
+    <div class="progress-bar">
+        <div class="progress-fill" id="progress"></div>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1>{{ title }}</h1>
+            <div class="respondent-badge badge-{{ respondent_type }}">
+                {{ respondent_type.replace('_', ' ').title() }}
+                {% if respondent_name %}
+                 - {{ respondent_name }}
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="instruction">
+            <h2>Velkommen</h2>
+            <p style="margin-bottom: 15px;">
+                Vi måler friktioner, der påvirker din arbejdsglæde og effektivitet: <strong>mening, tryghed, kan og lethed</strong>.
+                <strong>Svar er anonyme</strong> (resultater vises kun for enheder med mindst 5 besvarelser).
+            </p>
+            <p style="background: white; padding: 15px; border-radius: 8px; margin-top: 15px;">
+                <strong>Sådan svarer du:</strong><br>
+                <span style="color: #666;">Tænk på din hverdag de seneste 2 uger. Brug skalaen 1–5:</span><br>
+                <span style="color: #666;">1 = Helt uenig · 2 = Uenig · 3 = Hverken/eller · 4 = Enig · 5 = Helt enig</span>
+            </p>
+            {% if respondent_type != 'employee' %}
+            <p style="background: #fff3e0; padding: 15px; border-radius: 8px; margin-top: 15px; border-left: 4px solid #f57c00;">
+                <strong>{{ instruction }}</strong><br>
+                <span style="color: #666;">{{ description }}</span>
+            </p>
+            {% endif %}
+        </div>
+
+        <form method="POST" action="/submit" id="surveyForm">
+            <input type="hidden" name="token" value="{{ token }}">
+
+            {% set field_order = ['MENING', 'TRYGHED', 'KAN', 'BESVÆR'] %}
+            {% set questions_by_field = {} %}
+            {% for question in questions %}
+                {% set _ = questions_by_field.setdefault(question.field, []).append(question) %}
+            {% endfor %}
+
+            {% set question_counter = [0] %}
+            {% for field in field_order %}
+                {% if field in questions_by_field %}
+                <div class="question-group">
+                    <div class="field-header">
+                        {{ field }}
+                    </div>
+
+                    {% for question in questions_by_field[field] %}
+                        {% set _ = question_counter.append(question_counter.pop() + 1) %}
+                        <div class="question" data-question="{{ question.id }}">
+                            <div class="question-text">
+                                <span class="number">{{ question_counter[0] }}.</span> {{ question.text_da }}
+                            </div>
+
+                    <div class="scale">
+                        {% for value in [1, 2, 3, 4, 5] %}
+                        <div class="scale-option">
+                            <input type="radio"
+                                   id="q{{ question.id }}_{{ value }}"
+                                   name="q_{{ question.id }}"
+                                   value="{{ value }}"
+                                   required
+                                   onchange="updateProgress()">
+                            <label for="q{{ question.id }}_{{ value }}">
+                                {{ value }}
+                            </label>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="scale-labels">
+                        <span>Helt uenig</span>
+                        <span>Helt enig</span>
+                    </div>
+                </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            {% endfor %}
+
+            <!-- Fritekst-felter - kun for employee og leader_self -->
+            {% if respondent_type != 'leader_assess' %}
+            <div class="free-text-section">
+                <h3>💭 Fritekst (valgfrit)</h3>
+                <p style="color: #666; margin-bottom: 20px; font-size: 14px;">
+                    Dine kommentarer er anonyme og hjælper os med at forstå konteksten bedre.
+                </p>
+
+                <label style="display: block; font-weight: 600; margin-bottom: 8px; color: #333;">
+                    A. Konkret situation de seneste 2 uger:
+                </label>
+                <p style="color: #666; font-size: 14px; margin-bottom: 8px;">
+                    Skriv kort om en konkret situation, hvor der var unødig friktion. Hvad skete der?
+                </p>
+                <textarea name="free_text_situation"
+                          placeholder="F.eks. 'Jeg skulle godkende en sag, men systemet var nede i 2 timer...'"></textarea>
+
+                <label style="display: block; font-weight: 600; margin-top: 20px; margin-bottom: 8px; color: #333;">
+                    B. Øvrige kommentarer eller forslag:
+                </label>
+                <textarea name="free_text_general"
+                          placeholder="Andre tanker, forslag til forbedringer..."></textarea>
+            </div>
+            {% endif %}
+
+            <div class="submit-section">
+                {% if is_preview %}
+                <p style="color: #666; margin-bottom: 20px;">
+                    Dette er en preview - svar gemmes ikke
+                </p>
+                <button type="button" class="submit-btn" disabled style="opacity: 0.5;">
+                    Preview Mode - Kan ikke indsende
+                </button>
+                {% else %}
+                <p style="color: #666; margin-bottom: 20px;">
+                    Svar på alle {{ questions|length }} spørgsmål for at indsende
+                </p>
+                <button type="submit" class="submit-btn" id="submitBtn" disabled>
+                    Indsend Svar
+                </button>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    <script>
+        function updateProgress() {
+            const total = {{ questions|length }};
+            const answered = document.querySelectorAll('input[type="radio"]:checked').length;
+            const percent = (answered / total) * 100;
+
+            document.getElementById('progress').style.width = percent + '%';
+
+            // Enable submit when all answered
+            if (answered === total) {
+                document.getElementById('submitBtn').disabled = false;
+                document.getElementById('submitBtn').style.opacity = '1';
+            } else {
+                document.getElementById('submitBtn').disabled = true;
+                document.getElementById('submitBtn').style.opacity = '0.5';
+            }
+        }
+
+        // Smooth scroll to unanswered questions
+        document.getElementById('surveyForm').addEventListener('submit', function(e) {
+            const unanswered = document.querySelector('.question:not(:has(input:checked))');
+            if (unanswered) {
+                e.preventDefault();
+                unanswered.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                unanswered.style.background = '#ffe6e6';
+                setTimeout(() => unanswered.style.background = '#f8f9fa', 1000);
+            }
+        });
+
+        // Initial state
+        updateProgress();
+    </script>
+</body>
+</html>

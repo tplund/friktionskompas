@@ -1,0 +1,240 @@
+{% extends "base.html" %}
+
+{% block title %}Debug - Se alle svar{% endblock %}
+
+{% block content %}
+<div class="debug-header">
+    <h2>🔍 Debug: Alle individuelle svar</h2>
+    <p class="meta">Team: <strong>{{ team_id }}</strong> · Periode: <strong>{{ period }}</strong></p>
+    <div class="warning-box">
+        ⚠️ <strong>Kun til testfasen!</strong> Denne side viser alle rådata. 
+        I produktion skal denne side fjernes eller kræve admin-login.
+    </div>
+</div>
+
+{% if not respondents %}
+<div class="insufficient-data">
+    <h3>📭 Ingen data endnu</h3>
+    <p>
+        Der er ingen svar at vise. 
+        <a href="#" onclick="document.getElementById('demo-form').style.display='block'; return false;">
+            Klik her for at generere demo-data
+        </a>
+    </p>
+</div>
+{% else %}
+
+<div class="stats-summary">
+    <h3>📊 Oversigt</h3>
+    <p><strong>{{ respondents|length }}</strong> respondenter har svaret</p>
+</div>
+
+{% for respondent in respondents %}
+<div class="respondent-card">
+    <div class="respondent-header">
+        <h3>👤 Respondent #{{ loop.index }}</h3>
+        <span class="timestamp">{{ respondent[0].created_at if respondent else 'Unknown' }}</span>
+    </div>
+    
+    <div class="responses-grid">
+        {% for response in respondent %}
+        <div class="response-item field-{{ response.field }}">
+            <div class="response-question">
+                <span class="field-badge">{{ format_field_name(response.field) }}</span>
+                <p>{{ response.text_da }}</p>
+            </div>
+            <div class="response-score">
+                <div class="score-display">
+                    <span class="score-value">{{ response.score }}</span>
+                    {% if response.reverse_scored %}
+                    <span class="score-adjusted" title="Negativt formuleret - vendt score">
+                        → {{ response.adjusted_score }}
+                    </span>
+                    {% endif %}
+                </div>
+                <div class="score-bar">
+                    <div class="score-fill" style="width: {{ (response.adjusted_score / 5 * 100)|int }}%"></div>
+                </div>
+            </div>
+            {% if response.comment %}
+            <div class="response-comment">
+                💬 "{{ response.comment }}"
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endfor %}
+
+{% endif %}
+
+<style>
+.debug-header {
+    background: white;
+    padding: 2rem;
+    border-radius: 0.75rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.warning-box {
+    background: #fef3c7;
+    border: 2px solid #f59e0b;
+    padding: 1rem;
+    border-radius: 0.5rem;
+    margin-top: 1rem;
+    color: #92400e;
+}
+
+.stats-summary {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 0.75rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.respondent-card {
+    background: white;
+    padding: 2rem;
+    border-radius: 0.75rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    border-left: 4px solid var(--primary);
+}
+
+.respondent-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--gray-200);
+}
+
+.respondent-header h3 {
+    margin: 0;
+    color: var(--gray-900);
+}
+
+.timestamp {
+    font-size: 0.875rem;
+    color: var(--gray-600);
+    font-family: monospace;
+}
+
+.responses-grid {
+    display: grid;
+    gap: 1rem;
+}
+
+.response-item {
+    padding: 1rem;
+    background: var(--gray-50);
+    border-radius: 0.5rem;
+    border-left: 3px solid;
+}
+
+.response-item.field-MENING {
+    border-left-color: #3b82f6;
+}
+
+.response-item.field-TRYGHED {
+    border-left-color: #10b981;
+}
+
+.response-item.field-KAN {
+    border-left-color: #f59e0b;
+}
+
+.response-item.field-BESVÆR {
+    border-left-color: #ef4444;
+}
+
+.response-question {
+    margin-bottom: 0.75rem;
+}
+
+.field-badge {
+    display: inline-block;
+    background: var(--primary);
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.response-item.field-MENING .field-badge {
+    background: #3b82f6;
+}
+
+.response-item.field-TRYGHED .field-badge {
+    background: #10b981;
+}
+
+.response-item.field-KAN .field-badge {
+    background: #f59e0b;
+}
+
+.response-item.field-BESVÆR .field-badge {
+    background: #ef4444;
+}
+
+.response-question p {
+    margin: 0.5rem 0 0 0;
+    color: var(--gray-700);
+    font-size: 0.875rem;
+}
+
+.response-score {
+    margin: 0.75rem 0;
+}
+
+.score-display {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.score-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.score-adjusted {
+    font-size: 0.875rem;
+    color: var(--gray-600);
+    font-weight: 600;
+}
+
+.score-bar {
+    height: 8px;
+    background: var(--gray-200);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.score-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #ef4444 0%, #f59e0b 50%, #10b981 100%);
+    transition: width 0.3s ease;
+}
+
+.response-comment {
+    margin-top: 0.75rem;
+    padding: 0.75rem;
+    background: white;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    color: var(--gray-700);
+    font-style: italic;
+    border: 1px solid var(--gray-300);
+}
+</style>
+
+{% endblock %}

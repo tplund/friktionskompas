@@ -1,0 +1,497 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}Analyser{% endblock %}
+
+{% block extra_css %}
+<style>
+    .card {
+        background: white;
+        border-radius: 12px;
+        padding: 30px;
+        margin-bottom: 20px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .filters {
+        display: flex;
+        gap: 20px;
+        margin-bottom: 30px;
+        align-items: end;
+    }
+
+    .filter-group {
+        flex: 1;
+    }
+
+    .filter-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: 500;
+        color: #374151;
+    }
+
+    .filter-group select {
+        width: 100%;
+        padding: 8px 12px;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        font-size: 0.875rem;
+    }
+
+    .stats-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+
+    .stat-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 20px;
+        border-radius: 8px;
+        text-align: center;
+    }
+
+    .stat-card.secondary {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+
+    .stat-label {
+        font-size: 0.875rem;
+        opacity: 0.9;
+        margin-bottom: 5px;
+    }
+
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+    }
+
+    .overview-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0 8px;
+    }
+
+    .overview-table thead th {
+        background: #f9fafb;
+        padding: 12px 8px;
+        text-align: center;
+        font-weight: 600;
+        color: #374151;
+        font-size: 0.75rem;
+        position: sticky;
+        top: 0;
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .overview-table thead th:first-child {
+        text-align: left;
+    }
+
+    .overview-table thead th:hover {
+        background: #f3f4f6;
+    }
+
+    .overview-table thead th.sortable::after {
+        content: ' ⇅';
+        opacity: 0.3;
+    }
+
+    .overview-table thead th.sorted-asc::after {
+        content: ' ↑';
+        opacity: 1;
+    }
+
+    .overview-table thead th.sorted-desc::after {
+        content: ' ↓';
+        opacity: 1;
+    }
+
+    .overview-table tbody tr {
+        background: white;
+        transition: all 0.2s;
+        cursor: pointer;
+    }
+
+    .overview-table tbody tr:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        transform: translateY(-2px);
+    }
+
+    .overview-table tbody td {
+        padding: 16px 8px;
+        border-top: 1px solid #e5e7eb;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .overview-table tbody tr td:first-child {
+        border-left: 1px solid #e5e7eb;
+        border-radius: 8px 0 0 8px;
+    }
+
+    .overview-table tbody tr td:last-child {
+        border-right: 1px solid #e5e7eb;
+        border-radius: 0 8px 8px 0;
+    }
+
+    .unit-name {
+        font-weight: 600;
+        color: #1f2937;
+        margin-bottom: 4px;
+    }
+
+    .unit-level {
+        font-size: 0.75rem;
+        color: #6b7280;
+    }
+
+    .score-cell {
+        text-align: center;
+        font-weight: 700;
+        font-size: 1.5rem;
+        padding: 12px 8px;
+    }
+
+    .percent-label {
+        font-size: 0.7rem;
+        font-weight: 400;
+        color: #6b7280;
+        display: block;
+        margin-top: 2px;
+    }
+
+    /* Percent-based color coding */
+    .score-high {
+        color: #166534;
+    }
+
+    .score-medium {
+        color: #854d0e;
+    }
+
+    .score-low {
+        color: #991b1b;
+        font-weight: 800;
+    }
+
+    .score-none {
+        color: #9ca3af;
+        font-size: 1rem;
+    }
+
+    .gap-cell {
+        text-align: center;
+        padding: 8px;
+    }
+
+    .gap-indicator {
+        display: inline-block;
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-weight: 600;
+        font-size: 0.875rem;
+    }
+
+    .gap-ok {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .gap-warning {
+        background: #fef9c3;
+        color: #854d0e;
+    }
+
+    .gap-critical {
+        background: #fee2e2;
+        color: #991b1b;
+        animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
+    }
+
+    .gap-none {
+        color: #9ca3af;
+    }
+
+    .responses-count {
+        text-align: center;
+        color: #6b7280;
+        font-size: 0.875rem;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #6b7280;
+    }
+
+    .empty-state-icon {
+        font-size: 4rem;
+        margin-bottom: 20px;
+        opacity: 0.5;
+    }
+
+    .legend {
+        display: flex;
+        gap: 30px;
+        justify-content: center;
+        margin-top: 30px;
+        padding: 20px;
+        background: #f9fafb;
+        border-radius: 8px;
+        flex-wrap: wrap;
+    }
+
+    .legend-section {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .legend-title {
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 4px;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+    }
+
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.875rem;
+    }
+
+    .legend-box {
+        width: 20px;
+        height: 20px;
+        border-radius: 4px;
+        font-weight: 700;
+    }
+
+    .field-header {
+        font-size: 0.65rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    /* Alert badges */
+    .alert-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 6px 8px;
+        border-radius: 6px;
+        font-size: 1rem;
+        cursor: help;
+        transition: transform 0.2s;
+    }
+
+    .alert-badge:hover {
+        transform: scale(1.2);
+    }
+
+    .alert-substitution {
+        background: #fef3c7;
+        border: 1px solid #fbbf24;
+    }
+
+    .alert-gap {
+        background: #fee2e2;
+        border: 1px solid #f87171;
+    }
+
+    .alert-blocked {
+        background: #ffedd5;
+        border: 1px solid #fb923c;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+        <h2>📊 Analyser</h2>
+        <a href="/admin/campaign/new" class="btn" style="background: #10b981; color: white; padding: 10px 20px; text-decoration: none; border-radius: 8px; font-weight: 500;">➕ Ny Analyse</a>
+    </div>
+
+    <!-- Data Table -->
+    {% if units %}
+    <div style="overflow-x: auto;">
+        <table class="overview-table">
+            <thead>
+                <tr>
+                    <th class="sortable {% if sort_by == 'name' %}sorted-{{ sort_order }}{% endif %}"
+                        onclick="sortTable('name')" style="text-align: left;">
+                        Organisationsenhed
+                    </th>
+                    <th class="sortable {% if sort_by == 'responses' %}sorted-{{ sort_order }}{% endif %}"
+                        onclick="sortTable('responses')">
+                        <div class="field-header">Svar</div>
+                    </th>
+                    <th style="text-align: center;">
+                        <div class="field-header">Advarsler</div>
+                    </th>
+                    <th class="sortable {% if sort_by == 'employee_overall' %}sorted-{{ sort_order }}{% endif %}"
+                        onclick="sortTable('employee_overall')">
+                        <div class="field-header">Samlet Score</div>
+                        <div style="font-size: 0.65rem; font-weight: 400;">Medarbejdere</div>
+                    </th>
+                    <th class="sortable {% if sort_by == 'mening' %}sorted-{{ sort_order }}{% endif %}"
+                        onclick="sortTable('mening')">
+                        <div class="field-header">Mening</div>
+                    </th>
+                    <th class="sortable {% if sort_by == 'tryghed' %}sorted-{{ sort_order }}{% endif %}"
+                        onclick="sortTable('tryghed')">
+                        <div class="field-header">Tryghed</div>
+                    </th>
+                    <th class="sortable {% if sort_by == 'kan' %}sorted-{{ sort_order }}{% endif %}"
+                        onclick="sortTable('kan')">
+                        <div class="field-header">Kan</div>
+                    </th>
+                    <th class="sortable {% if sort_by == 'besvaer' %}sorted-{{ sort_order }}{% endif %}"
+                        onclick="sortTable('besvaer')">
+                        <div class="field-header">Besvær</div>
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for unit in units %}
+                <tr onclick="window.location='/admin/campaign/{{ unit.campaign_id }}/detailed'">
+                    <td>
+                        <div class="unit-name">
+                            {% if unit.level == 0 %}🏢{% elif unit.level == 1 %}📁{% elif unit.level == 2 %}📂{% else %}📄{% endif %}
+                            {{ unit.name }}
+                        </div>
+                        <div class="unit-level">Niveau {{ unit.level }}</div>
+                    </td>
+                    <td class="responses-count">
+                        <strong>{{ unit.unique_respondents }}</strong> respondenter<br>
+                        <small>{{ unit.total_responses }} svar</small>
+                    </td>
+                    <td style="text-align: center; padding: 8px;">
+                        <div style="display: flex; gap: 6px; justify-content: center; flex-wrap: wrap;">
+                            {% if unit.has_substitution %}
+                            <span class="alert-badge alert-substitution" title="Substitution (Kahneman): Siger 'mangler tid' men mener 'er utilfreds'">🔄</span>
+                            {% endif %}
+                            {% if unit.has_leader_gap %}
+                            <span class="alert-badge alert-gap" title="Stor forskel mellem leder og medarbejdere">⚠️</span>
+                            {% endif %}
+                            {% if unit.has_leader_blocked %}
+                            <span class="alert-badge alert-blocked" title="Lederens egne friktioner blokerer">🚧</span>
+                            {% endif %}
+                            {% if not unit.has_substitution and not unit.has_leader_gap and not unit.has_leader_blocked %}
+                            <span style="color: #9ca3af; font-size: 0.75rem;">-</span>
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td class="score-cell {{ get_percent_class(unit.employee_overall) }}">
+                        {% if unit.employee_overall %}
+                            {{ "%.0f"|format(to_percent(unit.employee_overall)) }}%
+                            <span class="percent-label">{{ "%.1f"|format(unit.employee_overall) }}/5</span>
+                        {% else %}
+                            <span class="score-none">-</span>
+                        {% endif %}
+                    </td>
+                    <td class="score-cell {{ get_percent_class(unit.employee_mening) }}">
+                        {% if unit.employee_mening %}
+                            {{ "%.0f"|format(to_percent(unit.employee_mening)) }}%
+                        {% else %}
+                            <span class="score-none">-</span>
+                        {% endif %}
+                    </td>
+                    <td class="score-cell {{ get_percent_class(unit.employee_tryghed) }}">
+                        {% if unit.employee_tryghed %}
+                            {{ "%.0f"|format(to_percent(unit.employee_tryghed)) }}%
+                        {% else %}
+                            <span class="score-none">-</span>
+                        {% endif %}
+                    </td>
+                    <td class="score-cell {{ get_percent_class(unit.employee_kan) }}">
+                        {% if unit.employee_kan %}
+                            {{ "%.0f"|format(to_percent(unit.employee_kan)) }}%
+                        {% else %}
+                            <span class="score-none">-</span>
+                        {% endif %}
+                    </td>
+                    <td class="score-cell {{ get_percent_class(unit.employee_besvaer) }}">
+                        {% if unit.employee_besvaer %}
+                            {{ "%.0f"|format(to_percent(unit.employee_besvaer)) }}%
+                        {% else %}
+                            <span class="score-none">-</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Legend -->
+    <div class="legend">
+        <div class="legend-section">
+            <div class="legend-title">Friktionsniveau</div>
+            <div class="legend-item">
+                <div class="legend-box score-high" style="display: flex; align-items: center; justify-content: center;">70+</div>
+                <span>Lav friktion (over 70%)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-box score-medium" style="display: flex; align-items: center; justify-content: center;">50</div>
+                <span>Moderat friktion (50-70%)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-box score-low" style="display: flex; align-items: center; justify-content: center;">30</div>
+                <span>Høj friktion (under 50%)</span>
+            </div>
+        </div>
+        <div class="legend-section">
+            <div class="legend-title">Advarsler</div>
+            <div class="legend-item">
+                <span class="alert-badge alert-substitution">🔄</span>
+                <span>Substitution detekteret (siger "jeg mangler tid" men mener "jeg er utilfreds")</span>
+            </div>
+            <div class="legend-item">
+                <span class="alert-badge alert-gap">⚠️</span>
+                <span>Leder/medarbejder gap (stor forskel i opfattelse)</span>
+            </div>
+            <div class="legend-item">
+                <span class="alert-badge alert-blocked">🚧</span>
+                <span>Leder blokeret (lederens egne friktioner kan blokere for hjælp)</span>
+            </div>
+        </div>
+    </div>
+
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-state-icon">📊</div>
+        <h3 style="margin-bottom: 10px;">Ingen data tilgængelig</h3>
+        <p style="margin-bottom: 30px;">Der er ingen friktionsdata for de valgte filtre endnu</p>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function sortTable(column) {
+    const currentSort = '{{ sort_by }}';
+    const currentOrder = '{{ sort_order }}';
+
+    let newOrder = 'asc';
+    if (column === currentSort && currentOrder === 'asc') {
+        newOrder = 'desc';
+    }
+
+    const url = new URL(window.location);
+    url.searchParams.set('sort', column);
+    url.searchParams.set('order', newOrder);
+    window.location = url.toString();
+}
+</script>
+{% endblock %}

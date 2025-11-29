@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tak! - Friktionskompasset</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 50px;
+            text-align: center;
+        }
+        .icon {
+            font-size: 80px;
+            margin-bottom: 30px;
+            animation: bounce 1s ease-in-out;
+        }
+        @keyframes bounce {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        h1 {
+            color: #28a745;
+            font-size: 32px;
+            margin-bottom: 20px;
+        }
+        .message {
+            color: #666;
+            font-size: 18px;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+        .stats {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+        }
+        .stats p {
+            color: #333;
+            font-size: 16px;
+        }
+        .stats strong {
+            color: #667eea;
+            font-size: 24px;
+        }
+        .note {
+            font-size: 14px;
+            color: #999;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">✅</div>
+        <h1>Tak for dine svar!</h1>
+
+        <div class="message">
+            Dine {{ saved_count }} svar er nu gemt og vil blive brugt til at forbedre arbejdsmiljøet.
+        </div>
+
+        <div class="stats">
+            <p>
+                Du besvarede <strong>{{ saved_count }}</strong> spørgsmål
+            </p>
+            {% if respondent_type == 'leader_assess' %}
+            <p style="margin-top: 15px; color: #f57c00;">
+                Du har vurderet hvad du tror dit team oplever
+            </p>
+            {% elif respondent_type == 'leader_self' %}
+            <p style="margin-top: 15px; color: #7b1fa2;">
+                Du har svaret om dine egne friktioner som leder
+            </p>
+            {% endif %}
+        </div>
+
+        <div class="note">
+            Du kan nu lukke dette vindue
+        </div>
+    </div>
+</body>
+</html>

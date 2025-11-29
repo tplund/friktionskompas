@@ -1,0 +1,727 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}Friktionsmåling - {{ campaign.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="h2">📊 Friktionsmåling - {{ campaign.name }}</h1>
+            <p class="text-muted">{% if last_response_date %}Sidste besvarelse: {{ last_response_date }}{% endif %}</p>
+        </div>
+    </div>
+
+    <!-- Kompakt Tabel Sammenligning -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="field-card">
+                <h3 class="field-header">📊 Sammenligning</h3>
+
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background: #f9fafb;">
+                            <th style="padding: 12px; text-align: left; font-weight: 600; color: #374151;">Felt</th>
+                            <th style="padding: 12px; text-align: center; font-weight: 600; color: #374151;">Medarbejdere</th>
+                            <th style="padding: 12px; text-align: center; font-weight: 600; color: #374151;">Spredning (σ)</th>
+                            <th style="padding: 12px; text-align: center; font-weight: 600; color: #374151;">Leder vurderer</th>
+                            <th style="padding: 12px; text-align: center; font-weight: 600; color: #374151;">Leder selv</th>
+                            <th style="padding: 12px; text-align: center; font-weight: 600; color: #374151;">Advarsler</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- SAMLET SCORE ROW -->
+                        {% set emp_overall = (breakdown.employee.MENING.avg_score + breakdown.employee.TRYGHED.avg_score + breakdown.employee.KAN.avg_score + breakdown.employee.BESVÆR.avg_score) / 4 %}
+                        {% set leader_assess_overall = (breakdown.leader_assess.MENING.avg_score + breakdown.leader_assess.TRYGHED.avg_score + breakdown.leader_assess.KAN.avg_score + breakdown.leader_assess.BESVÆR.avg_score) / 4 %}
+                        {% set leader_self_overall = (breakdown.leader_self.MENING.avg_score + breakdown.leader_self.TRYGHED.avg_score + breakdown.leader_self.KAN.avg_score + breakdown.leader_self.BESVÆR.avg_score) / 4 %}
+                        {% set gap_overall = (emp_overall - leader_assess_overall)|abs %}
+                        {% set has_gap_overall = gap_overall >= 0.6 %}
+                        {% set gap_overall_severity = 'kritisk' if gap_overall >= 1.0 else 'moderat' if gap_overall >= 0.6 else None %}
+                        {% set is_blocked_overall = emp_overall < 3.5 and leader_self_overall < 3.5 %}
+                        {% set avg_std_dev = (breakdown.employee.MENING.std_dev + breakdown.employee.TRYGHED.std_dev + breakdown.employee.KAN.std_dev + breakdown.employee.BESVÆR.std_dev) / 4 %}
+                        {% set has_high_spread_overall = avg_std_dev > 1.0 %}
+
+                        <tr style="border-bottom: 2px solid #374151; background: #f3f4f6; {% if has_gap_overall or is_blocked_overall or has_high_spread_overall %}background: #fef3c7;{% endif %}">
+                            <td style="padding: 16px; font-weight: 700; color: #111827; font-size: 1.1rem;">SAMLET</td>
+                            <td style="padding: 16px; text-align: center;">
+                                <span class="score-display {{ get_percent_class(emp_overall) }}" style="font-size: 1.75rem; font-weight: 800;">
+                                    {{ "%.0f"|format(to_percent(emp_overall)) }}%
+                                </span>
+                                <div style="font-size: 0.75rem; color: #9ca3af; margin-top: 4px;">{{ "%.1f"|format(emp_overall) }}/5</div>
+                            </td>
+                            <td style="padding: 16px; text-align: center;">
+                                <div style="font-size: 1.1rem; font-weight: 600; color: {% if has_high_spread_overall %}#dc2626{% elif avg_std_dev > 0.7 %}#f59e0b{% else %}#059669{% endif %};">
+                                    {{ "%.2f"|format(avg_std_dev) }}
+                                </div>
+                                <div style="font-size: 0.75rem; color: #6b7280; margin-top: 4px;">
+                                    {% if has_high_spread_overall %}Høj{% elif avg_std_dev > 0.7 %}Medium{% else %}Lav{% endif %}
+                                </div>
+                            </td>
+                            <td style="padding: 16px; text-align: center;">
+                                <span class="score-display {{ get_percent_class(leader_assess_overall) }}" style="font-size: 1.75rem; font-weight: 800;">
+                                    {{ "%.0f"|format(to_percent(leader_assess_overall)) }}%
+                                </span>
+                                <div style="font-size: 0.75rem; color: #9ca3af; margin-top: 4px;">{{ "%.1f"|format(leader_assess_overall) }}/5</div>
+                                {% if has_gap_overall %}
+                                <div style="font-size: 0.7rem; color: #d97706; margin-top: 4px; font-weight: 600;">
+                                    ↕ {{ "%.0f"|format(gap_overall * 20) }}% gap
+                                </div>
+                                {% endif %}
+                            </td>
+                            <td style="padding: 16px; text-align: center;">
+                                <span class="score-display {{ get_percent_class(leader_self_overall) }}" style="font-size: 1.75rem; font-weight: 800;">
+                                    {{ "%.0f"|format(to_percent(leader_self_overall)) }}%
+                                </span>
+                                <div style="font-size: 0.75rem; color: #9ca3af; margin-top: 4px;">{{ "%.1f"|format(leader_self_overall) }}/5</div>
+                            </td>
+                            <td style="padding: 16px; text-align: center;">
+                                <div style="display: flex; gap: 6px; justify-content: center; flex-wrap: wrap;">
+                                    {% if has_gap_overall %}
+                                    <span class="alert-badge alert-gap{% if gap_overall_severity == 'kritisk' %}-kritisk{% endif %}" title="{{ gap_overall_severity|title if gap_overall_severity else '' }} forskel mellem leder og medarbejdere ({{ '%.0f'|format(gap_overall * 20) }}%)">⚠️ Forskel</span>
+                                    {% endif %}
+                                    {% if is_blocked_overall %}
+                                    <span class="alert-badge alert-blocked" title="Leder blokeret - både team og leder har friktioner">🚧</span>
+                                    {% endif %}
+                                    {% if has_high_spread_overall %}
+                                    <span class="alert-badge alert-spread" title="Høj spredning - meget uensartet oplevelse i teamet (σ={{ '%.2f'|format(avg_std_dev) }})">📊 Spredning</span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+
+                        {% for field in ['MENING', 'TRYGHED', 'KAN', 'BESVÆR'] %}
+                        {% set emp_score = breakdown.employee[field].avg_score %}
+                        {% set leader_assess_score = breakdown.leader_assess[field].avg_score %}
+                        {% set leader_self_score = breakdown.leader_self[field].avg_score %}
+                        {% set gap = (emp_score - leader_assess_score)|abs %}
+                        {% set has_gap = gap >= 0.6 %}
+                        {% set gap_severity = breakdown.comparison[field].gap_severity %}
+                        {% set is_blocked = emp_score < 3.5 and leader_self_score < 3.5 %}
+                        {% set std_dev = breakdown.employee[field].std_dev %}
+                        {% set spread = breakdown.employee[field].spread %}
+                        {% set has_high_spread = spread == 'høj' %}
+
+                        <tr style="border-bottom: 1px solid #e5e7eb; {% if has_gap or is_blocked or has_high_spread %}background: #fef3c7;{% endif %}">
+                            <td style="padding: 16px; font-weight: 600; color: #374151;">{{ field }}</td>
+                            <td style="padding: 16px; text-align: center;">
+                                <span class="score-display {{ get_percent_class(emp_score) }}" style="font-size: 1.5rem; font-weight: 700;">
+                                    {{ "%.0f"|format(to_percent(emp_score)) }}%
+                                </span>
+                                <div style="font-size: 0.75rem; color: #9ca3af; margin-top: 4px;">{{ "%.1f"|format(emp_score) }}/5</div>
+                            </td>
+                            <td style="padding: 16px; text-align: center;">
+                                <div style="font-size: 1rem; font-weight: 600; color: {% if spread == 'høj' %}#dc2626{% elif spread == 'medium' %}#f59e0b{% else %}#059669{% endif %};">
+                                    {{ "%.2f"|format(std_dev) }}
+                                </div>
+                                <div style="font-size: 0.75rem; color: #6b7280; margin-top: 4px;">{{ spread|title }}</div>
+                            </td>
+                            <td style="padding: 16px; text-align: center;">
+                                <span class="score-display {{ get_percent_class(leader_assess_score) }}" style="font-size: 1.5rem; font-weight: 700;">
+                                    {{ "%.0f"|format(to_percent(leader_assess_score)) }}%
+                                </span>
+                                <div style="font-size: 0.75rem; color: #9ca3af; margin-top: 4px;">{{ "%.1f"|format(leader_assess_score) }}/5</div>
+                                {% if has_gap %}
+                                <div style="font-size: 0.7rem; color: #d97706; margin-top: 4px; font-weight: 600;">
+                                    ↕ {{ "%.0f"|format(gap * 20) }}% gap
+                                </div>
+                                {% endif %}
+                            </td>
+                            <td style="padding: 16px; text-align: center;">
+                                <span class="score-display {{ get_percent_class(leader_self_score) }}" style="font-size: 1.5rem; font-weight: 700;">
+                                    {{ "%.0f"|format(to_percent(leader_self_score)) }}%
+                                </span>
+                                <div style="font-size: 0.75rem; color: #9ca3af; margin-top: 4px;">{{ "%.1f"|format(leader_self_score) }}/5</div>
+                            </td>
+                            <td style="padding: 16px; text-align: center;">
+                                <div style="display: flex; gap: 6px; justify-content: center; flex-wrap: wrap;">
+                                    {% if has_gap %}
+                                    <span class="alert-badge alert-gap{% if gap_severity == 'kritisk' %}-kritisk{% endif %}" title="{{ gap_severity|title if gap_severity else '' }} forskel mellem leder og medarbejdere ({{ '%.0f'|format(gap * 20) }}%)">⚠️ Forskel</span>
+                                    {% endif %}
+                                    {% if is_blocked %}
+                                    <span class="alert-badge alert-blocked" title="Leder blokeret - både team og leder har friktioner">🚧</span>
+                                    {% endif %}
+                                    {% if has_high_spread %}
+                                    <span class="alert-badge alert-spread" title="Høj spredning - uensartet oplevelse (σ={{ '%.2f'|format(std_dev) }})">📊 Spredning</span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Friktionskompas (Radar Chart) -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="field-card">
+                <h3 class="field-header">🧭 Friktionskompas</h3>
+
+                <p style="font-size: 0.875rem; color: #6b7280; margin-bottom: 20px;">Blå polygon = medarbejdernes gennemsnit. Små prikker = individuelle medarbejdere. Orange stjerne = lederen selv.</p>
+
+                <div style="display: flex; justify-content: center; align-items: center; padding: 20px;">
+                    {% set emp_values = [
+                        to_percent(breakdown.employee.MENING.avg_score),
+                        to_percent(breakdown.employee.TRYGHED.avg_score),
+                        to_percent(breakdown.employee.KAN.avg_score),
+                        to_percent(breakdown.employee.BESVÆR.avg_score)
+                    ] %}
+
+                    <svg viewBox="-80 -60 760 760" style="max-width: 700px; width: 100%;">
+                        <!-- Grid circles -->
+                        <circle cx="300" cy="300" r="220" fill="none" stroke="#e5e7eb" stroke-width="2"/>
+                        <circle cx="300" cy="300" r="165" fill="none" stroke="#e5e7eb" stroke-width="1"/>
+                        <circle cx="300" cy="300" r="110" fill="none" stroke="#e5e7eb" stroke-width="1"/>
+                        <circle cx="300" cy="300" r="55" fill="none" stroke="#e5e7eb" stroke-width="1"/>
+
+                        <!-- Axes -->
+                        <line x1="300" y1="300" x2="300" y2="80" stroke="#9ca3af" stroke-width="2"/>
+                        <line x1="300" y1="300" x2="520" y2="300" stroke="#9ca3af" stroke-width="2"/>
+                        <line x1="300" y1="300" x2="300" y2="520" stroke="#9ca3af" stroke-width="2"/>
+                        <line x1="300" y1="300" x2="80" y2="300" stroke="#9ca3af" stroke-width="2"/>
+
+                        <!-- Labels -->
+                        <text x="300" y="40" text-anchor="middle" font-size="20" font-weight="bold" fill="#374151">MENING</text>
+                        <text x="580" y="308" text-anchor="start" font-size="20" font-weight="bold" fill="#374151">TRYGHED</text>
+                        <text x="300" y="580" text-anchor="middle" font-size="20" font-weight="bold" fill="#374151">KAN</text>
+                        <text x="20" y="308" text-anchor="end" font-size="20" font-weight="bold" fill="#374151">BESVÆR</text>
+
+                        <!-- Percentage labels -->
+                        <text x="300" y="190" text-anchor="middle" font-size="13" fill="#6b7280">50%</text>
+                        <text x="300" y="135" text-anchor="middle" font-size="13" fill="#6b7280">75%</text>
+
+                        <!-- Individual employee polygons (light blue, transparent) -->
+                        {% for emp in individual_scores.employees %}
+                            {% set m = to_percent(emp.MENING) * 2.2 %}
+                            {% set t = to_percent(emp.TRYGHED) * 2.2 %}
+                            {% set k = to_percent(emp.KAN) * 2.2 %}
+                            {% set b = to_percent(emp.BESVÆR) * 2.2 %}
+
+                            {% set x1 = 300 %}
+                            {% set y1 = 300 - m %}
+                            {% set x2 = 300 + t %}
+                            {% set y2 = 300 %}
+                            {% set x3 = 300 %}
+                            {% set y3 = 300 + k %}
+                            {% set x4 = 300 - b %}
+                            {% set y4 = 300 %}
+
+                            <polygon points="{{ x1 }},{{ y1 }} {{ x2 }},{{ y2 }} {{ x3 }},{{ y3 }} {{ x4 }},{{ y4 }}"
+                                     fill="none" stroke="#3b82f6" stroke-width="1" opacity="0.4"/>
+                        {% endfor %}
+
+                        <!-- Employee average polygon (darker blue, thicker line on top) -->
+                        {% set emp_x1 = 300 %}
+                        {% set emp_y1 = 300 - (emp_values[0] * 2.2) %}
+                        {% set emp_x2 = 300 + (emp_values[1] * 2.2) %}
+                        {% set emp_y2 = 300 %}
+                        {% set emp_x3 = 300 %}
+                        {% set emp_y3 = 300 + (emp_values[2] * 2.2) %}
+                        {% set emp_x4 = 300 - (emp_values[3] * 2.2) %}
+                        {% set emp_y4 = 300 %}
+                        <polygon points="{{ emp_x1 }},{{ emp_y1 }} {{ emp_x2 }},{{ emp_y2 }} {{ emp_x3 }},{{ emp_y3 }} {{ emp_x4 }},{{ emp_y4 }}"
+                                 fill="none" stroke="#3b82f6" stroke-width="3"/>
+
+                        <!-- Average points on polygon (larger, on top) -->
+                        <circle cx="{{ emp_x1 }}" cy="{{ emp_y1 }}" r="5" fill="#3b82f6" stroke="white" stroke-width="2"/>
+                        <circle cx="{{ emp_x2 }}" cy="{{ emp_y2 }}" r="5" fill="#3b82f6" stroke="white" stroke-width="2"/>
+                        <circle cx="{{ emp_x3 }}" cy="{{ emp_y3 }}" r="5" fill="#3b82f6" stroke="white" stroke-width="2"/>
+                        <circle cx="{{ emp_x4 }}" cy="{{ emp_y4 }}" r="5" fill="#3b82f6" stroke="white" stroke-width="2"/>
+
+                        <!-- Leader's own score (star marker) -->
+                        {% if individual_scores.leader %}
+                            {% set lm = to_percent(individual_scores.leader.MENING) * 2.2 %}
+                            {% set lt = to_percent(individual_scores.leader.TRYGHED) * 2.2 %}
+                            {% set lk = to_percent(individual_scores.leader.KAN) * 2.2 %}
+                            {% set lb = to_percent(individual_scores.leader.BESVÆR) * 2.2 %}
+
+                            <!-- Leader polygon connecting the stars -->
+                            {% set leader_x1 = 300 %}
+                            {% set leader_y1 = 300 - lm %}
+                            {% set leader_x2 = 300 + lt %}
+                            {% set leader_y2 = 300 %}
+                            {% set leader_x3 = 300 %}
+                            {% set leader_y3 = 300 + lk %}
+                            {% set leader_x4 = 300 - lb %}
+                            {% set leader_y4 = 300 %}
+                            <polygon points="{{ leader_x1 }},{{ leader_y1 }} {{ leader_x2 }},{{ leader_y2 }} {{ leader_x3 }},{{ leader_y3 }} {{ leader_x4 }},{{ leader_y4 }}"
+                                     fill="none" stroke="#f97316" stroke-width="2"/>
+
+                            <!-- MENING axis (top) - star -->
+                            <path d="M 300,{{ 300 - lm - 9 }} L {{ 300 + 2.8 }},{{ 300 - lm - 2.8 }} L {{ 300 + 9 }},{{ 300 - lm }} L {{ 300 + 2.8 }},{{ 300 - lm + 2.8 }} L 300,{{ 300 - lm + 9 }} L {{ 300 - 2.8 }},{{ 300 - lm + 2.8 }} L {{ 300 - 9 }},{{ 300 - lm }} L {{ 300 - 2.8 }},{{ 300 - lm - 2.8 }} Z"
+                                  fill="#f97316" stroke="#fff" stroke-width="2"/>
+
+                            <!-- TRYGHED axis (right) - star -->
+                            <path d="M {{ 300 + lt + 9 }},300 L {{ 300 + lt + 2.8 }},{{ 300 + 2.8 }} L {{ 300 + lt }},{{ 300 + 9 }} L {{ 300 + lt - 2.8 }},{{ 300 + 2.8 }} L {{ 300 + lt - 9 }},300 L {{ 300 + lt - 2.8 }},{{ 300 - 2.8 }} L {{ 300 + lt }},{{ 300 - 9 }} L {{ 300 + lt + 2.8 }},{{ 300 - 2.8 }} Z"
+                                  fill="#f97316" stroke="#fff" stroke-width="2"/>
+
+                            <!-- KAN axis (bottom) - star -->
+                            <path d="M 300,{{ 300 + lk + 9 }} L {{ 300 + 2.8 }},{{ 300 + lk + 2.8 }} L {{ 300 + 9 }},{{ 300 + lk }} L {{ 300 + 2.8 }},{{ 300 + lk - 2.8 }} L 300,{{ 300 + lk - 9 }} L {{ 300 - 2.8 }},{{ 300 + lk - 2.8 }} L {{ 300 - 9 }},{{ 300 + lk }} L {{ 300 - 2.8 }},{{ 300 + lk + 2.8 }} Z"
+                                  fill="#f97316" stroke="#fff" stroke-width="2"/>
+
+                            <!-- BESVÆR axis (left) - star -->
+                            <path d="M {{ 300 - lb - 9 }},300 L {{ 300 - lb - 2.8 }},{{ 300 + 2.8 }} L {{ 300 - lb }},{{ 300 + 9 }} L {{ 300 - lb + 2.8 }},{{ 300 + 2.8 }} L {{ 300 - lb + 9 }},300 L {{ 300 - lb + 2.8 }},{{ 300 - 2.8 }} L {{ 300 - lb }},{{ 300 - 9 }} L {{ 300 - lb - 2.8 }},{{ 300 - 2.8 }} Z"
+                                  fill="#f97316" stroke="#fff" stroke-width="2"/>
+                        {% endif %}
+                    </svg>
+                </div>
+
+                <!-- Legend -->
+                <div style="display: flex; justify-content: center; gap: 30px; margin-top: 20px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div style="width: 24px; height: 3px; background: #3b82f6;"></div>
+                        <span style="font-size: 0.875rem; color: #374151;">Medarbejdere gennemsnit</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <svg width="20" height="20" viewBox="0 0 20 20">
+                            <circle cx="10" cy="10" r="3" fill="#3b82f6" opacity="0.5"/>
+                        </svg>
+                        <span style="font-size: 0.875rem; color: #374151;">Individuelle ({{ individual_scores.employees|length }})</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <svg width="20" height="20" viewBox="0 0 20 20">
+                            <path d="M 10,2 L 12,8 L 18,10 L 12,12 L 10,18 L 8,12 L 2,10 L 8,8 Z" fill="#f97316" stroke="#fff" stroke-width="1"/>
+                        </svg>
+                        <span style="font-size: 0.875rem; color: #374151;">Leder selv</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Forskel-analyse (Slope Chart) -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="field-card">
+                <h3 class="field-header">📈 Forskel</h3>
+                <p style="font-size: 0.875rem; color: #6b7280; margin-bottom: 20px;">Viser forskellen mellem medarbejdernes oplevelse og lederens vurdering. Blå skygge viser spredning (±1σ) i medarbejdernes svar.</p>
+
+                <svg viewBox="0 0 700 500" style="width: 100%; max-width: 700px;">
+                    {% set y_spacing = 100 %}
+                    {% set y_start = 80 %}
+
+                    {% for field_idx, field in [('0', 'MENING'), ('1', 'TRYGHED'), ('2', 'KAN'), ('3', 'BESVÆR')] %}
+                        {% set y = y_start + (field_idx|int * y_spacing) %}
+                        {% set emp = to_percent(breakdown.employee[field].avg_score) %}
+                        {% set leader_assess = to_percent(breakdown.leader_assess[field].avg_score) %}
+                        {% set gap = (emp - leader_assess)|abs %}
+                        {% set has_gap = gap > 20 %}
+                        {% set std_dev = breakdown.employee[field].std_dev %}
+                        {% set std_dev_pixels = std_dev * 112.5 %}
+
+                        <!-- Field label -->
+                        <text x="50" y="{{ y + 5 }}" font-size="16" font-weight="bold" fill="#374151">{{ field }}</text>
+
+                        <!-- Scale line -->
+                        <line x1="200" y1="{{ y }}" x2="650" y2="{{ y }}" stroke="#e5e7eb" stroke-width="2"/>
+
+                        <!-- Reference marks -->
+                        <line x1="200" y1="{{ y - 5 }}" x2="200" y2="{{ y + 5 }}" stroke="#9ca3af" stroke-width="2"/>
+                        <text x="200" y="{{ y + 20 }}" text-anchor="middle" font-size="10" fill="#6b7280">0%</text>
+
+                        <line x1="425" y1="{{ y - 5 }}" x2="425" y2="{{ y + 5 }}" stroke="#9ca3af" stroke-width="2"/>
+                        <text x="425" y="{{ y + 20 }}" text-anchor="middle" font-size="10" fill="#6b7280">50%</text>
+
+                        <line x1="650" y1="{{ y - 5 }}" x2="650" y2="{{ y + 5 }}" stroke="#9ca3af" stroke-width="2"/>
+                        <text x="650" y="{{ y + 20 }}" text-anchor="middle" font-size="10" fill="#6b7280">100%</text>
+
+                        <!-- Connection line (with color based on gap) -->
+                        {% set emp_x = 200 + (emp * 4.5) %}
+                        {% set leader_x = 200 + (leader_assess * 4.5) %}
+                        <line x1="{{ emp_x }}" y1="{{ y }}" x2="{{ leader_x }}" y2="{{ y }}"
+                              stroke="{% if has_gap %}#ef4444{% else %}#10b981{% endif %}"
+                              stroke-width="{% if has_gap %}4{% else %}2{% endif %}"
+                              opacity="0.6"/>
+
+                        <!-- Employee spread/error bar (±1 std dev) -->
+                        {% set emp_x_minus = emp_x - std_dev_pixels %}
+                        {% set emp_x_plus = emp_x + std_dev_pixels %}
+                        <!-- Spread range indicator (light blue shaded area) -->
+                        <rect x="{{ emp_x_minus }}" y="{{ y - 12 }}" width="{{ std_dev_pixels * 2 }}" height="24"
+                              fill="#3b82f6" opacity="0.15" rx="3"/>
+                        <!-- Spread error bar lines -->
+                        <line x1="{{ emp_x_minus }}" y1="{{ y - 10 }}" x2="{{ emp_x_minus }}" y2="{{ y + 10 }}"
+                              stroke="#3b82f6" stroke-width="2" opacity="0.5"/>
+                        <line x1="{{ emp_x_plus }}" y1="{{ y - 10 }}" x2="{{ emp_x_plus }}" y2="{{ y + 10 }}"
+                              stroke="#3b82f6" stroke-width="2" opacity="0.5"/>
+
+                        <!-- Employee point (blue) - drawn on top -->
+                        <circle cx="{{ emp_x }}" cy="{{ y }}" r="8" fill="#3b82f6" stroke="white" stroke-width="2"/>
+                        <text x="{{ emp_x }}" y="{{ y - 15 }}" text-anchor="middle" font-size="12" font-weight="bold" fill="#3b82f6">{{ "%.0f"|format(emp) }}%</text>
+
+                        <!-- Leader assess point (orange) -->
+                        <circle cx="{{ leader_x }}" cy="{{ y }}" r="8" fill="#fb923c" stroke="white" stroke-width="2"/>
+                        <text x="{{ leader_x }}" y="{{ y - 15 }}" text-anchor="middle" font-size="12" font-weight="bold" fill="#fb923c">{{ "%.0f"|format(leader_assess) }}%</text>
+
+                        <!-- Forskel indicator -->
+                        {% if has_gap %}
+                        <text x="{{ (emp_x + leader_x) / 2 }}" y="{{ y + 30 }}" text-anchor="middle" font-size="11" font-weight="bold" fill="#ef4444">Forskel: {{ "%.0f"|format(gap) }}%</text>
+                        {% endif %}
+                    {% endfor %}
+
+                    <!-- Legend -->
+                    <circle cx="80" cy="460" r="6" fill="#3b82f6"/>
+                    <text x="92" y="465" font-size="12" fill="#374151">Medarbejdere</text>
+
+                    <circle cx="220" cy="460" r="6" fill="#fb923c"/>
+                    <text x="232" y="465" font-size="12" fill="#374151">Leder vurderer</text>
+
+                    <!-- Spread indicator in legend -->
+                    <rect x="360" y="454" width="30" height="12" fill="#3b82f6" opacity="0.15" rx="2"/>
+                    <line x1="360" y1="456" x2="360" y2="464" stroke="#3b82f6" stroke-width="1.5" opacity="0.5"/>
+                    <line x1="390" y1="456" x2="390" y2="464" stroke="#3b82f6" stroke-width="1.5" opacity="0.5"/>
+                    <text x="396" y="465" font-size="12" fill="#374151">Spredning (±1σ)</text>
+                </svg>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        /* Score display colors */
+        .score-display {
+            transition: all 0.3s;
+        }
+        .score-display.score-high {
+            color: #166534;
+        }
+        .score-display.score-medium {
+            color: #854d0e;
+        }
+        .score-display.score-low {
+            color: #991b1b;
+        }
+
+        /* Alert badges */
+        .alert-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .alert-badge.alert-gap {
+            background: #fef3c7;
+            color: #92400e;
+            border: 1px solid #f59e0b;
+        }
+        .alert-badge.alert-gap-kritisk {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #ef4444;
+        }
+        .alert-badge.alert-blocked {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #ef4444;
+        }
+        .alert-badge.alert-spread {
+            background: #dbeafe;
+            color: #1e40af;
+            border: 1px solid #3b82f6;
+        }
+
+        /* KKC Styling */
+        .kkc-badge {
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 700;
+            font-size: 0.875rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+        }
+        .severity-badge {
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+        .severity-badge.høj { background: #ef4444; color: white; }
+        .severity-badge.medium { background: #f59e0b; color: white; }
+        .severity-badge.lav { background: #10b981; color: white; }
+
+        /* Visual bars */
+        .visual-bar-container {
+            margin-bottom: 30px;
+        }
+        .visual-bar-label {
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #374151;
+            font-size: 1.1rem;
+        }
+        .visual-bar-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .visual-bar-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .visual-bar-item-label {
+            min-width: 180px;
+            font-size: 0.875rem;
+            color: #6b7280;
+        }
+        .visual-bar-bg {
+            flex: 1;
+            height: 32px;
+            background: #e5e7eb;
+            border-radius: 4px;
+            position: relative;
+            overflow: hidden;
+        }
+        .visual-bar-fill {
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 10px;
+            color: white;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        .visual-bar-fill.employee {
+            background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%);
+        }
+        .visual-bar-fill.leader-assess {
+            background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%);
+        }
+        .visual-bar-fill.leader-self {
+            background: linear-gradient(90deg, #8b5cf6 0%, #7c3aed 100%);
+        }
+
+        .field-card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .field-header {
+            color: #1f2937;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+    </style>
+
+    <!-- Advarsler & Fund -->
+    {% if alerts and alerts|length > 0 %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="field-card" style="border-left: 5px solid #ef4444;">
+                <h3 class="field-header">⚠️ Advarsler & Fund</h3>
+                <p style="font-size: 0.875rem; color: #6b7280; margin-bottom: 25px;">Vigtige fund og anbefalinger baseret på analysen</p>
+
+                <div style="display: flex; flex-direction: column; gap: 15px;">
+                    {% for alert in alerts %}
+                    <div style="background: {% if alert.severity == 'kritisk' %}#fee2e2{% elif alert.severity == 'moderat' %}#fef3c7{% else %}#dbeafe{% endif %};
+                                border-left: 4px solid {% if alert.severity == 'kritisk' %}#dc2626{% elif alert.severity == 'moderat' %}#f59e0b{% else %}#3b82f6{% endif %};
+                                padding: 20px;
+                                border-radius: 8px;">
+
+                        <!-- Header -->
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <span style="font-size: 1.5rem;">{{ alert.icon }}</span>
+                                <div>
+                                    <h4 style="margin: 0; color: {% if alert.severity == 'kritisk' %}#991b1b{% elif alert.severity == 'moderat' %}#92400e{% else %}#1e40af{% endif %}; font-size: 1.1rem;">
+                                        {{ alert.title }}
+                                    </h4>
+                                    {% if alert.field %}
+                                    <div style="font-size: 0.75rem; color: #6b7280; margin-top: 4px;">
+                                        Område: <strong>{{ alert.field }}</strong>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <span style="background: {% if alert.severity == 'kritisk' %}#dc2626{% elif alert.severity == 'moderat' %}#f59e0b{% else %}#3b82f6{% endif %};
+                                         color: white;
+                                         padding: 4px 12px;
+                                         border-radius: 6px;
+                                         font-size: 0.75rem;
+                                         font-weight: 600;
+                                         text-transform: uppercase;">
+                                {{ alert.severity }}
+                            </span>
+                        </div>
+
+                        <!-- Description -->
+                        <p style="margin: 0 0 12px 0; color: {% if alert.severity == 'kritisk' %}#7f1d1d{% elif alert.severity == 'moderat' %}#78350f{% else %}#1e3a8a{% endif %}; line-height: 1.5;">
+                            {{ alert.description }}
+                        </p>
+
+                        <!-- Recommendation -->
+                        {% if alert.recommendation %}
+                        <div style="background: {% if alert.severity == 'kritisk' %}#fef2f2{% elif alert.severity == 'moderat' %}#fffbeb{% else %}#eff6ff{% endif %};
+                                    padding: 12px;
+                                    border-radius: 6px;
+                                    margin-top: 10px;">
+                            <strong style="color: {% if alert.severity == 'kritisk' %}#991b1b{% elif alert.severity == 'moderat' %}#92400e{% else %}#1e40af{% endif %}; font-size: 0.875rem;">
+                                💡 Anbefaling:
+                            </strong>
+                            <p style="margin: 5px 0 0 0; color: {% if alert.severity == 'kritisk' %}#7f1d1d{% elif alert.severity == 'moderat' %}#78350f{% else %}#1e3a8a{% endif %}; font-size: 0.875rem; line-height: 1.5;">
+                                {{ alert.recommendation }}
+                            </p>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Severity Legend -->
+                <div style="margin-top: 25px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+                    <div style="display: flex; gap: 20px; flex-wrap: wrap; font-size: 0.875rem; color: #6b7280;">
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <div style="width: 16px; height: 16px; background: #dc2626; border-radius: 3px;"></div>
+                            <span>Kritisk - kræver øjeblikkelig handling</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <div style="width: 16px; height: 16px; background: #f59e0b; border-radius: 3px;"></div>
+                            <span>Moderat - bør adresseres snart</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <div style="width: 16px; height: 16px; background: #3b82f6; border-radius: 3px;"></div>
+                            <span>Info - værd at være opmærksom på</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- KKC Anbefalinger -->
+    {% if start_here %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="field-card" style="border-left: 5px solid #667eea; background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);">
+
+                {% if start_here.single %}
+                    <!-- SINGLE RECOMMENDATION -->
+                    {% set rec = start_here.primary %}
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 20px;">
+                        <h2 style="color: #667eea; margin: 0;">🎯 Start Her: {{ rec.field }}</h2>
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <span class="kkc-badge">KKC: {{ rec.kkc_element }}</span>
+                            <span class="severity-badge {{ rec.severity }}">{{ rec.severity_emoji }} {{ rec.severity|title }} friktion · {{ rec.score }}/5</span>
+                            {% if rec.spread == 'høj' %}
+                            <span class="alert-badge alert-spread">📊 Høj spredning ({{ "%.2f"|format(rec.std_dev) }})</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Prioriteringsforklaring -->
+                    <div style="background: #f0f9ff; border-left: 4px solid #3b82f6; padding: 12px 15px; margin-bottom: 20px; border-radius: 4px;">
+                        <strong style="color: #1e40af;">💡 Hvorfor denne prioritering?</strong>
+                        <p style="margin: 8px 0 0 0; color: #1e3a8a; font-size: 0.875rem;">
+                            {{ start_here.reason }}
+                        </p>
+                    </div>
+
+                    <div style="margin: 20px 0;">
+                        <h4 style="color: #4b5563; margin-bottom: 10px;">📊 Problemet</h4>
+                        <p style="color: #6b7280; line-height: 1.6;">{{ rec.problem }}</p>
+                    </div>
+
+                    <div style="margin: 20px 0;">
+                        <h4 style="color: #4b5563; margin-bottom: 15px;">✅ Konkrete handlinger</h4>
+                        <ol style="margin: 0; padding-left: 20px; color: #374151;">
+                            {% for action in rec.actions %}
+                            <li style="margin-bottom: 10px; line-height: 1.6;">{{ action }}</li>
+                            {% endfor %}
+                        </ol>
+                    </div>
+
+                    <div style="margin: 20px 0;">
+                        <h4 style="color: #4b5563; margin-bottom: 10px;">📅 Opfølgning</h4>
+                        <p style="color: #6b7280; line-height: 1.6;">{{ rec.follow_up }}</p>
+                    </div>
+
+                    <div style="background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%); border-left: 4px solid #667eea; padding: 15px; border-radius: 6px; margin-top: 20px;">
+                        <p style="color: #4b5563; font-style: italic; margin: 0;">💡 {{ rec.kkc_reference }}</p>
+                    </div>
+
+                {% else %}
+                    <!-- MULTIPLE RECOMMENDATIONS -->
+                    <h2 style="color: #667eea; margin: 0 0 20px 0;">🎯 Prioriterede Anbefalinger</h2>
+
+                    <!-- Forklaring -->
+                    <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px 15px; margin-bottom: 20px; border-radius: 4px;">
+                        <strong style="color: #92400e;">💡 Flere ligeværdige friktioner</strong>
+                        <p style="margin: 8px 0 0 0; color: #92400e; font-size: 0.875rem;">
+                            {{ start_here.reason }}
+                        </p>
+                    </div>
+
+                    <!-- Liste af anbefalinger -->
+                    <div style="display: grid; gap: 20px;">
+                        {% for rec in start_here.recommendations %}
+                        <div style="background: white; border: 2px solid #e5e7eb; border-radius: 8px; padding: 20px; {% if rec.spread == 'høj' %}border-color: #3b82f6;{% endif %}">
+                            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px;">
+                                <h3 style="color: #1f2937; margin: 0; font-size: 1.3rem;">{{ loop.index }}. {{ rec.field }}</h3>
+                                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                                    <span class="kkc-badge" style="font-size: 0.75rem; padding: 4px 8px;">{{ rec.kkc_element }}</span>
+                                    <span class="severity-badge {{ rec.severity }}" style="font-size: 0.75rem; padding: 4px 8px;">{{ rec.severity_emoji }} {{ rec.score }}/5</span>
+                                    {% if rec.spread == 'høj' %}
+                                    <span class="alert-badge alert-spread" style="font-size: 0.7rem; padding: 3px 6px;">📊 σ={{ "%.2f"|format(rec.std_dev) }}</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <p style="color: #6b7280; font-size: 0.875rem; margin: 0 0 10px 0;"><strong>Problem:</strong> {{ rec.problem }}</p>
+
+                            <details style="margin-top: 10px;">
+                                <summary style="cursor: pointer; color: #667eea; font-weight: 600; font-size: 0.875rem;">Se konkrete handlinger ▼</summary>
+                                <ol style="margin: 10px 0 0 0; padding-left: 20px; color: #374151; font-size: 0.875rem;">
+                                    {% for action in rec.actions %}
+                                    <li style="margin-bottom: 8px;">{{ action }}</li>
+                                    {% endfor %}
+                                </ol>
+                                <p style="margin: 10px 0 0 0; color: #6b7280; font-size: 0.875rem;"><strong>Opfølgning:</strong> {{ rec.follow_up }}</p>
+                            </details>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Free Text Comments -->
+    {% if free_text_comments and free_text_comments|length > 0 %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="field-card">
+                <h3 class="field-header">💬 Fritekst Kommentarer</h3>
+                <p class="text-muted mb-3">Anonymiserede kommentarer fra respondenter</p>
+
+                <div style="display: flex; flex-direction: column; gap: 15px;">
+                    {% for comment in free_text_comments %}
+                    <div style="background: #f9fafb; padding: 15px; border-radius: 8px; border-left: 4px solid #3b82f6;">
+                        <div style="color: #6b7280; font-size: 0.875rem; margin-bottom: 5px;">
+                            Respondent {{ comment.respondent_type|upper }}
+                        </div>
+                        <div style="color: #1f2937;">{{ comment.comment }}</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

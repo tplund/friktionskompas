@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: friktionskompas
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn admin_app:app --bind 0.0.0.0:$PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.10.0
+      - key: SECRET_KEY
+        generateValue: true
+      - key: MAILJET_API_KEY
+        sync: false
+      - key: MAILJET_API_SECRET
+        sync: false
+      - key: FROM_EMAIL
+        value: info@friktionskompas.dk
+      - key: FROM_NAME
+        value: Friktionskompasset
