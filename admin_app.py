@@ -9,7 +9,7 @@ import os
 import secrets
 from functools import wraps
 from db_hierarchical import (
-    create_unit, create_unit_from_path, create_campaign,
+    init_db, create_unit, create_unit_from_path, create_campaign,
     generate_tokens_for_campaign, get_unit_children, get_unit_path,
     get_leaf_units, validate_and_use_token, save_response, get_unit_stats,
     get_campaign_overview, get_questions, get_db, add_contacts_bulk,
@@ -29,9 +29,13 @@ from csv_upload_hierarchical import (
     validate_csv_format, bulk_upload_from_csv, generate_csv_template
 )
 from mailjet_integration import send_campaign_batch
+from db_hierarchical import init_db
+from db_profil import init_profil_tables
 
-# Initialize multi-tenant
-init_multitenant_db()
+# Initialize databases
+init_db()  # Main hierarchical database
+init_profil_tables()  # Profil tables
+init_multitenant_db()  # Multi-tenant tables
 
 app = Flask(__name__)
 

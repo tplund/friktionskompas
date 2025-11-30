@@ -24,7 +24,12 @@
       "Bash(if not exist \"C:\\_proj\\Friktionskompasset\\templates\\profil\" mkdir \"C:\\_proj\\Friktionskompasset\\templates\\profil\")",
       "Bash(curl:*)",
       "Bash(git init:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git remote add:*)",
+      "Bash(git branch:*)",
+      "Bash(git push:*)",
+      "WebFetch(domain:friktionskompas.onrender.com)"
     ],
     "deny": [],
     "ask": []
