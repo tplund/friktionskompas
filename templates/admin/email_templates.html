@@ -3,7 +3,7 @@
 {% block title %}Email Templates - Friktionskompasset{% endblock %}
 
 {% block content %}
-<div class="container">
+<div class="container" style="max-width: 1200px;">
     <h1>Email Templates</h1>
     <p class="subtitle">Tilpas email-tekster per kunde. Hvis ingen kunde-template findes, bruges standard-templaten.</p>
 
@@ -111,6 +111,20 @@
     color: #e5e7eb;
     border-radius: 6px;
     padding: 1rem;
+    width: 100%;
+    min-width: 100%;
+}
+
+.form-control {
+    width: 100%;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.template-editor {
+    width: 100%;
 }
 
 .help-text {
