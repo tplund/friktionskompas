@@ -4,11 +4,17 @@ Måler hvordan pres bevæger sig gennem en persons reguleringsarkitektur
 """
 import sqlite3
 import secrets
+import os
 from contextlib import contextmanager
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 
-DB_PATH = "friktionskompas_v3.db"
+# Use persistent disk on Render, local file otherwise
+RENDER_DISK_PATH = "/var/data"
+if os.path.exists(RENDER_DISK_PATH):
+    DB_PATH = os.path.join(RENDER_DISK_PATH, "friktionskompas_v3.db")
+else:
+    DB_PATH = "friktionskompas_v3.db"
 
 @contextmanager
 def get_db():
