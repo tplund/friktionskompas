@@ -2,7 +2,7 @@
 Admin interface for Friktionskompasset v3
 Hierarkisk organisationsstruktur med units + Multi-tenant
 """
-from flask import Flask, render_template, request, redirect, url_for, flash, Response, session
+from flask import Flask, render_template, request, redirect, url_for, flash, Response, session, jsonify
 import csv
 import io
 import os
@@ -34,7 +34,6 @@ from mailjet_integration import (
 )
 from db_hierarchical import init_db
 from db_profil import init_profil_tables
-from flask import jsonify
 
 # Initialize databases
 init_db()  # Main hierarchical database
