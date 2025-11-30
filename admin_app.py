@@ -28,7 +28,10 @@ from db_multitenant import (
 from csv_upload_hierarchical import (
     validate_csv_format, bulk_upload_from_csv, generate_csv_template
 )
-from mailjet_integration import send_campaign_batch, get_email_stats, get_email_logs, update_email_status
+from mailjet_integration import (
+    send_campaign_batch, get_email_stats, get_email_logs, update_email_status,
+    get_template, save_template, list_templates, DEFAULT_TEMPLATES
+)
 from db_hierarchical import init_db
 from db_profil import init_profil_tables
 from flask import jsonify
@@ -1701,6 +1704,61 @@ def mailjet_webhook():
             update_email_status(message_id, 'bounced', 'bounced_at')
 
     return jsonify({'status': 'ok'})
+
+
+# ========================================
+# EMAIL TEMPLATES
+# ========================================
+
+@app.route('/admin/email-templates')
+@login_required
+def email_templates():
+    """Email template editor"""
+    user = get_current_user()
+    with get_db() as conn:
+        if user['role'] == 'admin':
+            customers = conn.execute("SELECT id, name FROM customers ORDER BY name").fetchall()
+        else:
+            customers = conn.execute(
+                "SELECT id, name FROM customers WHERE id = ?",
+                [user['customer_id']]
+            ).fetchall()
+
+    selected_customer = request.args.get('customer_id', type=int)
+    return render_template('admin/email_templates.html',
+                         customers=customers,
+                         selected_customer=selected_customer,
+                         default_templates=DEFAULT_TEMPLATES)
+
+
+@app.route('/api/email-templates')
+@login_required
+def api_list_templates():
+    """API: List templates for a customer"""
+    customer_id = request.args.get('customer_id', type=int)
+    templates = list_templates(customer_id)
+    return jsonify(templates)
+
+
+@app.route('/api/email-templates', methods=['POST'])
+@login_required
+def api_save_template():
+    """API: Save a template"""
+    data = request.get_json()
+    if not data:
+        return jsonify({'success': False, 'error': 'No data'}), 400
+
+    customer_id = data.get('customer_id')
+    template_type = data.get('template_type')
+    subject = data.get('subject')
+    html_content = data.get('html_content')
+    text_content = data.get('text_content')
+
+    if not all([customer_id, template_type, subject, html_content]):
+        return jsonify({'success': False, 'error': 'Missing required fields'}), 400
+
+    success = save_template(customer_id, template_type, subject, html_content, text_content)
+    return jsonify({'success': success})
 
 
 if __name__ == '__main__':
