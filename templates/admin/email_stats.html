@@ -1,0 +1,184 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Email Statistik - Friktionskompasset{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Email Statistik</h1>
+
+    <!-- Stats Overview -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-value">{{ stats.total or 0 }}</div>
+            <div class="stat-label">Total sendt</div>
+        </div>
+        <div class="stat-card stat-success">
+            <div class="stat-value">{{ stats.delivered or 0 }}</div>
+            <div class="stat-label">Leveret</div>
+        </div>
+        <div class="stat-card stat-info">
+            <div class="stat-value">{{ stats.opened or 0 }}</div>
+            <div class="stat-label">Abnet</div>
+        </div>
+        <div class="stat-card stat-info">
+            <div class="stat-value">{{ stats.clicked or 0 }}</div>
+            <div class="stat-label">Klikket</div>
+        </div>
+        <div class="stat-card stat-warning">
+            <div class="stat-value">{{ stats.bounced or 0 }}</div>
+            <div class="stat-label">Bounced</div>
+        </div>
+        <div class="stat-card stat-danger">
+            <div class="stat-value">{{ stats.errors or 0 }}</div>
+            <div class="stat-label">Fejl</div>
+        </div>
+    </div>
+
+    <!-- Delivery Rate -->
+    {% if stats.total and stats.total > 0 %}
+    <div class="card" style="margin-top: 2rem;">
+        <h3>Leveringsrate</h3>
+        <div class="progress-bar-container">
+            <div class="progress-bar" style="width: {{ ((stats.delivered or 0) / stats.total * 100)|round(1) }}%">
+                {{ ((stats.delivered or 0) / stats.total * 100)|round(1) }}%
+            </div>
+        </div>
+        <p class="help-text">
+            {{ stats.delivered or 0 }} af {{ stats.total }} emails leveret
+        </p>
+    </div>
+    {% endif %}
+
+    <!-- Email Logs -->
+    <div class="card" style="margin-top: 2rem;">
+        <h3>Seneste emails</h3>
+        {% if logs %}
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Tidspunkt</th>
+                    <th>Modtager</th>
+                    <th>Emne</th>
+                    <th>Type</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                <tr>
+                    <td>{{ log.created_at[:16] if log.created_at else '-' }}</td>
+                    <td>{{ log.to_email }}</td>
+                    <td>{{ log.subject[:40] }}{% if log.subject|length > 40 %}...{% endif %}</td>
+                    <td>{{ log.email_type }}</td>
+                    <td>
+                        <span class="status-badge status-{{ log.status }}">
+                            {{ log.status }}
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="empty-state">Ingen emails sendt endnu</p>
+        {% endif %}
+    </div>
+
+    <!-- Webhook Setup Info -->
+    <div class="card" style="margin-top: 2rem;">
+        <h3>Mailjet Webhook Setup</h3>
+        <p>For at modtage real-time opdateringer om email delivery, skal du konfigurere webhook i Mailjet:</p>
+        <ol>
+            <li>Ga til <a href="https://app.mailjet.com/account/triggers" target="_blank">Mailjet Event Notifications</a></li>
+            <li>Tilf0j en ny webhook med URL: <code>https://friktionskompas.onrender.com/webhook/mailjet</code></li>
+            <li>Valg events: sent, open, click, bounce, blocked, spam</li>
+        </ol>
+    </div>
+</div>
+
+<style>
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    margin: 2rem 0;
+}
+
+.stat-card {
+    background: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.stat-value {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #1f2937;
+}
+
+.stat-label {
+    color: #6b7280;
+    margin-top: 0.5rem;
+}
+
+.stat-success .stat-value { color: #10b981; }
+.stat-info .stat-value { color: #3b82f6; }
+.stat-warning .stat-value { color: #f59e0b; }
+.stat-danger .stat-value { color: #ef4444; }
+
+.progress-bar-container {
+    background: #e5e7eb;
+    border-radius: 999px;
+    height: 24px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    background: linear-gradient(90deg, #10b981, #059669);
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    font-size: 0.875rem;
+    min-width: 40px;
+}
+
+.status-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.status-sent { background: #dbeafe; color: #1d4ed8; }
+.status-delivered { background: #d1fae5; color: #065f46; }
+.status-opened { background: #fef3c7; color: #92400e; }
+.status-clicked { background: #c7d2fe; color: #4338ca; }
+.status-bounced { background: #fee2e2; color: #991b1b; }
+.status-error { background: #fecaca; color: #b91c1c; }
+
+.help-text {
+    color: #6b7280;
+    font-size: 0.875rem;
+    margin-top: 0.5rem;
+}
+
+.empty-state {
+    color: #9ca3af;
+    text-align: center;
+    padding: 2rem;
+}
+
+code {
+    background: #f3f4f6;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.875rem;
+}
+</style>
+{% endblock %}

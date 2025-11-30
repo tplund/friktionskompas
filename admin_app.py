@@ -28,9 +28,10 @@ from db_multitenant import (
 from csv_upload_hierarchical import (
     validate_csv_format, bulk_upload_from_csv, generate_csv_template
 )
-from mailjet_integration import send_campaign_batch
+from mailjet_integration import send_campaign_batch, get_email_stats, get_email_logs, update_email_status
 from db_hierarchical import init_db
 from db_profil import init_profil_tables
+from flask import jsonify
 
 # Initialize databases
 init_db()  # Main hierarchical database
@@ -1644,6 +1645,62 @@ def profil_delete():
         'success': True,
         'deleted': deleted
     })
+
+
+# ========================================
+# DOMAIN VERIFICATION
+# ========================================
+
+@app.route('/881785f5a46238616dba5c7ba38aa2c6.txt')
+def mailjet_verification():
+    """Mailjet domain verification file"""
+    return '', 200, {'Content-Type': 'text/plain'}
+
+
+# ========================================
+# EMAIL TRACKING & WEBHOOK
+# ========================================
+
+@app.route('/admin/email-stats')
+@login_required
+def email_stats():
+    """Vis email statistik og logs"""
+    campaign_id = request.args.get('campaign_id')
+    stats = get_email_stats(campaign_id)
+    logs = get_email_logs(campaign_id, limit=100)
+    return render_template('admin/email_stats.html', stats=stats, logs=logs, campaign_id=campaign_id)
+
+
+@app.route('/api/email-stats')
+@login_required
+def api_email_stats():
+    """API endpoint for email stats"""
+    campaign_id = request.args.get('campaign_id')
+    stats = get_email_stats(campaign_id)
+    return jsonify(stats)
+
+
+@app.route('/webhook/mailjet', methods=['POST'])
+def mailjet_webhook():
+    """Webhook endpoint for Mailjet events (delivery, open, click, bounce)"""
+    events = request.get_json()
+    if not events:
+        return jsonify({'status': 'no data'}), 400
+
+    for event in events:
+        event_type = event.get('event')
+        message_id = str(event.get('MessageID', ''))
+
+        if event_type == 'sent':
+            update_email_status(message_id, 'delivered', 'delivered_at')
+        elif event_type == 'open':
+            update_email_status(message_id, 'opened', 'opened_at')
+        elif event_type == 'click':
+            update_email_status(message_id, 'clicked', 'clicked_at')
+        elif event_type in ('bounce', 'blocked', 'spam'):
+            update_email_status(message_id, 'bounced', 'bounced_at')
+
+    return jsonify({'status': 'ok'})
 
 
 if __name__ == '__main__':

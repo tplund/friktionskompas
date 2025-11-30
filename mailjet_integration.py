@@ -3,9 +3,11 @@ Mailjet integration for Friktionskompasset
 Send emails og SMS via Mailjet
 """
 import os
-from typing import List, Dict
+import sqlite3
+from typing import List, Dict, Optional
 from dotenv import load_dotenv
 from mailjet_rest import Client
+from datetime import datetime
 
 # Load .env file
 load_dotenv()
@@ -13,11 +15,132 @@ load_dotenv()
 # Mailjet API credentials (sæt som environment variables)
 MAILJET_API_KEY = os.getenv('MAILJET_API_KEY', '')
 MAILJET_API_SECRET = os.getenv('MAILJET_API_SECRET', '')
-FROM_EMAIL = os.getenv('FROM_EMAIL', 'info@friktionskompas.dk')
+FROM_EMAIL = os.getenv('FROM_EMAIL', 'support@activatelms.com')
 FROM_NAME = os.getenv('FROM_NAME', 'Friktionskompasset')
 
 # Initialize Mailjet client
 mailjet = Client(auth=(MAILJET_API_KEY, MAILJET_API_SECRET), version='v3.1')
+
+# Database path (same logic as db_hierarchical.py)
+RENDER_DISK_PATH = "/var/data"
+if os.path.exists(RENDER_DISK_PATH):
+    DB_PATH = os.path.join(RENDER_DISK_PATH, "friktionskompas_v3.db")
+else:
+    DB_PATH = "friktionskompas_v3.db"
+
+
+def log_email(to_email: str, subject: str, email_type: str, status: str,
+              message_id: str = None, campaign_id: str = None, token: str = None,
+              error_message: str = None) -> int:
+    """Log email til database for tracking"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.execute("""
+            INSERT INTO email_logs (message_id, to_email, subject, email_type, status,
+                                   campaign_id, token, error_message)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (message_id, to_email, subject, email_type, status, campaign_id, token, error_message))
+        log_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
+        return log_id
+    except Exception as e:
+        print(f"Error logging email: {e}")
+        return None
+
+
+def update_email_status(message_id: str, status: str, timestamp_field: str = None):
+    """Opdater email status (kaldt fra webhook)"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        if timestamp_field:
+            conn.execute(f"""
+                UPDATE email_logs SET status = ?, {timestamp_field} = ?
+                WHERE message_id = ?
+            """, (status, datetime.now().isoformat(), message_id))
+        else:
+            conn.execute("""
+                UPDATE email_logs SET status = ? WHERE message_id = ?
+            """, (status, message_id))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"Error updating email status: {e}")
+
+
+def get_email_stats(campaign_id: str = None) -> Dict:
+    """Hent email statistik"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+
+        if campaign_id:
+            stats = conn.execute("""
+                SELECT
+                    COUNT(*) as total,
+                    SUM(CASE WHEN status = 'sent' THEN 1 ELSE 0 END) as sent,
+                    SUM(CASE WHEN status = 'delivered' THEN 1 ELSE 0 END) as delivered,
+                    SUM(CASE WHEN status = 'opened' THEN 1 ELSE 0 END) as opened,
+                    SUM(CASE WHEN status = 'clicked' THEN 1 ELSE 0 END) as clicked,
+                    SUM(CASE WHEN status = 'bounced' THEN 1 ELSE 0 END) as bounced,
+                    SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END) as errors
+                FROM email_logs WHERE campaign_id = ?
+            """, (campaign_id,)).fetchone()
+        else:
+            stats = conn.execute("""
+                SELECT
+                    COUNT(*) as total,
+                    SUM(CASE WHEN status = 'sent' THEN 1 ELSE 0 END) as sent,
+                    SUM(CASE WHEN status = 'delivered' THEN 1 ELSE 0 END) as delivered,
+                    SUM(CASE WHEN status = 'opened' THEN 1 ELSE 0 END) as opened,
+                    SUM(CASE WHEN status = 'clicked' THEN 1 ELSE 0 END) as clicked,
+                    SUM(CASE WHEN status = 'bounced' THEN 1 ELSE 0 END) as bounced,
+                    SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END) as errors
+                FROM email_logs
+            """).fetchone()
+
+        conn.close()
+        return dict(stats) if stats else {}
+    except Exception as e:
+        print(f"Error getting email stats: {e}")
+        return {}
+
+
+def get_email_logs(campaign_id: str = None, limit: int = 100) -> List[Dict]:
+    """Hent email logs"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+
+        if campaign_id:
+            logs = conn.execute("""
+                SELECT * FROM email_logs WHERE campaign_id = ?
+                ORDER BY created_at DESC LIMIT ?
+            """, (campaign_id, limit)).fetchall()
+        else:
+            logs = conn.execute("""
+                SELECT * FROM email_logs ORDER BY created_at DESC LIMIT ?
+            """, (limit,)).fetchall()
+
+        conn.close()
+        return [dict(row) for row in logs]
+    except Exception as e:
+        print(f"Error getting email logs: {e}")
+        return []
+
+
+def check_mailjet_status(message_id: str) -> Optional[Dict]:
+    """Tjek delivery status via Mailjet API"""
+    if not message_id:
+        return None
+    try:
+        mailjet_v3 = Client(auth=(MAILJET_API_KEY, MAILJET_API_SECRET), version='v3')
+        result = mailjet_v3.message.get(id=message_id)
+        if result.status_code == 200:
+            return result.json()
+    except Exception as e:
+        print(f"Error checking Mailjet status: {e}")
+    return None
 
 
 def send_email_invitation(to_email: str, token: str, campaign_name: str, 
@@ -127,15 +250,30 @@ def send_email_invitation(to_email: str, token: str, campaign_name: str,
         ]
     }
     
+    subject = "Hjælp os fjerne friktioner (5 min, anonymt)"
     try:
         result = mailjet.send.create(data=data)
-        return result.status_code == 200
+        if result.status_code == 200:
+            # Extract message ID for tracking
+            response_data = result.json()
+            message_id = None
+            if 'Messages' in response_data and len(response_data['Messages']) > 0:
+                msg = response_data['Messages'][0]
+                if 'To' in msg and len(msg['To']) > 0:
+                    message_id = str(msg['To'][0].get('MessageID', ''))
+            log_email(to_email, subject, 'invitation', 'sent', message_id, token=token)
+            return True
+        else:
+            log_email(to_email, subject, 'invitation', 'error',
+                     error_message=f"Status {result.status_code}")
+            return False
     except Exception as e:
         print(f"Error sending email to {to_email}: {e}")
+        log_email(to_email, subject, 'invitation', 'error', error_message=str(e))
         return False
 
 
-def send_sms_invitation(phone: str, token: str, campaign_name: str, 
+def send_sms_invitation(phone: str, token: str, campaign_name: str,
                        sender_name: str = "HR") -> bool:
     """
     Send SMS invitation (kræver SMS-gateway integration)

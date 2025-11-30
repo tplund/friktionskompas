@@ -145,8 +145,45 @@ def init_db():
         
         # Index for aggregering
         conn.execute("""
-            CREATE INDEX IF NOT EXISTS idx_responses_campaign_unit 
+            CREATE INDEX IF NOT EXISTS idx_responses_campaign_unit
             ON responses(campaign_id, unit_id)
+        """)
+
+        # Email logs for delivery tracking
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS email_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                message_id TEXT,
+                to_email TEXT NOT NULL,
+                subject TEXT,
+                email_type TEXT DEFAULT 'invitation',
+                status TEXT DEFAULT 'sent',
+                campaign_id TEXT,
+                token TEXT,
+                error_message TEXT,
+                delivered_at TIMESTAMP,
+                opened_at TIMESTAMP,
+                clicked_at TIMESTAMP,
+                bounced_at TIMESTAMP,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE SET NULL
+            )
+        """)
+
+        # Email templates per customer
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS email_templates (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                customer_id INTEGER,
+                template_type TEXT NOT NULL,
+                subject TEXT NOT NULL,
+                html_content TEXT NOT NULL,
+                text_content TEXT,
+                is_active INTEGER DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+            )
         """)
         
         # Indsæt default spørgsmål hvis tom database
