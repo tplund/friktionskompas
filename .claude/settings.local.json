@@ -29,7 +29,8 @@
       "Bash(git remote add:*)",
       "Bash(git branch:*)",
       "Bash(git push:*)",
-      "WebFetch(domain:friktionskompas.onrender.com)"
+      "WebFetch(domain:friktionskompas.onrender.com)",
+      "WebFetch(domain:github.com)"
     ],
     "deny": [],
     "ask": []
