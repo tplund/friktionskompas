@@ -703,11 +703,25 @@ def send_reminder_email(to_email: str, token: str, campaign_name: str,
         ]
     }
     
+    subject = f"Reminder: Friktionsmåling ({responses_so_far} har svaret)"
     try:
         result = mailjet.send.create(data=data)
-        return result.status_code == 200
+        if result.status_code == 200:
+            response_data = result.json()
+            message_id = None
+            if 'Messages' in response_data and len(response_data['Messages']) > 0:
+                msg = response_data['Messages'][0]
+                if 'To' in msg and len(msg['To']) > 0:
+                    message_id = str(msg['To'][0].get('MessageID', ''))
+            log_email(to_email, subject, 'reminder', 'sent', message_id, token=token)
+            return True
+        else:
+            log_email(to_email, subject, 'reminder', 'error',
+                     error_message=f"Status {result.status_code}", token=token)
+            return False
     except Exception as e:
         print(f"Error sending reminder to {to_email}: {e}")
+        log_email(to_email, subject, 'reminder', 'error', error_message=str(e), token=token)
         return False
 
 
@@ -880,11 +894,26 @@ def send_profil_invitation(to_email: str, session_id: str, person_name: str = No
         ]
     }
 
+    subject = "Din Friktionsprofil venter"
     try:
         result = mailjet.send.create(data=data)
-        return result.status_code == 200
+        if result.status_code == 200:
+            # Extract message ID for tracking
+            response_data = result.json()
+            message_id = None
+            if 'Messages' in response_data and len(response_data['Messages']) > 0:
+                msg = response_data['Messages'][0]
+                if 'To' in msg and len(msg['To']) > 0:
+                    message_id = str(msg['To'][0].get('MessageID', ''))
+            log_email(to_email, subject, 'profil_invitation', 'sent', message_id)
+            return True
+        else:
+            log_email(to_email, subject, 'profil_invitation', 'error',
+                     error_message=f"Status {result.status_code}")
+            return False
     except Exception as e:
         print(f"Error sending profil invitation to {to_email}: {e}")
+        log_email(to_email, subject, 'profil_invitation', 'error', error_message=str(e))
         return False
 
 
