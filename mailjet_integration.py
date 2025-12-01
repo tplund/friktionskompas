@@ -29,11 +29,40 @@ else:
     DB_PATH = "friktionskompas_v3.db"
 
 
+def ensure_email_logs_table():
+    """Opret email_logs tabel hvis den ikke findes"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS email_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                message_id TEXT,
+                to_email TEXT NOT NULL,
+                subject TEXT,
+                email_type TEXT DEFAULT 'invitation',
+                status TEXT DEFAULT 'sent',
+                campaign_id TEXT,
+                token TEXT,
+                error_message TEXT,
+                delivered_at TIMESTAMP,
+                opened_at TIMESTAMP,
+                clicked_at TIMESTAMP,
+                bounced_at TIMESTAMP,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"Error creating email_logs table: {e}")
+
+
 def log_email(to_email: str, subject: str, email_type: str, status: str,
               message_id: str = None, campaign_id: str = None, token: str = None,
               error_message: str = None) -> int:
     """Log email til database for tracking"""
     try:
+        ensure_email_logs_table()
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.execute("""
             INSERT INTO email_logs (message_id, to_email, subject, email_type, status,

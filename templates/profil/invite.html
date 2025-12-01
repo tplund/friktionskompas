@@ -61,44 +61,6 @@
         border-color: #3b82f6;
     }
 
-    .context-options {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-        gap: 10px;
-        margin-top: 10px;
-    }
-    .context-option {
-        position: relative;
-    }
-    .context-option input {
-        position: absolute;
-        opacity: 0;
-    }
-    .context-option label {
-        display: block;
-        padding: 15px;
-        border: 2px solid #e5e7eb;
-        border-radius: 8px;
-        cursor: pointer;
-        text-align: center;
-        transition: all 0.2s;
-        font-weight: normal;
-    }
-    .context-option label:hover {
-        border-color: #3b82f6;
-        background: #f0f4ff;
-    }
-    .context-option input:checked + label {
-        border-color: #3b82f6;
-        background: #eff6ff;
-        color: #1e40af;
-    }
-    .context-option .icon {
-        font-size: 24px;
-        display: block;
-        margin-bottom: 5px;
-    }
-
     .btn-row {
         display: flex;
         gap: 15px;
@@ -173,47 +135,7 @@
                 <p class="hint">Bruges i emailen og på rapporten</p>
             </div>
 
-            <div class="form-group">
-                <label>Kontekst</label>
-                <div class="context-options">
-                    <div class="context-option">
-                        <input type="radio" id="ctx-general" name="context" value="general" checked>
-                        <label for="ctx-general">
-                            <span class="icon">🔬</span>
-                            Generel
-                        </label>
-                    </div>
-                    <div class="context-option">
-                        <input type="radio" id="ctx-mus" name="context" value="mus">
-                        <label for="ctx-mus">
-                            <span class="icon">💬</span>
-                            MUS-samtale
-                        </label>
-                    </div>
-                    <div class="context-option">
-                        <input type="radio" id="ctx-coaching" name="context" value="coaching">
-                        <label for="ctx-coaching">
-                            <span class="icon">🎯</span>
-                            Coaching
-                        </label>
-                    </div>
-                    <div class="context-option">
-                        <input type="radio" id="ctx-konflikt" name="context" value="konflikt">
-                        <label for="ctx-konflikt">
-                            <span class="icon">🤝</span>
-                            Konflikt
-                        </label>
-                    </div>
-                    <div class="context-option">
-                        <input type="radio" id="ctx-onboarding" name="context" value="onboarding">
-                        <label for="ctx-onboarding">
-                            <span class="icon">🚀</span>
-                            Onboarding
-                        </label>
-                    </div>
-                </div>
-                <p class="hint">Konteksten tilpasser emailens tekst og vises på rapporten</p>
-            </div>
+            <input type="hidden" name="context" value="general">
 
             <div class="btn-row">
                 <a href="/admin/profiler" class="btn btn-secondary">Annuller</a>
