@@ -141,12 +141,6 @@ def seed_campaign_with_responses(customer_id, unit_path="Demo Virksomhed"):
                 token = f"token-{leaf['id'][:8]}-{i}"
                 respondent_type = random.choice(['employee', 'employee', 'employee', 'leader'])
 
-                # Opret token
-                conn.execute("""
-                    INSERT OR IGNORE INTO tokens (token, campaign_id, unit_id, respondent_type, is_used, created_at)
-                    VALUES (?, ?, ?, ?, 1, CURRENT_TIMESTAMP)
-                """, (token, campaign_id, leaf['id'], respondent_type))
-
                 # Generer svar for alle spørgsmål
                 for q in questions:
                     # Realistisk score distribution
@@ -158,9 +152,9 @@ def seed_campaign_with_responses(customer_id, unit_path="Demo Virksomhed"):
                         score = random.choices([1, 2, 3, 4, 5], weights=[10, 20, 35, 25, 10])[0]
 
                     conn.execute("""
-                        INSERT INTO responses (token, campaign_id, unit_id, question_id, score, respondent_type, created_at)
-                        VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-                    """, (token, campaign_id, leaf['id'], q['id'], score, respondent_type))
+                        INSERT INTO responses (campaign_id, unit_id, question_id, score, respondent_type, created_at)
+                        VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                    """, (campaign_id, leaf['id'], q['id'], score, respondent_type))
 
                 total_responses += len(questions)
 
