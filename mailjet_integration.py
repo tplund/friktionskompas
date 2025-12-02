@@ -17,6 +17,7 @@ MAILJET_API_KEY = os.getenv('MAILJET_API_KEY', '')
 MAILJET_API_SECRET = os.getenv('MAILJET_API_SECRET', '')
 FROM_EMAIL = os.getenv('FROM_EMAIL', 'support@activatelms.com')
 FROM_NAME = os.getenv('FROM_NAME', 'Friktionskompasset')
+BASE_URL = os.getenv('BASE_URL', 'https://friktionskompas.onrender.com')
 
 # Initialize Mailjet client
 mailjet = Client(auth=(MAILJET_API_KEY, MAILJET_API_SECRET), version='v3.1')
@@ -499,7 +500,7 @@ def send_email_invitation(to_email: str, token: str, campaign_name: str,
     """
     Send email invitation med magic link
     """
-    survey_url = f"https://friktionskompas.dk/s/{token}"
+    survey_url = f"{BASE_URL}/s/{token}"
     
     html_content = f"""
     <!DOCTYPE html>
@@ -656,7 +657,7 @@ def send_reminder_email(to_email: str, token: str, campaign_name: str,
     """
     Send reminder email hvis folk ikke har svaret endnu
     """
-    survey_url = f"https://friktionskompas.dk/s/{token}"
+    survey_url = f"{BASE_URL}/s/{token}"
     
     html_content = f"""
     <!DOCTYPE html>
@@ -811,7 +812,7 @@ def send_profil_invitation(to_email: str, session_id: str, person_name: str = No
     """
     Send email invitation til friktionsprofil
     """
-    survey_url = f"https://friktionskompas.dk/profil/{session_id}"
+    survey_url = f"{BASE_URL}/profil/{session_id}"
 
     context_text = {
         'general': 'en personlig indsigt i hvordan du håndterer pres og friktion',
