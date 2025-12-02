@@ -88,7 +88,7 @@ def seed_campaign_with_responses(customer_id, unit_path="Demo Virksomhed"):
     with get_db() as conn:
         # Find unit
         unit = conn.execute(
-            "SELECT id FROM organizational_units WHERE path = ? AND customer_id = ?",
+            "SELECT id FROM organizational_units WHERE full_path = ? AND customer_id = ?",
             (unit_path, customer_id)
         ).fetchone()
 
@@ -112,12 +112,12 @@ def seed_campaign_with_responses(customer_id, unit_path="Demo Virksomhed"):
         # Hent alle leaf units under denne unit
         leaf_units = conn.execute("""
             WITH RECURSIVE descendants AS (
-                SELECT id, path FROM organizational_units WHERE id = ?
+                SELECT id, full_path FROM organizational_units WHERE id = ?
                 UNION ALL
-                SELECT u.id, u.path FROM organizational_units u
+                SELECT u.id, u.full_path FROM organizational_units u
                 JOIN descendants d ON u.parent_id = d.id
             )
-            SELECT id, path FROM descendants
+            SELECT id, full_path FROM descendants
             WHERE id NOT IN (SELECT DISTINCT parent_id FROM organizational_units WHERE parent_id IS NOT NULL)
         """, (unit_id,)).fetchall()
 

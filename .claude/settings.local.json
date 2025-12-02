@@ -32,7 +32,9 @@
       "WebFetch(domain:friktionskompas.onrender.com)",
       "WebFetch(domain:github.com)",
       "Bash(forfiles /M friktionskompas_v3.db /C \"cmd /c echo @fsize\")",
-      "Bash(copy \"C:\\_proj\\Friktionskompasset\\templates\\admin\\layout.html\" \"C:\\_proj\\Friktionskompasset\\templates\\admin\\base.html\")"
+      "Bash(copy \"C:\\_proj\\Friktionskompasset\\templates\\admin\\layout.html\" \"C:\\_proj\\Friktionskompasset\\templates\\admin\\base.html\")",
+      "Bash(cat:*)",
+      "Bash(git restore:*)"
     ],
     "deny": [],
     "ask": []
