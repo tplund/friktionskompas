@@ -94,6 +94,45 @@
             border-bottom: 2px solid #3b82f6;
         }
 
+        /* Dropdown menu i submenu */
+        .submenu-dropdown {
+            position: relative;
+        }
+        .submenu-dropdown .dropdown-toggle {
+            cursor: pointer;
+        }
+        .submenu-dropdown .dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: #1f2937;
+            border-radius: 0 0 6px 6px;
+            min-width: 180px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 100;
+            list-style: none;
+            padding: 5px 0;
+        }
+        .submenu-dropdown:hover .dropdown-menu {
+            display: block;
+        }
+        .submenu-dropdown .dropdown-menu a {
+            padding: 10px 15px;
+            display: block;
+            color: rgba(255,255,255,0.8);
+            text-decoration: none;
+            font-size: 0.85rem;
+        }
+        .submenu-dropdown .dropdown-menu a:hover {
+            background: rgba(255,255,255,0.1);
+            color: white;
+        }
+        .submenu-dropdown .dropdown-menu a.active {
+            background: rgba(59, 130, 246, 0.3);
+            border-bottom: none;
+        }
+
         .nav-user {
             color: rgba(255,255,255,0.6);
             font-size: 0.875rem;
@@ -221,8 +260,13 @@
                 <li><a href="/admin" {% if request.path == '/admin' and 'campaign' not in request.path %}class="active"{% endif %}>🏢 Organisationer</a></li>
                 <li><a href="/admin/profiler" {% if 'profiler' in request.path %}class="active"{% endif %}>🔬 Friktionsprofiler</a></li>
                 <li><a href="/admin/customers" {% if 'customers' in request.path %}class="active"{% endif %}>👥 Kunder & Brugere</a></li>
-                <li><a href="/admin/email-stats" {% if 'email-stats' in request.path %}class="active"{% endif %}>📧 Email Status</a></li>
-                <li><a href="/admin/email-templates" {% if 'email-templates' in request.path %}class="active"{% endif %}>✉️ Email Templates</a></li>
+                <li class="submenu-dropdown">
+                    <a href="#" class="dropdown-toggle {% if 'email' in request.path or 'settings' in request.path %}active{% endif %}">⚙️ Indstillinger ▾</a>
+                    <ul class="dropdown-menu">
+                        <li><a href="/admin/email-stats" {% if 'email-stats' in request.path %}class="active"{% endif %}>📧 Email Status</a></li>
+                        <li><a href="/admin/email-templates" {% if 'email-templates' in request.path %}class="active"{% endif %}>✉️ Email Templates</a></li>
+                    </ul>
+                </li>
             </ul>
             {% endif %}
         </div>

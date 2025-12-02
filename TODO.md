@@ -56,6 +56,20 @@
 
 ## 🔮 Lav Prioritet / Future
 
+### Friktionsprofil V2 (i gang)
+- [x] Dokumentation opdateret (FRIKTIONSPROFIL_V2.md)
+- [x] 8 nye kapacitets-spørgsmål ("tage sig sammen"-mekanikken)
+- [x] 2 båndbredde-spørgsmål (løfte pres opad)
+- [x] 6 screening-spørgsmål (hurtig vurdering)
+- [x] Database udvidet med question_type og state_text_da
+- [x] Profil vs Situations versioner (tekster klar)
+- [ ] **Admin interface til spørgsmålsredigering og versionering**
+  - Liste alle spørgsmål med felt, lag, type
+  - Rediger tekst (profil + situation), scoring, sequence
+  - Tilføj/fjern spørgsmål
+  - Versionering af spørgsmålssæt
+  - Intro/outro tekster per version
+
 ### Features
 - [ ] Drag-and-drop reorganisering af units
 - [ ] Custom spørgsmål per organisation
@@ -77,6 +91,17 @@
 ## 🐛 Bugs & Issues
 
 _Ingen kendte bugs pt._
+
+---
+
+## 🚀 Deploy & Hosting
+- [x] Git repository opsat
+- [x] GitHub push
+- [x] Render deployment
+- [x] Persistent disk konfigureret
+- [x] Email tracking og templates
+- [ ] **GDPR: Flyt Render service til EU (Frankfurt)**
+- [ ] **Køb domain (friktionskompas.dk)**
 
 ---
 

@@ -32,26 +32,40 @@ def get_db():
 def init_profil_tables():
     """Initialize profil-specific tables"""
     with get_db() as conn:
-        # Friktionsprofil spørgsmål
+        # Friktionsprofil spørgsmål (udvidet med type og state-tekst)
         conn.execute("""
             CREATE TABLE IF NOT EXISTS profil_questions (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 field TEXT NOT NULL,
                 layer TEXT NOT NULL,
                 text_da TEXT NOT NULL,
+                state_text_da TEXT,
+                question_type TEXT DEFAULT 'sensitivity',
                 reverse_scored INTEGER DEFAULT 0,
                 sequence INTEGER NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
 
-        # Friktionsprofil sessioner
+        # Tilføj nye kolonner hvis de mangler (migration)
+        try:
+            conn.execute("ALTER TABLE profil_questions ADD COLUMN state_text_da TEXT")
+        except:
+            pass
+        try:
+            conn.execute("ALTER TABLE profil_questions ADD COLUMN question_type TEXT DEFAULT 'sensitivity'")
+        except:
+            pass
+
+        # Friktionsprofil sessioner (udvidet med målingstype)
         conn.execute("""
             CREATE TABLE IF NOT EXISTS profil_sessions (
                 id TEXT PRIMARY KEY,
                 person_name TEXT,
                 person_email TEXT,
                 context TEXT DEFAULT 'general',
+                measurement_type TEXT DEFAULT 'profile',
+                situation_context TEXT,
 
                 -- Valgfri kobling til organisation
                 customer_id TEXT,
@@ -66,6 +80,16 @@ def init_profil_tables():
                 FOREIGN KEY (unit_id) REFERENCES organizational_units(id)
             )
         """)
+
+        # Tilføj nye kolonner hvis de mangler (migration)
+        try:
+            conn.execute("ALTER TABLE profil_sessions ADD COLUMN measurement_type TEXT DEFAULT 'profile'")
+        except:
+            pass
+        try:
+            conn.execute("ALTER TABLE profil_sessions ADD COLUMN situation_context TEXT")
+        except:
+            pass
 
         # Friktionsprofil svar
         conn.execute("""
@@ -114,39 +138,114 @@ def init_profil_tables():
 
 
 def _insert_default_questions(conn):
-    """Indsæt de 16 standard friktionsprofil-spørgsmål"""
+    """Indsæt alle friktionsprofil-spørgsmål: sensitivitet, kapacitet, båndbredde og screening"""
+
+    # Format: (field, layer, text_da, state_text_da, question_type, reverse_scored, sequence)
     questions = [
-        # TRYGHED - 4 spørgsmål
-        ("TRYGHED", "BIOLOGI", "Jeg reagerer hurtigt fysisk, når noget virker uforudsigeligt", 0, 1),
-        ("TRYGHED", "EMOTION", "Jeg opfanger små signaler eller stemninger meget tydeligt", 0, 2),
-        ("TRYGHED", "INDRE", "Jeg bliver urolig, hvis min oplevelse af virkeligheden bliver udfordret", 0, 3),
-        ("TRYGHED", "KOGNITION", "Jeg falder til ro, når jeg forstår, hvad der foregår", 1, 4),  # Omvendt
+        # ================================================
+        # SENSITIVITETS-SPØRGSMÅL (de oprindelige 16)
+        # ================================================
 
-        # MENING - 4 spørgsmål
-        ("MENING", "BIOLOGI", "Når noget ikke giver mening, føles det fysisk forkert", 0, 5),
-        ("MENING", "EMOTION", "Jeg mærker stærkt, hvad der er vigtigt for mig", 0, 6),
-        ("MENING", "INDRE", "Jeg får hurtigt retning, når jeg tænker over noget", 1, 7),  # Omvendt
-        ("MENING", "KOGNITION", "Jeg kan holde meget pres ud, hvis meningen er klar", 1, 8),  # Omvendt
+        # TRYGHED - Sensitivitet
+        ("TRYGHED", "BIOLOGI", "Jeg reagerer hurtigt fysisk, når noget virker uforudsigeligt",
+         "Lige nu reagerer min krop hurtigt, når noget er uforudsigeligt", "sensitivity", 0, 1),
+        ("TRYGHED", "EMOTION", "Jeg opfanger små signaler eller stemninger meget tydeligt",
+         "Lige nu opfanger jeg signaler og stemninger meget tydeligt", "sensitivity", 0, 2),
+        ("TRYGHED", "INDRE", "Jeg bliver urolig, hvis min oplevelse af virkeligheden bliver udfordret",
+         "Lige nu bliver jeg urolig, hvis min virkelighed udfordres", "sensitivity", 0, 3),
+        ("TRYGHED", "KOGNITION", "Jeg falder til ro, når jeg forstår, hvad der foregår",
+         "Lige nu falder jeg til ro, når jeg forstår hvad der foregår", "sensitivity", 1, 4),
 
-        # KAN - 4 spørgsmål
-        ("KAN", "BIOLOGI", "Jeg mærker energifald hurtigt i kroppen", 0, 9),
-        ("KAN", "EMOTION", "Jeg bliver let overvældet, hvis der er mange ting på én gang", 0, 10),
-        ("KAN", "INDRE", "Jeg regulerer mig selv bedst ved at forstå, hvad jeg skal", 1, 11),  # Omvendt
-        ("KAN", "KOGNITION", "Jeg kan tænke klart, selv når jeg er presset", 1, 12),  # Omvendt
+        # MENING - Sensitivitet
+        ("MENING", "BIOLOGI", "Når noget ikke giver mening, føles det fysisk forkert",
+         "Lige nu føles det fysisk forkert, når noget ikke giver mening", "sensitivity", 0, 5),
+        ("MENING", "EMOTION", "Jeg mærker stærkt, hvad der er vigtigt for mig",
+         "Lige nu mærker jeg stærkt, hvad der er vigtigt", "sensitivity", 0, 6),
+        ("MENING", "INDRE", "Jeg får hurtigt retning, når jeg tænker over noget",
+         "Lige nu får jeg hurtigt retning, når jeg tænker over det", "sensitivity", 1, 7),
+        ("MENING", "KOGNITION", "Jeg kan holde meget pres ud, hvis meningen er klar",
+         "Lige nu kan jeg holde pres ud, fordi meningen er klar", "sensitivity", 1, 8),
 
-        # BESVÆR - 4 spørgsmål
-        ("BESVÆR", "BIOLOGI", "Små ting kan føles tunge, når jeg er træt", 0, 13),
-        ("BESVÆR", "EMOTION", "Jeg undgår ting, der føles som bøvl eller kompleksitet", 0, 14),
-        ("BESVÆR", "INDRE", "Jeg gør ting lettere ved at forstå processen", 1, 15),  # Omvendt
-        ("BESVÆR", "KOGNITION", "Jeg mister overblik i opgaver med mange små elementer", 0, 16),
+        # KAN - Sensitivitet
+        ("KAN", "BIOLOGI", "Jeg mærker energifald hurtigt i kroppen",
+         "Lige nu mærker jeg energifald hurtigt i kroppen", "sensitivity", 0, 9),
+        ("KAN", "EMOTION", "Jeg bliver let overvældet, hvis der er mange ting på én gang",
+         "Lige nu bliver jeg let overvældet af mange ting", "sensitivity", 0, 10),
+        ("KAN", "INDRE", "Jeg regulerer mig selv bedst ved at forstå, hvad jeg skal",
+         "Lige nu regulerer jeg mig bedst ved at forstå, hvad jeg skal", "sensitivity", 1, 11),
+        ("KAN", "KOGNITION", "Jeg kan tænke klart, selv når jeg er presset",
+         "Lige nu kan jeg tænke klart, selvom jeg er presset", "sensitivity", 1, 12),
+
+        # BESVÆR - Sensitivitet
+        ("BESVÆR", "BIOLOGI", "Små ting kan føles tunge, når jeg er træt",
+         "Lige nu føles små ting tunge", "sensitivity", 0, 13),
+        ("BESVÆR", "EMOTION", "Jeg undgår ting, der føles som bøvl eller kompleksitet",
+         "Lige nu undgår jeg ting, der føles bøvlede", "sensitivity", 0, 14),
+        ("BESVÆR", "INDRE", "Jeg gør ting lettere ved at forstå processen",
+         "Lige nu gør jeg ting lettere ved at forstå processen", "sensitivity", 1, 15),
+        ("BESVÆR", "KOGNITION", "Jeg mister overblik i opgaver med mange små elementer",
+         "Lige nu mister jeg overblik i denne opgave", "sensitivity", 0, 16),
+
+        # ================================================
+        # KAPACITETS-SPØRGSMÅL (8 nye)
+        # Måler "tage sig sammen"-mekanikken
+        # ================================================
+
+        # KAN - Kapacitet
+        ("KAN", "INDRE", "Jeg kan godt gennemføre noget, selvom jeg ikke har lyst",
+         "I denne situation kan jeg godt gøre det her, selvom jeg egentlig ikke har lyst", "capacity", 1, 17),
+        ("KAN", "KOGNITION", "Når jeg har besluttet mig for noget, får jeg det normalt gjort - også selvom det er kedeligt",
+         "Når jeg har besluttet mig for det her, kan jeg godt holde fast, også selvom det er kedeligt", "capacity", 1, 18),
+
+        # BESVÆR - Kapacitet
+        ("BESVÆR", "KOGNITION", "Jeg laver ofte ting færdige, selvom de føles besværlige eller meningsløse",
+         "Jeg kan godt færdiggøre det her, selvom det føles bøvlet", "capacity", 1, 19),
+        ("BESVÆR", "INDRE", "Jeg kan bære meget bøvl, hvis det er det, der skal til, for at tingene fungerer",
+         "Jeg kan godt bære det besvær, der følger med den her situation", "capacity", 1, 20),
+
+        # TRYGHED - Kapacitet (sårbarhed)
+        ("TRYGHED", "INDRE", "Jeg bliver meget ramt, hvis nogen stiller spørgsmålstegn ved mine intentioner",
+         "I denne situation bliver jeg ramt, hvis nogen udfordrer mine intentioner", "capacity", 0, 21),
+
+        # MENING - Kapacitet (sårbarhed)
+        ("MENING", "INDRE", "Jeg bliver stærkt påvirket, når nogen udfordrer min forståelse af, hvad der er rigtigt eller vigtigt",
+         "I denne situation bliver jeg påvirket, hvis min forståelse af hvad der er rigtigt udfordres", "capacity", 0, 22),
+
+        # ================================================
+        # BÅNDBREDDE-SPØRGSMÅL (2 nye)
+        # Måler evne til at løfte pres opad i systemet
+        # ================================================
+
+        ("TRYGHED", "EMOTION", "Når jeg bliver følelsesmæssigt presset, kan jeg normalt godt holde ud, indtil jeg har talt med nogen eller tænkt det igennem",
+         "I denne situation kan jeg holde ud følelsesmæssigt, indtil jeg får talt med nogen", "bandwidth", 1, 23),
+        ("MENING", "KOGNITION", "Når noget rammer mig hårdt, kan jeg efter noget tid tænke klart over det",
+         "I denne situation kan jeg tænke klart over det, selvom det rammer mig personligt", "bandwidth", 1, 24),
+
+        # ================================================
+        # SCREENING-SPØRGSMÅL (6 stk - korte, hurtige)
+        # Bruges til hurtig vurdering
+        # ================================================
+
+        ("TRYGHED", "GENERAL", "Jeg føler mig ofte urolig eller på vagt i hverdagen",
+         "Lige nu føler jeg mig urolig eller på vagt", "screening", 0, 101),
+        ("MENING", "GENERAL", "Det er tydeligt for mig, hvad der er vigtigt i mit liv",
+         "Lige nu er det tydeligt for mig, hvad der er vigtigt", "screening", 1, 102),
+        ("KAN", "GENERAL", "Jeg har generelt nemt ved at få gjort det, jeg skal",
+         "Lige nu har jeg nemt ved at få gjort det, jeg skal", "screening", 1, 103),
+        ("BESVÆR", "GENERAL", "Hverdagen føles ofte bøvlet og tung",
+         "Lige nu føles tingene bøvlede og tunge", "screening", 0, 104),
+        ("LAG", "BIOLOGI", "Når jeg bliver presset, mærker jeg det mest i kroppen",
+         "Lige nu mærker jeg presset mest i kroppen", "screening", 0, 105),
+        ("LAG", "INDRE", "Når jeg bliver presset, føler jeg mest, at jeg er forkert",
+         "Lige nu føler jeg mest, at jeg er forkert", "screening", 0, 106),
     ]
 
-    for field, layer, text, reverse, seq in questions:
+    for field, layer, text, state_text, q_type, reverse, seq in questions:
         conn.execute(
             """INSERT INTO profil_questions
-               (field, layer, text_da, reverse_scored, sequence)
-               VALUES (?, ?, ?, ?, ?)""",
-            (field, layer, text, reverse, seq)
+               (field, layer, text_da, state_text_da, question_type, reverse_scored, sequence)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (field, layer, text, state_text, q_type, reverse, seq)
         )
 
 
@@ -235,9 +334,12 @@ def get_all_questions() -> List[Dict]:
         return [dict(row) for row in rows]
 
 
-def get_questions_by_field() -> Dict[str, List[Dict]]:
+def get_questions_by_field(question_types: List[str] = None) -> Dict[str, List[Dict]]:
     """Hent spørgsmål grupperet efter felt"""
-    questions = get_all_questions()
+    if question_types is None:
+        question_types = ['sensitivity']  # Default: kun sensitivitet
+
+    questions = get_questions_by_type(question_types)
     grouped = {}
 
     for q in questions:
@@ -247,6 +349,29 @@ def get_questions_by_field() -> Dict[str, List[Dict]]:
         grouped[field].append(q)
 
     return grouped
+
+
+def get_questions_by_type(question_types: List[str]) -> List[Dict]:
+    """Hent spørgsmål filtreret på type(r)"""
+    with get_db() as conn:
+        placeholders = ','.join('?' * len(question_types))
+        rows = conn.execute(
+            f"""SELECT * FROM profil_questions
+               WHERE question_type IN ({placeholders})
+               ORDER BY sequence""",
+            question_types
+        ).fetchall()
+        return [dict(row) for row in rows]
+
+
+def get_profile_questions() -> List[Dict]:
+    """Hent alle spørgsmål til fuld profil (sensitivitet + kapacitet + båndbredde)"""
+    return get_questions_by_type(['sensitivity', 'capacity', 'bandwidth'])
+
+
+def get_screening_questions() -> List[Dict]:
+    """Hent screening-spørgsmål (6 korte)"""
+    return get_questions_by_type(['screening'])
 
 
 # ========================================
