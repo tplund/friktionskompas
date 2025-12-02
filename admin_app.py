@@ -33,7 +33,10 @@ from mailjet_integration import (
     get_template, save_template, list_templates, DEFAULT_TEMPLATES
 )
 from db_hierarchical import init_db
-from db_profil import init_profil_tables
+from db_profil import (
+    init_profil_tables, get_all_questions as get_profil_questions,
+    get_db as get_profil_db
+)
 
 # Initialize databases
 init_db()  # Main hierarchical database
@@ -1757,6 +1760,174 @@ def api_save_template():
         return jsonify({'success': False, 'error': 'Missing required fields'}), 400
 
     success = save_template(customer_id, template_type, subject, html_content, text_content)
+    return jsonify({'success': success})
+
+
+# ==========================================
+# PROFIL-SPØRGSMÅL ADMIN
+# ==========================================
+
+@app.route('/admin/profil-questions')
+@login_required
+def profil_questions_admin():
+    """Admin interface for profil-spørgsmål"""
+    if session['user']['role'] != 'admin':
+        flash('Kun administratorer har adgang til denne side', 'error')
+        return redirect('/admin')
+
+    questions = get_profil_questions()
+    import json
+    questions_json = json.dumps(questions)
+
+    # Get intro texts from settings
+    intro_texts = get_profil_intro_texts()
+
+    return render_template('admin/profil_questions.html',
+                         questions=questions,
+                         questions_json=questions_json,
+                         intro_texts=intro_texts)
+
+
+def get_profil_intro_texts():
+    """Hent intro/outro tekster fra database"""
+    try:
+        with get_profil_db() as conn:
+            # Tjek om settings tabel findes
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS profil_settings (
+                    key TEXT PRIMARY KEY,
+                    value TEXT,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            rows = conn.execute("SELECT key, value FROM profil_settings WHERE key LIKE '%intro' OR key LIKE '%outro'").fetchall()
+            return {row['key']: row['value'] for row in rows}
+    except:
+        return {}
+
+
+def save_profil_intro_texts(texts: dict):
+    """Gem intro/outro tekster"""
+    try:
+        with get_profil_db() as conn:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS profil_settings (
+                    key TEXT PRIMARY KEY,
+                    value TEXT,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            for key, value in texts.items():
+                conn.execute("""
+                    INSERT OR REPLACE INTO profil_settings (key, value, updated_at)
+                    VALUES (?, ?, CURRENT_TIMESTAMP)
+                """, (key, value))
+        return True
+    except Exception as e:
+        print(f"Error saving intro texts: {e}")
+        return False
+
+
+@app.route('/api/profil-questions', methods=['POST'])
+@login_required
+def api_create_profil_question():
+    """API: Opret nyt profil-spørgsmål"""
+    if session['user']['role'] != 'admin':
+        return jsonify({'success': False, 'error': 'Ikke autoriseret'}), 403
+
+    data = request.get_json()
+    if not data:
+        return jsonify({'success': False, 'error': 'Ingen data'}), 400
+
+    required = ['field', 'layer', 'text_da', 'sequence', 'question_type']
+    if not all(data.get(f) for f in required):
+        return jsonify({'success': False, 'error': 'Manglende felter'}), 400
+
+    try:
+        with get_profil_db() as conn:
+            conn.execute("""
+                INSERT INTO profil_questions
+                (field, layer, text_da, state_text_da, question_type, reverse_scored, sequence)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (
+                data['field'],
+                data['layer'],
+                data['text_da'],
+                data.get('state_text_da', ''),
+                data['question_type'],
+                data.get('reverse_scored', 0),
+                data['sequence']
+            ))
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/profil-questions/<int:question_id>', methods=['PUT'])
+@login_required
+def api_update_profil_question(question_id):
+    """API: Opdater profil-spørgsmål"""
+    if session['user']['role'] != 'admin':
+        return jsonify({'success': False, 'error': 'Ikke autoriseret'}), 403
+
+    data = request.get_json()
+    if not data:
+        return jsonify({'success': False, 'error': 'Ingen data'}), 400
+
+    try:
+        with get_profil_db() as conn:
+            conn.execute("""
+                UPDATE profil_questions SET
+                    field = ?,
+                    layer = ?,
+                    text_da = ?,
+                    state_text_da = ?,
+                    question_type = ?,
+                    reverse_scored = ?,
+                    sequence = ?
+                WHERE id = ?
+            """, (
+                data['field'],
+                data['layer'],
+                data['text_da'],
+                data.get('state_text_da', ''),
+                data['question_type'],
+                data.get('reverse_scored', 0),
+                data['sequence'],
+                question_id
+            ))
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/profil-questions/<int:question_id>', methods=['DELETE'])
+@login_required
+def api_delete_profil_question(question_id):
+    """API: Slet profil-spørgsmål"""
+    if session['user']['role'] != 'admin':
+        return jsonify({'success': False, 'error': 'Ikke autoriseret'}), 403
+
+    try:
+        with get_profil_db() as conn:
+            conn.execute("DELETE FROM profil_questions WHERE id = ?", (question_id,))
+        return jsonify({'success': True})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/profil-intro-texts', methods=['POST'])
+@login_required
+def api_save_profil_intro_texts():
+    """API: Gem intro/outro tekster"""
+    if session['user']['role'] != 'admin':
+        return jsonify({'success': False, 'error': 'Ikke autoriseret'}), 403
+
+    data = request.get_json()
+    if not data:
+        return jsonify({'success': False, 'error': 'Ingen data'}), 400
+
+    success = save_profil_intro_texts(data)
     return jsonify({'success': success})
 
 

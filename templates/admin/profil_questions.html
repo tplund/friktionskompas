@@ -1,0 +1,744 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Profil-spørgsmål{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+    }
+    .page-header h1 {
+        font-size: 24px;
+        color: #1f2937;
+        margin: 0;
+    }
+    .page-header p {
+        color: #6b7280;
+        margin: 5px 0 0 0;
+    }
+
+    /* Filters */
+    .filters {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+    }
+    .filter-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .filter-group label {
+        font-size: 14px;
+        color: #6b7280;
+    }
+    .filter-group select {
+        padding: 8px 12px;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        font-size: 14px;
+        background: white;
+    }
+
+    /* Questions table */
+    .questions-table {
+        width: 100%;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        overflow: hidden;
+    }
+    .questions-table table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .questions-table th {
+        background: #f9fafb;
+        padding: 12px 16px;
+        text-align: left;
+        font-size: 12px;
+        font-weight: 600;
+        color: #6b7280;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    .questions-table td {
+        padding: 12px 16px;
+        border-bottom: 1px solid #f3f4f6;
+        font-size: 14px;
+        vertical-align: top;
+    }
+    .questions-table tr:hover {
+        background: #f9fafb;
+    }
+    .questions-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    /* Type badges */
+    .type-badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+    .type-sensitivity { background: #dbeafe; color: #1e40af; }
+    .type-capacity { background: #fef3c7; color: #92400e; }
+    .type-bandwidth { background: #d1fae5; color: #065f46; }
+    .type-screening { background: #f3e8ff; color: #6b21a8; }
+
+    /* Field badges */
+    .field-badge {
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 500;
+    }
+    .field-TRYGHED { background: #fee2e2; color: #991b1b; }
+    .field-MENING { background: #fef3c7; color: #92400e; }
+    .field-KAN { background: #dbeafe; color: #1e40af; }
+    .field-BESVÆR { background: #f3e8ff; color: #6b21a8; }
+    .field-LAG { background: #e5e7eb; color: #374151; }
+
+    /* Layer badges */
+    .layer-badge {
+        display: inline-block;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-size: 10px;
+        background: #f3f4f6;
+        color: #6b7280;
+    }
+
+    /* Question text */
+    .question-text {
+        max-width: 400px;
+    }
+    .question-text .profile-text {
+        color: #1f2937;
+    }
+    .question-text .state-text {
+        color: #6b7280;
+        font-size: 12px;
+        margin-top: 4px;
+        font-style: italic;
+    }
+
+    /* Scoring indicator */
+    .scoring {
+        font-size: 12px;
+    }
+    .scoring.reverse {
+        color: #dc2626;
+    }
+    .scoring.normal {
+        color: #059669;
+    }
+
+    /* Actions */
+    .actions {
+        display: flex;
+        gap: 8px;
+    }
+    .btn-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 6px;
+        border: none;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+    }
+    .btn-edit {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+    .btn-edit:hover {
+        background: #bfdbfe;
+    }
+    .btn-delete {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+    .btn-delete:hover {
+        background: #fecaca;
+    }
+
+    /* Add button */
+    .btn-add {
+        background: #3b82f6;
+        color: white;
+        padding: 10px 20px;
+        border-radius: 8px;
+        border: none;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .btn-add:hover {
+        background: #2563eb;
+    }
+
+    /* Modal */
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+    .modal.active {
+        display: flex;
+    }
+    .modal-content {
+        background: white;
+        border-radius: 12px;
+        width: 90%;
+        max-width: 600px;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    .modal-header h2 {
+        font-size: 18px;
+        margin: 0;
+    }
+    .modal-close {
+        background: none;
+        border: none;
+        font-size: 24px;
+        cursor: pointer;
+        color: #6b7280;
+    }
+    .modal-body {
+        padding: 20px;
+    }
+    .modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        padding: 20px;
+        border-top: 1px solid #e5e7eb;
+    }
+
+    /* Form in modal */
+    .form-group {
+        margin-bottom: 20px;
+    }
+    .form-group label {
+        display: block;
+        font-size: 14px;
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 6px;
+    }
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        font-size: 14px;
+    }
+    .form-group textarea {
+        min-height: 80px;
+        resize: vertical;
+    }
+    .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+    }
+    .form-group .hint {
+        font-size: 12px;
+        color: #6b7280;
+        margin-top: 4px;
+    }
+
+    .btn {
+        padding: 10px 20px;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        border: none;
+    }
+    .btn-primary {
+        background: #3b82f6;
+        color: white;
+    }
+    .btn-primary:hover {
+        background: #2563eb;
+    }
+    .btn-secondary {
+        background: #f3f4f6;
+        color: #374151;
+    }
+    .btn-secondary:hover {
+        background: #e5e7eb;
+    }
+
+    /* Stats summary */
+    .stats-row {
+        display: flex;
+        gap: 20px;
+        margin-bottom: 20px;
+    }
+    .stat-card {
+        background: white;
+        padding: 15px 20px;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .stat-card .label {
+        font-size: 12px;
+        color: #6b7280;
+        text-transform: uppercase;
+    }
+    .stat-card .value {
+        font-size: 24px;
+        font-weight: 700;
+        color: #1f2937;
+    }
+
+    /* Intro/Outro section */
+    .intro-section {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    .intro-section h3 {
+        font-size: 16px;
+        margin: 0 0 15px 0;
+        color: #1f2937;
+    }
+    .intro-tabs {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 15px;
+    }
+    .intro-tab {
+        padding: 8px 16px;
+        border: none;
+        background: #f3f4f6;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 13px;
+    }
+    .intro-tab.active {
+        background: #3b82f6;
+        color: white;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Profil-spørgsmål</h1>
+        <p>Administrer spørgsmål til friktionsprofilen</p>
+    </div>
+    <button class="btn-add" onclick="openAddModal()">
+        + Tilføj spørgsmål
+    </button>
+</div>
+
+<!-- Stats -->
+<div class="stats-row">
+    <div class="stat-card">
+        <div class="label">Total</div>
+        <div class="value">{{ questions|length }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="label">Sensitivitet</div>
+        <div class="value">{{ questions|selectattr('question_type', 'equalto', 'sensitivity')|list|length }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="label">Kapacitet</div>
+        <div class="value">{{ questions|selectattr('question_type', 'equalto', 'capacity')|list|length }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="label">Båndbredde</div>
+        <div class="value">{{ questions|selectattr('question_type', 'equalto', 'bandwidth')|list|length }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="label">Screening</div>
+        <div class="value">{{ questions|selectattr('question_type', 'equalto', 'screening')|list|length }}</div>
+    </div>
+</div>
+
+<!-- Intro/Outro texts -->
+<div class="intro-section">
+    <h3>Introduktionstekster</h3>
+    <div class="intro-tabs">
+        <button class="intro-tab active" data-type="profile">Profil-version</button>
+        <button class="intro-tab" data-type="situation">Situations-version</button>
+        <button class="intro-tab" data-type="screening">Screening</button>
+    </div>
+    <div id="introTextContainer">
+        <div class="form-group">
+            <label>Introduktion</label>
+            <textarea id="introText" placeholder="Introduktionstekst...">{{ intro_texts.get('profile_intro', '') }}</textarea>
+        </div>
+        <div class="form-group">
+            <label>Afslutning</label>
+            <textarea id="outroText" placeholder="Afslutningstekst...">{{ intro_texts.get('profile_outro', '') }}</textarea>
+        </div>
+        <button class="btn btn-primary" onclick="saveIntroTexts()">Gem tekster</button>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="filters">
+    <div class="filter-group">
+        <label>Type:</label>
+        <select id="filterType" onchange="filterQuestions()">
+            <option value="">Alle</option>
+            <option value="sensitivity">Sensitivitet</option>
+            <option value="capacity">Kapacitet</option>
+            <option value="bandwidth">Båndbredde</option>
+            <option value="screening">Screening</option>
+        </select>
+    </div>
+    <div class="filter-group">
+        <label>Felt:</label>
+        <select id="filterField" onchange="filterQuestions()">
+            <option value="">Alle</option>
+            <option value="TRYGHED">Tryghed</option>
+            <option value="MENING">Mening</option>
+            <option value="KAN">Kan</option>
+            <option value="BESVÆR">Besvær</option>
+            <option value="LAG">Lag</option>
+        </select>
+    </div>
+    <div class="filter-group">
+        <label>Lag:</label>
+        <select id="filterLayer" onchange="filterQuestions()">
+            <option value="">Alle</option>
+            <option value="BIOLOGI">Biologi</option>
+            <option value="EMOTION">Emotion</option>
+            <option value="INDRE">Indre</option>
+            <option value="KOGNITION">Kognition</option>
+            <option value="GENERAL">General</option>
+        </select>
+    </div>
+</div>
+
+<!-- Questions table -->
+<div class="questions-table">
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 50px;">#</th>
+                <th style="width: 100px;">Type</th>
+                <th style="width: 90px;">Felt</th>
+                <th style="width: 80px;">Lag</th>
+                <th>Spørgsmål</th>
+                <th style="width: 70px;">Score</th>
+                <th style="width: 100px;">Handlinger</th>
+            </tr>
+        </thead>
+        <tbody id="questionsBody">
+            {% for q in questions %}
+            <tr data-id="{{ q.id }}" data-type="{{ q.question_type }}" data-field="{{ q.field }}" data-layer="{{ q.layer }}">
+                <td>{{ q.sequence }}</td>
+                <td>
+                    <span class="type-badge type-{{ q.question_type }}">{{ q.question_type }}</span>
+                </td>
+                <td>
+                    <span class="field-badge field-{{ q.field }}">{{ q.field }}</span>
+                </td>
+                <td>
+                    <span class="layer-badge">{{ q.layer }}</span>
+                </td>
+                <td class="question-text">
+                    <div class="profile-text">{{ q.text_da }}</div>
+                    {% if q.state_text_da %}
+                    <div class="state-text">{{ q.state_text_da }}</div>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if q.reverse_scored %}
+                    <span class="scoring reverse">Omvendt</span>
+                    {% else %}
+                    <span class="scoring normal">Normal</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <div class="actions">
+                        <button class="btn-icon btn-edit" onclick="editQuestion({{ q.id }})" title="Rediger">
+                            ✏️
+                        </button>
+                        <button class="btn-icon btn-delete" onclick="deleteQuestion({{ q.id }})" title="Slet">
+                            🗑️
+                        </button>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Edit/Add Modal -->
+<div class="modal" id="questionModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modalTitle">Tilføj spørgsmål</h2>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="questionForm">
+                <input type="hidden" id="questionId" name="id">
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Type</label>
+                        <select id="questionType" name="question_type" required>
+                            <option value="sensitivity">Sensitivitet</option>
+                            <option value="capacity">Kapacitet</option>
+                            <option value="bandwidth">Båndbredde</option>
+                            <option value="screening">Screening</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Sequence</label>
+                        <input type="number" id="questionSequence" name="sequence" required min="1">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Felt</label>
+                        <select id="questionField" name="field" required>
+                            <option value="TRYGHED">Tryghed</option>
+                            <option value="MENING">Mening</option>
+                            <option value="KAN">Kan</option>
+                            <option value="BESVÆR">Besvær</option>
+                            <option value="LAG">Lag</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Lag</label>
+                        <select id="questionLayer" name="layer" required>
+                            <option value="BIOLOGI">Biologi</option>
+                            <option value="EMOTION">Emotion</option>
+                            <option value="INDRE">Indre</option>
+                            <option value="KOGNITION">Kognition</option>
+                            <option value="GENERAL">General</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Profil-tekst (standard)</label>
+                    <textarea id="questionText" name="text_da" required placeholder="F.eks. Jeg reagerer hurtigt fysisk, når noget virker uforudsigeligt"></textarea>
+                    <p class="hint">Bruges i profil-version ("sådan er jeg typisk")</p>
+                </div>
+
+                <div class="form-group">
+                    <label>Situations-tekst</label>
+                    <textarea id="questionStateText" name="state_text_da" placeholder="F.eks. Lige nu reagerer min krop hurtigt, når noget er uforudsigeligt"></textarea>
+                    <p class="hint">Bruges i situations-version ("lige nu, i denne situation")</p>
+                </div>
+
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="questionReverse" name="reverse_scored">
+                        Omvendt scoring
+                    </label>
+                    <p class="hint">Høj score = lav friktion (bruges til positive formuleringer)</p>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal()">Annuller</button>
+            <button class="btn btn-primary" onclick="saveQuestion()">Gem</button>
+        </div>
+    </div>
+</div>
+
+<script>
+// Store questions data
+const questionsData = {{ questions_json|safe }};
+
+// Filter questions
+function filterQuestions() {
+    const type = document.getElementById('filterType').value;
+    const field = document.getElementById('filterField').value;
+    const layer = document.getElementById('filterLayer').value;
+
+    document.querySelectorAll('#questionsBody tr').forEach(row => {
+        const matchType = !type || row.dataset.type === type;
+        const matchField = !field || row.dataset.field === field;
+        const matchLayer = !layer || row.dataset.layer === layer;
+        row.style.display = (matchType && matchField && matchLayer) ? '' : 'none';
+    });
+}
+
+// Modal functions
+function openAddModal() {
+    document.getElementById('modalTitle').textContent = 'Tilføj spørgsmål';
+    document.getElementById('questionForm').reset();
+    document.getElementById('questionId').value = '';
+    // Set next sequence number
+    const maxSeq = Math.max(...questionsData.map(q => q.sequence || 0), 0);
+    document.getElementById('questionSequence').value = maxSeq + 1;
+    document.getElementById('questionModal').classList.add('active');
+}
+
+function editQuestion(id) {
+    const question = questionsData.find(q => q.id === id);
+    if (!question) return;
+
+    document.getElementById('modalTitle').textContent = 'Rediger spørgsmål';
+    document.getElementById('questionId').value = question.id;
+    document.getElementById('questionType').value = question.question_type || 'sensitivity';
+    document.getElementById('questionSequence').value = question.sequence;
+    document.getElementById('questionField').value = question.field;
+    document.getElementById('questionLayer').value = question.layer;
+    document.getElementById('questionText').value = question.text_da;
+    document.getElementById('questionStateText').value = question.state_text_da || '';
+    document.getElementById('questionReverse').checked = question.reverse_scored === 1;
+
+    document.getElementById('questionModal').classList.add('active');
+}
+
+function closeModal() {
+    document.getElementById('questionModal').classList.remove('active');
+}
+
+function saveQuestion() {
+    const id = document.getElementById('questionId').value;
+    const data = {
+        question_type: document.getElementById('questionType').value,
+        sequence: parseInt(document.getElementById('questionSequence').value),
+        field: document.getElementById('questionField').value,
+        layer: document.getElementById('questionLayer').value,
+        text_da: document.getElementById('questionText').value,
+        state_text_da: document.getElementById('questionStateText').value,
+        reverse_scored: document.getElementById('questionReverse').checked ? 1 : 0
+    };
+
+    const url = id ? `/api/profil-questions/${id}` : '/api/profil-questions';
+    const method = id ? 'PUT' : 'POST';
+
+    fetch(url, {
+        method: method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    })
+    .then(r => r.json())
+    .then(result => {
+        if (result.success) {
+            location.reload();
+        } else {
+            alert('Fejl: ' + (result.error || 'Ukendt fejl'));
+        }
+    });
+}
+
+function deleteQuestion(id) {
+    if (!confirm('Er du sikker på at du vil slette dette spørgsmål?')) return;
+
+    fetch(`/api/profil-questions/${id}`, { method: 'DELETE' })
+    .then(r => r.json())
+    .then(result => {
+        if (result.success) {
+            location.reload();
+        } else {
+            alert('Fejl: ' + (result.error || 'Ukendt fejl'));
+        }
+    });
+}
+
+// Intro texts
+const introTexts = {
+    profile: { intro: '{{ intro_texts.get("profile_intro", "")|e }}', outro: '{{ intro_texts.get("profile_outro", "")|e }}' },
+    situation: { intro: '{{ intro_texts.get("situation_intro", "")|e }}', outro: '{{ intro_texts.get("situation_outro", "")|e }}' },
+    screening: { intro: '{{ intro_texts.get("screening_intro", "")|e }}', outro: '{{ intro_texts.get("screening_outro", "")|e }}' }
+};
+let currentIntroType = 'profile';
+
+document.querySelectorAll('.intro-tab').forEach(tab => {
+    tab.addEventListener('click', function() {
+        // Save current
+        introTexts[currentIntroType].intro = document.getElementById('introText').value;
+        introTexts[currentIntroType].outro = document.getElementById('outroText').value;
+
+        // Switch tab
+        document.querySelectorAll('.intro-tab').forEach(t => t.classList.remove('active'));
+        this.classList.add('active');
+        currentIntroType = this.dataset.type;
+
+        // Load new
+        document.getElementById('introText').value = introTexts[currentIntroType].intro;
+        document.getElementById('outroText').value = introTexts[currentIntroType].outro;
+    });
+});
+
+function saveIntroTexts() {
+    // Save current tab first
+    introTexts[currentIntroType].intro = document.getElementById('introText').value;
+    introTexts[currentIntroType].outro = document.getElementById('outroText').value;
+
+    fetch('/api/profil-intro-texts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            profile_intro: introTexts.profile.intro,
+            profile_outro: introTexts.profile.outro,
+            situation_intro: introTexts.situation.intro,
+            situation_outro: introTexts.situation.outro,
+            screening_intro: introTexts.screening.intro,
+            screening_outro: introTexts.screening.outro
+        })
+    })
+    .then(r => r.json())
+    .then(result => {
+        if (result.success) {
+            alert('Tekster gemt!');
+        } else {
+            alert('Fejl: ' + (result.error || 'Ukendt fejl'));
+        }
+    });
+}
+
+// Close modal on escape key
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeModal();
+});
+
+// Close modal on backdrop click
+document.getElementById('questionModal').addEventListener('click', e => {
+    if (e.target === document.getElementById('questionModal')) closeModal();
+});
+</script>
+{% endblock %}
