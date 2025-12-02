@@ -86,11 +86,18 @@ def seed_campaign_with_responses(customer_id, unit_path="Demo Virksomhed"):
     print(f"Opretter kampagne for {unit_path}...")
 
     with get_db() as conn:
-        # Find unit
+        # Find unit - prøv først med customer_id, ellers uden
         unit = conn.execute(
             "SELECT id FROM organizational_units WHERE full_path = ? AND customer_id = ?",
             (unit_path, customer_id)
         ).fetchone()
+
+        if not unit:
+            # Prøv uden customer_id filter (for eksisterende data)
+            unit = conn.execute(
+                "SELECT id FROM organizational_units WHERE full_path = ?",
+                (unit_path,)
+            ).fetchone()
 
         if not unit:
             print(f"  Unit ikke fundet: {unit_path}")
