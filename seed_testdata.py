@@ -110,8 +110,8 @@ def seed_campaign_with_responses(customer_id, unit_path="Demo Virksomhed"):
         campaign_name = f"Test Kampagne {datetime.now().strftime('%d/%m')}"
 
         conn.execute("""
-            INSERT INTO campaigns (id, name, unit_id, status, created_at)
-            VALUES (?, ?, ?, 'active', CURRENT_TIMESTAMP)
+            INSERT INTO campaigns (id, name, target_unit_id, created_at)
+            VALUES (?, ?, ?, CURRENT_TIMESTAMP)
         """, (campaign_id, campaign_name, unit_id))
 
         print(f"  Oprettet kampagne: {campaign_name}")
