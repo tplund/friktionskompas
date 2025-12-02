@@ -1931,5 +1931,82 @@ def api_save_profil_intro_texts():
     return jsonify({'success': success})
 
 
+@app.route('/admin/seed-testdata', methods=['POST'])
+@login_required
+def seed_testdata():
+    """Kør seed script for at generere testdata"""
+    if session['user']['role'] != 'admin':
+        flash('Kun administratorer kan køre seed', 'error')
+        return redirect('/admin')
+
+    try:
+        import seed_testdata
+        seed_testdata.main()
+        flash('Testdata genereret!', 'success')
+    except Exception as e:
+        flash(f'Fejl ved seed: {str(e)}', 'error')
+
+    return redirect('/admin')
+
+
+@app.route('/admin/seed-testdata')
+@login_required
+def seed_testdata_page():
+    """Vis seed-side"""
+    if session['user']['role'] != 'admin':
+        flash('Kun administratorer har adgang', 'error')
+        return redirect('/admin')
+
+    # Tjek nuværende data
+    with get_db() as conn:
+        stats = {
+            'customers': conn.execute("SELECT COUNT(*) FROM customers").fetchone()[0],
+            'users': conn.execute("SELECT COUNT(*) FROM users").fetchone()[0],
+            'units': conn.execute("SELECT COUNT(*) FROM organizational_units").fetchone()[0],
+            'campaigns': conn.execute("SELECT COUNT(*) FROM campaigns").fetchone()[0],
+            'responses': conn.execute("SELECT COUNT(*) FROM responses").fetchone()[0],
+        }
+
+    return f'''
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Seed Testdata</title>
+        <style>
+            body {{ font-family: -apple-system, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }}
+            .stats {{ background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0; }}
+            .stats p {{ margin: 5px 0; }}
+            .btn {{ background: #3b82f6; color: white; padding: 12px 24px; border: none; border-radius: 6px; font-size: 16px; cursor: pointer; }}
+            .btn:hover {{ background: #2563eb; }}
+            .warning {{ background: #fef3c7; padding: 15px; border-radius: 8px; margin: 20px 0; }}
+        </style>
+    </head>
+    <body>
+        <h1>Seed Testdata</h1>
+        <p>Dette vil generere testdata til systemet.</p>
+
+        <div class="stats">
+            <h3>Nuværende data:</h3>
+            <p>Kunder: {stats['customers']}</p>
+            <p>Brugere: {stats['users']}</p>
+            <p>Organisationer: {stats['units']}</p>
+            <p>Kampagner: {stats['campaigns']}</p>
+            <p>Responses: {stats['responses']}</p>
+        </div>
+
+        <div class="warning">
+            <strong>Bemærk:</strong> Dette tilføjer data - det sletter ikke eksisterende data.
+        </div>
+
+        <form method="POST">
+            <button type="submit" class="btn">Kør Seed Script</button>
+        </form>
+
+        <p style="margin-top: 20px;"><a href="/admin">← Tilbage til admin</a></p>
+    </body>
+    </html>
+    '''
+
+
 if __name__ == '__main__':
     app.run(debug=True, port=5001)
