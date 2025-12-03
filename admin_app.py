@@ -2086,6 +2086,27 @@ def seed_testdata_page():
     '''
 
 
+@app.route('/admin/db-debug')
+def db_debug():
+    """Offentlig debug endpoint - FJERN EFTER BRUG"""
+    from db_hierarchical import DB_PATH
+    with get_db() as conn:
+        count = conn.execute("SELECT COUNT(*) FROM organizational_units").fetchone()[0]
+        toplevel = conn.execute("SELECT id, name FROM organizational_units WHERE parent_id IS NULL LIMIT 10").fetchall()
+        names = [(t['id'], t['name']) for t in toplevel]
+        campaigns = conn.execute("SELECT COUNT(*) FROM campaigns").fetchone()[0]
+        responses = conn.execute("SELECT COUNT(*) FROM responses").fetchone()[0]
+    return f"""
+    <h2>Database Debug</h2>
+    <p><strong>DB_PATH:</strong> {DB_PATH}</p>
+    <p><strong>Units:</strong> {count}</p>
+    <p><strong>Campaigns:</strong> {campaigns}</p>
+    <p><strong>Responses:</strong> {responses}</p>
+    <p><strong>Toplevel units:</strong></p>
+    <ul>{''.join(f'<li>{n[0]}: {n[1]}</li>' for n in names)}</ul>
+    """
+
+
 @app.route('/admin/cleanup-empty')
 @login_required
 def cleanup_empty_units():
