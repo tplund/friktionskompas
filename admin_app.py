@@ -2141,80 +2141,110 @@ def full_reset():
     """Komplet database reset - slet ALLE tabeller og genimporter"""
     import json
     import os
+    import traceback
     from db_hierarchical import DB_PATH
 
     json_path = os.path.join(os.path.dirname(__file__), 'local_data_export.json')
     if not os.path.exists(json_path):
-        return f'FEJL: local_data_export.json ikke fundet'
+        return f'FEJL: local_data_export.json ikke fundet. Path: {json_path}'
 
-    with open(json_path, 'r', encoding='utf-8') as f:
-        data = json.load(f)
+    try:
+        with open(json_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+    except Exception as e:
+        return f'FEJL ved læsning af JSON: {str(e)}'
 
     results = []
 
-    with get_db() as conn:
-        # Tæl før
-        before_units = conn.execute("SELECT COUNT(*) FROM organizational_units").fetchone()[0]
-        before_customers = conn.execute("SELECT COUNT(*) FROM customers").fetchone()[0]
-        results.append(f"Før: {before_units} units, {before_customers} customers")
+    try:
+        with get_db() as conn:
+            # Tæl før
+            before_units = conn.execute("SELECT COUNT(*) FROM organizational_units").fetchone()[0]
+            before_customers = conn.execute("SELECT COUNT(*) FROM customers").fetchone()[0]
+            results.append(f"Før: {before_units} units, {before_customers} customers")
 
-        # SLET ALT
-        conn.execute("DELETE FROM responses")
-        conn.execute("DELETE FROM campaigns")
-        conn.execute("DELETE FROM organizational_units")
-        conn.execute("DELETE FROM customers")
-        conn.execute("DELETE FROM users")
-        conn.commit()
-        results.append("Slettet alt fra: responses, campaigns, organizational_units, customers, users")
+            # SLET ALT - ignorer fejl hvis tabeller ikke eksisterer
+            for table in ['responses', 'campaigns', 'organizational_units', 'customers', 'users']:
+                try:
+                    conn.execute(f"DELETE FROM {table}")
+                except Exception as e:
+                    results.append(f"Kunne ikke slette {table}: {e}")
+            conn.commit()
+            results.append("Slettet data fra tabeller")
 
-        # Opret standard customers
-        conn.execute("INSERT INTO customers (id, name) VALUES ('cust-herning', 'Herning Kommune')")
-        conn.execute("INSERT INTO customers (id, name) VALUES ('cust-odder', 'Odder Kommune')")
-        results.append("Oprettet customers: Herning Kommune, Odder Kommune")
+            # Opret standard customers
+            try:
+                conn.execute("INSERT INTO customers (id, name) VALUES ('cust-herning', 'Herning Kommune')")
+                conn.execute("INSERT INTO customers (id, name) VALUES ('cust-odder', 'Odder Kommune')")
+                results.append("Oprettet customers: Herning Kommune, Odder Kommune")
+            except Exception as e:
+                results.append(f"Fejl ved customers: {e}")
 
-        # Opret admin user
-        conn.execute("""
-            INSERT INTO users (id, email, password_hash, role, customer_id, name)
-            VALUES ('admin-1', 'admin@example.com', 'admin123', 'admin', NULL, 'Administrator')
-        """)
-        results.append("Oprettet admin bruger")
+            # Opret admin user
+            try:
+                conn.execute("""
+                    INSERT INTO users (id, email, password_hash, role, customer_id, name)
+                    VALUES ('admin-1', 'admin@example.com', 'admin123', 'admin', NULL, 'Administrator')
+                """)
+                results.append("Oprettet admin bruger")
+            except Exception as e:
+                results.append(f"Fejl ved admin user: {e}")
 
-        # Importer units med customer_id
-        for unit in data.get('organizational_units', []):
-            conn.execute('''
-                INSERT INTO organizational_units (id, name, full_path, parent_id, level, leader_name, leader_email, employee_count, sick_leave_percent, customer_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (unit['id'], unit['name'], unit.get('full_path'), unit.get('parent_id'),
-                  unit.get('level', 0), unit.get('leader_name'), unit.get('leader_email'),
-                  unit.get('employee_count', 0), unit.get('sick_leave_percent', 0),
-                  'cust-herning'))  # Alle units til Herning
-        results.append(f"Importeret {len(data.get('organizational_units', []))} units")
+            # Importer units med customer_id
+            unit_count = 0
+            for unit in data.get('organizational_units', []):
+                try:
+                    conn.execute('''
+                        INSERT INTO organizational_units (id, name, full_path, parent_id, level, leader_name, leader_email, employee_count, sick_leave_percent, customer_id)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ''', (unit['id'], unit['name'], unit.get('full_path'), unit.get('parent_id'),
+                          unit.get('level', 0), unit.get('leader_name'), unit.get('leader_email'),
+                          unit.get('employee_count', 0), unit.get('sick_leave_percent', 0),
+                          'cust-herning'))
+                    unit_count += 1
+                except Exception as e:
+                    results.append(f"Fejl unit {unit.get('name')}: {e}")
+            results.append(f"Importeret {unit_count} units")
 
-        # Importer campaigns
-        for camp in data.get('campaigns', []):
-            conn.execute('''
-                INSERT INTO campaigns (id, name, target_unit_id, period, created_at)
-                VALUES (?, ?, ?, ?, ?)
-            ''', (camp['id'], camp['name'], camp['target_unit_id'], camp.get('period'), camp.get('created_at')))
-        results.append(f"Importeret {len(data.get('campaigns', []))} campaigns")
+            # Importer campaigns
+            camp_count = 0
+            for camp in data.get('campaigns', []):
+                try:
+                    conn.execute('''
+                        INSERT INTO campaigns (id, name, target_unit_id, period, created_at)
+                        VALUES (?, ?, ?, ?, ?)
+                    ''', (camp['id'], camp['name'], camp['target_unit_id'], camp.get('period'), camp.get('created_at')))
+                    camp_count += 1
+                except Exception as e:
+                    results.append(f"Fejl campaign {camp.get('name')}: {e}")
+            results.append(f"Importeret {camp_count} campaigns")
 
-        # Importer responses
-        for resp in data.get('responses', []):
-            conn.execute('''
-                INSERT INTO responses (campaign_id, unit_id, question_id, score, respondent_type, created_at)
-                VALUES (?, ?, ?, ?, ?, ?)
-            ''', (resp['campaign_id'], resp['unit_id'], resp['question_id'],
-                  resp['score'], resp.get('respondent_type'), resp.get('created_at')))
-        results.append(f"Importeret {len(data.get('responses', []))} responses")
+            # Importer responses
+            resp_count = 0
+            for resp in data.get('responses', []):
+                try:
+                    conn.execute('''
+                        INSERT INTO responses (campaign_id, unit_id, question_id, score, respondent_type, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                    ''', (resp['campaign_id'], resp['unit_id'], resp['question_id'],
+                          resp['score'], resp.get('respondent_type'), resp.get('created_at')))
+                    resp_count += 1
+                except Exception as e:
+                    if resp_count == 0:  # Kun vis første fejl
+                        results.append(f"Fejl response: {e}")
+            results.append(f"Importeret {resp_count} responses")
 
-        conn.commit()
+            conn.commit()
 
-        # Verificer
-        after_units = conn.execute("SELECT COUNT(*) FROM organizational_units").fetchone()[0]
-        after_customers = conn.execute("SELECT COUNT(*) FROM customers").fetchone()[0]
-        toplevel = conn.execute("SELECT name FROM organizational_units WHERE parent_id IS NULL").fetchall()
-        results.append(f"Efter: {after_units} units, {after_customers} customers")
-        results.append(f"Toplevel: {[t['name'] for t in toplevel]}")
+            # Verificer
+            after_units = conn.execute("SELECT COUNT(*) FROM organizational_units").fetchone()[0]
+            after_customers = conn.execute("SELECT COUNT(*) FROM customers").fetchone()[0]
+            toplevel = conn.execute("SELECT name FROM organizational_units WHERE parent_id IS NULL").fetchall()
+            results.append(f"Efter: {after_units} units, {after_customers} customers")
+            results.append(f"Toplevel: {[t['name'] for t in toplevel]}")
+
+    except Exception as e:
+        return f"<h1>FEJL</h1><pre>{traceback.format_exc()}</pre>"
 
     return f"""
     <h1>Database Reset Udført</h1>
