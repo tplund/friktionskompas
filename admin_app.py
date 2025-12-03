@@ -2074,6 +2074,156 @@ def seed_testdata_page():
     '''
 
 
+@app.route('/admin/db-status')
+def db_status():
+    """Fuld database status - offentlig debug"""
+    from db_hierarchical import DB_PATH
+    import os
+
+    info = {
+        'db_path': DB_PATH,
+        'db_exists': os.path.exists(DB_PATH),
+        'db_size': os.path.getsize(DB_PATH) if os.path.exists(DB_PATH) else 0
+    }
+
+    with get_db() as conn:
+        # Alle units
+        all_units = conn.execute("SELECT id, name, parent_id, full_path FROM organizational_units ORDER BY full_path").fetchall()
+
+        # Alle customers
+        customers = conn.execute("SELECT id, name FROM customers").fetchall()
+
+        # Campaigns
+        campaigns = conn.execute("SELECT id, name, target_unit_id FROM campaigns").fetchall()
+
+        # Response count
+        resp_count = conn.execute("SELECT COUNT(*) FROM responses").fetchone()[0]
+
+    html = f"""
+    <html><head><style>
+        body {{ font-family: monospace; padding: 20px; }}
+        table {{ border-collapse: collapse; margin: 10px 0; }}
+        td, th {{ border: 1px solid #ccc; padding: 5px 10px; text-align: left; }}
+        th {{ background: #f0f0f0; }}
+        h2 {{ margin-top: 20px; }}
+    </style></head><body>
+    <h1>Database Status</h1>
+    <p><b>Path:</b> {info['db_path']}</p>
+    <p><b>Exists:</b> {info['db_exists']}</p>
+    <p><b>Size:</b> {info['db_size']} bytes</p>
+
+    <h2>Customers ({len(customers)})</h2>
+    <table><tr><th>ID</th><th>Name</th></tr>
+    {''.join(f"<tr><td>{c['id']}</td><td>{c['name']}</td></tr>" for c in customers)}
+    </table>
+
+    <h2>Units ({len(all_units)})</h2>
+    <table><tr><th>ID</th><th>Name</th><th>Parent</th><th>Path</th></tr>
+    {''.join(f"<tr><td>{u['id'][:12]}...</td><td>{u['name']}</td><td>{(u['parent_id'] or '-')[:12]}</td><td>{u['full_path']}</td></tr>" for u in all_units)}
+    </table>
+
+    <h2>Campaigns ({len(campaigns)})</h2>
+    <table><tr><th>ID</th><th>Name</th><th>Target</th></tr>
+    {''.join(f"<tr><td>{c['id']}</td><td>{c['name']}</td><td>{c['target_unit_id'][:12]}...</td></tr>" for c in campaigns)}
+    </table>
+
+    <p><b>Responses:</b> {resp_count}</p>
+
+    <h2>Actions</h2>
+    <p><a href="/admin/full-reset">FULD RESET - Slet alt og genimporter</a></p>
+    </body></html>
+    """
+    return html
+
+
+@app.route('/admin/full-reset')
+def full_reset():
+    """Komplet database reset - slet ALLE tabeller og genimporter"""
+    import json
+    import os
+    from db_hierarchical import DB_PATH
+
+    json_path = os.path.join(os.path.dirname(__file__), 'local_data_export.json')
+    if not os.path.exists(json_path):
+        return f'FEJL: local_data_export.json ikke fundet'
+
+    with open(json_path, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+
+    results = []
+
+    with get_db() as conn:
+        # Tæl før
+        before_units = conn.execute("SELECT COUNT(*) FROM organizational_units").fetchone()[0]
+        before_customers = conn.execute("SELECT COUNT(*) FROM customers").fetchone()[0]
+        results.append(f"Før: {before_units} units, {before_customers} customers")
+
+        # SLET ALT
+        conn.execute("DELETE FROM responses")
+        conn.execute("DELETE FROM campaigns")
+        conn.execute("DELETE FROM organizational_units")
+        conn.execute("DELETE FROM customers")
+        conn.execute("DELETE FROM users")
+        conn.commit()
+        results.append("Slettet alt fra: responses, campaigns, organizational_units, customers, users")
+
+        # Opret standard customers
+        conn.execute("INSERT INTO customers (id, name) VALUES ('cust-herning', 'Herning Kommune')")
+        conn.execute("INSERT INTO customers (id, name) VALUES ('cust-odder', 'Odder Kommune')")
+        results.append("Oprettet customers: Herning Kommune, Odder Kommune")
+
+        # Opret admin user
+        conn.execute("""
+            INSERT INTO users (id, email, password_hash, role, customer_id, name)
+            VALUES ('admin-1', 'admin@example.com', 'admin123', 'admin', NULL, 'Administrator')
+        """)
+        results.append("Oprettet admin bruger")
+
+        # Importer units med customer_id
+        for unit in data.get('organizational_units', []):
+            conn.execute('''
+                INSERT INTO organizational_units (id, name, full_path, parent_id, level, leader_name, leader_email, employee_count, sick_leave_percent, customer_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (unit['id'], unit['name'], unit.get('full_path'), unit.get('parent_id'),
+                  unit.get('level', 0), unit.get('leader_name'), unit.get('leader_email'),
+                  unit.get('employee_count', 0), unit.get('sick_leave_percent', 0),
+                  'cust-herning'))  # Alle units til Herning
+        results.append(f"Importeret {len(data.get('organizational_units', []))} units")
+
+        # Importer campaigns
+        for camp in data.get('campaigns', []):
+            conn.execute('''
+                INSERT INTO campaigns (id, name, target_unit_id, period, created_at)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (camp['id'], camp['name'], camp['target_unit_id'], camp.get('period'), camp.get('created_at')))
+        results.append(f"Importeret {len(data.get('campaigns', []))} campaigns")
+
+        # Importer responses
+        for resp in data.get('responses', []):
+            conn.execute('''
+                INSERT INTO responses (campaign_id, unit_id, question_id, score, respondent_type, created_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (resp['campaign_id'], resp['unit_id'], resp['question_id'],
+                  resp['score'], resp.get('respondent_type'), resp.get('created_at')))
+        results.append(f"Importeret {len(data.get('responses', []))} responses")
+
+        conn.commit()
+
+        # Verificer
+        after_units = conn.execute("SELECT COUNT(*) FROM organizational_units").fetchone()[0]
+        after_customers = conn.execute("SELECT COUNT(*) FROM customers").fetchone()[0]
+        toplevel = conn.execute("SELECT name FROM organizational_units WHERE parent_id IS NULL").fetchall()
+        results.append(f"Efter: {after_units} units, {after_customers} customers")
+        results.append(f"Toplevel: {[t['name'] for t in toplevel]}")
+
+    return f"""
+    <h1>Database Reset Udført</h1>
+    <ul>{''.join(f'<li>{r}</li>' for r in results)}</ul>
+    <p><a href="/admin/db-status">Se database status</a></p>
+    <p><a href="/admin">Gå til admin</a></p>
+    """
+
+
 @app.route('/admin/cleanup-empty')
 @login_required
 def cleanup_empty_units():
