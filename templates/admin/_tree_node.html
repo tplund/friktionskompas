@@ -1,35 +1,32 @@
 {% macro render_tree_node(unit, units) %}
-<div class="tree-node level-{{ unit.level }}" data-unit-id="{{ unit.id }}" data-parent-id="{{ unit.parent_id or '' }}" data-level="{{ unit.level }}" data-child-count="{{ unit.child_count }}" data-name="{{ unit.name }}">
+{% set level = (unit.full_path.split('//')|length - 1) if unit.full_path else 0 %}
+<div class="tree-node level-{{ level }}" data-unit-id="{{ unit.id }}" data-parent-id="{{ unit.parent_id or '' }}" data-level="{{ level }}" data-child-count="{{ unit.child_count or 0 }}" data-name="{{ unit.name }}">
     <div class="tree-node-header">
         <div style="display: flex; align-items: center; flex: 1;">
             <input type="checkbox" class="unit-checkbox" data-unit-id="{{ unit.id }}" onchange="updateSelectedCount()">
-            {% if unit.child_count > 0 %}
-            <span class="toggle-btn" onclick="toggleChildren('{{ unit.id }}')">▼</span>
+            {% if unit.child_count and unit.child_count > 0 %}
+            <span class="toggle-btn" onclick="toggleChildren('{{ unit.id }}')">&#9660;</span>
             {% else %}
             <span style="margin-right: 20px;"></span>
             {% endif %}
             <div>
                 <div class="tree-node-title">
-                    {% if unit.level == 0 %}🏢{% elif unit.level == 1 %}📁{% elif unit.level == 2 %}📂{% else %}📄{% endif %}
                     {{ unit.name }}
-                    {% if unit.child_count == 0 and (unit.total_employees or unit.employee_count or 0) == 0 %}
-                    <span style="color: #f59e0b; font-size: 0.75rem; margin-left: 5px;">(tom)</span>
+                    {% if (unit.child_count or 0) == 0 and (unit.total_employees or unit.employee_count or 0) == 0 %}
+                    <span class="tag-empty">(tom)</span>
                     {% endif %}
                 </div>
                 <div class="tree-node-meta">
                     {{ unit.total_employees or unit.employee_count or 0 }} medarbejdere
-                    {% if unit.child_count > 0 %}
-                        | {{ unit.child_count }} underorganisationer
-                    {% endif %}
-                    {% if unit.leaf_count > 0 %}
-                        | {{ unit.leaf_count }} afdelinger
+                    {% if unit.child_count and unit.child_count > 0 %}
+                        &middot; {{ unit.child_count }} underenheder
                     {% endif %}
                 </div>
             </div>
         </div>
         <div class="tree-node-actions">
-            <button onclick="confirmDelete('{{ unit.id }}', '{{ unit.name }}')" class="btn-delete" title="Slet organisation">🗑️</button>
-            <a href="/admin/unit/new?parent={{ unit.id }}" class="btn-create" title="Opret underorganisation">+</a>
+            <button onclick="confirmDelete('{{ unit.id }}', '{{ unit.name }}')" class="btn-delete" title="Slet">Slet</button>
+            <a href="/admin/unit/new?parent={{ unit.id }}" class="btn-create" title="Opret underenhed">+</a>
             <a href="/admin/unit/{{ unit.id }}" class="btn-detail">Detaljer</a>
         </div>
     </div>
