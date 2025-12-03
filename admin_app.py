@@ -2077,24 +2077,28 @@ def seed_testdata_page():
 @app.route('/admin/cleanup-empty')
 @login_required
 def cleanup_empty_units():
-    """Slet tomme toplevel organisationer - én gang kald"""
+    """Slet Demo Virksomhed A/S og Test Organisation"""
     if session['user']['role'] != 'admin':
         return "Ikke tilladt", 403
 
     with get_db() as conn:
-        # Find og slet tomme toplevel units
-        empty = conn.execute("""
-            SELECT ou.id, ou.name FROM organizational_units ou
-            WHERE ou.parent_id IS NULL
-            AND ou.id NOT IN (SELECT DISTINCT parent_id FROM organizational_units WHERE parent_id IS NOT NULL)
-            AND ou.id NOT IN (SELECT DISTINCT unit_id FROM responses WHERE unit_id IS NOT NULL)
-        """).fetchall()
+        # Slet specifikt Demo Virksomhed og Test Organisation
+        deleted = []
 
-        names = [e['name'] for e in empty]
-        for unit in empty:
-            conn.execute("DELETE FROM organizational_units WHERE id = ?", (unit['id'],))
+        # Slet alle med disse navne (og deres børn via cascade)
+        for name in ['Demo Virksomhed A/S', 'Test Organisation', 'Demo Virksomhed']:
+            units = conn.execute(
+                "SELECT id, name FROM organizational_units WHERE name = ?",
+                (name,)
+            ).fetchall()
+            for unit in units:
+                conn.execute("DELETE FROM organizational_units WHERE id = ?", (unit['id'],))
+                deleted.append(unit['name'])
 
-    flash(f'Slettet {len(names)} tomme organisationer: {", ".join(names)}', 'success')
+    if deleted:
+        flash(f'Slettet: {", ".join(deleted)}', 'success')
+    else:
+        flash('Ingen organisationer fundet at slette', 'warning')
     return redirect('/admin')
 
 
