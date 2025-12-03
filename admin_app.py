@@ -305,9 +305,12 @@ def admin_home():
     """Admin forside - vis organisationstræ"""
     user = get_current_user()
 
+    # Check for customer filter (admin filtering by customer)
+    customer_filter = session.get('customer_filter') or user.get('customer_id')
+
     with get_db() as conn:
         # Hent units baseret på customer filter
-        if user['customer_id']:
+        if customer_filter:
             # Filter på specific customer
             all_units = conn.execute("""
                 SELECT
@@ -325,9 +328,16 @@ def admin_home():
                 WHERE ou.customer_id = ?
                 GROUP BY ou.id
                 ORDER BY ou.full_path
-            """, [user['customer_id']]).fetchall()
+            """, [customer_filter]).fetchall()
+
+            campaign_count = conn.execute("""
+                SELECT COUNT(DISTINCT c.id) as cnt
+                FROM campaigns c
+                JOIN organizational_units ou ON c.target_unit_id = ou.id
+                WHERE ou.customer_id = ?
+            """, [customer_filter]).fetchone()['cnt']
         else:
-            # Admin ser alt
+            # Admin ser alt (ingen filter)
             all_units = conn.execute("""
                 SELECT
                     ou.*,
@@ -345,17 +355,7 @@ def admin_home():
                 ORDER BY ou.full_path
             """).fetchall()
 
-        # Antal kampagner
-        if user['role'] == 'admin':
             campaign_count = conn.execute("SELECT COUNT(*) as cnt FROM campaigns").fetchone()['cnt']
-        else:
-            # Manager ser kun kampagner for sine units
-            campaign_count = conn.execute("""
-                SELECT COUNT(DISTINCT c.id) as cnt
-                FROM campaigns c
-                JOIN organizational_units ou ON c.target_unit_id = ou.id
-                WHERE ou.customer_id = ?
-            """, [user['customer_id']]).fetchone()['cnt']
 
         # Hent customer info - altid
         customers = conn.execute("SELECT id, name FROM customers ORDER BY name").fetchall()
@@ -364,8 +364,10 @@ def admin_home():
     return render_template('admin/home.html',
                          units=[dict(u) for u in all_units],
                          campaign_count=campaign_count,
-                         show_all_customers=(not user['customer_id']),
-                         customers_dict=customers_dict)
+                         show_all_customers=(user['role'] == 'admin'),
+                         customers_dict=customers_dict,
+                         current_filter=session.get('customer_filter'),
+                         current_filter_name=session.get('customer_filter_name'))
 
 
 @app.route('/admin/campaigns-overview')
@@ -1134,35 +1136,31 @@ def create_new_user():
 @app.route('/admin/impersonate/<customer_id>')
 @admin_required
 def impersonate_customer(customer_id):
-    """Switch to viewing as a specific customer (admin only)"""
+    """Filter data to specific customer while staying in admin view"""
     customer = get_customer(customer_id)
     if not customer:
         flash('Kunde ikke fundet', 'error')
         return redirect(url_for('manage_customers'))
 
-    # Store original admin user in session
-    session['original_user'] = session['user'].copy()
+    # Store filter in session - but keep admin role!
+    session['customer_filter'] = customer_id
+    session['customer_filter_name'] = customer['name']
 
-    # Temporarily change user to manager view for this customer
-    session['user']['customer_id'] = customer_id
-    session['user']['customer_name'] = customer['name']
-    session['impersonating'] = True
-
-    flash(f'Skifter visning til: {customer["name"]} (Leder visning)', 'success')
+    flash(f'Viser kun data for: {customer["name"]}', 'success')
     return redirect(url_for('admin_home'))
 
 
 @app.route('/admin/stop-impersonate')
 @login_required
 def stop_impersonate():
-    """Return to admin view"""
+    """Clear customer filter - show all data"""
+    session.pop('customer_filter', None)
+    session.pop('customer_filter_name', None)
+    # Also clear old impersonating data if present
     if 'original_user' in session:
         session['user'] = session.pop('original_user')
-        session.pop('impersonating', None)
-        # Ensure customer_id is None for admin
-        session['user']['customer_id'] = None
-        session['user'].pop('customer_name', None)
-        flash('Tilbage til admin visning', 'success')
+    session.pop('impersonating', None)
+    flash('Viser alle kunder', 'success')
 
     return redirect(url_for('admin_home'))
 
