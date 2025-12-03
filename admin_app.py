@@ -2106,8 +2106,10 @@ def db_status():
         # Campaigns
         campaigns = conn.execute("SELECT id, name, target_unit_id FROM campaigns").fetchall()
 
-        # Response count
+        # Response count and respondent_name check
         resp_count = conn.execute("SELECT COUNT(*) FROM responses").fetchone()[0]
+        resp_with_name = conn.execute("SELECT COUNT(*) FROM responses WHERE respondent_name IS NOT NULL AND respondent_name != ''").fetchone()[0]
+        resp_sample = conn.execute("SELECT respondent_name, respondent_type FROM responses LIMIT 5").fetchall()
 
     html = f"""
     <html><head><style>
@@ -2138,6 +2140,9 @@ def db_status():
     </table>
 
     <p><b>Responses:</b> {resp_count}</p>
+    <p><b>Responses with respondent_name:</b> {resp_with_name}</p>
+    <p><b>Sample responses:</b></p>
+    <ul>{''.join(f"<li>{r['respondent_name']} ({r['respondent_type']})</li>" for r in resp_sample)}</ul>
 
     <h2>Actions</h2>
     <p><a href="/admin/full-reset">FULD RESET - Slet alt og genimporter</a></p>

@@ -212,8 +212,8 @@
                     <option value="">🌍 Alle kunder</option>
                     {% for customer in customers %}
                     <option value="{{ customer.id }}"
-                        {% if current_customer_id and current_customer_id == customer.id %}selected
-                        {% elif session.impersonating and session.user.customer_id == customer.id %}selected
+                        {% if session.customer_filter == customer.id %}selected
+                        {% elif current_filter == customer.id %}selected
                         {% endif %}>
                         {{ customer.name }}
                     </option>

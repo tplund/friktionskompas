@@ -79,21 +79,8 @@
       "customer_id": "cust-herning"
     },
     {
-      "id": "unit-0VBkPhYx22Y",
-      "parent_id": null,
-      "name": "Social- og Sundhedsforvaltningen",
-      "full_path": "Social- og Sundhedsforvaltningen",
-      "level": 0,
-      "leader_name": null,
-      "leader_email": null,
-      "employee_count": 0,
-      "sick_leave_percent": 0.0,
-      "created_at": "2025-11-15 09:58:50",
-      "customer_id": "cust-herning"
-    },
-    {
       "id": "unit-E12-1-KPMm0",
-      "parent_id": "unit-0VBkPhYx22Y",
+      "parent_id": "unit-FTnAdaiGw2Y",
       "name": "Handicap og Psykiatri",
       "full_path": "Social- og Sundhedsforvaltningen//Handicap og Psykiatri",
       "level": 1,
