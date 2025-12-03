@@ -2077,7 +2077,7 @@ def seed_testdata_page():
 @app.route('/admin/cleanup-empty')
 @login_required
 def cleanup_empty_units():
-    """Slet ALLE Demo Virksomhed A/S og Test Organisation"""
+    """Slet ALLE organisationer uden data"""
     if session['user']['role'] != 'admin':
         return "Ikke tilladt", 403
 
@@ -2085,14 +2085,38 @@ def cleanup_empty_units():
         # Tæl først
         count_before = conn.execute("SELECT COUNT(*) FROM organizational_units").fetchone()[0]
 
-        # Slet ALLE med disse navne via LIKE
-        conn.execute("DELETE FROM organizational_units WHERE name LIKE '%Demo Virksomhed%'")
-        conn.execute("DELETE FROM organizational_units WHERE name LIKE '%Test Organisation%'")
+        # Find alle unit_ids der HAR responses (dem vi vil beholde)
+        units_with_data = conn.execute("""
+            SELECT DISTINCT unit_id FROM responses WHERE unit_id IS NOT NULL
+        """).fetchall()
+        keep_ids = [r[0] for r in units_with_data]
+
+        # Find også parent units til dem vi beholder
+        if keep_ids:
+            placeholders = ','.join(['?' for _ in keep_ids])
+            parents = conn.execute(f"""
+                WITH RECURSIVE ancestors AS (
+                    SELECT id, parent_id FROM organizational_units WHERE id IN ({placeholders})
+                    UNION ALL
+                    SELECT ou.id, ou.parent_id FROM organizational_units ou
+                    JOIN ancestors a ON ou.id = a.parent_id
+                )
+                SELECT DISTINCT id FROM ancestors
+            """, keep_ids).fetchall()
+            keep_ids = list(set(keep_ids + [p[0] for p in parents]))
+
+        # Slet alt UNDTAGEN dem med data
+        if keep_ids:
+            placeholders = ','.join(['?' for _ in keep_ids])
+            conn.execute(f"DELETE FROM organizational_units WHERE id NOT IN ({placeholders})", keep_ids)
+        else:
+            # Ingen data overhovedet - slet alt
+            conn.execute("DELETE FROM organizational_units")
 
         count_after = conn.execute("SELECT COUNT(*) FROM organizational_units").fetchone()[0]
         deleted = count_before - count_after
 
-    flash(f'Slettet {deleted} organisationer (fra {count_before} til {count_after})', 'success')
+    flash(f'Slettet {deleted} tomme organisationer (fra {count_before} til {count_after})', 'success')
     return redirect('/admin')
 
 
