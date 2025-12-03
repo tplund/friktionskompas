@@ -303,14 +303,9 @@ Niels;Olsen;niels@techcorp.dk;+4512345017;TechCorp//Sales//DACH"""
 @login_required
 def admin_home():
     """Admin forside - vis organisationstræ"""
-    from db_hierarchical import DB_PATH
     user = get_current_user()
 
     with get_db() as conn:
-        # DEBUG: Hvad er i databasen lige nu?
-        debug_units = conn.execute("SELECT id, name FROM organizational_units LIMIT 5").fetchall()
-        debug_names = [u['name'] for u in debug_units]
-        print(f"DEBUG admin_home: DB_PATH={DB_PATH}, First 5 units: {debug_names}")
         # Hent units baseret på customer filter
         if user['customer_id']:
             # Filter på specific customer
@@ -366,18 +361,11 @@ def admin_home():
         customers = conn.execute("SELECT id, name FROM customers ORDER BY name").fetchall()
         customers_dict = {c['id']: c['name'] for c in customers}
 
-    # DEBUG: Tilføj database info
-    with get_db() as conn2:
-        raw_count = conn2.execute("SELECT COUNT(*) FROM organizational_units").fetchone()[0]
-        raw_names = conn2.execute("SELECT name FROM organizational_units WHERE parent_id IS NULL LIMIT 10").fetchall()
-        raw_toplevel = [r[0] for r in raw_names]
-
     return render_template('admin/home.html',
                          units=[dict(u) for u in all_units],
                          campaign_count=campaign_count,
                          show_all_customers=(not user['customer_id']),
-                         customers_dict=customers_dict,
-                         debug_info=f"DB: {DB_PATH}, Raw count: {raw_count}, Toplevel: {raw_toplevel}")
+                         customers_dict=customers_dict)
 
 
 @app.route('/admin/campaigns-overview')
@@ -2084,27 +2072,6 @@ def seed_testdata_page():
     </body>
     </html>
     '''
-
-
-@app.route('/admin/db-debug')
-def db_debug():
-    """Offentlig debug endpoint - FJERN EFTER BRUG"""
-    from db_hierarchical import DB_PATH
-    with get_db() as conn:
-        count = conn.execute("SELECT COUNT(*) FROM organizational_units").fetchone()[0]
-        toplevel = conn.execute("SELECT id, name FROM organizational_units WHERE parent_id IS NULL LIMIT 10").fetchall()
-        names = [(t['id'], t['name']) for t in toplevel]
-        campaigns = conn.execute("SELECT COUNT(*) FROM campaigns").fetchone()[0]
-        responses = conn.execute("SELECT COUNT(*) FROM responses").fetchone()[0]
-    return f"""
-    <h2>Database Debug</h2>
-    <p><strong>DB_PATH:</strong> {DB_PATH}</p>
-    <p><strong>Units:</strong> {count}</p>
-    <p><strong>Campaigns:</strong> {campaigns}</p>
-    <p><strong>Responses:</strong> {responses}</p>
-    <p><strong>Toplevel units:</strong></p>
-    <ul>{''.join(f'<li>{n[0]}: {n[1]}</li>' for n in names)}</ul>
-    """
 
 
 @app.route('/admin/cleanup-empty')
