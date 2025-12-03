@@ -943,6 +943,46 @@ def delete_unit(unit_id):
     return redirect(url_for('admin_home'))
 
 
+@app.route('/admin/units/bulk-delete', methods=['POST'])
+@login_required
+def bulk_delete_units():
+    """Slet flere organisationer på én gang"""
+    user = get_current_user()
+
+    if user['role'] != 'admin':
+        flash('Kun administratorer kan bulk-slette', 'error')
+        return redirect(url_for('admin_home'))
+
+    import json
+    unit_ids_json = request.form.get('unit_ids', '[]')
+    try:
+        unit_ids = json.loads(unit_ids_json)
+    except:
+        flash('Ugyldige unit IDs', 'error')
+        return redirect(url_for('admin_home'))
+
+    if not unit_ids:
+        flash('Ingen organisationer valgt', 'warning')
+        return redirect(url_for('admin_home'))
+
+    deleted_count = 0
+    with get_db() as conn:
+        for unit_id in unit_ids:
+            # Tjek om unit eksisterer (og ikke allerede slettet som child af en anden)
+            unit = conn.execute(
+                "SELECT id, name FROM organizational_units WHERE id = ?",
+                (unit_id,)
+            ).fetchone()
+
+            if unit:
+                # Slet unit (cascade sletter children)
+                conn.execute("DELETE FROM organizational_units WHERE id = ?", (unit_id,))
+                deleted_count += 1
+
+    flash(f'{deleted_count} organisation(er) slettet', 'success')
+    return redirect(url_for('admin_home'))
+
+
 @app.route('/admin/campaign/new', methods=['GET', 'POST'])
 @login_required
 def new_campaign():

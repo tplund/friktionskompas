@@ -193,6 +193,86 @@
         margin-right: 10px;
         width: 150px;
     }
+
+    /* Bulk select mode */
+    .bulk-mode-toggle {
+        background: #6b7280;
+        color: white;
+        padding: 8px 16px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.875rem;
+    }
+    .bulk-mode-toggle:hover {
+        background: #4b5563;
+    }
+    .bulk-mode-toggle.active {
+        background: #ef4444;
+    }
+    .bulk-controls {
+        display: none;
+        background: #fef2f2;
+        border: 2px solid #fca5a5;
+        border-radius: 8px;
+        padding: 15px 20px;
+        margin: 15px 0;
+        align-items: center;
+        gap: 15px;
+        flex-wrap: wrap;
+    }
+    .bulk-controls.visible {
+        display: flex;
+    }
+    .bulk-controls .select-btns {
+        display: flex;
+        gap: 8px;
+    }
+    .bulk-controls .select-btns button {
+        background: white;
+        border: 1px solid #d1d5db;
+        padding: 6px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.8rem;
+    }
+    .bulk-controls .select-btns button:hover {
+        background: #f3f4f6;
+    }
+    .bulk-controls .selected-count {
+        color: #991b1b;
+        font-weight: 600;
+    }
+    .bulk-controls .btn-delete-selected {
+        background: #ef4444;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 500;
+    }
+    .bulk-controls .btn-delete-selected:hover {
+        background: #dc2626;
+    }
+    .bulk-controls .btn-delete-selected:disabled {
+        background: #fca5a5;
+        cursor: not-allowed;
+    }
+    .unit-checkbox {
+        display: none;
+        width: 18px;
+        height: 18px;
+        margin-right: 10px;
+        cursor: pointer;
+    }
+    .bulk-mode .unit-checkbox {
+        display: inline-block;
+    }
+    .tree-node.selected {
+        background: #fee2e2 !important;
+        border-color: #ef4444 !important;
+    }
 </style>
 {% endblock %}
 
@@ -225,9 +305,21 @@
             <button class="expand-all-btn" onclick="toggleAll(true)">Fold alle ud</button>
         </h3>
         <div class="action-buttons">
-            <a href="/admin/unit/new" class="btn">➕ Opret Organisation</a>
-            <a href="/admin/bulk-upload" class="btn" style="background: #10b981;">📤 Upload CSV</a>
+            <button class="bulk-mode-toggle" onclick="toggleBulkMode()">Vælg flere</button>
+            <a href="/admin/unit/new" class="btn">Opret Organisation</a>
+            <a href="/admin/bulk-upload" class="btn" style="background: #10b981;">Upload CSV</a>
         </div>
+    </div>
+
+    <!-- Bulk controls (hidden by default) -->
+    <div class="bulk-controls" id="bulkControls">
+        <div class="select-btns">
+            <button onclick="selectAllTopLevel()">Vælg alle toplevel</button>
+            <button onclick="selectAllEmpty()">Vælg alle tomme</button>
+            <button onclick="deselectAll()">Fravælg alle</button>
+        </div>
+        <span class="selected-count"><span id="selectedCount">0</span> valgt</span>
+        <button class="btn-delete-selected" id="deleteSelectedBtn" onclick="deleteSelected()" disabled>Slet valgte</button>
     </div>
 
     {% if units %}
@@ -351,13 +443,13 @@
     // Delete organisation
     function confirmDelete(unitId, unitName) {
         const message =
-            '⚠️ ADVARSEL ⚠️\n\n' +
+            'ADVARSEL\n\n' +
             `Er du SIKKER på at du vil slette "${unitName}"?\n\n` +
             'Dette vil PERMANENT slette:\n' +
-            '• Organisationen\n' +
-            '• Alle underorganisationer\n' +
-            '• Alle kontakter\n' +
-            '• Alle målinger og resultater\n\n' +
+            '- Organisationen\n' +
+            '- Alle underorganisationer\n' +
+            '- Alle kontakter\n' +
+            '- Alle målinger og resultater\n\n' +
             'Dette kan IKKE fortrydes!\n\n' +
             'Klik OK for at slette, eller Annuller for at afbryde.';
 
@@ -366,6 +458,108 @@
             const form = document.createElement('form');
             form.method = 'POST';
             form.action = '/admin/unit/' + unitId + '/delete';
+
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
+
+    // Bulk select mode
+    let bulkMode = false;
+
+    function toggleBulkMode() {
+        bulkMode = !bulkMode;
+        const toggleBtn = document.querySelector('.bulk-mode-toggle');
+        const bulkControls = document.getElementById('bulkControls');
+        const orgTree = document.querySelector('.card');
+
+        if (bulkMode) {
+            toggleBtn.classList.add('active');
+            toggleBtn.textContent = 'Afslut vælg-tilstand';
+            bulkControls.classList.add('visible');
+            orgTree.classList.add('bulk-mode');
+        } else {
+            toggleBtn.classList.remove('active');
+            toggleBtn.textContent = 'Vælg flere';
+            bulkControls.classList.remove('visible');
+            orgTree.classList.remove('bulk-mode');
+            deselectAll();
+        }
+    }
+
+    function updateSelectedCount() {
+        const checkboxes = document.querySelectorAll('.unit-checkbox:checked');
+        const count = checkboxes.length;
+        document.getElementById('selectedCount').textContent = count;
+        document.getElementById('deleteSelectedBtn').disabled = count === 0;
+
+        // Update visual selection
+        document.querySelectorAll('.tree-node').forEach(node => {
+            const checkbox = node.querySelector('.unit-checkbox');
+            if (checkbox && checkbox.checked) {
+                node.classList.add('selected');
+            } else {
+                node.classList.remove('selected');
+            }
+        });
+    }
+
+    function selectAllTopLevel() {
+        document.querySelectorAll('.tree-node[data-level="0"] .unit-checkbox').forEach(cb => {
+            cb.checked = true;
+        });
+        updateSelectedCount();
+    }
+
+    function selectAllEmpty() {
+        document.querySelectorAll('.tree-node').forEach(node => {
+            const childCount = parseInt(node.dataset.childCount) || 0;
+            if (childCount === 0) {
+                const checkbox = node.querySelector('.unit-checkbox');
+                if (checkbox) checkbox.checked = true;
+            }
+        });
+        updateSelectedCount();
+    }
+
+    function deselectAll() {
+        document.querySelectorAll('.unit-checkbox').forEach(cb => {
+            cb.checked = false;
+        });
+        updateSelectedCount();
+    }
+
+    function deleteSelected() {
+        const checkboxes = document.querySelectorAll('.unit-checkbox:checked');
+        const unitIds = Array.from(checkboxes).map(cb => cb.dataset.unitId);
+        const unitNames = Array.from(checkboxes).map(cb => {
+            const node = cb.closest('.tree-node');
+            return node.dataset.name;
+        });
+
+        if (unitIds.length === 0) return;
+
+        const message =
+            'ADVARSEL - BULK SLETNING\n\n' +
+            `Du er ved at slette ${unitIds.length} organisation(er):\n\n` +
+            unitNames.slice(0, 10).join('\n') +
+            (unitNames.length > 10 ? '\n...og ' + (unitNames.length - 10) + ' flere' : '') +
+            '\n\n' +
+            'ALLE underorganisationer, kontakter og data slettes også!\n\n' +
+            'Dette kan IKKE fortrydes!\n\n' +
+            'Klik OK for at slette, eller Annuller for at afbryde.';
+
+        if (confirm(message)) {
+            // Create form and submit
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/admin/units/bulk-delete';
+
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'unit_ids';
+            input.value = JSON.stringify(unitIds);
+            form.appendChild(input);
 
             document.body.appendChild(form);
             form.submit();
