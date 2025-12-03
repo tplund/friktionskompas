@@ -1379,16 +1379,24 @@ def get_individual_scores(target_unit_id, campaign_id):
 @login_required
 def campaign_detailed_analysis(campaign_id):
     """Detaljeret analyse med lagdeling og respondent-sammenligning"""
+    import traceback
     user = get_current_user()
 
-    with get_db() as conn:
-        # Hent campaign med customer filter
-        where_clause, params = get_customer_filter(user['role'], user['customer_id'])
-        campaign = conn.execute(f"""
-            SELECT c.*, ou.customer_id FROM campaigns c
-            JOIN organizational_units ou ON c.target_unit_id = ou.id
-            WHERE c.id = ? AND ({where_clause})
-        """, [campaign_id] + params).fetchone()
+    try:
+        with get_db() as conn:
+            # Hent campaign - admin ser alt
+            if user['role'] == 'admin':
+                campaign = conn.execute("""
+                    SELECT c.*, ou.customer_id FROM campaigns c
+                    JOIN organizational_units ou ON c.target_unit_id = ou.id
+                    WHERE c.id = ?
+                """, [campaign_id]).fetchone()
+            else:
+                campaign = conn.execute("""
+                    SELECT c.*, ou.customer_id FROM campaigns c
+                    JOIN organizational_units ou ON c.target_unit_id = ou.id
+                    WHERE c.id = ? AND ou.customer_id = ?
+                """, [campaign_id, user['customer_id']]).fetchone()
 
         if not campaign:
             flash("Måling ikke fundet eller ingen adgang", 'error')
@@ -1447,20 +1455,24 @@ def campaign_detailed_analysis(campaign_id):
             dt = datetime.fromisoformat(last_response['last_date'])
             last_response_date = dt.strftime('%d-%m-%Y')
 
-    return render_template('admin/campaign_detailed.html',
-        campaign=dict(campaign),
-        target_breadcrumbs=breadcrumbs,
-        breakdown=breakdown,
-        anonymity=anonymity,
-        substitution=substitution,
-        free_text_comments=free_text_comments,
-        kkc_recommendations=kkc_recommendations,
-        start_here=start_here,
-        alerts=alerts,
-        last_response_date=last_response_date,
-        current_customer_id=campaign_customer_id,
-        individual_scores=individual_scores
-    )
+        return render_template('admin/campaign_detailed.html',
+            campaign=dict(campaign),
+            target_breadcrumbs=breadcrumbs,
+            breakdown=breakdown,
+            anonymity=anonymity,
+            substitution=substitution,
+            free_text_comments=free_text_comments,
+            kkc_recommendations=kkc_recommendations,
+            start_here=start_here,
+            alerts=alerts,
+            last_response_date=last_response_date,
+            current_customer_id=campaign_customer_id,
+            individual_scores=individual_scores
+        )
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        return f"<h1>Fejl i campaign_detailed_analysis</h1><pre>{error_details}</pre>", 500
 
 
 # ========================================
