@@ -2183,10 +2183,10 @@ def full_reset():
             # Opret admin user
             try:
                 conn.execute("""
-                    INSERT INTO users (id, email, password_hash, role, customer_id, name)
-                    VALUES ('admin-1', 'admin@example.com', 'admin123', 'admin', NULL, 'Administrator')
+                    INSERT INTO users (id, username, email, password_hash, role, customer_id, name)
+                    VALUES ('admin-1', 'admin', 'admin@example.com', 'admin123', 'admin', NULL, 'Administrator')
                 """)
-                results.append("Oprettet admin bruger")
+                results.append("Oprettet admin bruger (admin/admin123)")
             except Exception as e:
                 results.append(f"Fejl ved admin user: {e}")
 
