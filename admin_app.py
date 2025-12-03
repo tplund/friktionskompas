@@ -2077,28 +2077,22 @@ def seed_testdata_page():
 @app.route('/admin/cleanup-empty')
 @login_required
 def cleanup_empty_units():
-    """Slet Demo Virksomhed A/S og Test Organisation"""
+    """Slet ALLE Demo Virksomhed A/S og Test Organisation"""
     if session['user']['role'] != 'admin':
         return "Ikke tilladt", 403
 
     with get_db() as conn:
-        # Slet specifikt Demo Virksomhed og Test Organisation
-        deleted = []
+        # Tæl først
+        count_before = conn.execute("SELECT COUNT(*) FROM organizational_units").fetchone()[0]
 
-        # Slet alle med disse navne (og deres børn via cascade)
-        for name in ['Demo Virksomhed A/S', 'Test Organisation', 'Demo Virksomhed']:
-            units = conn.execute(
-                "SELECT id, name FROM organizational_units WHERE name = ?",
-                (name,)
-            ).fetchall()
-            for unit in units:
-                conn.execute("DELETE FROM organizational_units WHERE id = ?", (unit['id'],))
-                deleted.append(unit['name'])
+        # Slet ALLE med disse navne via LIKE
+        conn.execute("DELETE FROM organizational_units WHERE name LIKE '%Demo Virksomhed%'")
+        conn.execute("DELETE FROM organizational_units WHERE name LIKE '%Test Organisation%'")
 
-    if deleted:
-        flash(f'Slettet: {", ".join(deleted)}', 'success')
-    else:
-        flash('Ingen organisationer fundet at slette', 'warning')
+        count_after = conn.execute("SELECT COUNT(*) FROM organizational_units").fetchone()[0]
+        deleted = count_before - count_after
+
+    flash(f'Slettet {deleted} organisationer (fra {count_before} til {count_after})', 'success')
     return redirect('/admin')
 
 
