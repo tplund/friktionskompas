@@ -2077,46 +2077,56 @@ def seed_testdata_page():
 @app.route('/admin/cleanup-empty')
 @login_required
 def cleanup_empty_units():
-    """Slet ALLE organisationer uden data"""
+    """SLET ALT og importer ren lokal database"""
     if session['user']['role'] != 'admin':
         return "Ikke tilladt", 403
 
+    import json
+    import os
+
+    json_path = os.path.join(os.path.dirname(__file__), 'local_data_export.json')
+    if not os.path.exists(json_path):
+        flash('local_data_export.json ikke fundet!', 'error')
+        return redirect('/admin')
+
+    with open(json_path, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+
     with get_db() as conn:
-        # Tæl først
-        count_before = conn.execute("SELECT COUNT(*) FROM organizational_units").fetchone()[0]
+        # SLET ALT FØRST
+        conn.execute("DELETE FROM responses")
+        conn.execute("DELETE FROM campaigns")
+        conn.execute("DELETE FROM organizational_units")
 
-        # Find alle unit_ids der HAR responses (dem vi vil beholde)
-        units_with_data = conn.execute("""
-            SELECT DISTINCT unit_id FROM responses WHERE unit_id IS NOT NULL
-        """).fetchall()
-        keep_ids = [r[0] for r in units_with_data]
+        # Importer units
+        for unit in data.get('organizational_units', []):
+            conn.execute('''
+                INSERT INTO organizational_units (id, name, full_path, parent_id, level, leader_name, leader_email, employee_count, sick_leave_percent, customer_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (unit['id'], unit['name'], unit.get('full_path'), unit.get('parent_id'),
+                  unit.get('level', 0), unit.get('leader_name'), unit.get('leader_email'),
+                  unit.get('employee_count', 0), unit.get('sick_leave_percent', 0), unit.get('customer_id')))
 
-        # Find også parent units til dem vi beholder
-        if keep_ids:
-            placeholders = ','.join(['?' for _ in keep_ids])
-            parents = conn.execute(f"""
-                WITH RECURSIVE ancestors AS (
-                    SELECT id, parent_id FROM organizational_units WHERE id IN ({placeholders})
-                    UNION ALL
-                    SELECT ou.id, ou.parent_id FROM organizational_units ou
-                    JOIN ancestors a ON ou.id = a.parent_id
-                )
-                SELECT DISTINCT id FROM ancestors
-            """, keep_ids).fetchall()
-            keep_ids = list(set(keep_ids + [p[0] for p in parents]))
+        # Importer campaigns
+        for camp in data.get('campaigns', []):
+            conn.execute('''
+                INSERT INTO campaigns (id, name, target_unit_id, period, created_at)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (camp['id'], camp['name'], camp['target_unit_id'], camp.get('period'), camp.get('created_at')))
 
-        # Slet alt UNDTAGEN dem med data
-        if keep_ids:
-            placeholders = ','.join(['?' for _ in keep_ids])
-            conn.execute(f"DELETE FROM organizational_units WHERE id NOT IN ({placeholders})", keep_ids)
-        else:
-            # Ingen data overhovedet - slet alt
-            conn.execute("DELETE FROM organizational_units")
+        # Importer responses
+        for resp in data.get('responses', []):
+            conn.execute('''
+                INSERT INTO responses (campaign_id, unit_id, question_id, score, respondent_type, created_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (resp['campaign_id'], resp['unit_id'], resp['question_id'],
+                  resp['score'], resp.get('respondent_type'), resp.get('created_at')))
 
-        count_after = conn.execute("SELECT COUNT(*) FROM organizational_units").fetchone()[0]
-        deleted = count_before - count_after
+        units = conn.execute("SELECT COUNT(*) FROM organizational_units").fetchone()[0]
+        campaigns = conn.execute("SELECT COUNT(*) FROM campaigns").fetchone()[0]
+        responses = conn.execute("SELECT COUNT(*) FROM responses").fetchone()[0]
 
-    flash(f'Slettet {deleted} tomme organisationer (fra {count_before} til {count_after})', 'success')
+    flash(f'Database erstattet! {units} units, {campaigns} kampagner, {responses} responses', 'success')
     return redirect('/admin')
 
 
