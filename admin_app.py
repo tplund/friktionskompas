@@ -2234,10 +2234,10 @@ def full_reset():
             for resp in data.get('responses', []):
                 try:
                     conn.execute('''
-                        INSERT INTO responses (campaign_id, unit_id, question_id, score, respondent_type, created_at)
-                        VALUES (?, ?, ?, ?, ?, ?)
+                        INSERT INTO responses (campaign_id, unit_id, question_id, score, respondent_type, respondent_name, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?)
                     ''', (resp['campaign_id'], resp['unit_id'], resp['question_id'],
-                          resp['score'], resp.get('respondent_type'), resp.get('created_at')))
+                          resp['score'], resp.get('respondent_type'), resp.get('respondent_name'), resp.get('created_at')))
                     resp_count += 1
                 except Exception as e:
                     if resp_count == 0:  # Kun vis første fejl
