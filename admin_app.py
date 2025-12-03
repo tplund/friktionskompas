@@ -2083,50 +2083,68 @@ def cleanup_empty_units():
 
     import json
     import os
+    from db_hierarchical import DB_PATH
 
     json_path = os.path.join(os.path.dirname(__file__), 'local_data_export.json')
+
+    # Debug info
+    debug = f"DB_PATH: {DB_PATH}, JSON exists: {os.path.exists(json_path)}"
+
     if not os.path.exists(json_path):
-        flash('local_data_export.json ikke fundet!', 'error')
-        return redirect('/admin')
+        return f'FEJL: local_data_export.json ikke fundet! Debug: {debug}'
 
     with open(json_path, 'r', encoding='utf-8') as f:
         data = json.load(f)
 
-    with get_db() as conn:
-        # SLET ALT FØRST
-        conn.execute("DELETE FROM responses")
-        conn.execute("DELETE FROM campaigns")
-        conn.execute("DELETE FROM organizational_units")
+    try:
+        with get_db() as conn:
+            # Tæl før
+            before = conn.execute("SELECT COUNT(*) FROM organizational_units").fetchone()[0]
 
-        # Importer units
-        for unit in data.get('organizational_units', []):
-            conn.execute('''
-                INSERT INTO organizational_units (id, name, full_path, parent_id, level, leader_name, leader_email, employee_count, sick_leave_percent, customer_id)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (unit['id'], unit['name'], unit.get('full_path'), unit.get('parent_id'),
-                  unit.get('level', 0), unit.get('leader_name'), unit.get('leader_email'),
-                  unit.get('employee_count', 0), unit.get('sick_leave_percent', 0), unit.get('customer_id')))
+            # SLET ALT FØRST
+            conn.execute("DELETE FROM responses")
+            conn.execute("DELETE FROM campaigns")
+            conn.execute("DELETE FROM organizational_units")
+            conn.commit()
 
-        # Importer campaigns
-        for camp in data.get('campaigns', []):
-            conn.execute('''
-                INSERT INTO campaigns (id, name, target_unit_id, period, created_at)
-                VALUES (?, ?, ?, ?, ?)
-            ''', (camp['id'], camp['name'], camp['target_unit_id'], camp.get('period'), camp.get('created_at')))
+            # Importer units
+            for unit in data.get('organizational_units', []):
+                conn.execute('''
+                    INSERT INTO organizational_units (id, name, full_path, parent_id, level, leader_name, leader_email, employee_count, sick_leave_percent, customer_id)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (unit['id'], unit['name'], unit.get('full_path'), unit.get('parent_id'),
+                      unit.get('level', 0), unit.get('leader_name'), unit.get('leader_email'),
+                      unit.get('employee_count', 0), unit.get('sick_leave_percent', 0), unit.get('customer_id')))
 
-        # Importer responses
-        for resp in data.get('responses', []):
-            conn.execute('''
-                INSERT INTO responses (campaign_id, unit_id, question_id, score, respondent_type, created_at)
-                VALUES (?, ?, ?, ?, ?, ?)
-            ''', (resp['campaign_id'], resp['unit_id'], resp['question_id'],
-                  resp['score'], resp.get('respondent_type'), resp.get('created_at')))
+            # Importer campaigns
+            for camp in data.get('campaigns', []):
+                conn.execute('''
+                    INSERT INTO campaigns (id, name, target_unit_id, period, created_at)
+                    VALUES (?, ?, ?, ?, ?)
+                ''', (camp['id'], camp['name'], camp['target_unit_id'], camp.get('period'), camp.get('created_at')))
 
-        units = conn.execute("SELECT COUNT(*) FROM organizational_units").fetchone()[0]
-        campaigns = conn.execute("SELECT COUNT(*) FROM campaigns").fetchone()[0]
-        responses = conn.execute("SELECT COUNT(*) FROM responses").fetchone()[0]
+            # Importer responses
+            for resp in data.get('responses', []):
+                conn.execute('''
+                    INSERT INTO responses (campaign_id, unit_id, question_id, score, respondent_type, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                ''', (resp['campaign_id'], resp['unit_id'], resp['question_id'],
+                      resp['score'], resp.get('respondent_type'), resp.get('created_at')))
 
-    flash(f'Database erstattet! {units} units, {campaigns} kampagner, {responses} responses', 'success')
+            conn.commit()
+
+            units = conn.execute("SELECT COUNT(*) FROM organizational_units").fetchone()[0]
+            campaigns = conn.execute("SELECT COUNT(*) FROM campaigns").fetchone()[0]
+            responses = conn.execute("SELECT COUNT(*) FROM responses").fetchone()[0]
+
+            # Vis toplevel names
+            toplevel = conn.execute("SELECT name FROM organizational_units WHERE parent_id IS NULL").fetchall()
+            names = [t[0] for t in toplevel]
+
+        flash(f'Database erstattet! Før: {before}, Nu: {units} units, {campaigns} kampagner, {responses} responses. Toplevel: {names}', 'success')
+    except Exception as e:
+        return f'FEJL: {str(e)}. Debug: {debug}'
+
     return redirect('/admin')
 
 
