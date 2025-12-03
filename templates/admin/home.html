@@ -15,7 +15,7 @@
     .card h2 { margin-bottom: 20px; color: #374151; font-weight: 600; }
 
     .btn {
-        background: #6b7280;
+        background: #4f46e5;
         color: white;
         padding: 10px 18px;
         text-decoration: none;
@@ -25,10 +25,11 @@
         border: none;
         cursor: pointer;
         font-size: 0.875rem;
+        transition: all 0.15s;
     }
-    .btn:hover { background: #4b5563; }
-    .btn-primary { background: #4b5563; }
-    .btn-primary:hover { background: #374151; }
+    .btn:hover { background: #4338ca; }
+    .btn-secondary { background: #6b7280; }
+    .btn-secondary:hover { background: #4b5563; }
 
     .stats {
         display: grid;
@@ -45,7 +46,7 @@
     .stat-box .label { color: #6b7280; font-size: 0.8rem; }
     .stat-box .value { color: #374151; font-size: 1.5rem; font-weight: 600; margin-top: 4px; }
 
-    /* Organisationstræ - afdæmpet */
+    /* Organisationstræ */
     .org-tree {
         margin: 15px 0;
     }
@@ -53,17 +54,18 @@
         margin: 4px 0;
         padding: 12px 15px;
         background: #fafafa;
-        border-left: 2px solid #d1d5db;
+        border-left: 3px solid #6366f1;
         border-radius: 4px;
         transition: all 0.15s;
     }
     .tree-node:hover {
-        background: #f3f4f6;
+        background: #eef2ff;
+        border-left-color: #4f46e5;
     }
-    .tree-node.level-0 { margin-left: 0; }
-    .tree-node.level-1 { margin-left: 25px; }
-    .tree-node.level-2 { margin-left: 50px; }
-    .tree-node.level-3 { margin-left: 75px; }
+    .tree-node.level-0 { margin-left: 0; border-left-color: #6366f1; }
+    .tree-node.level-1 { margin-left: 25px; border-left-color: #8b5cf6; }
+    .tree-node.level-2 { margin-left: 50px; border-left-color: #a78bfa; }
+    .tree-node.level-3 { margin-left: 75px; border-left-color: #c4b5fd; }
 
     .tree-node.collapsed {
         display: none;
@@ -144,21 +146,21 @@
         background: #f3f4f6;
     }
     .btn-detail {
-        color: #6b7280;
+        color: #4f46e5;
         background: transparent;
         text-decoration: none;
         font-size: 0.8rem;
         font-weight: 500;
         padding: 5px 10px;
         border-radius: 4px;
-        border: 1px solid #e5e7eb;
+        border: 1px solid #c7d2fe;
         cursor: pointer;
         transition: all 0.15s;
     }
     .btn-detail:hover {
-        color: #374151;
-        background: #f3f4f6;
-        border-color: #d1d5db;
+        color: #4338ca;
+        background: #eef2ff;
+        border-color: #a5b4fc;
     }
 
     .empty {
@@ -177,7 +179,7 @@
         flex-wrap: wrap;
     }
 
-    /* Bulk select mode - afdæmpet */
+    /* Bulk select mode */
     .bulk-mode-toggle {
         background: transparent;
         color: #6b7280;
@@ -192,9 +194,9 @@
         color: #374151;
     }
     .bulk-mode-toggle.active {
-        background: #374151;
+        background: #dc2626;
         color: white;
-        border-color: #374151;
+        border-color: #dc2626;
     }
     .bulk-controls {
         display: none;
@@ -233,7 +235,7 @@
         font-size: 0.85rem;
     }
     .bulk-controls .btn-delete-selected {
-        background: #6b7280;
+        background: #dc2626;
         color: white;
         border: none;
         padding: 6px 12px;
@@ -243,10 +245,10 @@
         font-size: 0.8rem;
     }
     .bulk-controls .btn-delete-selected:hover {
-        background: #4b5563;
+        background: #b91c1c;
     }
     .bulk-controls .btn-delete-selected:disabled {
-        background: #d1d5db;
+        background: #fca5a5;
         cursor: not-allowed;
     }
     .unit-checkbox {

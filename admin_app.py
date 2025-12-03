@@ -1992,6 +1992,28 @@ def seed_testdata():
                 flash(f"Fejl: {result.get('error', 'Ukendt fejl')}", 'error')
         except Exception as e:
             flash(f'Fejl ved import: {str(e)}', 'error')
+
+    elif action == 'delete_empty_toplevel':
+        # Slet alle tomme toplevel organisationer
+        try:
+            with get_db() as conn:
+                # Find tomme toplevel units (ingen children, ingen responses)
+                empty_toplevel = conn.execute("""
+                    SELECT ou.id, ou.name FROM organizational_units ou
+                    WHERE ou.parent_id IS NULL
+                    AND ou.id NOT IN (SELECT DISTINCT parent_id FROM organizational_units WHERE parent_id IS NOT NULL)
+                    AND ou.id NOT IN (SELECT DISTINCT unit_id FROM responses WHERE unit_id IS NOT NULL)
+                """).fetchall()
+
+                deleted = 0
+                for unit in empty_toplevel:
+                    conn.execute("DELETE FROM organizational_units WHERE id = ?", (unit['id'],))
+                    deleted += 1
+
+                flash(f'Slettet {deleted} tomme toplevel organisationer', 'success')
+        except Exception as e:
+            flash(f'Fejl ved sletning: {str(e)}', 'error')
+
     else:
         # Kør standard seed
         try:
@@ -2021,6 +2043,14 @@ def seed_testdata_page():
             'campaigns': conn.execute("SELECT COUNT(*) FROM campaigns").fetchone()[0],
             'responses': conn.execute("SELECT COUNT(*) FROM responses").fetchone()[0],
         }
+        # Tæl tomme toplevel
+        empty_toplevel = conn.execute("""
+            SELECT COUNT(*) FROM organizational_units ou
+            WHERE ou.parent_id IS NULL
+            AND ou.id NOT IN (SELECT DISTINCT parent_id FROM organizational_units WHERE parent_id IS NOT NULL)
+            AND ou.id NOT IN (SELECT DISTINCT unit_id FROM responses WHERE unit_id IS NOT NULL)
+        """).fetchone()[0]
+        stats['empty_toplevel'] = empty_toplevel
 
     return f'''
     <!DOCTYPE html>
@@ -2065,6 +2095,15 @@ def seed_testdata_page():
             <input type="hidden" name="action" value="seed">
             <button type="submit" class="btn">Kør Seed Script (demo-data)</button>
             <p style="font-size: 0.9em; color: #666; margin-top: 5px;">Genererer tomme demo-virksomheder</p>
+        </form>
+
+        <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e7eb;">
+
+        <h3>Oprydning</h3>
+        <form method="POST" style="margin-top: 15px;">
+            <input type="hidden" name="action" value="delete_empty_toplevel">
+            <button type="submit" class="btn" style="background: #ef4444;">Slet {stats['empty_toplevel']} tomme toplevel organisationer</button>
+            <p style="font-size: 0.9em; color: #666; margin-top: 5px;">Sletter toplevel organisationer uden børn eller data</p>
         </form>
 
         <p style="margin-top: 20px;"><a href="/admin">← Tilbage til admin</a></p>
