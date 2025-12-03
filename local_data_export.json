@@ -11,7 +11,7 @@
       "employee_count": 0,
       "sick_leave_percent": 0.0,
       "created_at": "2025-11-15 09:58:50",
-      "customer_id": "cust-SHKIi10cOe8"
+      "customer_id": "cust-herning"
     },
     {
       "id": "unit-NXZVWoIi0xY",
@@ -24,7 +24,7 @@
       "employee_count": 0,
       "sick_leave_percent": 0.0,
       "created_at": "2025-11-15 09:58:50",
-      "customer_id": "cust-SHKIi10cOe8"
+      "customer_id": "cust-herning"
     },
     {
       "id": "unit-r9GCZGunKdE",
@@ -37,7 +37,7 @@
       "employee_count": 15,
       "sick_leave_percent": 0.0,
       "created_at": "2025-11-15 09:58:50",
-      "customer_id": "cust-SHKIi10cOe8"
+      "customer_id": "cust-herning"
     },
     {
       "id": "unit-yPzIQeouALY",
@@ -50,7 +50,7 @@
       "employee_count": 12,
       "sick_leave_percent": 0.0,
       "created_at": "2025-11-15 09:58:50",
-      "customer_id": "cust-SHKIi10cOe8"
+      "customer_id": "cust-herning"
     },
     {
       "id": "unit-fr4KdQaVR_A",
@@ -63,7 +63,7 @@
       "employee_count": 18,
       "sick_leave_percent": 0.0,
       "created_at": "2025-11-15 09:58:50",
-      "customer_id": "cust-SHKIi10cOe8"
+      "customer_id": "cust-herning"
     },
     {
       "id": "unit-NyRbAfp2qHQ",
@@ -76,7 +76,7 @@
       "employee_count": 14,
       "sick_leave_percent": 0.0,
       "created_at": "2025-11-15 09:58:50",
-      "customer_id": "cust-SHKIi10cOe8"
+      "customer_id": "cust-herning"
     },
     {
       "id": "unit-0VBkPhYx22Y",
@@ -89,7 +89,7 @@
       "employee_count": 0,
       "sick_leave_percent": 0.0,
       "created_at": "2025-11-15 09:58:50",
-      "customer_id": "cust-0nlG8ldxSYU"
+      "customer_id": "cust-herning"
     },
     {
       "id": "unit-E12-1-KPMm0",
@@ -102,7 +102,7 @@
       "employee_count": 0,
       "sick_leave_percent": 0.0,
       "created_at": "2025-11-15 09:58:50",
-      "customer_id": "cust-0nlG8ldxSYU"
+      "customer_id": "cust-herning"
     },
     {
       "id": "unit-unJ4-Jp0lDI",
@@ -115,7 +115,7 @@
       "employee_count": 10,
       "sick_leave_percent": 0.0,
       "created_at": "2025-11-15 09:58:50",
-      "customer_id": "cust-0nlG8ldxSYU"
+      "customer_id": "cust-herning"
     },
     {
       "id": "unit-o2Hda43HOns",
@@ -128,7 +128,7 @@
       "employee_count": 16,
       "sick_leave_percent": 0.0,
       "created_at": "2025-11-15 09:58:50",
-      "customer_id": "cust-0nlG8ldxSYU"
+      "customer_id": "cust-herning"
     },
     {
       "id": "unit-9WSpxe366MQ",
@@ -141,7 +141,7 @@
       "employee_count": 13,
       "sick_leave_percent": 0.0,
       "created_at": "2025-11-15 09:58:50",
-      "customer_id": "cust-0nlG8ldxSYU"
+      "customer_id": "cust-herning"
     },
     {
       "id": "unit-AIzm1ZEuf-8",
@@ -154,7 +154,7 @@
       "employee_count": 0,
       "sick_leave_percent": 0.0,
       "created_at": "2025-11-15 09:58:50",
-      "customer_id": "cust-0nlG8ldxSYU"
+      "customer_id": "cust-herning"
     },
     {
       "id": "unit-e1uk_KnzNtQ",
@@ -167,7 +167,7 @@
       "employee_count": 0,
       "sick_leave_percent": 0.0,
       "created_at": "2025-11-15 09:58:50",
-      "customer_id": "cust-0nlG8ldxSYU"
+      "customer_id": "cust-herning"
     },
     {
       "id": "unit-Q90JlnjJjr4",
@@ -180,7 +180,7 @@
       "employee_count": 20,
       "sick_leave_percent": 0.0,
       "created_at": "2025-11-15 09:58:50",
-      "customer_id": "cust-0nlG8ldxSYU"
+      "customer_id": "cust-herning"
     },
     {
       "id": "unit-G-1sydeaJ_0",
@@ -193,7 +193,7 @@
       "employee_count": 17,
       "sick_leave_percent": 0.0,
       "created_at": "2025-11-15 09:58:50",
-      "customer_id": "cust-0nlG8ldxSYU"
+      "customer_id": "cust-herning"
     },
     {
       "id": "unit-VA_m23V0iX0",
@@ -206,7 +206,7 @@
       "employee_count": 19,
       "sick_leave_percent": 0.0,
       "created_at": "2025-11-15 09:58:50",
-      "customer_id": "cust-0nlG8ldxSYU"
+      "customer_id": "cust-herning"
     },
     {
       "id": "unit-_06cFNGu-n0",
@@ -219,98 +219,7 @@
       "employee_count": 15,
       "sick_leave_percent": 0.0,
       "created_at": "2025-11-15 09:58:50",
-      "customer_id": "cust-0nlG8ldxSYU"
-    },
-    {
-      "id": "unit-Tk8utcH2yWs",
-      "parent_id": "unit-Z2uxnDWBRWg",
-      "name": "Salg",
-      "full_path": "Demo Virksomhed//Salg",
-      "level": 1,
-      "leader_name": "cust-zbbvYtPbptM",
-      "leader_email": null,
-      "employee_count": 0,
-      "sick_leave_percent": 0.0,
-      "created_at": "2025-12-02 13:50:19",
-      "customer_id": null
-    },
-    {
-      "id": "unit-gEkFbIkqYbM",
-      "parent_id": "unit-Tk8utcH2yWs",
-      "name": "Team Nord",
-      "full_path": "Demo Virksomhed//Salg//Team Nord",
-      "level": 2,
-      "leader_name": "cust-zbbvYtPbptM",
-      "leader_email": null,
-      "employee_count": 0,
-      "sick_leave_percent": 0.0,
-      "created_at": "2025-12-02 13:50:19",
-      "customer_id": null
-    },
-    {
-      "id": "unit-T4fuBHi3U54",
-      "parent_id": "unit-Tk8utcH2yWs",
-      "name": "Team Syd",
-      "full_path": "Demo Virksomhed//Salg//Team Syd",
-      "level": 2,
-      "leader_name": "cust-zbbvYtPbptM",
-      "leader_email": null,
-      "employee_count": 0,
-      "sick_leave_percent": 0.0,
-      "created_at": "2025-12-02 13:50:19",
-      "customer_id": null
-    },
-    {
-      "id": "unit-xkXn1R0OXEw",
-      "parent_id": "unit-Z2uxnDWBRWg",
-      "name": "IT",
-      "full_path": "Demo Virksomhed//IT",
-      "level": 1,
-      "leader_name": "cust-zbbvYtPbptM",
-      "leader_email": null,
-      "employee_count": 0,
-      "sick_leave_percent": 0.0,
-      "created_at": "2025-12-02 13:50:19",
-      "customer_id": null
-    },
-    {
-      "id": "unit-oeCLvYIh7WY",
-      "parent_id": "unit-xkXn1R0OXEw",
-      "name": "Udvikling",
-      "full_path": "Demo Virksomhed//IT//Udvikling",
-      "level": 2,
-      "leader_name": "cust-zbbvYtPbptM",
-      "leader_email": null,
-      "employee_count": 0,
-      "sick_leave_percent": 0.0,
-      "created_at": "2025-12-02 13:50:19",
-      "customer_id": null
-    },
-    {
-      "id": "unit-DMQop-trsZM",
-      "parent_id": "unit-xkXn1R0OXEw",
-      "name": "Support",
-      "full_path": "Demo Virksomhed//IT//Support",
-      "level": 2,
-      "leader_name": "cust-zbbvYtPbptM",
-      "leader_email": null,
-      "employee_count": 0,
-      "sick_leave_percent": 0.0,
-      "created_at": "2025-12-02 13:50:19",
-      "customer_id": null
-    },
-    {
-      "id": "unit-DauOykqrtrI",
-      "parent_id": "unit-Z2uxnDWBRWg",
-      "name": "HR",
-      "full_path": "Demo Virksomhed//HR",
-      "level": 1,
-      "leader_name": "cust-zbbvYtPbptM",
-      "leader_email": null,
-      "employee_count": 0,
-      "sick_leave_percent": 0.0,
-      "created_at": "2025-12-02 13:50:19",
-      "customer_id": null
+      "customer_id": "cust-herning"
     }
   ],
   "campaigns": [
