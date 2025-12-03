@@ -1939,14 +1939,29 @@ def seed_testdata():
         flash('Kun administratorer kan køre seed', 'error')
         return redirect('/admin')
 
-    try:
-        import seed_testdata
-        seed_testdata.main()
-        flash('Testdata genereret!', 'success')
-    except Exception as e:
-        flash(f'Fejl ved seed: {str(e)}', 'error')
+    action = request.form.get('action', 'seed')
 
-    return redirect('/admin')
+    if action == 'import_local':
+        # Importer lokal kommune-data
+        try:
+            from import_local_data import import_local_data
+            result = import_local_data()
+            if result.get('success'):
+                flash(f"Importeret: {result['units_imported']} units, {result['campaigns_imported']} kampagner, {result['responses_imported']} responses", 'success')
+            else:
+                flash(f"Fejl: {result.get('error', 'Ukendt fejl')}", 'error')
+        except Exception as e:
+            flash(f'Fejl ved import: {str(e)}', 'error')
+    else:
+        # Kør standard seed
+        try:
+            import seed_testdata
+            seed_testdata.main()
+            flash('Testdata genereret!', 'success')
+        except Exception as e:
+            flash(f'Fejl ved seed: {str(e)}', 'error')
+
+    return redirect('/admin/seed-testdata')
 
 
 @app.route('/admin/seed-testdata')
@@ -1995,11 +2010,21 @@ def seed_testdata_page():
         </div>
 
         <div class="warning">
-            <strong>Bemærk:</strong> Dette tilføjer data - det sletter ikke eksisterende data.
+            <strong>Bemærk:</strong> Seed tilføjer demo-data. Import erstatter demo-data med rigtige kommune-data.
         </div>
 
+        <h3>Vælg handling:</h3>
+
+        <form method="POST" style="margin-bottom: 15px;">
+            <input type="hidden" name="action" value="import_local">
+            <button type="submit" class="btn" style="background: #10b981;">Importer Kommune-data (anbefalet)</button>
+            <p style="font-size: 0.9em; color: #666; margin-top: 5px;">Importerer 25 units, 11 kampagner og 2376 responses fra lokal database</p>
+        </form>
+
         <form method="POST">
-            <button type="submit" class="btn">Kør Seed Script</button>
+            <input type="hidden" name="action" value="seed">
+            <button type="submit" class="btn">Kør Seed Script (demo-data)</button>
+            <p style="font-size: 0.9em; color: #666; margin-top: 5px;">Genererer tomme demo-virksomheder</p>
         </form>
 
         <p style="margin-top: 20px;"><a href="/admin">← Tilbage til admin</a></p>
