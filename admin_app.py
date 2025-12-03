@@ -303,9 +303,14 @@ Niels;Olsen;niels@techcorp.dk;+4512345017;TechCorp//Sales//DACH"""
 @login_required
 def admin_home():
     """Admin forside - vis organisationstræ"""
+    from db_hierarchical import DB_PATH
     user = get_current_user()
 
     with get_db() as conn:
+        # DEBUG: Hvad er i databasen lige nu?
+        debug_units = conn.execute("SELECT id, name FROM organizational_units LIMIT 5").fetchall()
+        debug_names = [u['name'] for u in debug_units]
+        print(f"DEBUG admin_home: DB_PATH={DB_PATH}, First 5 units: {debug_names}")
         # Hent units baseret på customer filter
         if user['customer_id']:
             # Filter på specific customer
@@ -361,11 +366,18 @@ def admin_home():
         customers = conn.execute("SELECT id, name FROM customers ORDER BY name").fetchall()
         customers_dict = {c['id']: c['name'] for c in customers}
 
+    # DEBUG: Tilføj database info
+    with get_db() as conn2:
+        raw_count = conn2.execute("SELECT COUNT(*) FROM organizational_units").fetchone()[0]
+        raw_names = conn2.execute("SELECT name FROM organizational_units WHERE parent_id IS NULL LIMIT 10").fetchall()
+        raw_toplevel = [r[0] for r in raw_names]
+
     return render_template('admin/home.html',
                          units=[dict(u) for u in all_units],
                          campaign_count=campaign_count,
                          show_all_customers=(not user['customer_id']),
-                         customers_dict=customers_dict)
+                         customers_dict=customers_dict,
+                         debug_info=f"DB: {DB_PATH}, Raw count: {raw_count}, Toplevel: {raw_toplevel}")
 
 
 @app.route('/admin/campaigns-overview')
