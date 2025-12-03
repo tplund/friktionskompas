@@ -1398,62 +1398,62 @@ def campaign_detailed_analysis(campaign_id):
                     WHERE c.id = ? AND ou.customer_id = ?
                 """, [campaign_id, user['customer_id']]).fetchone()
 
-        if not campaign:
-            flash("Måling ikke fundet eller ingen adgang", 'error')
-            return redirect(url_for('admin_home'))
+            if not campaign:
+                flash("Måling ikke fundet eller ingen adgang", 'error')
+                return redirect(url_for('admin_home'))
 
-    target_unit_id = campaign['target_unit_id']
-    campaign_customer_id = campaign['customer_id']
+        target_unit_id = campaign['target_unit_id']
+        campaign_customer_id = campaign['customer_id']
 
-    # Check anonymity
-    anonymity = check_anonymity_threshold(campaign_id, target_unit_id)
+        # Check anonymity
+        anonymity = check_anonymity_threshold(campaign_id, target_unit_id)
 
-    if not anonymity.get('can_show_results'):
-        flash(f"Ikke nok svar endnu. {anonymity.get('response_count', 0)} af {anonymity.get('min_required', 5)} modtaget.", 'warning')
-        return redirect(url_for('view_campaign', campaign_id=campaign_id))
+        if not anonymity.get('can_show_results'):
+            flash(f"Ikke nok svar endnu. {anonymity.get('response_count', 0)} af {anonymity.get('min_required', 5)} modtaget.", 'warning')
+            return redirect(url_for('view_campaign', campaign_id=campaign_id))
 
-    # Get detailed breakdown
-    breakdown = get_detailed_breakdown(target_unit_id, campaign_id, include_children=True)
+        # Get detailed breakdown
+        breakdown = get_detailed_breakdown(target_unit_id, campaign_id, include_children=True)
 
-    # Calculate substitution (tid-bias)
-    substitution = calculate_substitution(target_unit_id, campaign_id, 'employee')
+        # Calculate substitution (tid-bias)
+        substitution = calculate_substitution(target_unit_id, campaign_id, 'employee')
 
-    # Add has_substitution flag and count for template
-    substitution['has_substitution'] = substitution.get('flagged', False) and substitution.get('flagged_count', 0) > 0
-    substitution['count'] = substitution.get('flagged_count', 0)
+        # Add has_substitution flag and count for template
+        substitution['has_substitution'] = substitution.get('flagged', False) and substitution.get('flagged_count', 0) > 0
+        substitution['count'] = substitution.get('flagged_count', 0)
 
-    # Get free text comments
-    free_text_comments = get_free_text_comments(target_unit_id, campaign_id, include_children=True)
+        # Get free text comments
+        free_text_comments = get_free_text_comments(target_unit_id, campaign_id, include_children=True)
 
-    # Get KKC recommendations
-    employee_stats = breakdown.get('employee', {})
-    comparison = breakdown.get('comparison', {})
-    kkc_recommendations = get_kkc_recommendations(employee_stats, comparison)
-    start_here = get_start_here_recommendation(kkc_recommendations)
+        # Get KKC recommendations
+        employee_stats = breakdown.get('employee', {})
+        comparison = breakdown.get('comparison', {})
+        kkc_recommendations = get_kkc_recommendations(employee_stats, comparison)
+        start_here = get_start_here_recommendation(kkc_recommendations)
 
-    # Get alerts and findings
-    from analysis import get_alerts_and_findings
-    alerts = get_alerts_and_findings(breakdown, comparison, substitution)
+        # Get alerts and findings
+        from analysis import get_alerts_and_findings
+        alerts = get_alerts_and_findings(breakdown, comparison, substitution)
 
-    # Get individual scores for radar chart
-    individual_scores = get_individual_scores(target_unit_id, campaign_id)
+        # Get individual scores for radar chart
+        individual_scores = get_individual_scores(target_unit_id, campaign_id)
 
-    # Breadcrumbs
-    breadcrumbs = get_unit_path(target_unit_id)
+        # Breadcrumbs
+        breadcrumbs = get_unit_path(target_unit_id)
 
-    # Get last response date
-    with get_db() as conn:
-        last_response = conn.execute("""
-            SELECT MAX(created_at) as last_date
-            FROM responses
-            WHERE campaign_id = ? AND created_at IS NOT NULL
-        """, [campaign_id]).fetchone()
+        # Get last response date
+        with get_db() as conn:
+            last_response = conn.execute("""
+                SELECT MAX(created_at) as last_date
+                FROM responses
+                WHERE campaign_id = ? AND created_at IS NOT NULL
+            """, [campaign_id]).fetchone()
 
-        last_response_date = None
-        if last_response and last_response['last_date']:
-            from datetime import datetime
-            dt = datetime.fromisoformat(last_response['last_date'])
-            last_response_date = dt.strftime('%d-%m-%Y')
+            last_response_date = None
+            if last_response and last_response['last_date']:
+                from datetime import datetime
+                dt = datetime.fromisoformat(last_response['last_date'])
+                last_response_date = dt.strftime('%d-%m-%Y')
 
         return render_template('admin/campaign_detailed.html',
             campaign=dict(campaign),
