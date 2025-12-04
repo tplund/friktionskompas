@@ -2,6 +2,27 @@
 
 ## 🔥 Høj Prioritet
 
+### Flersproget Support (Oversættelser)
+- [ ] **Database ændringer** - `language` på users, `translations` tabel, `question_translations` tabel
+- [ ] **Translation modul** - `translations.py` med `t()` funktion
+- [ ] **Flask integration** - Context processor, `/set-language` route
+- [ ] **Seed oversættelser** - Initiale da/en oversættelser
+- [ ] **Template migrering** - Erstat hardcoded tekst med `t('key')`
+- [ ] **Spørgsmålsoversættelse** - Migrer spørgsmål til `question_translations`
+- [ ] **Email templates** - Tilføj sprog til email templates
+- [ ] **Admin UI** - Translations admin side + sprogvælger i nav
+- Se detaljeret plan: `PLAN_flersproget.md`
+
+### Automatiseret Test
+- [x] ~~**Test framework** - pytest opsætning med fixtures~~
+- [x] ~~**Database test** - CRUD, constraints, cascade delete (8 tests)~~
+- [x] ~~**Auth test** - Login, logout, authorization (8 tests)~~
+- [x] ~~**Route test** - Alle endpoints, navigation, 404 håndtering (21 tests)~~
+- [x] ~~**Sikkerhedstest** - SQL injection, XSS, auth bypass, session hijacking (12 tests)~~
+- [ ] **UI/UX test** - Selenium/Playwright tests af brugerflows
+- [ ] **Integration test** - End-to-end test af survey flow
+- [ ] **CI/CD** - Automatisk test ved push til GitHub
+
 ### ⚠️ VIGTIGT - Dokumentation
 - [ ] **Ved ALLE ændringer i analyselogik:** Opdater `ANALYSELOGIK.md`
   - Substitution thresholds (tid_bias ≥ 0.6, underliggende ≥ 3.5)
@@ -24,8 +45,12 @@
 - [x] ~~Vis organisationer som træ-struktur (ikke flat liste)~~
 - [x] ~~Navigation menu i admin interface~~
 - [x] ~~Customer dropdown for admin~~
-- [ ] "Slet alle data" knap (kun synlig for Admin rolle) - REMOVED (dangerous)
 - [x] ~~Breadcrumbs i alle admin views~~
+- [x] ~~Organisations-dashboard med drill-down (Organisation → Forvaltning → Område → Enhed)~~
+- [x] ~~Customer dropdown bevarer nuværende side ved skift~~
+- [x] ~~Terminologi: "kampagne" → "måling"~~
+- [x] ~~Favicon: Kompas-nål design~~
+- [x] ~~**Slet toplevel organisationer** - Mulighed for at slette kunder/toplevel fra organisationsoversigten~~
 
 ### CSV Import
 - [x] ~~Semikolon separator (Excel standard)~~

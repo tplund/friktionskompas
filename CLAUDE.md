@@ -1,5 +1,31 @@
 # Friktionskompasset - Claude Code Notes
 
+## VIGTIGT: Projekt Regler
+
+### TODO.md Vedligeholdelse
+- **ALTID** opdater `TODO.md` når nye opgaver identificeres
+- **ALTID** marker opgaver som færdige når de er implementeret
+- Hold TODO.md som den centrale kilde til projektets status
+- Nye features, bugs, og teknisk gæld skal tilføjes til TODO.md
+
+### Automatiseret Test
+- **ALTID** opdater/tilføj tests når der laves kodeændringer
+- Nye features skal have tilhørende tests
+- Bug fixes skal have regression tests
+- Kør tests før commit/deploy
+
+### Planer og Dokumentation
+- Store features skal have en `PLAN_*.md` fil før implementation
+- Ved ændringer i analyselogik: Opdater `ANALYSELOGIK.md`
+- Hold `CLAUDE.md` opdateret med nye patterns og løsninger
+
+### Terminologi
+- Brug "måling" (ikke "kampagne") i brugersynlige tekster
+- Brug "analyse" for resultater/rapporter
+- Interne variabelnavne må gerne være engelske
+
+---
+
 ## KRITISK: Database Konfiguration
 
 ### Render Persistent Disk

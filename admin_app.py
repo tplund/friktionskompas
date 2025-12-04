@@ -2,7 +2,7 @@
 Admin interface for Friktionskompasset v3
 Hierarkisk organisationsstruktur med units + Multi-tenant
 """
-from flask import Flask, render_template, request, redirect, url_for, flash, Response, session, jsonify
+from flask import Flask, render_template, request, redirect, url_for, flash, Response, session, jsonify, send_from_directory
 import csv
 import io
 import os
@@ -147,6 +147,12 @@ def index():
     if 'user' in session:
         return redirect(url_for('analyser'))
     return redirect(url_for('login'))
+
+
+@app.route('/verifyforzoho.html')
+def zoho_verify():
+    """Zoho domain verification"""
+    return send_from_directory('.', 'verifyforzoho.html')
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -942,6 +948,34 @@ def delete_unit(unit_id):
         conn.execute("DELETE FROM organizational_units WHERE id = ?", (unit_id,))
 
     flash(f'Organisation "{unit_name}" og alle underorganisationer er slettet', 'success')
+    return redirect(url_for('admin_home'))
+
+
+@app.route('/admin/customer/<customer_id>/delete', methods=['POST'])
+@admin_required
+def delete_customer(customer_id):
+    """Slet kunde og alle tilhørende data (kun admin)"""
+    with get_db() as conn:
+        # Tjek at kunden eksisterer
+        customer = conn.execute(
+            "SELECT * FROM customers WHERE id = ?",
+            (customer_id,)
+        ).fetchone()
+
+        if not customer:
+            flash('Kunde ikke fundet', 'error')
+            return redirect(url_for('admin_home'))
+
+        customer_name = customer['name']
+
+        # CASCADE DELETE vil automatisk slette:
+        # - organizational_units (og deres children)
+        # - campaigns
+        # - responses
+        # - users tilknyttet kunden
+        conn.execute("DELETE FROM customers WHERE id = ?", (customer_id,))
+
+    flash(f'Kunde "{customer_name}" og alle tilhørende data er slettet', 'success')
     return redirect(url_for('admin_home'))
 
 
@@ -2095,7 +2129,7 @@ def seed_testdata():
             from import_local_data import import_local_data
             result = import_local_data()
             if result.get('success'):
-                flash(f"Importeret: {result['units_imported']} units, {result['campaigns_imported']} kampagner, {result['responses_imported']} responses", 'success')
+                flash(f"Importeret: {result['units_imported']} units, {result['campaigns_imported']} målinger, {result['responses_imported']} responses", 'success')
             else:
                 flash(f"Fejl: {result.get('error', 'Ukendt fejl')}", 'error')
         except Exception as e:
@@ -2154,7 +2188,7 @@ def seed_testdata_page():
             <p>Kunder: {stats['customers']}</p>
             <p>Brugere: {stats['users']}</p>
             <p>Organisationer: {stats['units']}</p>
-            <p>Kampagner: {stats['campaigns']}</p>
+            <p>Målinger: {stats['campaigns']}</p>
             <p>Responses: {stats['responses']}</p>
         </div>
 
@@ -2167,7 +2201,7 @@ def seed_testdata_page():
         <form method="POST" style="margin-bottom: 15px;">
             <input type="hidden" name="action" value="import_local">
             <button type="submit" class="btn" style="background: #10b981;">Importer Kommune-data (anbefalet)</button>
-            <p style="font-size: 0.9em; color: #666; margin-top: 5px;">Importerer 25 units, 11 kampagner og 2376 responses fra lokal database</p>
+            <p style="font-size: 0.9em; color: #666; margin-top: 5px;">Importerer 25 units, 11 målinger og 2376 responses fra lokal database</p>
         </form>
 
         <form method="POST">
@@ -2497,7 +2531,7 @@ def cleanup_empty_units():
             toplevel = conn.execute("SELECT name FROM organizational_units WHERE parent_id IS NULL").fetchall()
             names = [t[0] for t in toplevel]
 
-        flash(f'Database erstattet! Før: {before_units} units/{before_responses} responses, Nu: {units} units, {campaigns} kampagner, {responses} responses. Toplevel: {names}', 'success')
+        flash(f'Database erstattet! Før: {before_units} units/{before_responses} responses, Nu: {units} units, {campaigns} målinger, {responses} responses. Toplevel: {names}', 'success')
     except Exception as e:
         import traceback
         return f'FEJL: {str(e)}.<br><br>Traceback:<pre>{traceback.format_exc()}</pre><br>Debug: {debug}'

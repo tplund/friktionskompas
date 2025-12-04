@@ -1,0 +1,1 @@
+# Friktionskompasset Test Suite

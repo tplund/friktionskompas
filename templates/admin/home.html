@@ -317,8 +317,12 @@
         {% if show_all_customers %}
             {% for customer_id, customer_name in customers_dict.items() %}
                 <div style="margin-bottom: 30px;">
-                    <div style="background: #f9fafb; padding: 10px 15px; border-radius: 6px; margin-bottom: 10px; font-weight: 500; color: #374151; border: 1px solid #e5e7eb;">
-                        {{ customer_name }}
+                    <div style="background: #f9fafb; padding: 10px 15px; border-radius: 6px; margin-bottom: 10px; font-weight: 500; color: #374151; border: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center;">
+                        <span>{{ customer_name }}</span>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <a href="/admin/unit/new?customer={{ customer_id }}" class="btn-create" title="Opret organisation">+</a>
+                            <button onclick="confirmDeleteCustomer('{{ customer_id }}', '{{ customer_name }}')" class="btn-delete" title="Slet kunde">Slet</button>
+                        </div>
                     </div>
                     <div class="org-tree">
                         {% for unit in units %}
@@ -334,8 +338,12 @@
                 {% set customer_id = units[0].customer_id %}
                 {% set customer_name = customers_dict.get(customer_id, 'Ukendt kunde') %}
                 <div style="margin-bottom: 30px;">
-                    <div style="background: #f9fafb; padding: 10px 15px; border-radius: 6px; margin-bottom: 10px; font-weight: 500; color: #374151; border: 1px solid #e5e7eb;">
-                        {{ customer_name }}
+                    <div style="background: #f9fafb; padding: 10px 15px; border-radius: 6px; margin-bottom: 10px; font-weight: 500; color: #374151; border: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center;">
+                        <span>{{ customer_name }}</span>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <a href="/admin/unit/new?customer={{ customer_id }}" class="btn-create" title="Opret organisation">+</a>
+                            <button onclick="confirmDeleteCustomer('{{ customer_id }}', '{{ customer_name }}')" class="btn-delete" title="Slet kunde">Slet</button>
+                        </div>
                     </div>
                     <div class="org-tree">
                         {% for unit in units %}
@@ -436,6 +444,30 @@
             const form = document.createElement('form');
             form.method = 'POST';
             form.action = '/admin/unit/' + unitId + '/delete';
+
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
+
+    // Delete customer (toplevel)
+    function confirmDeleteCustomer(customerId, customerName) {
+        const message =
+            'ADVARSEL - SLET KUNDE\n\n' +
+            `Er du SIKKER på at du vil slette kunden "${customerName}"?\n\n` +
+            'Dette vil PERMANENT slette:\n' +
+            '- Kunden\n' +
+            '- ALLE organisationer under kunden\n' +
+            '- Alle kontakter\n' +
+            '- Alle målinger og resultater\n' +
+            '- Alle brugere tilknyttet kunden\n\n' +
+            'Dette kan IKKE fortrydes!\n\n' +
+            'Klik OK for at slette, eller Annuller for at afbryde.';
+
+        if (confirm(message)) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/admin/customer/' + customerId + '/delete';
 
             document.body.appendChild(form);
             form.submit();
