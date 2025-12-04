@@ -2293,14 +2293,19 @@ def cleanup_empty_units():
 
     try:
         with get_db() as conn:
-            # Tæl før
-            before = conn.execute("SELECT COUNT(*) FROM organizational_units").fetchone()[0]
+            # Enable foreign keys
+            conn.execute("PRAGMA foreign_keys=ON")
 
-            # SLET ALT FØRST
+            # Tæl før
+            before_units = conn.execute("SELECT COUNT(*) FROM organizational_units").fetchone()[0]
+            before_responses = conn.execute("SELECT COUNT(*) FROM responses").fetchone()[0]
+
+            # SLET ALT FØRST - responses først pga foreign keys
             conn.execute("DELETE FROM responses")
+            conn.execute("DELETE FROM tokens")
             conn.execute("DELETE FROM campaigns")
             conn.execute("DELETE FROM organizational_units")
-            conn.commit()
+            # IKKE commit endnu - vent til alt er importeret
 
             # Importer units
             for unit in data.get('organizational_units', []):
@@ -2314,9 +2319,10 @@ def cleanup_empty_units():
             # Importer campaigns
             for camp in data.get('campaigns', []):
                 conn.execute('''
-                    INSERT INTO campaigns (id, name, target_unit_id, period, created_at)
-                    VALUES (?, ?, ?, ?, ?)
-                ''', (camp['id'], camp['name'], camp['target_unit_id'], camp.get('period'), camp.get('created_at')))
+                    INSERT INTO campaigns (id, name, target_unit_id, period, created_at, min_responses, mode)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                ''', (camp['id'], camp['name'], camp['target_unit_id'], camp.get('period'),
+                      camp.get('created_at'), camp.get('min_responses', 5), camp.get('mode', 'anonymous')))
 
             # Importer responses
             for resp in data.get('responses', []):
@@ -2327,6 +2333,7 @@ def cleanup_empty_units():
                       resp['score'], resp.get('respondent_type'), resp.get('respondent_name'),
                       resp.get('comment'), resp.get('category_comment'), resp.get('created_at')))
 
+            # Nu commit - alt eller intet
             conn.commit()
 
             units = conn.execute("SELECT COUNT(*) FROM organizational_units").fetchone()[0]
@@ -2337,9 +2344,10 @@ def cleanup_empty_units():
             toplevel = conn.execute("SELECT name FROM organizational_units WHERE parent_id IS NULL").fetchall()
             names = [t[0] for t in toplevel]
 
-        flash(f'Database erstattet! Før: {before}, Nu: {units} units, {campaigns} kampagner, {responses} responses. Toplevel: {names}', 'success')
+        flash(f'Database erstattet! Før: {before_units} units/{before_responses} responses, Nu: {units} units, {campaigns} kampagner, {responses} responses. Toplevel: {names}', 'success')
     except Exception as e:
-        return f'FEJL: {str(e)}. Debug: {debug}'
+        import traceback
+        return f'FEJL: {str(e)}.<br><br>Traceback:<pre>{traceback.format_exc()}</pre><br>Debug: {debug}'
 
     return redirect('/admin')
 
