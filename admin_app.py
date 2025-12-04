@@ -1229,6 +1229,15 @@ def impersonate_customer(customer_id):
     session['customer_filter_name'] = customer['name']
 
     flash(f'Viser kun data for: {customer["name"]}', 'success')
+
+    # Return to the page we came from, or adapt URL for new customer context
+    next_url = request.args.get('next', '')
+    if next_url:
+        # If on dashboard with specific customer/unit, go to that customer's dashboard
+        if '/dashboard' in next_url:
+            return redirect(url_for('org_dashboard', customer_id=customer_id))
+        # For other pages, just go back to that page type
+        return redirect(next_url)
     return redirect(url_for('admin_home'))
 
 
@@ -1244,6 +1253,13 @@ def stop_impersonate():
     session.pop('impersonating', None)
     flash('Viser alle kunder', 'success')
 
+    # Return to the page we came from
+    next_url = request.args.get('next', '')
+    if next_url:
+        # If on dashboard with specific customer, go to main dashboard
+        if '/dashboard' in next_url:
+            return redirect(url_for('org_dashboard'))
+        return redirect(next_url)
     return redirect(url_for('admin_home'))
 
 

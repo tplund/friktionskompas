@@ -290,12 +290,16 @@
 
     <script>
     function switchCustomer(customerId) {
+        // Get current path to return to after switching
+        var currentPath = window.location.pathname;
+        var returnUrl = encodeURIComponent(currentPath);
+
         if (customerId === "") {
-            // Stop impersonating and go back to admin view
-            window.location.href = "/admin/stop-impersonate";
+            // Stop impersonating - stay on current page type
+            window.location.href = "/admin/stop-impersonate?next=" + returnUrl;
         } else {
-            // Switch to this customer
-            window.location.href = "/admin/impersonate/" + customerId;
+            // Switch to this customer - stay on current page type
+            window.location.href = "/admin/impersonate/" + customerId + "?next=" + returnUrl;
         }
     }
     </script>
