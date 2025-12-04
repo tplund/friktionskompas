@@ -8,7 +8,7 @@
 - [x] ~~**Flask integration** - Context processor, `/set-language` route~~
 - [x] ~~**Sprogvælger i nav** - DA/EN skifter i header~~
 - [x] ~~**Template migrering (delvis)** - login, layout, home, tree_node, customers, analyser, org_dashboard~~
-- [ ] **Seed oversættelser** - Kør `/admin/seed-translations` for at seede
+- [x] ~~**Seed oversættelser** - 147 oversættelser seedet til database (DA/EN)~~
 - [ ] **Template migrering (resterende)** - Standalone templates (view_unit, new_unit, etc.)
 - [ ] **Spørgsmålsoversættelse** - Migrer spørgsmål til `question_translations`
 - [ ] **Email templates** - Tilføj sprog til email templates
