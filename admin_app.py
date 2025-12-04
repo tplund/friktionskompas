@@ -176,6 +176,37 @@ def logout():
     return redirect(url_for('login'))
 
 
+# TEMPORARY: Password reset route - REMOVE AFTER USE
+@app.route('/emergency-reset-xK9mP2vL')
+def emergency_password_reset():
+    """Midlertidig password reset - slet denne route efter brug!"""
+    import bcrypt
+    new_password = "FrikAdmin2025!"
+    password_hash = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+    with get_db() as conn:
+        # Check if superadmin exists
+        existing = conn.execute("SELECT id FROM users WHERE username = 'superadmin'").fetchone()
+
+        if existing:
+            conn.execute("UPDATE users SET password_hash = ?, is_active = 1 WHERE username = 'superadmin'", (password_hash,))
+        else:
+            import secrets as sec
+            user_id = f"user-{sec.token_urlsafe(8)}"
+            conn.execute("""
+                INSERT INTO users (id, username, password_hash, name, role, is_active)
+                VALUES (?, 'superadmin', ?, 'Super Admin', 'admin', 1)
+            """, (user_id, password_hash))
+
+    return f"""
+    <h1>Password Reset Complete</h1>
+    <p><strong>Username:</strong> superadmin</p>
+    <p><strong>Password:</strong> {new_password}</p>
+    <p><a href="/login">Go to login</a></p>
+    <p style="color:red;"><strong>VIGTIGT: Slet denne route fra koden efter brug!</strong></p>
+    """
+
+
 @app.route('/admin/delete-all-data', methods=['POST'])
 @admin_required
 def delete_all_data():
