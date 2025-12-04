@@ -9,7 +9,7 @@
 - [x] ~~**Sprogvælger i nav** - DA/EN skifter i header~~
 - [x] ~~**Template migrering (delvis)** - login, layout, home, tree_node, customers, analyser, org_dashboard~~
 - [x] ~~**Seed oversættelser** - 147 oversættelser seedet til database (DA/EN)~~
-- [ ] **Template migrering (resterende)** - Standalone templates (view_unit, new_unit, etc.)
+- [x] ~~**Template migrering (resterende)** - new_unit, view_unit, new_campaign konverteret til layout.html + t()~~
 - [ ] **Spørgsmålsoversættelse** - Migrer spørgsmål til `question_translations`
 - [ ] **Email templates** - Tilføj sprog til email templates
 - Se detaljeret plan: `PLAN_flersproget.md`
