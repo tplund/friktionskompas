@@ -21,6 +21,8 @@ def get_db():
     """Context manager for database connection"""
     conn = sqlite3.connect(DB_PATH, timeout=30.0)
     conn.row_factory = sqlite3.Row
+    # Enable foreign keys for CASCADE DELETE to work
+    conn.execute("PRAGMA foreign_keys=ON")
     # Enable WAL mode for better concurrent access
     conn.execute("PRAGMA journal_mode=WAL")
     try:
