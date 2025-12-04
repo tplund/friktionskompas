@@ -1,133 +1,525 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>Dashboard - {{ org.name }}</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; 
-            background: #f9fafb;
-            padding: 20px;
-        }
-        .container { max-width: 1400px; margin: 0 auto; }
-        .header { 
-            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-            color: white; 
-            padding: 30px; 
-            border-radius: 12px; 
-            margin-bottom: 30px;
-        }
-        .card { background: white; border-radius: 12px; padding: 30px; margin-bottom: 20px; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 15px; text-align: left; border-bottom: 1px solid #e5e7eb; }
-        th { background: #f9fafb; font-weight: 600; }
-        .score-badge {
-            display: inline-block;
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-weight: 600;
-        }
-        .score-red { background: #fee2e2; color: #991b1b; }
-        .score-yellow { background: #fef3c7; color: #92400e; }
-        .score-green { background: #d1fae5; color: #065f46; }
-        a { color: #3b82f6; text-decoration: none; }
-        .insight-box {
-            background: #f0f9ff;
-            padding: 20px;
-            border-left: 4px solid #3b82f6;
-            border-radius: 4px;
-            margin: 20px 0;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>📊 Dashboard: {{ org.name }}</h1>
-            <p>Måling: {{ campaign.name }} ({{ campaign.period }})</p>
-            <p><a href="/admin/org/{{ org.id }}" style="color: white; opacity: 0.9;">← Tilbage til organisation</a></p>
-        </div>
+{% extends "admin/layout.html" %}
 
-        <div class="card">
-            <h2>📈 Sammenligning på tværs af afdelinger</h2>
-            
-            <table>
-                <thead>
-                    <tr>
-                        <th>Afdeling</th>
-                        <th>Besvær</th>
-                        <th>Sygefravær</th>
-                        <th>Svar</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for dept in departments %}
-                    <tr>
-                        <td><strong>{{ dept.name }}</strong></td>
-                        <td>
-                            {% if dept.besvær_score %}
-                            <span class="score-badge 
-                                {% if dept.besvær_score < 2.5 %}score-red
-                                {% elif dept.besvær_score < 3.5 %}score-yellow
-                                {% else %}score-green{% endif %}">
-                                {{ dept.besvær_score }}/5
-                            </span>
-                            {% else %}
-                            <span style="color: #6b7280;">-</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if dept.sick_leave_percent > 0 %}
-                            {{ dept.sick_leave_percent }}%
-                            {% else %}
-                            <span style="color: #6b7280;">Ikke angivet</span>
-                            {% endif %}
-                        </td>
-                        <td>{{ dept.tokens_used }} / {{ dept.tokens_sent }}</td>
-                        <td>
-                            {% if dept.tokens_used >= 5 %}
-                            <a href="/admin/dept/{{ dept.id }}">Se detaljer →</a>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+{% block title %}Dashboard{% endblock %}
 
-        <div class="card">
-            <h2>💡 Indsigter</h2>
-            
-            {% set total_depts = departments|length %}
-            {% set depts_with_data = departments|selectattr('besvær_score')|list %}
-            {% set low_friction = depts_with_data|selectattr('besvær_score', '>=', 3.5)|list|length %}
-            {% set high_friction = depts_with_data|selectattr('besvær_score', '<', 2.5)|list|length %}
-            
-            <div class="insight-box">
-                <h3>📊 Status:</h3>
-                <ul style="margin-top: 10px; line-height: 2;">
-                    <li>{{ depts_with_data|length }} ud af {{ total_depts }} afdelinger har nok svar til analyse</li>
-                    {% if high_friction > 0 %}
-                    <li><strong style="color: #dc2626;">{{ high_friction }} afdelinger har kritisk høj friktion (under 2.5)</strong></li>
-                    {% endif %}
-                    {% if low_friction > 0 %}
-                    <li style="color: #059669;">{{ low_friction }} afdelinger har lav friktion (over 3.5)</li>
-                    {% endif %}
-                </ul>
-            </div>
+{% block extra_css %}
+<style>
+    /* Breadcrumb */
+    .breadcrumb-nav {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 20px;
+        font-size: 0.875rem;
+        flex-wrap: wrap;
+    }
 
-            {% if high_friction > 0 %}
-            <div class="insight-box" style="background: #fef3c7; border-left-color: #f59e0b;">
-                <h3>⚠️ Anbefaling:</h3>
-                <p style="margin-top: 10px;">
-                    Start med de afdelinger der scorer lavest på Besvær. 
-                    Se deres konkrete citater for at forstå hvor friktionen er.
-                </p>
-            </div>
+    .breadcrumb-nav a {
+        color: #6366f1;
+        text-decoration: none;
+    }
+
+    .breadcrumb-nav a:hover {
+        text-decoration: underline;
+    }
+
+    .breadcrumb-nav .separator {
+        color: #9ca3af;
+    }
+
+    .breadcrumb-nav .current {
+        color: #374151;
+        font-weight: 600;
+    }
+
+    /* Summary cards */
+    .summary-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 16px;
+        margin-bottom: 30px;
+    }
+
+    .summary-card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        text-align: center;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .summary-card.highlight {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+
+    .summary-label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        opacity: 0.8;
+        margin-bottom: 8px;
+    }
+
+    .summary-value {
+        font-size: 2rem;
+        font-weight: 700;
+    }
+
+    .summary-value.score-high { color: #166534; }
+    .summary-value.score-medium { color: #854d0e; }
+    .summary-value.score-low { color: #991b1b; }
+    .summary-card.highlight .summary-value { color: white; }
+
+    /* Cards grid */
+    .cards-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 20px;
+    }
+
+    .org-card {
+        background: white;
+        border-radius: 12px;
+        padding: 24px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        transition: all 0.2s;
+        cursor: pointer;
+        border: 2px solid transparent;
+        position: relative;
+    }
+
+    .org-card:hover {
+        box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+        transform: translateY(-2px);
+        border-color: #6366f1;
+    }
+
+    .org-card.has-problems {
+        border-left: 4px solid #ef4444;
+    }
+
+    .org-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 16px;
+    }
+
+    .org-card-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #1f2937;
+        margin: 0;
+    }
+
+    .org-card-subtitle {
+        font-size: 0.875rem;
+        color: #6b7280;
+        margin-top: 4px;
+    }
+
+    .org-card-badge {
+        background: #f3f4f6;
+        color: #374151;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+
+    .org-card-badge.drilldown {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .org-card-badge.campaign {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    /* Score display */
+    .score-circle {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 16px;
+        font-weight: 700;
+    }
+
+    .score-circle.high {
+        background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+        color: #166534;
+    }
+
+    .score-circle.medium {
+        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        color: #854d0e;
+    }
+
+    .score-circle.low {
+        background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+        color: #991b1b;
+    }
+
+    .score-circle.none {
+        background: #f3f4f6;
+        color: #9ca3af;
+    }
+
+    .score-circle .score-value {
+        font-size: 1.5rem;
+        line-height: 1;
+    }
+
+    .score-circle .score-label {
+        font-size: 0.65rem;
+        font-weight: 500;
+        opacity: 0.8;
+    }
+
+    /* Mini scores grid */
+    .mini-scores {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+        margin-top: 16px;
+        padding-top: 16px;
+        border-top: 1px solid #e5e7eb;
+    }
+
+    .mini-score {
+        text-align: center;
+    }
+
+    .mini-score-label {
+        font-size: 0.65rem;
+        color: #6b7280;
+        text-transform: uppercase;
+        margin-bottom: 4px;
+    }
+
+    .mini-score-value {
+        font-size: 1rem;
+        font-weight: 700;
+    }
+
+    .mini-score-value.score-high { color: #166534; }
+    .mini-score-value.score-medium { color: #854d0e; }
+    .mini-score-value.score-low { color: #991b1b; }
+    .mini-score-value.score-none { color: #9ca3af; }
+
+    /* Stats row */
+    .card-stats {
+        display: flex;
+        gap: 16px;
+        font-size: 0.875rem;
+        color: #6b7280;
+        margin-top: 12px;
+    }
+
+    .card-stat {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    /* Action buttons */
+    .card-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 16px;
+        padding-top: 16px;
+        border-top: 1px solid #e5e7eb;
+    }
+
+    .card-action {
+        flex: 1;
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-size: 0.875rem;
+        font-weight: 500;
+        text-align: center;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+
+    .card-action.primary {
+        background: #6366f1;
+        color: white;
+    }
+
+    .card-action.primary:hover {
+        background: #4f46e5;
+    }
+
+    .card-action.secondary {
+        background: #f3f4f6;
+        color: #374151;
+    }
+
+    .card-action.secondary:hover {
+        background: #e5e7eb;
+    }
+
+    /* Empty state */
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #6b7280;
+    }
+
+    .empty-state-icon {
+        font-size: 4rem;
+        margin-bottom: 20px;
+        opacity: 0.5;
+    }
+
+    /* Legend */
+    .legend {
+        display: flex;
+        gap: 24px;
+        justify-content: center;
+        margin-top: 30px;
+        padding: 16px;
+        background: #f9fafb;
+        border-radius: 8px;
+        flex-wrap: wrap;
+    }
+
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.875rem;
+        color: #6b7280;
+    }
+
+    .legend-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+    }
+
+    .legend-dot.high { background: #166534; }
+    .legend-dot.medium { background: #854d0e; }
+    .legend-dot.low { background: #991b1b; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Breadcrumb -->
+    <nav class="breadcrumb-nav">
+        {% for crumb in breadcrumb %}
+            {% if not loop.last %}
+                <a href="{{ crumb.url }}">{{ crumb.name }}</a>
+                <span class="separator">/</span>
+            {% else %}
+                <span class="current">{{ crumb.name }}</span>
             {% endif %}
+        {% endfor %}
+    </nav>
+
+    <!-- Header -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+        <h1 class="h2">
+            {% if level == 'customers' %}
+                Organisations Dashboard
+            {% elif parent_unit %}
+                {{ parent_unit.name }}
+            {% else %}
+                {{ customer.name }}
+            {% endif %}
+        </h1>
+        {% if level != 'customers' %}
+        <a href="{{ url_for('analyser') }}" class="btn" style="background: #10b981; color: white; padding: 10px 20px; text-decoration: none; border-radius: 8px; font-weight: 500;">
+            Se Analyser
+        </a>
+        {% endif %}
+    </div>
+
+    {% if level == 'customers' %}
+    <!-- NIVEAU 1: Kunde-oversigt -->
+    <div class="cards-grid">
+        {% for item in items %}
+        <div class="org-card {% if item.avg_score and item.avg_score < 3.0 %}has-problems{% endif %}"
+             onclick="window.location='{{ url_for('org_dashboard', customer_id=item.id) }}'">
+            <div class="org-card-header">
+                <div>
+                    <h3 class="org-card-title">{{ item.name }}</h3>
+                    <div class="org-card-subtitle">{{ item.unit_count }} enheder</div>
+                </div>
+                <span class="org-card-badge drilldown">{{ item.campaign_count }} kampagner</span>
+            </div>
+
+            <div class="score-circle {% if item.avg_score %}{% if item.avg_score > 3.5 %}high{% elif item.avg_score >= 2.5 %}medium{% else %}low{% endif %}{% else %}none{% endif %}">
+                {% if item.avg_score %}
+                <span class="score-value">{{ "%.0f"|format((item.avg_score / 5) * 100) }}%</span>
+                <span class="score-label">Gns. Score</span>
+                {% else %}
+                <span class="score-value">-</span>
+                <span class="score-label">Ingen data</span>
+                {% endif %}
+            </div>
+
+            <div class="card-stats">
+                <div class="card-stat">{{ item.response_count }} besvarelser</div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% else %}
+    <!-- NIVEAU 2+: Unit-oversigt med aggregerede scores -->
+
+    <!-- Aggregeret sammenfatning -->
+    {% if agg_scores and agg_scores.avg_score %}
+    <div class="summary-row">
+        <div class="summary-card highlight">
+            <div class="summary-label">Samlet Score</div>
+            <div class="summary-value">{{ "%.0f"|format((agg_scores.avg_score / 5) * 100) }}%</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-label">Mening</div>
+            <div class="summary-value {% if agg_scores.mening %}{{ get_percent_class(agg_scores.mening) }}{% endif %}">
+                {% if agg_scores.mening %}{{ "%.0f"|format((agg_scores.mening / 5) * 100) }}%{% else %}-{% endif %}
+            </div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-label">Tryghed</div>
+            <div class="summary-value {% if agg_scores.tryghed %}{{ get_percent_class(agg_scores.tryghed) }}{% endif %}">
+                {% if agg_scores.tryghed %}{{ "%.0f"|format((agg_scores.tryghed / 5) * 100) }}%{% else %}-{% endif %}
+            </div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-label">Kan</div>
+            <div class="summary-value {% if agg_scores.kan %}{{ get_percent_class(agg_scores.kan) }}{% endif %}">
+                {% if agg_scores.kan %}{{ "%.0f"|format((agg_scores.kan / 5) * 100) }}%{% else %}-{% endif %}
+            </div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-label">Besvaer</div>
+            <div class="summary-value {% if agg_scores.besvaer %}{{ get_percent_class(agg_scores.besvaer) }}{% endif %}">
+                {% if agg_scores.besvaer %}{{ "%.0f"|format((agg_scores.besvaer / 5) * 100) }}%{% else %}-{% endif %}
+            </div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-label">Besvarelser</div>
+            <div class="summary-value" style="color: #374151;">{{ agg_scores.response_count }}</div>
         </div>
     </div>
-</body>
-</html>
+    {% endif %}
+
+    <!-- Units grid -->
+    {% if items %}
+    <div class="cards-grid">
+        {% for item in items %}
+        <div class="org-card {% if item.avg_score and item.avg_score < 3.0 %}has-problems{% endif %}"
+             {% if item.child_count > 0 %}
+             onclick="window.location='{{ url_for('org_dashboard', customer_id=customer_id, unit_id=item.id) }}'"
+             {% elif item.direct_campaign_id %}
+             onclick="window.location='{{ url_for('campaign_detailed', campaign_id=item.direct_campaign_id) }}'"
+             {% endif %}>
+
+            <div class="org-card-header">
+                <div>
+                    <h3 class="org-card-title">
+                        {% if item.level == 0 %}{% elif item.level == 1 %}{% else %}{% endif %}
+                        {{ item.name }}
+                    </h3>
+                    {% if item.leader_name %}
+                    <div class="org-card-subtitle">{{ item.leader_name }}</div>
+                    {% endif %}
+                </div>
+                {% if item.child_count > 0 %}
+                <span class="org-card-badge drilldown">{{ item.child_count }} underenheder</span>
+                {% elif item.direct_campaign_id %}
+                <span class="org-card-badge campaign">Se analyse</span>
+                {% endif %}
+            </div>
+
+            <div class="score-circle {% if item.avg_score %}{% if item.avg_score > 3.5 %}high{% elif item.avg_score >= 2.5 %}medium{% else %}low{% endif %}{% else %}none{% endif %}">
+                {% if item.avg_score %}
+                <span class="score-value">{{ "%.0f"|format((item.avg_score / 5) * 100) }}%</span>
+                <span class="score-label">Gns. Score</span>
+                {% else %}
+                <span class="score-value">-</span>
+                <span class="score-label">Ingen data</span>
+                {% endif %}
+            </div>
+
+            {% if item.avg_score %}
+            <div class="mini-scores">
+                <div class="mini-score">
+                    <div class="mini-score-label">Mening</div>
+                    <div class="mini-score-value {% if item.score_mening %}{{ get_percent_class(item.score_mening) }}{% else %}score-none{% endif %}">
+                        {% if item.score_mening %}{{ "%.0f"|format((item.score_mening / 5) * 100) }}%{% else %}-{% endif %}
+                    </div>
+                </div>
+                <div class="mini-score">
+                    <div class="mini-score-label">Tryghed</div>
+                    <div class="mini-score-value {% if item.score_tryghed %}{{ get_percent_class(item.score_tryghed) }}{% else %}score-none{% endif %}">
+                        {% if item.score_tryghed %}{{ "%.0f"|format((item.score_tryghed / 5) * 100) }}%{% else %}-{% endif %}
+                    </div>
+                </div>
+                <div class="mini-score">
+                    <div class="mini-score-label">Kan</div>
+                    <div class="mini-score-value {% if item.score_kan %}{{ get_percent_class(item.score_kan) }}{% else %}score-none{% endif %}">
+                        {% if item.score_kan %}{{ "%.0f"|format((item.score_kan / 5) * 100) }}%{% else %}-{% endif %}
+                    </div>
+                </div>
+                <div class="mini-score">
+                    <div class="mini-score-label">Besvaer</div>
+                    <div class="mini-score-value {% if item.score_besvaer %}{{ get_percent_class(item.score_besvaer) }}{% else %}score-none{% endif %}">
+                        {% if item.score_besvaer %}{{ "%.0f"|format((item.score_besvaer / 5) * 100) }}%{% else %}-{% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="card-stats">
+                <div class="card-stat">{{ item.campaign_count }} kampagner</div>
+                <div class="card-stat">{{ item.response_count }} svar</div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Legend -->
+    <div class="legend">
+        <div class="legend-item">
+            <div class="legend-dot high"></div>
+            <span>Over 70% - Lav friktion</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-dot medium"></div>
+            <span>50-70% - Moderat friktion</span>
+        </div>
+        <div class="legend-item">
+            <div class="legend-dot low"></div>
+            <span>Under 50% - Hoj friktion</span>
+        </div>
+    </div>
+
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-state-icon">📂</div>
+        <h3>Ingen underenheder</h3>
+        <p>Der er ingen underenheder på dette niveau.</p>
+        {% if parent_unit and parent_unit.direct_campaign_id %}
+        <a href="{{ url_for('campaign_detailed', campaign_id=parent_unit.direct_campaign_id) }}"
+           class="btn" style="background: #6366f1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin-top: 20px; display: inline-block;">
+            Se Analyse
+        </a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% endif %}
+</div>
+{% endblock %}

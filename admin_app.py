@@ -2489,5 +2489,252 @@ def cleanup_empty_units():
     return redirect('/admin')
 
 
+# ============================================
+# ORGANISATIONS-DASHBOARD MED DRILL-DOWN
+# ============================================
+
+@app.route('/admin/dashboard')
+@app.route('/admin/dashboard/<customer_id>')
+@app.route('/admin/dashboard/<customer_id>/<unit_id>')
+@login_required
+def org_dashboard(customer_id=None, unit_id=None):
+    """
+    Hierarkisk organisations-dashboard med drill-down.
+
+    Niveauer:
+    1. /admin/dashboard - Oversigt over alle kunder (kun admin)
+    2. /admin/dashboard/<customer_id> - Oversigt over kundens forvaltninger
+    3. /admin/dashboard/<customer_id>/<unit_id> - Drill-down i unit hierarki
+    """
+    user = get_current_user()
+
+    # Hvis ikke admin, tving til egen kunde
+    if user['role'] != 'admin':
+        customer_id = user['customer_id']
+
+    with get_db() as conn:
+        # Niveau 1: Vis alle kunder (kun admin uden customer_id)
+        if not customer_id and user['role'] == 'admin':
+            customers = conn.execute("""
+                SELECT
+                    c.id,
+                    c.name,
+                    COUNT(DISTINCT ou.id) as unit_count,
+                    COUNT(DISTINCT camp.id) as campaign_count,
+                    COUNT(DISTINCT r.id) as response_count,
+                    AVG(CASE
+                        WHEN r.respondent_type = 'employee' THEN
+                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END
+                    END) as avg_score
+                FROM customers c
+                LEFT JOIN organizational_units ou ON ou.customer_id = c.id
+                LEFT JOIN campaigns camp ON camp.target_unit_id = ou.id
+                LEFT JOIN responses r ON r.campaign_id = camp.id
+                LEFT JOIN questions q ON r.question_id = q.id
+                GROUP BY c.id
+                ORDER BY c.name
+            """).fetchall()
+
+            return render_template('admin/org_dashboard.html',
+                                 level='customers',
+                                 items=[dict(c) for c in customers],
+                                 breadcrumb=[{'name': 'Alle Organisationer', 'url': None}])
+
+        # Hent kundeinfo
+        customer = conn.execute("SELECT * FROM customers WHERE id = ?", [customer_id]).fetchone()
+        if not customer:
+            flash('Kunde ikke fundet', 'error')
+            return redirect(url_for('org_dashboard'))
+
+        # Niveau 2 & 3: Vis units under kunde eller parent unit
+        if unit_id:
+            # Drill-down: vis børn af denne unit
+            parent_unit = conn.execute("SELECT * FROM organizational_units WHERE id = ?", [unit_id]).fetchone()
+            if not parent_unit:
+                flash('Enhed ikke fundet', 'error')
+                return redirect(url_for('org_dashboard', customer_id=customer_id))
+
+            parent_id_filter = unit_id
+            current_level = parent_unit['level'] + 1
+
+            # Byg breadcrumb
+            breadcrumb = [{'name': 'Alle Organisationer', 'url': url_for('org_dashboard')}]
+            breadcrumb.append({'name': customer['name'], 'url': url_for('org_dashboard', customer_id=customer_id)})
+
+            # Tilføj parent units til breadcrumb
+            path_units = []
+            current = parent_unit
+            while current:
+                path_units.insert(0, current)
+                if current['parent_id']:
+                    current = conn.execute("SELECT * FROM organizational_units WHERE id = ?", [current['parent_id']]).fetchone()
+                else:
+                    current = None
+
+            for pu in path_units[:-1]:  # Alle undtagen sidste (den er current)
+                breadcrumb.append({'name': pu['name'], 'url': url_for('org_dashboard', customer_id=customer_id, unit_id=pu['id'])})
+            breadcrumb.append({'name': parent_unit['name'], 'url': None})
+
+        else:
+            # Top-level: vis root units for denne kunde
+            parent_id_filter = None
+            current_level = 0
+            breadcrumb = [
+                {'name': 'Alle Organisationer', 'url': url_for('org_dashboard')},
+                {'name': customer['name'], 'url': None}
+            ]
+            parent_unit = None
+
+        # Hent units på dette niveau med aggregerede scores
+        if parent_id_filter:
+            units_query = """
+                WITH RECURSIVE subtree AS (
+                    SELECT id, id as root_id FROM organizational_units WHERE parent_id = ?
+                    UNION ALL
+                    SELECT ou.id, st.root_id FROM organizational_units ou
+                    JOIN subtree st ON ou.parent_id = st.id
+                )
+                SELECT
+                    ou.id,
+                    ou.name,
+                    ou.level,
+                    ou.leader_name,
+                    (SELECT COUNT(*) FROM organizational_units WHERE parent_id = ou.id) as child_count,
+                    (SELECT COUNT(DISTINCT camp.id) FROM campaigns camp
+                     JOIN subtree st ON camp.target_unit_id = st.id WHERE st.root_id = ou.id) as campaign_count,
+                    (SELECT COUNT(DISTINCT r.id) FROM responses r
+                     JOIN campaigns camp ON r.campaign_id = camp.id
+                     JOIN subtree st ON camp.target_unit_id = st.id WHERE st.root_id = ou.id) as response_count,
+                    (SELECT AVG(CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END)
+                     FROM responses r
+                     JOIN campaigns camp ON r.campaign_id = camp.id
+                     JOIN questions q ON r.question_id = q.id
+                     JOIN subtree st ON camp.target_unit_id = st.id
+                     WHERE st.root_id = ou.id AND r.respondent_type = 'employee') as avg_score,
+                    -- Per felt scores
+                    (SELECT AVG(CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END)
+                     FROM responses r JOIN campaigns camp ON r.campaign_id = camp.id
+                     JOIN questions q ON r.question_id = q.id JOIN subtree st ON camp.target_unit_id = st.id
+                     WHERE st.root_id = ou.id AND r.respondent_type = 'employee' AND q.field = 'MENING') as score_mening,
+                    (SELECT AVG(CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END)
+                     FROM responses r JOIN campaigns camp ON r.campaign_id = camp.id
+                     JOIN questions q ON r.question_id = q.id JOIN subtree st ON camp.target_unit_id = st.id
+                     WHERE st.root_id = ou.id AND r.respondent_type = 'employee' AND q.field = 'TRYGHED') as score_tryghed,
+                    (SELECT AVG(CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END)
+                     FROM responses r JOIN campaigns camp ON r.campaign_id = camp.id
+                     JOIN questions q ON r.question_id = q.id JOIN subtree st ON camp.target_unit_id = st.id
+                     WHERE st.root_id = ou.id AND r.respondent_type = 'employee' AND q.field = 'KAN') as score_kan,
+                    (SELECT AVG(CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END)
+                     FROM responses r JOIN campaigns camp ON r.campaign_id = camp.id
+                     JOIN questions q ON r.question_id = q.id JOIN subtree st ON camp.target_unit_id = st.id
+                     WHERE st.root_id = ou.id AND r.respondent_type = 'employee' AND q.field = 'BESVÆR') as score_besvaer,
+                    -- Direkte kampagne (hvis denne unit har én)
+                    (SELECT camp.id FROM campaigns camp WHERE camp.target_unit_id = ou.id LIMIT 1) as direct_campaign_id
+                FROM organizational_units ou
+                WHERE ou.parent_id = ?
+                ORDER BY ou.name
+            """
+            units = conn.execute(units_query, [parent_id_filter, parent_id_filter]).fetchall()
+        else:
+            # Root units for kunde
+            units_query = """
+                WITH RECURSIVE subtree AS (
+                    SELECT id, id as root_id FROM organizational_units WHERE customer_id = ? AND parent_id IS NULL
+                    UNION ALL
+                    SELECT ou.id, st.root_id FROM organizational_units ou
+                    JOIN subtree st ON ou.parent_id = st.id
+                )
+                SELECT
+                    ou.id,
+                    ou.name,
+                    ou.level,
+                    ou.leader_name,
+                    (SELECT COUNT(*) FROM organizational_units WHERE parent_id = ou.id) as child_count,
+                    (SELECT COUNT(DISTINCT camp.id) FROM campaigns camp
+                     JOIN subtree st ON camp.target_unit_id = st.id WHERE st.root_id = ou.id) as campaign_count,
+                    (SELECT COUNT(DISTINCT r.id) FROM responses r
+                     JOIN campaigns camp ON r.campaign_id = camp.id
+                     JOIN subtree st ON camp.target_unit_id = st.id WHERE st.root_id = ou.id) as response_count,
+                    (SELECT AVG(CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END)
+                     FROM responses r
+                     JOIN campaigns camp ON r.campaign_id = camp.id
+                     JOIN questions q ON r.question_id = q.id
+                     JOIN subtree st ON camp.target_unit_id = st.id
+                     WHERE st.root_id = ou.id AND r.respondent_type = 'employee') as avg_score,
+                    -- Per felt scores
+                    (SELECT AVG(CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END)
+                     FROM responses r JOIN campaigns camp ON r.campaign_id = camp.id
+                     JOIN questions q ON r.question_id = q.id JOIN subtree st ON camp.target_unit_id = st.id
+                     WHERE st.root_id = ou.id AND r.respondent_type = 'employee' AND q.field = 'MENING') as score_mening,
+                    (SELECT AVG(CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END)
+                     FROM responses r JOIN campaigns camp ON r.campaign_id = camp.id
+                     JOIN questions q ON r.question_id = q.id JOIN subtree st ON camp.target_unit_id = st.id
+                     WHERE st.root_id = ou.id AND r.respondent_type = 'employee' AND q.field = 'TRYGHED') as score_tryghed,
+                    (SELECT AVG(CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END)
+                     FROM responses r JOIN campaigns camp ON r.campaign_id = camp.id
+                     JOIN questions q ON r.question_id = q.id JOIN subtree st ON camp.target_unit_id = st.id
+                     WHERE st.root_id = ou.id AND r.respondent_type = 'employee' AND q.field = 'KAN') as score_kan,
+                    (SELECT AVG(CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END)
+                     FROM responses r JOIN campaigns camp ON r.campaign_id = camp.id
+                     JOIN questions q ON r.question_id = q.id JOIN subtree st ON camp.target_unit_id = st.id
+                     WHERE st.root_id = ou.id AND r.respondent_type = 'employee' AND q.field = 'BESVÆR') as score_besvaer,
+                    -- Direkte kampagne
+                    (SELECT camp.id FROM campaigns camp WHERE camp.target_unit_id = ou.id LIMIT 1) as direct_campaign_id
+                FROM organizational_units ou
+                WHERE ou.customer_id = ? AND ou.parent_id IS NULL
+                ORDER BY ou.name
+            """
+            units = conn.execute(units_query, [customer_id, customer_id]).fetchall()
+
+        # Beregn samlet score for dette niveau
+        if parent_unit:
+            # Aggregér for parent unit
+            agg_scores = conn.execute("""
+                WITH RECURSIVE subtree AS (
+                    SELECT id FROM organizational_units WHERE id = ?
+                    UNION ALL
+                    SELECT ou.id FROM organizational_units ou
+                    JOIN subtree st ON ou.parent_id = st.id
+                )
+                SELECT
+                    AVG(CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END) as avg_score,
+                    AVG(CASE WHEN q.field = 'MENING' THEN CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as mening,
+                    AVG(CASE WHEN q.field = 'TRYGHED' THEN CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as tryghed,
+                    AVG(CASE WHEN q.field = 'KAN' THEN CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as kan,
+                    AVG(CASE WHEN q.field = 'BESVÆR' THEN CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as besvaer,
+                    COUNT(DISTINCT r.id) as response_count
+                FROM responses r
+                JOIN campaigns camp ON r.campaign_id = camp.id
+                JOIN questions q ON r.question_id = q.id
+                JOIN subtree st ON camp.target_unit_id = st.id
+                WHERE r.respondent_type = 'employee'
+            """, [unit_id]).fetchone()
+        else:
+            # Aggregér for hele kunden
+            agg_scores = conn.execute("""
+                SELECT
+                    AVG(CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END) as avg_score,
+                    AVG(CASE WHEN q.field = 'MENING' THEN CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as mening,
+                    AVG(CASE WHEN q.field = 'TRYGHED' THEN CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as tryghed,
+                    AVG(CASE WHEN q.field = 'KAN' THEN CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as kan,
+                    AVG(CASE WHEN q.field = 'BESVÆR' THEN CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as besvaer,
+                    COUNT(DISTINCT r.id) as response_count
+                FROM responses r
+                JOIN campaigns camp ON r.campaign_id = camp.id
+                JOIN questions q ON r.question_id = q.id
+                JOIN organizational_units ou ON camp.target_unit_id = ou.id
+                WHERE ou.customer_id = ? AND r.respondent_type = 'employee'
+            """, [customer_id]).fetchone()
+
+        return render_template('admin/org_dashboard.html',
+                             level='units',
+                             items=[dict(u) for u in units],
+                             customer=dict(customer),
+                             parent_unit=dict(parent_unit) if parent_unit else None,
+                             agg_scores=dict(agg_scores) if agg_scores else None,
+                             breadcrumb=breadcrumb,
+                             customer_id=customer_id)
+
+
 if __name__ == '__main__':
     app.run(debug=True, port=5001)
