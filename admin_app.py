@@ -2293,22 +2293,23 @@ def cleanup_empty_units():
 
     try:
         with get_db() as conn:
-            # Enable foreign keys
-            conn.execute("PRAGMA foreign_keys=ON")
+            # Disable foreign keys during delete/insert, enable after
+            conn.execute("PRAGMA foreign_keys=OFF")
 
             # Tæl før
             before_units = conn.execute("SELECT COUNT(*) FROM organizational_units").fetchone()[0]
             before_responses = conn.execute("SELECT COUNT(*) FROM responses").fetchone()[0]
 
-            # SLET ALT FØRST - responses først pga foreign keys
+            # SLET ALT FØRST
             conn.execute("DELETE FROM responses")
             conn.execute("DELETE FROM tokens")
             conn.execute("DELETE FROM campaigns")
+            conn.execute("DELETE FROM contacts")
             conn.execute("DELETE FROM organizational_units")
-            # IKKE commit endnu - vent til alt er importeret
 
-            # Importer units
-            for unit in data.get('organizational_units', []):
+            # Importer units - sorteret efter level så parents kommer først
+            units_sorted = sorted(data.get('organizational_units', []), key=lambda x: x.get('level', 0))
+            for unit in units_sorted:
                 conn.execute('''
                     INSERT INTO organizational_units (id, name, full_path, parent_id, level, leader_name, leader_email, employee_count, sick_leave_percent, customer_id)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
