@@ -11,7 +11,7 @@
       "employee_count": 0,
       "sick_leave_percent": 0.0,
       "created_at": "2025-11-15 09:58:50",
-      "customer_id": "cust-herning"
+      "customer_id": "cust-SHKIi10cOe8"
     },
     {
       "id": "unit-NXZVWoIi0xY",
@@ -24,7 +24,7 @@
       "employee_count": 0,
       "sick_leave_percent": 0.0,
       "created_at": "2025-11-15 09:58:50",
-      "customer_id": "cust-herning"
+      "customer_id": "cust-SHKIi10cOe8"
     },
     {
       "id": "unit-r9GCZGunKdE",
@@ -37,7 +37,7 @@
       "employee_count": 15,
       "sick_leave_percent": 0.0,
       "created_at": "2025-11-15 09:58:50",
-      "customer_id": "cust-herning"
+      "customer_id": "cust-SHKIi10cOe8"
     },
     {
       "id": "unit-yPzIQeouALY",
@@ -50,7 +50,7 @@
       "employee_count": 12,
       "sick_leave_percent": 0.0,
       "created_at": "2025-11-15 09:58:50",
-      "customer_id": "cust-herning"
+      "customer_id": "cust-SHKIi10cOe8"
     },
     {
       "id": "unit-fr4KdQaVR_A",
@@ -63,7 +63,7 @@
       "employee_count": 18,
       "sick_leave_percent": 0.0,
       "created_at": "2025-11-15 09:58:50",
-      "customer_id": "cust-herning"
+      "customer_id": "cust-SHKIi10cOe8"
     },
     {
       "id": "unit-NyRbAfp2qHQ",
@@ -76,11 +76,24 @@
       "employee_count": 14,
       "sick_leave_percent": 0.0,
       "created_at": "2025-11-15 09:58:50",
-      "customer_id": "cust-herning"
+      "customer_id": "cust-SHKIi10cOe8"
+    },
+    {
+      "id": "unit-0VBkPhYx22Y",
+      "parent_id": null,
+      "name": "Social- og Sundhedsforvaltningen",
+      "full_path": "Social- og Sundhedsforvaltningen",
+      "level": 0,
+      "leader_name": null,
+      "leader_email": null,
+      "employee_count": 0,
+      "sick_leave_percent": 0.0,
+      "created_at": "2025-11-15 09:58:50",
+      "customer_id": "cust-0nlG8ldxSYU"
     },
     {
       "id": "unit-E12-1-KPMm0",
-      "parent_id": "unit-FTnAdaiGw2Y",
+      "parent_id": "unit-0VBkPhYx22Y",
       "name": "Handicap og Psykiatri",
       "full_path": "Social- og Sundhedsforvaltningen//Handicap og Psykiatri",
       "level": 1,
@@ -89,7 +102,7 @@
       "employee_count": 0,
       "sick_leave_percent": 0.0,
       "created_at": "2025-11-15 09:58:50",
-      "customer_id": "cust-herning"
+      "customer_id": "cust-0nlG8ldxSYU"
     },
     {
       "id": "unit-unJ4-Jp0lDI",
@@ -102,7 +115,7 @@
       "employee_count": 10,
       "sick_leave_percent": 0.0,
       "created_at": "2025-11-15 09:58:50",
-      "customer_id": "cust-herning"
+      "customer_id": "cust-0nlG8ldxSYU"
     },
     {
       "id": "unit-o2Hda43HOns",
@@ -115,7 +128,7 @@
       "employee_count": 16,
       "sick_leave_percent": 0.0,
       "created_at": "2025-11-15 09:58:50",
-      "customer_id": "cust-herning"
+      "customer_id": "cust-0nlG8ldxSYU"
     },
     {
       "id": "unit-9WSpxe366MQ",
@@ -128,7 +141,7 @@
       "employee_count": 13,
       "sick_leave_percent": 0.0,
       "created_at": "2025-11-15 09:58:50",
-      "customer_id": "cust-herning"
+      "customer_id": "cust-0nlG8ldxSYU"
     },
     {
       "id": "unit-AIzm1ZEuf-8",
@@ -141,7 +154,7 @@
       "employee_count": 0,
       "sick_leave_percent": 0.0,
       "created_at": "2025-11-15 09:58:50",
-      "customer_id": "cust-herning"
+      "customer_id": "cust-0nlG8ldxSYU"
     },
     {
       "id": "unit-e1uk_KnzNtQ",
@@ -154,7 +167,7 @@
       "employee_count": 0,
       "sick_leave_percent": 0.0,
       "created_at": "2025-11-15 09:58:50",
-      "customer_id": "cust-herning"
+      "customer_id": "cust-0nlG8ldxSYU"
     },
     {
       "id": "unit-Q90JlnjJjr4",
@@ -167,7 +180,7 @@
       "employee_count": 20,
       "sick_leave_percent": 0.0,
       "created_at": "2025-11-15 09:58:50",
-      "customer_id": "cust-herning"
+      "customer_id": "cust-0nlG8ldxSYU"
     },
     {
       "id": "unit-G-1sydeaJ_0",
@@ -180,7 +193,7 @@
       "employee_count": 17,
       "sick_leave_percent": 0.0,
       "created_at": "2025-11-15 09:58:50",
-      "customer_id": "cust-herning"
+      "customer_id": "cust-0nlG8ldxSYU"
     },
     {
       "id": "unit-VA_m23V0iX0",
@@ -193,7 +206,7 @@
       "employee_count": 19,
       "sick_leave_percent": 0.0,
       "created_at": "2025-11-15 09:58:50",
-      "customer_id": "cust-herning"
+      "customer_id": "cust-0nlG8ldxSYU"
     },
     {
       "id": "unit-_06cFNGu-n0",
@@ -206,7 +219,98 @@
       "employee_count": 15,
       "sick_leave_percent": 0.0,
       "created_at": "2025-11-15 09:58:50",
-      "customer_id": "cust-herning"
+      "customer_id": "cust-0nlG8ldxSYU"
+    },
+    {
+      "id": "unit-Tk8utcH2yWs",
+      "parent_id": "unit-Z2uxnDWBRWg",
+      "name": "Salg",
+      "full_path": "Demo Virksomhed//Salg",
+      "level": 1,
+      "leader_name": "cust-zbbvYtPbptM",
+      "leader_email": null,
+      "employee_count": 0,
+      "sick_leave_percent": 0.0,
+      "created_at": "2025-12-02 13:50:19",
+      "customer_id": null
+    },
+    {
+      "id": "unit-gEkFbIkqYbM",
+      "parent_id": "unit-Tk8utcH2yWs",
+      "name": "Team Nord",
+      "full_path": "Demo Virksomhed//Salg//Team Nord",
+      "level": 2,
+      "leader_name": "cust-zbbvYtPbptM",
+      "leader_email": null,
+      "employee_count": 0,
+      "sick_leave_percent": 0.0,
+      "created_at": "2025-12-02 13:50:19",
+      "customer_id": null
+    },
+    {
+      "id": "unit-T4fuBHi3U54",
+      "parent_id": "unit-Tk8utcH2yWs",
+      "name": "Team Syd",
+      "full_path": "Demo Virksomhed//Salg//Team Syd",
+      "level": 2,
+      "leader_name": "cust-zbbvYtPbptM",
+      "leader_email": null,
+      "employee_count": 0,
+      "sick_leave_percent": 0.0,
+      "created_at": "2025-12-02 13:50:19",
+      "customer_id": null
+    },
+    {
+      "id": "unit-xkXn1R0OXEw",
+      "parent_id": "unit-Z2uxnDWBRWg",
+      "name": "IT",
+      "full_path": "Demo Virksomhed//IT",
+      "level": 1,
+      "leader_name": "cust-zbbvYtPbptM",
+      "leader_email": null,
+      "employee_count": 0,
+      "sick_leave_percent": 0.0,
+      "created_at": "2025-12-02 13:50:19",
+      "customer_id": null
+    },
+    {
+      "id": "unit-oeCLvYIh7WY",
+      "parent_id": "unit-xkXn1R0OXEw",
+      "name": "Udvikling",
+      "full_path": "Demo Virksomhed//IT//Udvikling",
+      "level": 2,
+      "leader_name": "cust-zbbvYtPbptM",
+      "leader_email": null,
+      "employee_count": 0,
+      "sick_leave_percent": 0.0,
+      "created_at": "2025-12-02 13:50:19",
+      "customer_id": null
+    },
+    {
+      "id": "unit-DMQop-trsZM",
+      "parent_id": "unit-xkXn1R0OXEw",
+      "name": "Support",
+      "full_path": "Demo Virksomhed//IT//Support",
+      "level": 2,
+      "leader_name": "cust-zbbvYtPbptM",
+      "leader_email": null,
+      "employee_count": 0,
+      "sick_leave_percent": 0.0,
+      "created_at": "2025-12-02 13:50:19",
+      "customer_id": null
+    },
+    {
+      "id": "unit-DauOykqrtrI",
+      "parent_id": "unit-Z2uxnDWBRWg",
+      "name": "HR",
+      "full_path": "Demo Virksomhed//HR",
+      "level": 1,
+      "leader_name": "cust-zbbvYtPbptM",
+      "leader_email": null,
+      "employee_count": 0,
+      "sick_leave_percent": 0.0,
+      "created_at": "2025-12-02 13:50:19",
+      "customer_id": null
     }
   ],
   "campaigns": [
@@ -28868,222 +28972,72 @@
       "respondent_name": "Leder"
     }
   ],
-  "questions": [
+  "customers": [
     {
-      "id": 90,
-      "field": "MENING",
-      "text_da": "Jeg bruger tid på opgaver, der ikke gør en forskel for kerneopgaven",
-      "reverse_scored": 1,
-      "sequence": 1,
-      "is_default": 1,
-      "org_unit_id": null
+      "id": "cust-SHKIi10cOe8",
+      "name": "Esbjerg Kommune",
+      "contact_email": null,
+      "is_active": 1,
+      "created_at": "2025-11-15 09:58:50"
     },
     {
-      "id": 91,
-      "field": "MENING",
-      "text_da": "Jeg kan se, hvordan min indsats hjælper borger/kunde i praksis",
-      "reverse_scored": 0,
-      "sequence": 2,
-      "is_default": 1,
-      "org_unit_id": null
+      "id": "cust-0nlG8ldxSYU",
+      "name": "Herning Kommune",
+      "contact_email": null,
+      "is_active": 1,
+      "created_at": "2025-11-15 09:58:50"
     },
     {
-      "id": 92,
-      "field": "MENING",
-      "text_da": "Jeg ved, hvilke opgaver der er vigtigst, når ikke alt kan nås",
-      "reverse_scored": 0,
-      "sequence": 3,
-      "is_default": 1,
-      "org_unit_id": null
+      "id": "cust-zbbvYtPbptM",
+      "name": "Demo Virksomhed A/S",
+      "contact_email": null,
+      "is_active": 1,
+      "created_at": "2025-12-02 13:50:18"
     },
     {
-      "id": 93,
-      "field": "MENING",
-      "text_da": "Det arbejde jeg gør, stemmer overens med mine værdier",
-      "reverse_scored": 0,
-      "sequence": 4,
-      "is_default": 1,
-      "org_unit_id": null
+      "id": "cust-cV3OI3hUy-k",
+      "name": "Test Organisation",
+      "contact_email": null,
+      "is_active": 1,
+      "created_at": "2025-12-02 13:50:18"
+    }
+  ],
+  "users": [
+    {
+      "id": "user-Tmp_na_7jMc",
+      "username": "leder@esbjerg.dk",
+      "name": "Leder Esbjerg",
+      "email": "leder@esbjerg.dk",
+      "role": "manager",
+      "customer_id": "cust-SHKIi10cOe8",
+      "is_active": 1
     },
     {
-      "id": 94,
-      "field": "MENING",
-      "text_da": "Når målet er uklart, bliver opgaven ofte liggende",
-      "reverse_scored": 1,
-      "sequence": 5,
-      "is_default": 1,
-      "org_unit_id": null
+      "id": "user-XDFbisZhJ5k",
+      "username": "leder@herning.dk",
+      "name": "Leder Herning",
+      "email": "leder@herning.dk",
+      "role": "manager",
+      "customer_id": "cust-0nlG8ldxSYU",
+      "is_active": 1
     },
     {
-      "id": 95,
-      "field": "TRYGHED",
-      "text_da": "Der er ting på min arbejdsplads, jeg gerne vil sige, men som jeg holder for mig selv",
-      "reverse_scored": 1,
-      "sequence": 6,
-      "is_default": 1,
-      "org_unit_id": null
+      "id": "user-JiZan6rSfhI",
+      "username": "admin",
+      "name": "System Administrator",
+      "email": "admin@friktionskompas.dk",
+      "role": "admin",
+      "customer_id": null,
+      "is_active": 1
     },
     {
-      "id": 96,
-      "field": "TRYGHED",
-      "text_da": "Hvis jeg rejser en bekymring, bliver der fulgt op",
-      "reverse_scored": 0,
-      "sequence": 7,
-      "is_default": 1,
-      "org_unit_id": null
-    },
-    {
-      "id": 97,
-      "field": "TRYGHED",
-      "text_da": "Jeg kan indrømme fejl uden at frygte negative konsekvenser",
-      "reverse_scored": 0,
-      "sequence": 8,
-      "is_default": 1,
-      "org_unit_id": null
-    },
-    {
-      "id": 98,
-      "field": "TRYGHED",
-      "text_da": "Jeg kan være i usikkerhed uden at gå i stå",
-      "reverse_scored": 0,
-      "sequence": 9,
-      "is_default": 1,
-      "org_unit_id": null
-    },
-    {
-      "id": 99,
-      "field": "TRYGHED",
-      "text_da": "Jeg udskyder opgaver, når jeg er usikker på, hvordan andre vil reagere",
-      "reverse_scored": 1,
-      "sequence": 10,
-      "is_default": 1,
-      "org_unit_id": null
-    },
-    {
-      "id": 100,
-      "field": "KAN",
-      "text_da": "Jeg har adgang til de systemer og den information, jeg skal bruge",
-      "reverse_scored": 0,
-      "sequence": 11,
-      "is_default": 1,
-      "org_unit_id": null
-    },
-    {
-      "id": 101,
-      "field": "KAN",
-      "text_da": "Der er opgaver, hvor jeg ikke ved præcist, hvad jeg skal gøre",
-      "reverse_scored": 1,
-      "sequence": 12,
-      "is_default": 1,
-      "org_unit_id": null
-    },
-    {
-      "id": 102,
-      "field": "KAN",
-      "text_da": "Når jeg går i stå, ved jeg, hvor jeg kan få hjælp",
-      "reverse_scored": 0,
-      "sequence": 13,
-      "is_default": 1,
-      "org_unit_id": null
-    },
-    {
-      "id": 103,
-      "field": "KAN",
-      "text_da": "Jeg har tid nok til at gøre mit arbejde ordentligt",
-      "reverse_scored": 0,
-      "sequence": 14,
-      "is_default": 1,
-      "org_unit_id": null
-    },
-    {
-      "id": 104,
-      "field": "KAN",
-      "text_da": "Jeg må selv vælge, hvordan jeg løser mine opgaver (inden for mine faglige rammer)",
-      "reverse_scored": 0,
-      "sequence": 15,
-      "is_default": 1,
-      "org_unit_id": null
-    },
-    {
-      "id": 105,
-      "field": "KAN",
-      "text_da": "Jeg bliver mindet om næste skridt på relevante tidspunkter",
-      "reverse_scored": 0,
-      "sequence": 16,
-      "is_default": 1,
-      "org_unit_id": null
-    },
-    {
-      "id": 106,
-      "field": "KAN",
-      "text_da": "I mit team henviser vi ofte til regler eller systemet, når en kort afklaring med en kollega kunne løse det",
-      "reverse_scored": 1,
-      "sequence": 17,
-      "is_default": 1,
-      "org_unit_id": null
-    },
-    {
-      "id": 107,
-      "field": "KAN",
-      "text_da": "Hvis jeg ikke kender første skridt, venter jeg med at gå i gang",
-      "reverse_scored": 1,
-      "sequence": 18,
-      "is_default": 1,
-      "org_unit_id": null
-    },
-    {
-      "id": 108,
-      "field": "BESVÆR",
-      "text_da": "Jeg skal ofte registrere de samme oplysninger flere steder",
-      "reverse_scored": 1,
-      "sequence": 19,
-      "is_default": 1,
-      "org_unit_id": null
-    },
-    {
-      "id": 109,
-      "field": "BESVÆR",
-      "text_da": "Det er let at komme i gang med mine opgaver",
-      "reverse_scored": 0,
-      "sequence": 20,
-      "is_default": 1,
-      "org_unit_id": null
-    },
-    {
-      "id": 110,
-      "field": "BESVÆR",
-      "text_da": "Jeg bliver sjældent forsinket af ventetid på systemer eller godkendelser",
-      "reverse_scored": 0,
-      "sequence": 21,
-      "is_default": 1,
-      "org_unit_id": null
-    },
-    {
-      "id": 111,
-      "field": "BESVÆR",
-      "text_da": "Afbrydelser forstyrrer sjældent mit arbejde",
-      "reverse_scored": 0,
-      "sequence": 22,
-      "is_default": 1,
-      "org_unit_id": null
-    },
-    {
-      "id": 112,
-      "field": "BESVÆR",
-      "text_da": "Selv når der er tid i kalenderen, bliver vigtige opgaver nogle gange udskudt",
-      "reverse_scored": 1,
-      "sequence": 23,
-      "is_default": 1,
-      "org_unit_id": null
-    },
-    {
-      "id": 113,
-      "field": "BESVÆR",
-      "text_da": "Den indsats opgaven kræver, står mål med effekten for borger/kunde",
-      "reverse_scored": 0,
-      "sequence": 24,
-      "is_default": 1,
-      "org_unit_id": null
+      "id": "user-M9LIrBl7WSg",
+      "username": "superadmin",
+      "name": "Super Admin",
+      "email": null,
+      "role": "admin",
+      "customer_id": null,
+      "is_active": 1
     }
   ]
 }

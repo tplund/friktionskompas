@@ -2321,10 +2321,11 @@ def cleanup_empty_units():
             # Importer responses
             for resp in data.get('responses', []):
                 conn.execute('''
-                    INSERT INTO responses (campaign_id, unit_id, question_id, score, respondent_type, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?)
+                    INSERT INTO responses (campaign_id, unit_id, question_id, score, respondent_type, respondent_name, comment, category_comment, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ''', (resp['campaign_id'], resp['unit_id'], resp['question_id'],
-                      resp['score'], resp.get('respondent_type'), resp.get('created_at')))
+                      resp['score'], resp.get('respondent_type'), resp.get('respondent_name'),
+                      resp.get('comment'), resp.get('category_comment'), resp.get('created_at')))
 
             conn.commit()
 
