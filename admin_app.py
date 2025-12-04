@@ -2193,6 +2193,14 @@ def db_status():
         resp_with_name = conn.execute("SELECT COUNT(*) FROM responses WHERE respondent_name IS NOT NULL AND respondent_name != ''").fetchone()[0]
         resp_sample = conn.execute("SELECT respondent_name, respondent_type FROM responses LIMIT 5").fetchall()
 
+        # Questions check
+        try:
+            questions_count = conn.execute("SELECT COUNT(*) FROM questions WHERE is_default = 1").fetchone()[0]
+            questions_total = conn.execute("SELECT COUNT(*) FROM questions").fetchone()[0]
+        except:
+            questions_count = 0
+            questions_total = 0
+
     html = f"""
     <html><head><style>
         body {{ font-family: monospace; padding: 20px; }}
@@ -2226,8 +2234,16 @@ def db_status():
     <p><b>Sample responses:</b></p>
     <ul>{''.join(f"<li>{r['respondent_name']} ({r['respondent_type']})</li>" for r in resp_sample)}</ul>
 
+    <h2>Questions</h2>
+    <p><b>Total questions:</b> {questions_total}</p>
+    <p><b>Default questions (is_default=1):</b> {questions_count}</p>
+    <p style="color: {'green' if questions_count >= 20 else 'red'};">
+        {'OK - Nok spørgsmål' if questions_count >= 20 else 'FEJL - Mangler spørgsmål! Upload database igen.'}
+    </p>
+
     <h2>Actions</h2>
     <p><a href="/admin/full-reset">FULD RESET - Slet alt og genimporter</a></p>
+    <p><a href="/admin/upload-database">Upload database fil</a></p>
     </body></html>
     """
     return html
