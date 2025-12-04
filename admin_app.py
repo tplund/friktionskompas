@@ -2635,21 +2635,35 @@ def org_dashboard(customer_id=None, unit_id=None):
                      FROM responses r JOIN campaigns camp ON r.campaign_id = camp.id
                      JOIN questions q ON r.question_id = q.id
                      WHERE camp.target_unit_id = ou.id AND r.respondent_type = 'employee' AND q.field = 'BESVÆR') as score_besvaer,
-                    (SELECT camp.id FROM campaigns camp WHERE camp.target_unit_id = ou.id LIMIT 1) as direct_campaign_id,
-                    (SELECT COUNT(*) FROM profil_sessions ps WHERE ps.unit_id = ou.id AND ps.is_complete = 1) as profil_count
+                    (SELECT camp.id FROM campaigns camp WHERE camp.target_unit_id = ou.id LIMIT 1) as direct_campaign_id
                 FROM organizational_units ou
                 WHERE ou.parent_id = ?
                 ORDER BY ou.name
             """
             units = conn.execute(units_query, [parent_id_filter]).fetchall()
 
-            # Hent friktionsprofiler for denne unit (hvis leaf node)
-            profiler = conn.execute("""
-                SELECT ps.id, ps.person_name, ps.created_at, ps.is_complete
-                FROM profil_sessions ps
-                WHERE ps.unit_id = ? AND ps.is_complete = 1
-                ORDER BY ps.created_at DESC
-            """, [unit_id]).fetchall()
+            # Hent friktionsprofiler for denne unit (hvis leaf node) - with fallback
+            try:
+                profiler = conn.execute("""
+                    SELECT ps.id, ps.person_name, ps.created_at, ps.is_complete
+                    FROM profil_sessions ps
+                    WHERE ps.unit_id = ? AND ps.is_complete = 1
+                    ORDER BY ps.created_at DESC
+                """, [unit_id]).fetchall()
+            except Exception:
+                profiler = []
+
+            # Add profil_count to units
+            units = [dict(u) for u in units]
+            for u in units:
+                try:
+                    count = conn.execute("""
+                        SELECT COUNT(*) FROM profil_sessions ps
+                        WHERE ps.unit_id = ? AND ps.is_complete = 1
+                    """, [u['id']]).fetchone()[0]
+                    u['profil_count'] = count
+                except Exception:
+                    u['profil_count'] = 0
         else:
             # Root units for kunde - simplere query
             units_query = """
@@ -2683,13 +2697,25 @@ def org_dashboard(customer_id=None, unit_id=None):
                      FROM responses r JOIN campaigns camp ON r.campaign_id = camp.id
                      JOIN questions q ON r.question_id = q.id
                      WHERE camp.target_unit_id = ou.id AND r.respondent_type = 'employee' AND q.field = 'BESVÆR') as score_besvaer,
-                    (SELECT camp.id FROM campaigns camp WHERE camp.target_unit_id = ou.id LIMIT 1) as direct_campaign_id,
-                    (SELECT COUNT(*) FROM profil_sessions ps WHERE ps.unit_id = ou.id AND ps.is_complete = 1) as profil_count
+                    (SELECT camp.id FROM campaigns camp WHERE camp.target_unit_id = ou.id LIMIT 1) as direct_campaign_id
                 FROM organizational_units ou
                 WHERE ou.customer_id = ? AND ou.parent_id IS NULL
                 ORDER BY ou.name
             """
             units = conn.execute(units_query, [customer_id]).fetchall()
+
+            # Add profil_count to units
+            units = [dict(u) for u in units]
+            for u in units:
+                try:
+                    count = conn.execute("""
+                        SELECT COUNT(*) FROM profil_sessions ps
+                        WHERE ps.unit_id = ? AND ps.is_complete = 1
+                    """, [u['id']]).fetchone()[0]
+                    u['profil_count'] = count
+                except Exception:
+                    u['profil_count'] = 0
+
             profiler = []  # Ingen profiler på root niveau
 
         # Beregn samlet score for dette niveau
@@ -2734,7 +2760,7 @@ def org_dashboard(customer_id=None, unit_id=None):
 
         return render_template('admin/org_dashboard.html',
                              level='units',
-                             items=[dict(u) for u in units],
+                             items=units,  # Already list of dicts
                              customer=dict(customer),
                              parent_unit=dict(parent_unit) if parent_unit else None,
                              agg_scores=dict(agg_scores) if agg_scores else None,
