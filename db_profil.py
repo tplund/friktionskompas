@@ -238,6 +238,32 @@ def _insert_default_questions(conn):
          "Lige nu mærker jeg presset mest i kroppen", "screening", 0, 105),
         ("LAG", "INDRE", "Når jeg bliver presset, føler jeg mest, at jeg er forkert",
          "Lige nu føler jeg mest, at jeg er forkert", "screening", 0, 106),
+
+        # ================================================
+        # BASELINE-SPØRGSMÅL (8 stk)
+        # Måler tærskler, båndbredde og baseline-pres
+        # Måler IKKE psyke - måler biologi og emotion
+        # ================================================
+
+        # BIOLOGI - 4 spørgsmål (baseline)
+        ("BIO", "BIOLOGI", "Jeg kan være i koldt vand eller andet fysisk ubehag længe, før jeg må give slip",
+         "Jeg har høj fysisk tolerance lige nu", "baseline", 1, 201),
+        ("BIO", "BIOLOGI", "Min krop larmer meget, når jeg bliver presset",
+         "Min krop larmer meget lige nu", "baseline", 0, 202),  # omvendt score
+        ("BIO", "BIOLOGI", "Jeg reagerer langsomt på chok eller overraskelser",
+         "Jeg reagerer langsomt på overraskelser lige nu", "baseline", 1, 203),
+        ("BIO", "BIOLOGI", "Mit energiniveau føles stabilt i hverdagen",
+         "Mit energiniveau er stabilt lige nu", "baseline", 1, 204),
+
+        # EMOTION - 4 spørgsmål (baseline)
+        ("EMOTION", "EMOTION", "Jeg bliver let overvældet af følelsesmæssigt pres",
+         "Jeg bliver let overvældet lige nu", "baseline", 0, 205),  # omvendt score
+        ("EMOTION", "EMOTION", "Jeg mister let jordforbindelsen, hvis noget bliver relationelt svært",
+         "Jeg mister let jordforbindelsen lige nu", "baseline", 0, 206),  # omvendt score
+        ("EMOTION", "EMOTION", "Jeg har svært ved at mærke, hvad jeg føler, før det bliver meget tydeligt",
+         "Jeg har svært ved at mærke mine følelser lige nu", "baseline", 0, 207),  # omvendt score
+        ("EMOTION", "EMOTION", "Hvis nogen er skuffede over mig, rammer det mig meget",
+         "Andres skuffelse rammer mig meget lige nu", "baseline", 0, 208),  # omvendt score
     ]
 
     for field, layer, text, state_text, q_type, reverse, seq in questions:

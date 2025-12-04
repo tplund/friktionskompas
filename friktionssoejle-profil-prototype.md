@@ -76,6 +76,38 @@ Hvert spørgsmål besvares på en skala 1–5:
 
 ---
 
+## 8-spørgsmåls kompas til BIO og EMOTION (Baseline)
+
+*Måler tærskler, båndbredde og baseline-pres – IKKE psyke.*
+
+Disse spørgsmål giver et hurtigt og præcist billede af personens biologiske og emotionelle grundkapacitet.
+
+### BIOLOGI – 4 spørgsmål
+
+1. Jeg kan være i koldt vand eller andet fysisk ubehag længe, før jeg må give slip.
+2. Min krop larmer meget, når jeg bliver presset. *(omvendt score)*
+3. Jeg reagerer langsomt på chok eller overraskelser.
+4. Mit energiniveau føles stabilt i hverdagen.
+
+### EMOTION – 4 spørgsmål
+
+1. Jeg bliver let overvældet af følelsesmæssigt pres. *(omvendt score)*
+2. Jeg mister let jordforbindelsen, hvis noget bliver relationelt svært. *(omvendt score)*
+3. Jeg har svært ved at mærke, hvad jeg føler, før det bliver meget tydeligt. *(omvendt score)*
+4. Hvis nogen er skuffede over mig, rammer det mig meget. *(omvendt score)*
+
+### Fortolkning
+
+| Score | BIO betydning | EMOTION betydning |
+|-------|--------------|-------------------|
+| 1.0-2.2 | Høj fysisk tolerance | Høj emotionel stabilitet |
+| 2.3-3.7 | Normal variation | Normal følsomhed |
+| 3.8-5.0 | Sensitiv krop | Emotionel sårbarhed |
+
+*Høj score (efter omvendt scoring) = høj kapacitet/robusthed*
+
+---
+
 # ALGORITME / SPECIFIKATION
 
 **Hvordan spørgeskemaet oversættes til farvegrid**
