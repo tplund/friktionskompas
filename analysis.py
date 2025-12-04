@@ -288,21 +288,23 @@ def check_anonymity_threshold(campaign_id: str, unit_id: str) -> Dict:
         }
     """
     with get_db() as conn:
-        # Hent campaign min_responses
-        campaign = conn.execute("""
-            SELECT min_responses, mode
-            FROM campaigns
-            WHERE id = ?
-        """, (campaign_id,)).fetchone()
-
-        if not campaign:
-            return {'can_show_results': False, 'error': 'Campaign not found'}
+        # Hent campaign - brug default værdier hvis kolonner mangler
+        try:
+            campaign = conn.execute("""
+                SELECT min_responses, mode
+                FROM campaigns
+                WHERE id = ?
+            """, (campaign_id,)).fetchone()
+            min_required = campaign['min_responses'] if campaign else 5
+            mode = campaign['mode'] if campaign else 'anonymous'
+        except Exception:
+            # Kolonner findes ikke - brug defaults
+            min_required = 5
+            mode = 'anonymous'
 
         # For identified mode, always show
-        if campaign['mode'] == 'identified':
+        if mode == 'identified':
             return {'can_show_results': True, 'mode': 'identified'}
-
-        min_required = campaign['min_responses']
 
         # Count employee responses
         response_count = conn.execute("""

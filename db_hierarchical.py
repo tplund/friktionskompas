@@ -71,10 +71,22 @@ def init_db():
                 period TEXT NOT NULL,
                 sent_from TEXT DEFAULT 'admin',
                 sent_at TIMESTAMP,
+                min_responses INTEGER DEFAULT 5,
+                mode TEXT DEFAULT 'anonymous',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (target_unit_id) REFERENCES organizational_units(id) ON DELETE CASCADE
             )
         """)
+
+        # Tilføj kolonner hvis de mangler (migration)
+        try:
+            conn.execute("ALTER TABLE campaigns ADD COLUMN min_responses INTEGER DEFAULT 5")
+        except:
+            pass
+        try:
+            conn.execute("ALTER TABLE campaigns ADD COLUMN mode TEXT DEFAULT 'anonymous'")
+        except:
+            pass
         
         # Tokens (genereres per leaf-unit)
         conn.execute("""
