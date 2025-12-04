@@ -7,8 +7,13 @@
   </defs>
   <!-- Circle background -->
   <circle cx="16" cy="16" r="15" fill="url(#grad)"/>
-  <!-- F letter -->
-  <text x="16" y="22" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="white" text-anchor="middle">F</text>
-  <!-- Compass indicator -->
-  <circle cx="24" cy="8" r="3" fill="#fbbf24"/>
+  <!-- Compass needle pointing up-right (45 degrees = progress direction) -->
+  <g transform="rotate(-45 16 16)">
+    <!-- North needle (white) -->
+    <polygon points="16,3 20,16 16,14 12,16" fill="white"/>
+    <!-- South needle (gold) -->
+    <polygon points="16,29 12,16 16,18 20,16" fill="#fbbf24"/>
+  </g>
+  <!-- Center circle -->
+  <circle cx="16" cy="16" r="2" fill="white" stroke="#4f46e5" stroke-width="1"/>
 </svg>
