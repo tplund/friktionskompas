@@ -2629,12 +2629,23 @@ def org_dashboard(customer_id=None, unit_id=None):
                      JOIN questions q ON r.question_id = q.id JOIN subtree st ON camp.target_unit_id = st.id
                      WHERE st.root_id = ou.id AND r.respondent_type = 'employee' AND q.field = 'BESVÆR') as score_besvaer,
                     -- Direkte kampagne (hvis denne unit har én)
-                    (SELECT camp.id FROM campaigns camp WHERE camp.target_unit_id = ou.id LIMIT 1) as direct_campaign_id
+                    (SELECT camp.id FROM campaigns camp WHERE camp.target_unit_id = ou.id LIMIT 1) as direct_campaign_id,
+                    -- Friktionsprofiler (individuelle målinger)
+                    (SELECT COUNT(*) FROM profil_sessions ps
+                     JOIN subtree st ON ps.unit_id = st.id WHERE st.root_id = ou.id AND ps.is_complete = 1) as profil_count
                 FROM organizational_units ou
                 WHERE ou.parent_id = ?
                 ORDER BY ou.name
             """
             units = conn.execute(units_query, [parent_id_filter, parent_id_filter]).fetchall()
+
+            # Hent friktionsprofiler for denne unit (hvis leaf node)
+            profiler = conn.execute("""
+                SELECT ps.id, ps.person_name, ps.created_at, ps.is_complete
+                FROM profil_sessions ps
+                WHERE ps.unit_id = ? AND ps.is_complete = 1
+                ORDER BY ps.created_at DESC
+            """, [unit_id]).fetchall()
         else:
             # Root units for kunde
             units_query = """
@@ -2679,12 +2690,16 @@ def org_dashboard(customer_id=None, unit_id=None):
                      JOIN questions q ON r.question_id = q.id JOIN subtree st ON camp.target_unit_id = st.id
                      WHERE st.root_id = ou.id AND r.respondent_type = 'employee' AND q.field = 'BESVÆR') as score_besvaer,
                     -- Direkte kampagne
-                    (SELECT camp.id FROM campaigns camp WHERE camp.target_unit_id = ou.id LIMIT 1) as direct_campaign_id
+                    (SELECT camp.id FROM campaigns camp WHERE camp.target_unit_id = ou.id LIMIT 1) as direct_campaign_id,
+                    -- Friktionsprofiler
+                    (SELECT COUNT(*) FROM profil_sessions ps
+                     JOIN subtree st ON ps.unit_id = st.id WHERE st.root_id = ou.id AND ps.is_complete = 1) as profil_count
                 FROM organizational_units ou
                 WHERE ou.customer_id = ? AND ou.parent_id IS NULL
                 ORDER BY ou.name
             """
             units = conn.execute(units_query, [customer_id, customer_id]).fetchall()
+            profiler = []  # Ingen profiler på root niveau
 
         # Beregn samlet score for dette niveau
         if parent_unit:
@@ -2733,7 +2748,8 @@ def org_dashboard(customer_id=None, unit_id=None):
                              parent_unit=dict(parent_unit) if parent_unit else None,
                              agg_scores=dict(agg_scores) if agg_scores else None,
                              breadcrumb=breadcrumb,
-                             customer_id=customer_id)
+                             customer_id=customer_id,
+                             profiler=[dict(p) for p in profiler] if profiler else [])
 
 
 if __name__ == '__main__':

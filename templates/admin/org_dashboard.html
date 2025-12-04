@@ -485,10 +485,33 @@
             <div class="card-stats">
                 <div class="card-stat">{{ item.campaign_count }} kampagner</div>
                 <div class="card-stat">{{ item.response_count }} svar</div>
+                {% if item.profil_count and item.profil_count > 0 %}
+                <div class="card-stat" style="color: #8b5cf6;">{{ item.profil_count }} profiler</div>
+                {% endif %}
             </div>
         </div>
         {% endfor %}
     </div>
+
+    <!-- Friktionsprofiler sektion (hvis der er nogen på dette niveau) -->
+    {% if profiler and profiler|length > 0 %}
+    <div style="margin-top: 40px;">
+        <h2 style="margin-bottom: 20px; color: #1f2937;">Individuelle Friktionsprofiler</h2>
+        <div class="cards-grid">
+            {% for p in profiler %}
+            <div class="org-card" onclick="window.location='{{ url_for('profil_report', session_id=p.id) }}'" style="border-left: 4px solid #8b5cf6;">
+                <div class="org-card-header">
+                    <div>
+                        <h3 class="org-card-title">{{ p.person_name }}</h3>
+                        <div class="org-card-subtitle">{{ p.created_at[:10] if p.created_at else '' }}</div>
+                    </div>
+                    <span class="org-card-badge" style="background: #ede9fe; color: #6d28d9;">Se profil</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
 
     <!-- Legend -->
     <div class="legend">
