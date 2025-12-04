@@ -1133,6 +1133,88 @@ def create_new_user():
     return redirect(url_for('manage_customers'))
 
 
+@app.route('/admin/user/<user_id>/edit', methods=['GET', 'POST'])
+@admin_required
+def edit_user(user_id):
+    """Rediger bruger - kun admin"""
+    import bcrypt
+
+    with get_db() as conn:
+        user = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+
+        if not user:
+            flash('Bruger ikke fundet', 'error')
+            return redirect(url_for('manage_customers'))
+
+        if request.method == 'POST':
+            name = request.form.get('name', user['name'])
+            email = request.form.get('email', user['email'])
+            role = request.form.get('role', user['role'])
+            customer_id = request.form.get('customer_id') or None
+            new_password = request.form.get('new_password')
+
+            # Update user
+            if new_password:
+                password_hash = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                conn.execute("""
+                    UPDATE users SET name = ?, email = ?, role = ?, customer_id = ?, password_hash = ?
+                    WHERE id = ?
+                """, (name, email, role, customer_id, password_hash, user_id))
+            else:
+                conn.execute("""
+                    UPDATE users SET name = ?, email = ?, role = ?, customer_id = ?
+                    WHERE id = ?
+                """, (name, email, role, customer_id, user_id))
+
+            flash(f'Bruger "{user["username"]}" opdateret!', 'success')
+            return redirect(url_for('manage_customers'))
+
+        # GET - vis formular
+        customers = conn.execute("SELECT id, name FROM customers ORDER BY name").fetchall()
+
+    return f'''
+    <html>
+    <head><title>Rediger bruger</title>
+    <style>
+        body {{ font-family: Arial; max-width: 600px; margin: 50px auto; padding: 20px; }}
+        label {{ display: block; margin-top: 15px; font-weight: bold; }}
+        input, select {{ width: 100%; padding: 8px; margin-top: 5px; }}
+        button {{ margin-top: 20px; padding: 10px 20px; background: #007bff; color: white; border: none; cursor: pointer; }}
+        a {{ display: inline-block; margin-top: 10px; }}
+    </style>
+    </head>
+    <body>
+    <h1>Rediger bruger: {user["username"]}</h1>
+    <form method="post">
+        <label>Navn</label>
+        <input type="text" name="name" value="{user["name"] or ""}">
+
+        <label>Email</label>
+        <input type="email" name="email" value="{user["email"] or ""}">
+
+        <label>Rolle</label>
+        <select name="role">
+            <option value="admin" {"selected" if user["role"] == "admin" else ""}>Admin</option>
+            <option value="manager" {"selected" if user["role"] == "manager" else ""}>Manager</option>
+        </select>
+
+        <label>Kunde (for managers)</label>
+        <select name="customer_id">
+            <option value="">- Ingen -</option>
+            {"".join(f'<option value="{c["id"]}" {"selected" if user["customer_id"] == c["id"] else ""}>{c["name"]}</option>' for c in customers)}
+        </select>
+
+        <label>Nyt password (lad være tom for at beholde)</label>
+        <input type="password" name="new_password" placeholder="Nyt password...">
+
+        <button type="submit">Gem ændringer</button>
+    </form>
+    <a href="/admin/customers">&larr; Tilbage</a>
+    </body>
+    </html>
+    '''
+
+
 @app.route('/admin/impersonate/<customer_id>')
 @admin_required
 def impersonate_customer(customer_id):
@@ -2267,6 +2349,44 @@ def full_reset():
     <p><a href="/admin/db-status">Se database status</a></p>
     <p><a href="/admin">Gå til admin</a></p>
     """
+
+
+@app.route('/admin/upload-database', methods=['GET', 'POST'])
+@login_required
+def upload_database():
+    """Upload en database fil direkte"""
+    if session['user']['role'] != 'admin':
+        return "Ikke tilladt", 403
+
+    from db_hierarchical import DB_PATH
+    import shutil
+
+    if request.method == 'GET':
+        return '''
+        <h1>Upload Database</h1>
+        <p>Current DB path: ''' + DB_PATH + '''</p>
+        <form method="post" enctype="multipart/form-data">
+            <input type="file" name="dbfile" accept=".db">
+            <br><br>
+            <input type="submit" value="Upload og erstat database">
+        </form>
+        <p style="color:red;">ADVARSEL: Dette erstatter HELE databasen!</p>
+        '''
+
+    if 'dbfile' not in request.files:
+        return 'Ingen fil valgt', 400
+
+    file = request.files['dbfile']
+    if file.filename == '':
+        return 'Ingen fil valgt', 400
+
+    try:
+        # Save uploaded file directly to DB_PATH
+        file.save(DB_PATH)
+        flash(f'Database uploadet til {DB_PATH}!', 'success')
+        return redirect('/admin')
+    except Exception as e:
+        return f'Fejl: {str(e)}'
 
 
 @app.route('/admin/cleanup-empty')

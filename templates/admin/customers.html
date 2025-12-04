@@ -263,6 +263,7 @@
                 <th>Rolle</th>
                 <th>Kunde</th>
                 <th>Sidst logget ind</th>
+                <th>Handlinger</th>
             </tr>
         </thead>
         <tbody>
@@ -276,6 +277,9 @@
                 </td>
                 <td>{{ user.customer_name or '-' }}</td>
                 <td>{{ user.last_login[:16] if user.last_login else 'Aldrig' }}</td>
+                <td>
+                    <a href="/admin/user/{{ user.id }}/edit" class="view-as-btn">✏️ Rediger</a>
+                </td>
             </tr>
             {% endfor %}
         </tbody>
