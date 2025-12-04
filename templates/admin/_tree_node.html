@@ -13,21 +13,21 @@
                 <div class="tree-node-title">
                     {{ unit.name }}
                     {% if (unit.child_count or 0) == 0 and (unit.total_employees or unit.employee_count or 0) == 0 %}
-                    <span class="tag-empty">(tom)</span>
+                    <span class="tag-empty">{{ t('org.empty') }}</span>
                     {% endif %}
                 </div>
                 <div class="tree-node-meta">
-                    {{ unit.total_employees or unit.employee_count or 0 }} medarbejdere
+                    {{ unit.total_employees or unit.employee_count or 0 }} {{ t('org.employees') }}
                     {% if unit.child_count and unit.child_count > 0 %}
-                        &middot; {{ unit.child_count }} underenheder
+                        &middot; {{ unit.child_count }} {{ t('org.subunits') }}
                     {% endif %}
                 </div>
             </div>
         </div>
         <div class="tree-node-actions">
-            <button onclick="confirmDelete('{{ unit.id }}', '{{ unit.name }}')" class="btn-delete" title="Slet">Slet</button>
-            <a href="/admin/unit/new?parent={{ unit.id }}" class="btn-create" title="Opret underenhed">+</a>
-            <a href="/admin/unit/{{ unit.id }}" class="btn-detail">Detaljer</a>
+            <button onclick="confirmDelete('{{ unit.id }}', '{{ unit.name }}')" class="btn-delete" title="{{ t('btn.delete') }}">{{ t('btn.delete') }}</button>
+            <a href="/admin/unit/new?parent={{ unit.id }}" class="btn-create" title="{{ t('org.create') }}">+</a>
+            <a href="/admin/unit/{{ unit.id }}" class="btn-detail">{{ t('org.details') }}</a>
         </div>
     </div>
 </div>

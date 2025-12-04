@@ -238,7 +238,7 @@
                     <span style="color: rgba(255,255,255,0.3);">|</span>
                     <a href="/set-language/en" style="color: {% if current_lang == 'en' %}white{% else %}rgba(255,255,255,0.5){% endif %}; text-decoration: none; font-size: 0.85rem;">EN</a>
                 </span>
-                <a href="/logout" style="color: rgba(255,255,255,0.8); margin-left: 15px; text-decoration: none;">Log ud</a>
+                <a href="/logout" style="color: rgba(255,255,255,0.8); margin-left: 15px; text-decoration: none;">{{ t('nav.logout') }}</a>
             </div>
         </div>
     </nav>
@@ -264,13 +264,13 @@
             {% else %}
             <!-- Adminvisning submenu -->
             <ul class="submenu-links">
-                <li><a href="/admin/dashboard" {% if 'dashboard' in request.path %}class="active"{% endif %}>📈 Dashboard</a></li>
-                <li><a href="/admin/analyser" {% if 'analyser' in request.path and 'dashboard' not in request.path %}class="active"{% endif %}>📊 Analyser</a></li>
-                <li><a href="/admin" {% if request.path == '/admin' and 'campaign' not in request.path and 'dashboard' not in request.path and 'analyser' not in request.path %}class="active"{% endif %}>🏢 Organisationer</a></li>
-                <li><a href="/admin/profiler" {% if 'profiler' in request.path %}class="active"{% endif %}>🔬 Friktionsprofiler</a></li>
-                <li><a href="/admin/customers" {% if 'customers' in request.path %}class="active"{% endif %}>👥 Kunder & Brugere</a></li>
+                <li><a href="/admin/dashboard" {% if 'dashboard' in request.path %}class="active"{% endif %}>📈 {{ t('nav.dashboard') }}</a></li>
+                <li><a href="/admin/analyser" {% if 'analyser' in request.path and 'dashboard' not in request.path %}class="active"{% endif %}>📊 {{ t('nav.analyser') }}</a></li>
+                <li><a href="/admin" {% if request.path == '/admin' and 'campaign' not in request.path and 'dashboard' not in request.path and 'analyser' not in request.path %}class="active"{% endif %}>🏢 {{ t('nav.organisationer') }}</a></li>
+                <li><a href="/admin/profiler" {% if 'profiler' in request.path %}class="active"{% endif %}>🔬 {{ t('nav.friktionsprofiler') }}</a></li>
+                <li><a href="/admin/customers" {% if 'customers' in request.path %}class="active"{% endif %}>👥 {{ t('nav.kunder_brugere') }}</a></li>
                 <li class="submenu-dropdown">
-                    <a href="#" class="dropdown-toggle {% if 'email' in request.path or 'settings' in request.path or 'profil-questions' in request.path or 'seed' in request.path %}active{% endif %}">⚙️ Indstillinger ▾</a>
+                    <a href="#" class="dropdown-toggle {% if 'email' in request.path or 'settings' in request.path or 'profil-questions' in request.path or 'seed' in request.path %}active{% endif %}">⚙️ {{ t('nav.indstillinger') }} ▾</a>
                     <ul class="dropdown-menu">
                         <li><a href="/admin/profil-questions" {% if 'profil-questions' in request.path %}class="active"{% endif %}>📝 Profil-spørgsmål</a></li>
                         <li><a href="/admin/email-stats" {% if 'email-stats' in request.path %}class="active"{% endif %}>📧 Email Status</a></li>

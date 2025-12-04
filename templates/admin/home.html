@@ -276,29 +276,29 @@
 
 {% block content %}
 <div class="card">
-    <h2>Organisationer</h2>
+    <h2>{{ t('nav.organisationer') }}</h2>
 
     <div class="stats">
         <div class="stat-box">
-            <div class="label">Organisationer</div>
+            <div class="label">{{ t('nav.organisationer') }}</div>
             <div class="value">{{ units|length }}</div>
         </div>
         <div class="stat-box">
-            <div class="label">Analyser</div>
+            <div class="label">{{ t('nav.analyser') }}</div>
             <div class="value">{{ campaign_count }}</div>
         </div>
     </div>
 
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
         <div style="display: flex; align-items: center; gap: 8px;">
-            <span style="font-weight: 500; color: #374151;">Organisationstræ</span>
+            <span style="font-weight: 500; color: #374151;">{{ t('org.tree') }}</span>
             <button class="expand-all-btn" onclick="toggleAll(false)">Fold sammen</button>
             <button class="expand-all-btn" onclick="toggleAll(true)">Fold ud</button>
         </div>
         <div class="action-buttons">
             <button class="bulk-mode-toggle" onclick="toggleBulkMode()">Vælg flere</button>
-            <a href="/admin/unit/new" class="btn">Opret</a>
-            <a href="/admin/bulk-upload" class="btn">Upload CSV</a>
+            <a href="/admin/unit/new" class="btn">{{ t('btn.create') }}</a>
+            <a href="/admin/bulk-upload" class="btn">{{ t('btn.upload') }} CSV</a>
         </div>
     </div>
 
