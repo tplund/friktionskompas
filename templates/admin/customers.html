@@ -1,6 +1,6 @@
 {% extends "admin/layout.html" %}
 
-{% block title %}Kunder & Brugere{% endblock %}
+{% block title %}{{ t('customers.title') }}{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -138,22 +138,22 @@
 
 {% block content %}
 <div class="card">
-    <h2>Kunder</h2>
+    <h2>{{ t('customers.customers') }}</h2>
 
     <details>
-        <summary>Opret ny kunde</summary>
+        <summary>{{ t('customers.create_customer') }}</summary>
         <form method="POST" action="/admin/customer/new">
             <div class="form-row">
                 <div class="form-group">
-                    <label>Kunde navn *</label>
+                    <label>{{ t('customers.customer_name') }} *</label>
                     <input type="text" name="name" required>
                 </div>
                 <div class="form-group">
-                    <label>Kontakt email</label>
+                    <label>{{ t('customers.contact_email') }}</label>
                     <input type="email" name="contact_email">
                 </div>
             </div>
-            <button type="submit" class="btn">Opret kunde</button>
+            <button type="submit" class="btn">{{ t('btn.create') }}</button>
         </form>
     </details>
 
@@ -161,11 +161,11 @@
     <table>
         <thead>
             <tr>
-                <th>Kunde navn</th>
-                <th>Kontakt email</th>
-                <th>Antal organisationer</th>
-                <th>Oprettet</th>
-                <th>Handlinger</th>
+                <th>{{ t('customers.customer_name') }}</th>
+                <th>{{ t('customers.contact_email') }}</th>
+                <th>{{ t('customers.org_count') }}</th>
+                <th>{{ t('customers.created_at') }}</th>
+                <th>{{ t('customers.actions') }}</th>
             </tr>
         </thead>
         <tbody>
@@ -176,62 +176,62 @@
                 <td>{{ customer.unit_count }}</td>
                 <td>{{ customer.created_at[:10] }}</td>
                 <td>
-                    <a href="/admin/impersonate/{{ customer.id }}" class="view-as-btn">👁️ Se som Leder</a>
+                    <a href="/admin/impersonate/{{ customer.id }}" class="view-as-btn">👁️ {{ t('customers.view_as_manager') }}</a>
                 </td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
     {% else %}
-    <div class="empty">Ingen kunder endnu.</div>
+    <div class="empty">{{ t('customers.no_customers') }}</div>
     {% endif %}
 </div>
 
 <div class="card">
-    <h2>Brugere</h2>
+    <h2>{{ t('users.users') }}</h2>
 
     <details>
-        <summary>Opret ny bruger</summary>
+        <summary>{{ t('users.create_user') }}</summary>
         <form method="POST" action="/admin/user/new">
             <div class="form-row">
                 <div class="form-group">
-                    <label>Brugernavn *</label>
+                    <label>{{ t('users.username') }} *</label>
                     <input type="text" name="username" required>
                 </div>
                 <div class="form-group">
-                    <label>Password *</label>
+                    <label>{{ t('users.password') }} *</label>
                     <input type="password" name="password" required>
                 </div>
             </div>
             <div class="form-row">
                 <div class="form-group">
-                    <label>Navn *</label>
+                    <label>{{ t('users.name') }} *</label>
                     <input type="text" name="name" required>
                 </div>
                 <div class="form-group">
-                    <label>Email</label>
+                    <label>{{ t('users.email') }}</label>
                     <input type="email" name="email">
                 </div>
             </div>
             <div class="form-row">
                 <div class="form-group">
-                    <label>Rolle *</label>
+                    <label>{{ t('users.role') }} *</label>
                     <select name="role" id="role" required onchange="toggleCustomerField()">
-                        <option value="manager">Leder</option>
-                        <option value="admin">Admin</option>
+                        <option value="manager">{{ t('users.role_manager') }}</option>
+                        <option value="admin">{{ t('users.role_admin') }}</option>
                     </select>
                 </div>
                 <div class="form-group" id="customer-field">
-                    <label>Kunde *</label>
+                    <label>{{ t('users.customer') }} *</label>
                     <select name="customer_id" id="customer_id" required>
-                        <option value="">Vælg kunde...</option>
+                        <option value="">{{ t('users.select_customer') }}</option>
                         {% for customer in customers %}
                         <option value="{{ customer.id }}">{{ customer.name }}</option>
                         {% endfor %}
                     </select>
                 </div>
             </div>
-            <button type="submit" class="btn">Opret bruger</button>
+            <button type="submit" class="btn">{{ t('btn.create') }}</button>
         </form>
     </details>
 
@@ -257,13 +257,13 @@
     <table>
         <thead>
             <tr>
-                <th>Brugernavn</th>
-                <th>Navn</th>
-                <th>Email</th>
-                <th>Rolle</th>
-                <th>Kunde</th>
-                <th>Sidst logget ind</th>
-                <th>Handlinger</th>
+                <th>{{ t('users.username') }}</th>
+                <th>{{ t('users.name') }}</th>
+                <th>{{ t('users.email') }}</th>
+                <th>{{ t('users.role') }}</th>
+                <th>{{ t('users.customer') }}</th>
+                <th>{{ t('users.last_login') }}</th>
+                <th>{{ t('customers.actions') }}</th>
             </tr>
         </thead>
         <tbody>
@@ -276,16 +276,16 @@
                     <span class="badge badge-{{ user.role }}">{{ user.role|upper }}</span>
                 </td>
                 <td>{{ user.customer_name or '-' }}</td>
-                <td>{{ user.last_login[:16] if user.last_login else 'Aldrig' }}</td>
+                <td>{{ user.last_login[:16] if user.last_login else t('users.never') }}</td>
                 <td>
-                    <a href="/admin/user/{{ user.id }}/edit" class="view-as-btn">✏️ Rediger</a>
+                    <a href="/admin/user/{{ user.id }}/edit" class="view-as-btn">✏️ {{ t('btn.edit') }}</a>
                 </td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
     {% else %}
-    <div class="empty">Ingen brugere endnu.</div>
+    <div class="empty">{{ t('users.no_users') }}</div>
     {% endif %}
 </div>
 {% endblock %}

@@ -1,6 +1,6 @@
 {% extends "admin/layout.html" %}
 
-{% block title %}Analyser{% endblock %}
+{% block title %}{{ t('analyser.title') }}{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -319,8 +319,8 @@
 {% block content %}
 <div class="card">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
-        <h2>📊 Analyser</h2>
-        <a href="/admin/campaign/new" class="btn" style="background: #10b981; color: white; padding: 10px 20px; text-decoration: none; border-radius: 8px; font-weight: 500;">➕ Ny Analyse</a>
+        <h2>📊 {{ t('analyser.title') }}</h2>
+        <a href="/admin/campaign/new" class="btn" style="background: #10b981; color: white; padding: 10px 20px; text-decoration: none; border-radius: 8px; font-weight: 500;">➕ {{ t('analyser.new_analysis') }}</a>
     </div>
 
     <!-- Data Table -->
@@ -331,35 +331,35 @@
                 <tr>
                     <th class="sortable {% if sort_by == 'name' %}sorted-{{ sort_order }}{% endif %}"
                         onclick="sortTable('name')" style="text-align: left;">
-                        Organisationsenhed
+                        {{ t('analyser.org_unit') }}
                     </th>
                     <th class="sortable {% if sort_by == 'responses' %}sorted-{{ sort_order }}{% endif %}"
                         onclick="sortTable('responses')">
-                        <div class="field-header">Svar</div>
+                        <div class="field-header">{{ t('analyser.responses') }}</div>
                     </th>
                     <th style="text-align: center;">
-                        <div class="field-header">Advarsler</div>
+                        <div class="field-header">{{ t('analyser.warnings') }}</div>
                     </th>
                     <th class="sortable {% if sort_by == 'employee_overall' %}sorted-{{ sort_order }}{% endif %}"
                         onclick="sortTable('employee_overall')">
-                        <div class="field-header">Samlet Score</div>
-                        <div style="font-size: 0.65rem; font-weight: 400;">Medarbejdere</div>
+                        <div class="field-header">{{ t('analyser.total_score') }}</div>
+                        <div style="font-size: 0.65rem; font-weight: 400;">{{ t('analyser.employees') }}</div>
                     </th>
                     <th class="sortable {% if sort_by == 'mening' %}sorted-{{ sort_order }}{% endif %}"
                         onclick="sortTable('mening')">
-                        <div class="field-header">Mening</div>
+                        <div class="field-header">{{ t('field.mening') }}</div>
                     </th>
                     <th class="sortable {% if sort_by == 'tryghed' %}sorted-{{ sort_order }}{% endif %}"
                         onclick="sortTable('tryghed')">
-                        <div class="field-header">Tryghed</div>
+                        <div class="field-header">{{ t('field.tryghed') }}</div>
                     </th>
                     <th class="sortable {% if sort_by == 'kan' %}sorted-{{ sort_order }}{% endif %}"
                         onclick="sortTable('kan')">
-                        <div class="field-header">Kan</div>
+                        <div class="field-header">{{ t('field.kan') }}</div>
                     </th>
                     <th class="sortable {% if sort_by == 'besvaer' %}sorted-{{ sort_order }}{% endif %}"
                         onclick="sortTable('besvaer')">
-                        <div class="field-header">Besvær</div>
+                        <div class="field-header">{{ t('field.besvaer') }}</div>
                     </th>
                 </tr>
             </thead>
@@ -371,11 +371,11 @@
                             {% if unit.level == 0 %}🏢{% elif unit.level == 1 %}📁{% elif unit.level == 2 %}📂{% else %}📄{% endif %}
                             {{ unit.name }}
                         </div>
-                        <div class="unit-level">Niveau {{ unit.level }}</div>
+                        <div class="unit-level">{{ t('analyser.level') }} {{ unit.level }}</div>
                     </td>
                     <td class="responses-count">
-                        <strong>{{ unit.unique_respondents }}</strong> respondenter<br>
-                        <small>{{ unit.total_responses }} svar</small>
+                        <strong>{{ unit.unique_respondents }}</strong> {{ t('analyser.respondents') }}<br>
+                        <small>{{ unit.total_responses }} {{ t('analyser.responses')|lower }}</small>
                     </td>
                     <td style="text-align: center; padding: 8px;">
                         <div style="display: flex; gap: 6px; justify-content: center; flex-wrap: wrap;">
@@ -438,33 +438,33 @@
     <!-- Legend -->
     <div class="legend">
         <div class="legend-section">
-            <div class="legend-title">Friktionsniveau</div>
+            <div class="legend-title">{{ t('analyser.friction_level') }}</div>
             <div class="legend-item">
                 <div class="legend-box score-high" style="display: flex; align-items: center; justify-content: center;">70+</div>
-                <span>Lav friktion (over 70%)</span>
+                <span>{{ t('analyser.low_friction') }}</span>
             </div>
             <div class="legend-item">
                 <div class="legend-box score-medium" style="display: flex; align-items: center; justify-content: center;">50</div>
-                <span>Moderat friktion (50-70%)</span>
+                <span>{{ t('analyser.moderate_friction') }}</span>
             </div>
             <div class="legend-item">
                 <div class="legend-box score-low" style="display: flex; align-items: center; justify-content: center;">30</div>
-                <span>Høj friktion (under 50%)</span>
+                <span>{{ t('analyser.high_friction') }}</span>
             </div>
         </div>
         <div class="legend-section">
-            <div class="legend-title">Advarsler</div>
+            <div class="legend-title">{{ t('analyser.warnings') }}</div>
             <div class="legend-item">
                 <span class="alert-badge alert-substitution">🔄</span>
-                <span>Substitution detekteret (siger "jeg mangler tid" men mener "jeg er utilfreds")</span>
+                <span>{{ t('analyser.alert_substitution') }}</span>
             </div>
             <div class="legend-item">
                 <span class="alert-badge alert-gap">⚠️</span>
-                <span>Leder/medarbejder gap (stor forskel i opfattelse)</span>
+                <span>{{ t('analyser.alert_gap') }}</span>
             </div>
             <div class="legend-item">
                 <span class="alert-badge alert-blocked">🚧</span>
-                <span>Leder blokeret (lederens egne friktioner kan blokere for hjælp)</span>
+                <span>{{ t('analyser.alert_blocked') }}</span>
             </div>
         </div>
     </div>
@@ -472,8 +472,8 @@
     {% else %}
     <div class="empty-state">
         <div class="empty-state-icon">📊</div>
-        <h3 style="margin-bottom: 10px;">Ingen data tilgængelig</h3>
-        <p style="margin-bottom: 30px;">Der er ingen friktionsdata for de valgte filtre endnu</p>
+        <h3 style="margin-bottom: 10px;">{{ t('analyser.no_data') }}</h3>
+        <p style="margin-bottom: 30px;">{{ t('analyser.no_data_desc') }}</p>
     </div>
     {% endif %}
 </div>

@@ -1,6 +1,6 @@
 {% extends "admin/layout.html" %}
 
-{% block title %}Dashboard{% endblock %}
+{% block title %}{{ t('nav.dashboard') }}{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -329,7 +329,7 @@
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
         <h1 class="h2">
             {% if level == 'customers' %}
-                Organisations Dashboard
+                {{ t('dashboard.org_dashboard') }}
             {% elif parent_unit %}
                 {{ parent_unit.name }}
             {% else %}
@@ -338,7 +338,7 @@
         </h1>
         {% if level != 'customers' %}
         <a href="{{ url_for('analyser') }}" class="btn" style="background: #10b981; color: white; padding: 10px 20px; text-decoration: none; border-radius: 8px; font-weight: 500;">
-            Se Analyser
+            {{ t('dashboard.see_analyses') }}
         </a>
         {% endif %}
     </div>
@@ -352,23 +352,23 @@
             <div class="org-card-header">
                 <div>
                     <h3 class="org-card-title">{{ item.name }}</h3>
-                    <div class="org-card-subtitle">{{ item.unit_count }} enheder</div>
+                    <div class="org-card-subtitle">{{ item.unit_count }} {{ t('dashboard.units') }}</div>
                 </div>
-                <span class="org-card-badge drilldown">{{ item.campaign_count }} målinger</span>
+                <span class="org-card-badge drilldown">{{ item.campaign_count }} {{ t('dashboard.measurements') }}</span>
             </div>
 
             <div class="score-circle {% if item.avg_score %}{% if item.avg_score > 3.5 %}high{% elif item.avg_score >= 2.5 %}medium{% else %}low{% endif %}{% else %}none{% endif %}">
                 {% if item.avg_score %}
                 <span class="score-value">{{ "%.0f"|format((item.avg_score / 5) * 100) }}%</span>
-                <span class="score-label">Gns. Score</span>
+                <span class="score-label">{{ t('dashboard.avg_score') }}</span>
                 {% else %}
                 <span class="score-value">-</span>
-                <span class="score-label">Ingen data</span>
+                <span class="score-label">{{ t('dashboard.no_data') }}</span>
                 {% endif %}
             </div>
 
             <div class="card-stats">
-                <div class="card-stat">{{ item.response_count }} besvarelser</div>
+                <div class="card-stat">{{ item.response_count }} {{ t('dashboard.responses') }}</div>
             </div>
         </div>
         {% endfor %}
@@ -381,35 +381,35 @@
     {% if agg_scores and agg_scores.avg_score %}
     <div class="summary-row">
         <div class="summary-card highlight">
-            <div class="summary-label">Samlet Score</div>
+            <div class="summary-label">{{ t('analyser.total_score') }}</div>
             <div class="summary-value">{{ "%.0f"|format((agg_scores.avg_score / 5) * 100) }}%</div>
         </div>
         <div class="summary-card">
-            <div class="summary-label">Mening</div>
+            <div class="summary-label">{{ t('field.mening') }}</div>
             <div class="summary-value {% if agg_scores.mening %}{{ get_percent_class(agg_scores.mening) }}{% endif %}">
                 {% if agg_scores.mening %}{{ "%.0f"|format((agg_scores.mening / 5) * 100) }}%{% else %}-{% endif %}
             </div>
         </div>
         <div class="summary-card">
-            <div class="summary-label">Tryghed</div>
+            <div class="summary-label">{{ t('field.tryghed') }}</div>
             <div class="summary-value {% if agg_scores.tryghed %}{{ get_percent_class(agg_scores.tryghed) }}{% endif %}">
                 {% if agg_scores.tryghed %}{{ "%.0f"|format((agg_scores.tryghed / 5) * 100) }}%{% else %}-{% endif %}
             </div>
         </div>
         <div class="summary-card">
-            <div class="summary-label">Kan</div>
+            <div class="summary-label">{{ t('field.kan') }}</div>
             <div class="summary-value {% if agg_scores.kan %}{{ get_percent_class(agg_scores.kan) }}{% endif %}">
                 {% if agg_scores.kan %}{{ "%.0f"|format((agg_scores.kan / 5) * 100) }}%{% else %}-{% endif %}
             </div>
         </div>
         <div class="summary-card">
-            <div class="summary-label">Besvaer</div>
+            <div class="summary-label">{{ t('field.besvaer') }}</div>
             <div class="summary-value {% if agg_scores.besvaer %}{{ get_percent_class(agg_scores.besvaer) }}{% endif %}">
                 {% if agg_scores.besvaer %}{{ "%.0f"|format((agg_scores.besvaer / 5) * 100) }}%{% else %}-{% endif %}
             </div>
         </div>
         <div class="summary-card">
-            <div class="summary-label">Besvarelser</div>
+            <div class="summary-label">{{ t('dashboard.responses') }}</div>
             <div class="summary-value" style="color: #374151;">{{ agg_scores.response_count }}</div>
         </div>
     </div>
@@ -437,44 +437,44 @@
                     {% endif %}
                 </div>
                 {% if item.child_count > 0 %}
-                <span class="org-card-badge drilldown">{{ item.child_count }} underenheder</span>
+                <span class="org-card-badge drilldown">{{ item.child_count }} {{ t('dashboard.subunits') }}</span>
                 {% elif item.direct_campaign_id %}
-                <span class="org-card-badge campaign">Se analyse</span>
+                <span class="org-card-badge campaign">{{ t('dashboard.see_analysis') }}</span>
                 {% endif %}
             </div>
 
             <div class="score-circle {% if item.avg_score %}{% if item.avg_score > 3.5 %}high{% elif item.avg_score >= 2.5 %}medium{% else %}low{% endif %}{% else %}none{% endif %}">
                 {% if item.avg_score %}
                 <span class="score-value">{{ "%.0f"|format((item.avg_score / 5) * 100) }}%</span>
-                <span class="score-label">Gns. Score</span>
+                <span class="score-label">{{ t('dashboard.avg_score') }}</span>
                 {% else %}
                 <span class="score-value">-</span>
-                <span class="score-label">Ingen data</span>
+                <span class="score-label">{{ t('dashboard.no_data') }}</span>
                 {% endif %}
             </div>
 
             {% if item.avg_score %}
             <div class="mini-scores">
                 <div class="mini-score">
-                    <div class="mini-score-label">Mening</div>
+                    <div class="mini-score-label">{{ t('field.mening') }}</div>
                     <div class="mini-score-value {% if item.score_mening %}{{ get_percent_class(item.score_mening) }}{% else %}score-none{% endif %}">
                         {% if item.score_mening %}{{ "%.0f"|format((item.score_mening / 5) * 100) }}%{% else %}-{% endif %}
                     </div>
                 </div>
                 <div class="mini-score">
-                    <div class="mini-score-label">Tryghed</div>
+                    <div class="mini-score-label">{{ t('field.tryghed') }}</div>
                     <div class="mini-score-value {% if item.score_tryghed %}{{ get_percent_class(item.score_tryghed) }}{% else %}score-none{% endif %}">
                         {% if item.score_tryghed %}{{ "%.0f"|format((item.score_tryghed / 5) * 100) }}%{% else %}-{% endif %}
                     </div>
                 </div>
                 <div class="mini-score">
-                    <div class="mini-score-label">Kan</div>
+                    <div class="mini-score-label">{{ t('field.kan') }}</div>
                     <div class="mini-score-value {% if item.score_kan %}{{ get_percent_class(item.score_kan) }}{% else %}score-none{% endif %}">
                         {% if item.score_kan %}{{ "%.0f"|format((item.score_kan / 5) * 100) }}%{% else %}-{% endif %}
                     </div>
                 </div>
                 <div class="mini-score">
-                    <div class="mini-score-label">Besvaer</div>
+                    <div class="mini-score-label">{{ t('field.besvaer') }}</div>
                     <div class="mini-score-value {% if item.score_besvaer %}{{ get_percent_class(item.score_besvaer) }}{% else %}score-none{% endif %}">
                         {% if item.score_besvaer %}{{ "%.0f"|format((item.score_besvaer / 5) * 100) }}%{% else %}-{% endif %}
                     </div>
@@ -483,10 +483,10 @@
             {% endif %}
 
             <div class="card-stats">
-                <div class="card-stat">{{ item.campaign_count }} målinger</div>
-                <div class="card-stat">{{ item.response_count }} svar</div>
+                <div class="card-stat">{{ item.campaign_count }} {{ t('dashboard.measurements') }}</div>
+                <div class="card-stat">{{ item.response_count }} {{ t('analyser.responses')|lower }}</div>
                 {% if item.profil_count and item.profil_count > 0 %}
-                <div class="card-stat" style="color: #8b5cf6;">{{ item.profil_count }} profiler</div>
+                <div class="card-stat" style="color: #8b5cf6;">{{ item.profil_count }} {{ t('dashboard.profiles') }}</div>
                 {% endif %}
             </div>
         </div>
@@ -496,7 +496,7 @@
     <!-- Friktionsprofiler sektion (hvis der er nogen på dette niveau) -->
     {% if profiler and profiler|length > 0 %}
     <div style="margin-top: 40px;">
-        <h2 style="margin-bottom: 20px; color: #1f2937;">Individuelle Friktionsprofiler</h2>
+        <h2 style="margin-bottom: 20px; color: #1f2937;">{{ t('dashboard.individual_profiles') }}</h2>
         <div class="cards-grid">
             {% for p in profiler %}
             <div class="org-card" onclick="window.location='{{ url_for('profil_report', session_id=p.id) }}'" style="border-left: 4px solid #8b5cf6;">
@@ -505,7 +505,7 @@
                         <h3 class="org-card-title">{{ p.person_name }}</h3>
                         <div class="org-card-subtitle">{{ p.created_at[:10] if p.created_at else '' }}</div>
                     </div>
-                    <span class="org-card-badge" style="background: #ede9fe; color: #6d28d9;">Se profil</span>
+                    <span class="org-card-badge" style="background: #ede9fe; color: #6d28d9;">{{ t('dashboard.see_profile') }}</span>
                 </div>
             </div>
             {% endfor %}
@@ -517,27 +517,27 @@
     <div class="legend">
         <div class="legend-item">
             <div class="legend-dot high"></div>
-            <span>Over 70% - Lav friktion</span>
+            <span>{{ t('analyser.low_friction') }}</span>
         </div>
         <div class="legend-item">
             <div class="legend-dot medium"></div>
-            <span>50-70% - Moderat friktion</span>
+            <span>{{ t('analyser.moderate_friction') }}</span>
         </div>
         <div class="legend-item">
             <div class="legend-dot low"></div>
-            <span>Under 50% - Hoj friktion</span>
+            <span>{{ t('analyser.high_friction') }}</span>
         </div>
     </div>
 
     {% else %}
     <div class="empty-state">
         <div class="empty-state-icon">📂</div>
-        <h3>Ingen underenheder</h3>
-        <p>Der er ingen underenheder på dette niveau.</p>
+        <h3>{{ t('dashboard.no_subunits') }}</h3>
+        <p>{{ t('dashboard.no_subunits_desc') }}</p>
         {% if parent_unit and parent_unit.direct_campaign_id %}
         <a href="{{ url_for('campaign_detailed', campaign_id=parent_unit.direct_campaign_id) }}"
            class="btn" style="background: #6366f1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin-top: 20px; display: inline-block;">
-            Se Analyse
+            {{ t('dashboard.see_analysis') }}
         </a>
         {% endif %}
     </div>
