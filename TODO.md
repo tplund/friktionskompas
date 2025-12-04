@@ -7,8 +7,9 @@
 - [x] ~~**Translation modul** - `translations.py` med `t()` funktion~~
 - [x] ~~**Flask integration** - Context processor, `/set-language` route~~
 - [x] ~~**Sprogvælger i nav** - DA/EN skifter i header~~
+- [x] ~~**Template migrering (delvis)** - login, layout, home, tree_node, customers, analyser, org_dashboard~~
 - [ ] **Seed oversættelser** - Kør `/admin/seed-translations` for at seede
-- [ ] **Template migrering** - Erstat hardcoded tekst med `t('key')`
+- [ ] **Template migrering (resterende)** - Standalone templates (view_unit, new_unit, etc.)
 - [ ] **Spørgsmålsoversættelse** - Migrer spørgsmål til `question_translations`
 - [ ] **Email templates** - Tilføj sprog til email templates
 - Se detaljeret plan: `PLAN_flersproget.md`
