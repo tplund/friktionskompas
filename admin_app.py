@@ -2587,57 +2587,45 @@ def org_dashboard(customer_id=None, unit_id=None):
 
         # Hent units på dette niveau med aggregerede scores
         if parent_id_filter:
+            # Simplere query - henter direkte data for hver unit
             units_query = """
-                WITH RECURSIVE subtree AS (
-                    SELECT id, id as root_id FROM organizational_units WHERE parent_id = ?
-                    UNION ALL
-                    SELECT ou.id, st.root_id FROM organizational_units ou
-                    JOIN subtree st ON ou.parent_id = st.id
-                )
                 SELECT
                     ou.id,
                     ou.name,
                     ou.level,
                     ou.leader_name,
                     (SELECT COUNT(*) FROM organizational_units WHERE parent_id = ou.id) as child_count,
-                    (SELECT COUNT(DISTINCT camp.id) FROM campaigns camp
-                     JOIN subtree st ON camp.target_unit_id = st.id WHERE st.root_id = ou.id) as campaign_count,
+                    (SELECT COUNT(DISTINCT camp.id) FROM campaigns camp WHERE camp.target_unit_id = ou.id) as campaign_count,
                     (SELECT COUNT(DISTINCT r.id) FROM responses r
-                     JOIN campaigns camp ON r.campaign_id = camp.id
-                     JOIN subtree st ON camp.target_unit_id = st.id WHERE st.root_id = ou.id) as response_count,
+                     JOIN campaigns camp ON r.campaign_id = camp.id WHERE camp.target_unit_id = ou.id) as response_count,
                     (SELECT AVG(CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END)
                      FROM responses r
                      JOIN campaigns camp ON r.campaign_id = camp.id
                      JOIN questions q ON r.question_id = q.id
-                     JOIN subtree st ON camp.target_unit_id = st.id
-                     WHERE st.root_id = ou.id AND r.respondent_type = 'employee') as avg_score,
-                    -- Per felt scores
+                     WHERE camp.target_unit_id = ou.id AND r.respondent_type = 'employee') as avg_score,
                     (SELECT AVG(CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END)
                      FROM responses r JOIN campaigns camp ON r.campaign_id = camp.id
-                     JOIN questions q ON r.question_id = q.id JOIN subtree st ON camp.target_unit_id = st.id
-                     WHERE st.root_id = ou.id AND r.respondent_type = 'employee' AND q.field = 'MENING') as score_mening,
+                     JOIN questions q ON r.question_id = q.id
+                     WHERE camp.target_unit_id = ou.id AND r.respondent_type = 'employee' AND q.field = 'MENING') as score_mening,
                     (SELECT AVG(CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END)
                      FROM responses r JOIN campaigns camp ON r.campaign_id = camp.id
-                     JOIN questions q ON r.question_id = q.id JOIN subtree st ON camp.target_unit_id = st.id
-                     WHERE st.root_id = ou.id AND r.respondent_type = 'employee' AND q.field = 'TRYGHED') as score_tryghed,
+                     JOIN questions q ON r.question_id = q.id
+                     WHERE camp.target_unit_id = ou.id AND r.respondent_type = 'employee' AND q.field = 'TRYGHED') as score_tryghed,
                     (SELECT AVG(CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END)
                      FROM responses r JOIN campaigns camp ON r.campaign_id = camp.id
-                     JOIN questions q ON r.question_id = q.id JOIN subtree st ON camp.target_unit_id = st.id
-                     WHERE st.root_id = ou.id AND r.respondent_type = 'employee' AND q.field = 'KAN') as score_kan,
+                     JOIN questions q ON r.question_id = q.id
+                     WHERE camp.target_unit_id = ou.id AND r.respondent_type = 'employee' AND q.field = 'KAN') as score_kan,
                     (SELECT AVG(CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END)
                      FROM responses r JOIN campaigns camp ON r.campaign_id = camp.id
-                     JOIN questions q ON r.question_id = q.id JOIN subtree st ON camp.target_unit_id = st.id
-                     WHERE st.root_id = ou.id AND r.respondent_type = 'employee' AND q.field = 'BESVÆR') as score_besvaer,
-                    -- Direkte kampagne (hvis denne unit har én)
+                     JOIN questions q ON r.question_id = q.id
+                     WHERE camp.target_unit_id = ou.id AND r.respondent_type = 'employee' AND q.field = 'BESVÆR') as score_besvaer,
                     (SELECT camp.id FROM campaigns camp WHERE camp.target_unit_id = ou.id LIMIT 1) as direct_campaign_id,
-                    -- Friktionsprofiler (individuelle målinger)
-                    (SELECT COUNT(*) FROM profil_sessions ps
-                     JOIN subtree st ON ps.unit_id = st.id WHERE st.root_id = ou.id AND ps.is_complete = 1) as profil_count
+                    (SELECT COUNT(*) FROM profil_sessions ps WHERE ps.unit_id = ou.id AND ps.is_complete = 1) as profil_count
                 FROM organizational_units ou
                 WHERE ou.parent_id = ?
                 ORDER BY ou.name
             """
-            units = conn.execute(units_query, [parent_id_filter, parent_id_filter]).fetchall()
+            units = conn.execute(units_query, [parent_id_filter]).fetchall()
 
             # Hent friktionsprofiler for denne unit (hvis leaf node)
             profiler = conn.execute("""
@@ -2647,58 +2635,45 @@ def org_dashboard(customer_id=None, unit_id=None):
                 ORDER BY ps.created_at DESC
             """, [unit_id]).fetchall()
         else:
-            # Root units for kunde
+            # Root units for kunde - simplere query
             units_query = """
-                WITH RECURSIVE subtree AS (
-                    SELECT id, id as root_id FROM organizational_units WHERE customer_id = ? AND parent_id IS NULL
-                    UNION ALL
-                    SELECT ou.id, st.root_id FROM organizational_units ou
-                    JOIN subtree st ON ou.parent_id = st.id
-                )
                 SELECT
                     ou.id,
                     ou.name,
                     ou.level,
                     ou.leader_name,
                     (SELECT COUNT(*) FROM organizational_units WHERE parent_id = ou.id) as child_count,
-                    (SELECT COUNT(DISTINCT camp.id) FROM campaigns camp
-                     JOIN subtree st ON camp.target_unit_id = st.id WHERE st.root_id = ou.id) as campaign_count,
+                    (SELECT COUNT(DISTINCT camp.id) FROM campaigns camp WHERE camp.target_unit_id = ou.id) as campaign_count,
                     (SELECT COUNT(DISTINCT r.id) FROM responses r
-                     JOIN campaigns camp ON r.campaign_id = camp.id
-                     JOIN subtree st ON camp.target_unit_id = st.id WHERE st.root_id = ou.id) as response_count,
+                     JOIN campaigns camp ON r.campaign_id = camp.id WHERE camp.target_unit_id = ou.id) as response_count,
                     (SELECT AVG(CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END)
                      FROM responses r
                      JOIN campaigns camp ON r.campaign_id = camp.id
                      JOIN questions q ON r.question_id = q.id
-                     JOIN subtree st ON camp.target_unit_id = st.id
-                     WHERE st.root_id = ou.id AND r.respondent_type = 'employee') as avg_score,
-                    -- Per felt scores
+                     WHERE camp.target_unit_id = ou.id AND r.respondent_type = 'employee') as avg_score,
                     (SELECT AVG(CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END)
                      FROM responses r JOIN campaigns camp ON r.campaign_id = camp.id
-                     JOIN questions q ON r.question_id = q.id JOIN subtree st ON camp.target_unit_id = st.id
-                     WHERE st.root_id = ou.id AND r.respondent_type = 'employee' AND q.field = 'MENING') as score_mening,
+                     JOIN questions q ON r.question_id = q.id
+                     WHERE camp.target_unit_id = ou.id AND r.respondent_type = 'employee' AND q.field = 'MENING') as score_mening,
                     (SELECT AVG(CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END)
                      FROM responses r JOIN campaigns camp ON r.campaign_id = camp.id
-                     JOIN questions q ON r.question_id = q.id JOIN subtree st ON camp.target_unit_id = st.id
-                     WHERE st.root_id = ou.id AND r.respondent_type = 'employee' AND q.field = 'TRYGHED') as score_tryghed,
+                     JOIN questions q ON r.question_id = q.id
+                     WHERE camp.target_unit_id = ou.id AND r.respondent_type = 'employee' AND q.field = 'TRYGHED') as score_tryghed,
                     (SELECT AVG(CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END)
                      FROM responses r JOIN campaigns camp ON r.campaign_id = camp.id
-                     JOIN questions q ON r.question_id = q.id JOIN subtree st ON camp.target_unit_id = st.id
-                     WHERE st.root_id = ou.id AND r.respondent_type = 'employee' AND q.field = 'KAN') as score_kan,
+                     JOIN questions q ON r.question_id = q.id
+                     WHERE camp.target_unit_id = ou.id AND r.respondent_type = 'employee' AND q.field = 'KAN') as score_kan,
                     (SELECT AVG(CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END)
                      FROM responses r JOIN campaigns camp ON r.campaign_id = camp.id
-                     JOIN questions q ON r.question_id = q.id JOIN subtree st ON camp.target_unit_id = st.id
-                     WHERE st.root_id = ou.id AND r.respondent_type = 'employee' AND q.field = 'BESVÆR') as score_besvaer,
-                    -- Direkte kampagne
+                     JOIN questions q ON r.question_id = q.id
+                     WHERE camp.target_unit_id = ou.id AND r.respondent_type = 'employee' AND q.field = 'BESVÆR') as score_besvaer,
                     (SELECT camp.id FROM campaigns camp WHERE camp.target_unit_id = ou.id LIMIT 1) as direct_campaign_id,
-                    -- Friktionsprofiler
-                    (SELECT COUNT(*) FROM profil_sessions ps
-                     JOIN subtree st ON ps.unit_id = st.id WHERE st.root_id = ou.id AND ps.is_complete = 1) as profil_count
+                    (SELECT COUNT(*) FROM profil_sessions ps WHERE ps.unit_id = ou.id AND ps.is_complete = 1) as profil_count
                 FROM organizational_units ou
                 WHERE ou.customer_id = ? AND ou.parent_id IS NULL
                 ORDER BY ou.name
             """
-            units = conn.execute(units_query, [customer_id, customer_id]).fetchall()
+            units = conn.execute(units_query, [customer_id]).fetchall()
             profiler = []  # Ingen profiler på root niveau
 
         # Beregn samlet score for dette niveau
