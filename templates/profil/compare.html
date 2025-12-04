@@ -326,7 +326,7 @@
                         <div class="grid-header">Kan</div>
                         <div class="grid-header">Besvær</div>
 
-                        {% for layer in ['KOGNITION', 'INDRE', 'EMOTION', 'BIOLOGI'] %}
+                        {% for layer in ['BIOLOGI', 'EMOTION', 'INDRE', 'KOGNITION'] %}
                         <div class="grid-row-label">{{ layer[:4] }}</div>
                         {% for field in ['TRYGHED', 'MENING', 'KAN', 'BESVÆR'] %}
                         <div class="grid-cell {{ comparison.profile_1.color_matrix[field][layer] }}">
@@ -352,7 +352,7 @@
                         <div class="grid-header">Kan</div>
                         <div class="grid-header">Besvær</div>
 
-                        {% for layer in ['KOGNITION', 'INDRE', 'EMOTION', 'BIOLOGI'] %}
+                        {% for layer in ['BIOLOGI', 'EMOTION', 'INDRE', 'KOGNITION'] %}
                         <div class="grid-row-label">{{ layer[:4] }}</div>
                         {% for field in ['TRYGHED', 'MENING', 'KAN', 'BESVÆR'] %}
                         <div class="grid-cell {{ comparison.profile_2.color_matrix[field][layer] }}">
@@ -419,7 +419,7 @@
                 {% else %}🏔️ Besvær{% endif %}
             </div>
 
-            {% for layer in ['KOGNITION', 'INDRE', 'EMOTION', 'BIOLOGI'] %}
+            {% for layer in ['BIOLOGI', 'EMOTION', 'INDRE', 'KOGNITION'] %}
             {% set diff = comparison.differences[field].layers[layer] %}
             <div class="layer-comparison">
                 <div class="layer-name">{{ layer }}</div>

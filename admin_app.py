@@ -37,6 +37,7 @@ from db_profil import (
     init_profil_tables, get_all_questions as get_profil_questions,
     get_db as get_profil_db
 )
+from translations import t, get_user_language, set_language, SUPPORTED_LANGUAGES, seed_translations
 
 # Initialize databases
 init_db()  # Main hierarchical database
@@ -47,6 +48,17 @@ app = Flask(__name__)
 
 # Sikker secret key fra miljøvariabel (fallback til autogeneret i development)
 app.secret_key = os.environ.get('SECRET_KEY') or secrets.token_hex(32)
+
+
+# Context processor for translations - gør t() tilgængelig i alle templates
+@app.context_processor
+def inject_translation_helpers():
+    """Injicer translation helpers i alle templates"""
+    return {
+        't': t,
+        'get_user_language': get_user_language,
+        'supported_languages': SUPPORTED_LANGUAGES
+    }
 
 
 @app.context_processor
@@ -180,6 +192,23 @@ def logout():
     session.pop('user', None)
     flash('Du er nu logget ud', 'success')
     return redirect(url_for('login'))
+
+
+@app.route('/set-language/<lang>')
+def set_user_language(lang):
+    """Skift brugerens sprog"""
+    set_language(lang)
+    # Redirect tilbage til forrige side eller forsiden
+    return redirect(request.referrer or url_for('index'))
+
+
+@app.route('/admin/seed-translations', methods=['POST'])
+@admin_required
+def admin_seed_translations():
+    """Seed translations til database (admin only)"""
+    seed_translations()
+    flash('Oversættelser er seedet til databasen', 'success')
+    return redirect(request.referrer or url_for('admin_home'))
 
 
 @app.route('/admin/delete-all-data', methods=['POST'])

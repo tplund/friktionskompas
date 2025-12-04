@@ -231,6 +231,13 @@
                 {% if session.impersonating %}
                 <a href="/admin/stop-impersonate" style="background: #ef4444; color: white; padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; margin-left: 8px; text-decoration: none;">← Tilbage til Admin</a>
                 {% endif %}
+                <!-- Sprogvælger -->
+                <span class="lang-switcher" style="margin-left: 15px;">
+                    {% set current_lang = get_user_language() %}
+                    <a href="/set-language/da" style="color: {% if current_lang == 'da' %}white{% else %}rgba(255,255,255,0.5){% endif %}; text-decoration: none; font-size: 0.85rem;">DA</a>
+                    <span style="color: rgba(255,255,255,0.3);">|</span>
+                    <a href="/set-language/en" style="color: {% if current_lang == 'en' %}white{% else %}rgba(255,255,255,0.5){% endif %}; text-decoration: none; font-size: 0.85rem;">EN</a>
+                </span>
                 <a href="/logout" style="color: rgba(255,255,255,0.8); margin-left: 15px; text-decoration: none;">Log ud</a>
             </div>
         </div>

@@ -3,14 +3,14 @@
 ## 🔥 Høj Prioritet
 
 ### Flersproget Support (Oversættelser)
-- [ ] **Database ændringer** - `language` på users, `translations` tabel, `question_translations` tabel
-- [ ] **Translation modul** - `translations.py` med `t()` funktion
-- [ ] **Flask integration** - Context processor, `/set-language` route
-- [ ] **Seed oversættelser** - Initiale da/en oversættelser
+- [x] ~~**Database ændringer** - `language` på users, `translations` tabel~~
+- [x] ~~**Translation modul** - `translations.py` med `t()` funktion~~
+- [x] ~~**Flask integration** - Context processor, `/set-language` route~~
+- [x] ~~**Sprogvælger i nav** - DA/EN skifter i header~~
+- [ ] **Seed oversættelser** - Kør `/admin/seed-translations` for at seede
 - [ ] **Template migrering** - Erstat hardcoded tekst med `t('key')`
 - [ ] **Spørgsmålsoversættelse** - Migrer spørgsmål til `question_translations`
 - [ ] **Email templates** - Tilføj sprog til email templates
-- [ ] **Admin UI** - Translations admin side + sprogvælger i nav
 - Se detaljeret plan: `PLAN_flersproget.md`
 
 ### Automatiseret Test

@@ -471,19 +471,11 @@
                 <div class="grid-header field-kan">⚡ Kan</div>
                 <div class="grid-header field-besvaer">🏔️ Besvær</div>
 
-                <!-- Kognition row -->
-                <div class="grid-row-label">Kognition</div>
+                <!-- Biologi row (øverst - mest grundlæggende) -->
+                <div class="grid-row-label">Biologi</div>
                 {% for field in ['TRYGHED', 'MENING', 'KAN', 'BESVÆR'] %}
-                <div class="grid-cell {{ color_matrix[field]['KOGNITION'] }}">
-                    <span class="score">{{ '%.1f'|format(score_matrix[field]['KOGNITION']) }}</span>
-                </div>
-                {% endfor %}
-
-                <!-- Indre row -->
-                <div class="grid-row-label">Indre</div>
-                {% for field in ['TRYGHED', 'MENING', 'KAN', 'BESVÆR'] %}
-                <div class="grid-cell {{ color_matrix[field]['INDRE'] }}">
-                    <span class="score">{{ '%.1f'|format(score_matrix[field]['INDRE']) }}</span>
+                <div class="grid-cell {{ color_matrix[field]['BIOLOGI'] }}">
+                    <span class="score">{{ '%.1f'|format(score_matrix[field]['BIOLOGI']) }}</span>
                 </div>
                 {% endfor %}
 
@@ -495,11 +487,19 @@
                 </div>
                 {% endfor %}
 
-                <!-- Biologi row -->
-                <div class="grid-row-label">Biologi</div>
+                <!-- Indre row -->
+                <div class="grid-row-label">Indre</div>
                 {% for field in ['TRYGHED', 'MENING', 'KAN', 'BESVÆR'] %}
-                <div class="grid-cell {{ color_matrix[field]['BIOLOGI'] }}">
-                    <span class="score">{{ '%.1f'|format(score_matrix[field]['BIOLOGI']) }}</span>
+                <div class="grid-cell {{ color_matrix[field]['INDRE'] }}">
+                    <span class="score">{{ '%.1f'|format(score_matrix[field]['INDRE']) }}</span>
+                </div>
+                {% endfor %}
+
+                <!-- Kognition row (nederst - mest abstrakt) -->
+                <div class="grid-row-label">Kognition</div>
+                {% for field in ['TRYGHED', 'MENING', 'KAN', 'BESVÆR'] %}
+                <div class="grid-cell {{ color_matrix[field]['KOGNITION'] }}">
+                    <span class="score">{{ '%.1f'|format(score_matrix[field]['KOGNITION']) }}</span>
                 </div>
                 {% endfor %}
             </div>

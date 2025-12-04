@@ -68,6 +68,33 @@ def init_multitenant_db():
             ON users(username)
         """)
 
+        # Translations tabel for i18n
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS translations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                key TEXT NOT NULL,
+                language TEXT NOT NULL,
+                value TEXT NOT NULL,
+                context TEXT,
+                UNIQUE(key, language)
+            )
+        """)
+
+        # Index for hurtig translation lookup
+        conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_translations_key_lang
+            ON translations(key, language)
+        """)
+
+        # Tilføj language kolonne til users hvis den ikke findes
+        user_columns = conn.execute("PRAGMA table_info(users)").fetchall()
+        user_column_names = [col['name'] for col in user_columns]
+
+        if 'language' not in user_column_names:
+            conn.execute("""
+                ALTER TABLE users ADD COLUMN language TEXT DEFAULT 'da'
+            """)
+
         # Tilføj customer_id til organizational_units hvis den ikke findes
         # Check hvis kolonnen eksisterer
         columns = conn.execute("PRAGMA table_info(organizational_units)").fetchall()
