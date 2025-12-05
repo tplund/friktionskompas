@@ -8,11 +8,46 @@
 - Hold TODO.md som den centrale kilde til projektets status
 - Nye features, bugs, og teknisk gæld skal tilføjes til TODO.md
 
-### Automatiseret Test
-- **ALTID** opdater/tilføj tests når der laves kodeændringer
-- Nye features skal have tilhørende tests
-- Bug fixes skal have regression tests
-- Kør tests før commit/deploy
+### Automatiseret Test & CI/CD
+
+#### GitHub Actions (CI)
+- **55 tests kører automatisk** ved hvert push til `main`
+- Se status: https://github.com/tplund/friktionskompas/actions
+- Workflow fil: `.github/workflows/test.yml`
+- Tests kører på Ubuntu med Python 3.10
+- Coverage threshold: 50%
+
+#### Hvornår køre tests LOKALT
+- **KØR LOKALT** når du ændrer kode der påvirker eksisterende funktionalitet
+- **KØR LOKALT** når du tilføjer nye features (for at skrive nye tests)
+- **SKIP LOKALT** for simple ændringer (typos, styling, docs) - CI klarer det
+
+#### Hvornår OPDATERE tests
+- **ALTID** tilføj tests til nye features
+- **ALTID** tilføj regression test når du fikser bugs
+- **ALTID** opdater tests hvis du ændrer eksisterende API/funktionalitet
+- Placer tests i `tests/` mappen, navngivet `test_*.py`
+
+#### Test kommandoer
+```bash
+# Kør alle tests (quick)
+python -m pytest tests/ -q
+
+# Kør med coverage
+python -m pytest tests/ --cov=. --cov-report=term-missing
+
+# Kør specifik test fil
+python -m pytest tests/test_auth.py -v
+
+# Kør tests der matcher et navn
+python -m pytest tests/ -k "login" -v
+```
+
+#### Test struktur
+- `tests/test_auth.py` - Login, logout, authorization (8 tests)
+- `tests/test_database.py` - CRUD, constraints, cascade (8 tests)
+- `tests/test_routes.py` - Alle endpoints, navigation (21 tests)
+- `tests/test_security.py` - SQL injection, XSS, CSRF (12 tests)
 
 ### Planer og Dokumentation
 - Store features skal have en `PLAN_*.md` fil før implementation
@@ -92,7 +127,14 @@ URL: `/admin/cleanup-empty` (kræver admin login)
 - Config: `.mcp.json`
 
 ## Deploy Checklist
-1. Test lokalt først
+1. ~~Test lokalt først~~ (CI klarer det nu, medmindre store ændringer)
 2. Commit og push til GitHub
-3. Render deployer automatisk (1-2 min)
-4. Verificer på https://friktionskompas.onrender.com
+3. **Tjek GitHub Actions** - vent på grønt flueben: https://github.com/tplund/friktionskompas/actions
+4. Render deployer automatisk (1-2 min)
+5. Verificer på https://friktionskompas.onrender.com
+
+## Token-besparelse i Claude Code sessioner
+- **UNDGÅ** at køre alle 55 tests rutinemæssigt - CI gør det
+- **KØR KUN** relevante tests ved specifikke ændringer
+- **STOL PÅ** GitHub Actions til at fange fejl
+- Ved tvivl: Push og tjek CI i stedet for at køre lokalt
