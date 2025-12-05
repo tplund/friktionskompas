@@ -170,6 +170,9 @@ INITIAL_TRANSLATIONS = {
     'confirm.delete': {'da': 'Er du sikker på at du vil slette?', 'en': 'Are you sure you want to delete?'},
     'confirm.delete_warning': {'da': 'Dette kan ikke fortrydes!', 'en': 'This cannot be undone!'},
 
+    # Loading / Status
+    'loading': {'da': 'Arbejder...', 'en': 'Working...'},
+
     # Flash messages
     'flash.saved': {'da': 'Gemt', 'en': 'Saved'},
     'flash.deleted': {'da': 'Slettet', 'en': 'Deleted'},

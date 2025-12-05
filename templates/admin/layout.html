@@ -295,6 +295,48 @@
         {% block content %}{% endblock %}
     </div>
 
+    <!-- Loading overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">{{ t('loading') if t else 'Arbejder...' }}</div>
+    </div>
+
+    <style>
+    .loading-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 9999;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+    }
+    .loading-overlay.active {
+        display: flex;
+    }
+    .loading-spinner {
+        width: 50px;
+        height: 50px;
+        border: 4px solid rgba(255, 255, 255, 0.3);
+        border-top-color: #3b82f6;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+    .loading-text {
+        color: white;
+        margin-top: 15px;
+        font-size: 1rem;
+        font-weight: 500;
+    }
+    </style>
+
     <script>
     function switchCustomer(customerId) {
         // Get current path to return to after switching
@@ -309,6 +351,29 @@
             window.location.href = "/admin/impersonate/" + customerId + "?next=" + returnUrl;
         }
     }
+
+    // Loading spinner functions
+    function showLoading(text) {
+        var overlay = document.getElementById('loadingOverlay');
+        if (text) {
+            overlay.querySelector('.loading-text').textContent = text;
+        }
+        overlay.classList.add('active');
+    }
+
+    function hideLoading() {
+        document.getElementById('loadingOverlay').classList.remove('active');
+    }
+
+    // Auto-attach to forms with data-loading attribute
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('form[data-loading]').forEach(function(form) {
+            form.addEventListener('submit', function() {
+                var loadingText = this.getAttribute('data-loading');
+                showLoading(loadingText || null);
+            });
+        });
+    });
     </script>
 </body>
 </html>

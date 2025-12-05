@@ -74,8 +74,8 @@
 - [ ] Backup/restore funktionalitet
 
 ### UX
-- [ ] Loading spinners ved lange operationer
-- [ ] Konfirmation dialogs ved sletning
+- [x] ~~Loading spinners ved lange operationer~~ (global loading overlay i layout.html)
+- [x] ~~Konfirmation dialogs ved sletning~~ (allerede implementeret alle steder)
 - [ ] Toast notifications i stedet for flash messages
 
 ---
