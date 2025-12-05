@@ -37,12 +37,15 @@ from db_profil import (
     init_profil_tables, get_all_questions as get_profil_questions,
     get_db as get_profil_db
 )
-from translations import t, get_user_language, set_language, SUPPORTED_LANGUAGES, seed_translations
+from translations import t, get_user_language, set_language, SUPPORTED_LANGUAGES, seed_translations, clear_translation_cache
 
 # Initialize databases
 init_db()  # Main hierarchical database
 init_profil_tables()  # Profil tables
 init_multitenant_db()  # Multi-tenant tables
+
+# Clear translation cache on startup to ensure fresh translations
+clear_translation_cache()
 
 app = Flask(__name__)
 
