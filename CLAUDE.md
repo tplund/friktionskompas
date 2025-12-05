@@ -18,9 +18,9 @@
 - Coverage threshold: 50%
 
 #### Hvornår køre tests LOKALT
-- **KØR LOKALT** når du ændrer kode der påvirker eksisterende funktionalitet
-- **KØR LOKALT** når du tilføjer nye features (for at skrive nye tests)
-- **SKIP LOKALT** for simple ændringer (typos, styling, docs) - CI klarer det
+- **KØR ALTID LOKALT FØR COMMIT** - tests skal være grønne før push
+- Kommando: `python -m pytest tests/ -v --tb=short`
+- Hvis tests fejler, ret fejlen før commit
 
 #### Hvornår OPDATERE tests
 - **ALTID** tilføj tests til nye features
