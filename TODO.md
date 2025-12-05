@@ -10,7 +10,7 @@
 - [x] ~~**Template migrering (delvis)** - login, layout, home, tree_node, customers, analyser, org_dashboard~~
 - [x] ~~**Seed oversættelser** - 147 oversættelser seedet til database (DA/EN)~~
 - [x] ~~**Template migrering (resterende)** - new_unit, view_unit, new_campaign konverteret til layout.html + t()~~
-- [ ] **Spørgsmålsoversættelse** - Migrer spørgsmål til `question_translations`
+- [x] ~~**Spørgsmålsoversættelse** - 24 friktionsanalyse + 30 profil spørgsmål oversat til engelsk~~
 - [ ] **Email templates** - Tilføj sprog til email templates
 - Se detaljeret plan: `PLAN_flersproget.md`
 
