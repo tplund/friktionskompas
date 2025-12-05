@@ -44,8 +44,9 @@ init_db()  # Main hierarchical database
 init_profil_tables()  # Profil tables
 init_multitenant_db()  # Multi-tenant tables
 
-# Clear translation cache on startup to ensure fresh translations
-clear_translation_cache()
+# Seed translations and clear cache on startup
+seed_translations()  # Ensures translations exist in database
+clear_translation_cache()  # Clear any stale cached values
 
 app = Flask(__name__)
 
