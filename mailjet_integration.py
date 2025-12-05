@@ -396,6 +396,86 @@ Start her: {survey_url}
 Mvh
 {sender_name}
 '''
+    },
+    'campaign_completed': {
+        'subject': 'Måling afsluttet: {campaign_name} - Resultater klar',
+        'html': '''
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+        .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+        .header {{ background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                  color: white; padding: 25px; border-radius: 8px 8px 0 0; text-align: center; }}
+        .content {{ background: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }}
+        .button {{ display: inline-block; background: #3b82f6; color: white;
+                  padding: 14px 35px; text-decoration: none; border-radius: 6px;
+                  margin: 20px 0; font-weight: bold; }}
+        .stats {{ background: #ecfdf5; border-left: 4px solid #10b981;
+                 padding: 15px; margin: 20px 0; border-radius: 4px; }}
+        .footer {{ margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;
+                  font-size: 0.875rem; color: #6b7280; }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>Måling Afsluttet</h2>
+            <p style="opacity: 0.9; margin: 0;">Resultaterne er nu tilgængelige</p>
+        </div>
+        <div class="content">
+            <p>Hej {recipient_name}!</p>
+
+            <p>Friktionsmålingen <strong>{campaign_name}</strong> er nu afsluttet og resultaterne er klar til gennemgang.</p>
+
+            <div class="stats">
+                <strong>Statistik:</strong><br>
+                Besvarelser: {responses_count} af {tokens_sent}<br>
+                Svarprocent: {response_rate}%<br>
+                Organisation: {organization_name}
+            </div>
+
+            <a href="{results_url}" class="button">
+                Se Resultater
+            </a>
+
+            <p>Du kan nu se den detaljerede analyse med:</p>
+            <ul>
+                <li>Friktionskompas (radar chart)</li>
+                <li>Sammenligning mellem medarbejdere og ledere</li>
+                <li>KKC-anbefalinger</li>
+                <li>Fritekst kommentarer</li>
+            </ul>
+
+            <p>Mvh<br>
+            Friktionskompasset</p>
+
+            <div class="footer">
+                <p>Du modtager denne email fordi du er administrator for denne måling.</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+''',
+        'text': '''
+Måling Afsluttet: {campaign_name}
+
+Hej {recipient_name}!
+
+Friktionsmålingen "{campaign_name}" er nu afsluttet og resultaterne er klar.
+
+Statistik:
+- Besvarelser: {responses_count} af {tokens_sent}
+- Svarprocent: {response_rate}%
+- Organisation: {organization_name}
+
+Se resultater her: {results_url}
+
+Mvh
+Friktionskompasset
+'''
     }
 }
 
@@ -617,6 +697,86 @@ Start here: {survey_url}
 
 Best regards,
 {sender_name}
+'''
+    },
+    'campaign_completed': {
+        'subject': 'Survey Complete: {campaign_name} - Results Ready',
+        'html': '''
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+        .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+        .header {{ background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                  color: white; padding: 25px; border-radius: 8px 8px 0 0; text-align: center; }}
+        .content {{ background: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }}
+        .button {{ display: inline-block; background: #3b82f6; color: white;
+                  padding: 14px 35px; text-decoration: none; border-radius: 6px;
+                  margin: 20px 0; font-weight: bold; }}
+        .stats {{ background: #ecfdf5; border-left: 4px solid #10b981;
+                 padding: 15px; margin: 20px 0; border-radius: 4px; }}
+        .footer {{ margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;
+                  font-size: 0.875rem; color: #6b7280; }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>Survey Complete</h2>
+            <p style="opacity: 0.9; margin: 0;">Results are now available</p>
+        </div>
+        <div class="content">
+            <p>Hi {recipient_name}!</p>
+
+            <p>The friction survey <strong>{campaign_name}</strong> is now complete and results are ready for review.</p>
+
+            <div class="stats">
+                <strong>Statistics:</strong><br>
+                Responses: {responses_count} of {tokens_sent}<br>
+                Response rate: {response_rate}%<br>
+                Organization: {organization_name}
+            </div>
+
+            <a href="{results_url}" class="button">
+                View Results
+            </a>
+
+            <p>You can now see the detailed analysis with:</p>
+            <ul>
+                <li>Friction compass (radar chart)</li>
+                <li>Comparison between employees and managers</li>
+                <li>KKC recommendations</li>
+                <li>Free-text comments</li>
+            </ul>
+
+            <p>Best regards,<br>
+            Friktionskompasset</p>
+
+            <div class="footer">
+                <p>You received this email because you are the administrator for this survey.</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+''',
+        'text': '''
+Survey Complete: {campaign_name}
+
+Hi {recipient_name}!
+
+The friction survey "{campaign_name}" is now complete and results are ready.
+
+Statistics:
+- Responses: {responses_count} of {tokens_sent}
+- Response rate: {response_rate}%
+- Organization: {organization_name}
+
+View results here: {results_url}
+
+Best regards,
+Friktionskompasset
 '''
     }
 }
@@ -1076,6 +1236,192 @@ def send_profil_batch(invitations: List[Dict], sender_name: str = "HR",
     return results
 
 
+# ========================================
+# CAMPAIGN COMPLETED NOTIFICATIONS
+# ========================================
+
+def send_campaign_completed_notification(
+    to_email: str,
+    recipient_name: str,
+    campaign_id: str,
+    campaign_name: str,
+    responses_count: int,
+    tokens_sent: int,
+    organization_name: str,
+    language: str = 'da'
+) -> bool:
+    """
+    Send email notification when a campaign/survey is completed.
+
+    Args:
+        to_email: Recipient email (typically the manager/admin)
+        recipient_name: Name of the recipient
+        campaign_id: Campaign ID for building the results URL
+        campaign_name: Name of the campaign
+        responses_count: Number of responses received
+        tokens_sent: Total number of invitations sent
+        organization_name: Name of the target organization
+        language: Language code ('da' or 'en', default 'da')
+    """
+    results_url = f"{BASE_URL}/admin/campaign/{campaign_id}/detailed"
+    response_rate = round((responses_count / tokens_sent * 100), 1) if tokens_sent > 0 else 0
+
+    # Get template for the specified language
+    template = get_template('campaign_completed', language=language)
+
+    # Render template with variables
+    rendered = render_template(template, {
+        'recipient_name': recipient_name,
+        'campaign_name': campaign_name,
+        'responses_count': responses_count,
+        'tokens_sent': tokens_sent,
+        'response_rate': response_rate,
+        'organization_name': organization_name,
+        'results_url': results_url
+    }, language)
+
+    data = {
+        'Messages': [
+            {
+                "From": {
+                    "Email": FROM_EMAIL,
+                    "Name": FROM_NAME
+                },
+                "To": [
+                    {
+                        "Email": to_email
+                    }
+                ],
+                "Subject": rendered['subject'],
+                "TextPart": rendered['text'],
+                "HTMLPart": rendered['html']
+            }
+        ]
+    }
+
+    try:
+        result = mailjet.send.create(data=data)
+        if result.status_code == 200:
+            response_data = result.json()
+            message_id = None
+            if 'Messages' in response_data and len(response_data['Messages']) > 0:
+                msg = response_data['Messages'][0]
+                if 'To' in msg and len(msg['To']) > 0:
+                    message_id = str(msg['To'][0].get('MessageID', ''))
+            log_email(to_email, rendered['subject'], 'campaign_completed', 'sent',
+                     message_id, campaign_id=campaign_id)
+            return True
+        else:
+            log_email(to_email, rendered['subject'], 'campaign_completed', 'error',
+                     error_message=f"Status {result.status_code}", campaign_id=campaign_id)
+            return False
+    except Exception as e:
+        print(f"Error sending campaign completed notification to {to_email}: {e}")
+        log_email(to_email, rendered['subject'], 'campaign_completed', 'error',
+                 error_message=str(e), campaign_id=campaign_id)
+        return False
+
+
+def check_and_notify_campaign_completed(campaign_id: str, threshold_percent: float = 100.0) -> bool:
+    """
+    Check if a campaign has reached the completion threshold and send notification.
+
+    A campaign is considered "complete" when:
+    - All tokens have been used (100% response rate), OR
+    - The campaign has reached a custom threshold (e.g., 80%)
+
+    This function checks if notification has already been sent to avoid duplicates.
+
+    Args:
+        campaign_id: Campaign ID to check
+        threshold_percent: Percentage of responses needed to trigger notification (default 100%)
+
+    Returns:
+        True if notification was sent, False otherwise
+    """
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+
+        # Get campaign info
+        campaign = conn.execute("""
+            SELECT c.*, ou.name as org_name, ou.customer_id
+            FROM campaigns c
+            JOIN organizational_units ou ON c.target_unit_id = ou.id
+            WHERE c.id = ?
+        """, (campaign_id,)).fetchone()
+
+        if not campaign:
+            conn.close()
+            return False
+
+        # Get token stats
+        stats = conn.execute("""
+            SELECT
+                COUNT(*) as total,
+                SUM(CASE WHEN used = 1 THEN 1 ELSE 0 END) as used
+            FROM tokens
+            WHERE campaign_id = ?
+        """, (campaign_id,)).fetchone()
+
+        tokens_sent = stats['total'] or 0
+        tokens_used = stats['used'] or 0
+
+        if tokens_sent == 0:
+            conn.close()
+            return False
+
+        response_rate = (tokens_used / tokens_sent) * 100
+
+        # Check if threshold reached
+        if response_rate < threshold_percent:
+            conn.close()
+            return False
+
+        # Check if notification already sent
+        existing = conn.execute("""
+            SELECT id FROM email_logs
+            WHERE campaign_id = ? AND email_type = 'campaign_completed'
+        """, (campaign_id,)).fetchone()
+
+        if existing:
+            conn.close()
+            return False  # Already notified
+
+        # Get the manager/admin to notify
+        # First try: get users associated with this customer
+        customer_id = campaign['customer_id']
+        users = conn.execute("""
+            SELECT email, username FROM users
+            WHERE customer_id = ? OR role = 'admin'
+            ORDER BY role ASC
+            LIMIT 5
+        """, (customer_id,)).fetchall()
+
+        conn.close()
+
+        # Send notification to each relevant user
+        sent_count = 0
+        for user in users:
+            success = send_campaign_completed_notification(
+                to_email=user['email'],
+                recipient_name=user['username'],
+                campaign_id=campaign_id,
+                campaign_name=campaign['name'],
+                responses_count=tokens_used,
+                tokens_sent=tokens_sent,
+                organization_name=campaign['org_name']
+            )
+            if success:
+                sent_count += 1
+
+        return sent_count > 0
+
+    except Exception as e:
+        print(f"Error checking campaign completion: {e}")
+        return False
+
+
 # Test function
 def test_mailjet_connection():
     """Test at Mailjet credentials virker"""
@@ -1083,7 +1429,7 @@ def test_mailjet_connection():
         print("❌ Mailjet credentials mangler!")
         print("Sæt MAILJET_API_KEY og MAILJET_API_SECRET som environment variables")
         return False
-    
+
     try:
         # Test med en simpel GET request
         result = mailjet.contactslist.get()

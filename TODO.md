@@ -65,7 +65,7 @@
 
 ### Rapportering
 - [x] ~~Eksporter resultater til PDF~~ (xhtml2pdf med dedikeret PDF template)
-- [ ] Email notifikationer når måling er færdig
+- [x] ~~Email notifikationer når måling er færdig~~ (auto-send ved 100% svarprocent, DA/EN templates)
 - [ ] Dashboard med nøgletal
 
 ### Data Management
@@ -116,6 +116,8 @@
 
 ## 🎯 STOR OPGAVE: Validering af spørgsmål
 
+> ⚠️ **VIGTIGT**: Denne opgave starter EFTER Frankfurt-migrering er færdig og alt andet er på plads.
+
 ### Mål
 Sikre at spørgsmålene præcist måler det teorien beskriver.
 
@@ -124,21 +126,30 @@ Sikre at spørgsmålene præcist måler det teorien beskriver.
 - Når man tager testen med nuværende spørgsmål → mindre præcist svar
 - Spørgsmålene fanger måske ikke nuancerne godt nok
 
+### Forudsætninger
+- [ ] Frankfurt-migrering gennemført (GDPR compliance)
+- [ ] Agentic system opsat (til automatiseret testning)
+- [ ] Opdateret teori-dokumentation fra Thomas
+
 ### Tilgang
-1. [ ] **Opdater teori-dokumentation** (Thomas arbejder på dette)
-2. [ ] **Agentbaseret validering**
+1. [ ] **Opsæt agentic system til test-validering**
+   - System der kan simulere besvarelser baseret på personas
+   - Automatiseret sammenligning af forventet vs. faktisk score
+   - Regression testing ved spørgsmålsændringer
+2. [ ] **Opdater teori-dokumentation** (Thomas arbejder på dette)
+3. [ ] **Agentbaseret validering**
    - Beskriv personas med specifik adfærd
    - Lad agent svare på spørgsmål som persona
    - Sammenlign resultat med forventet teoretisk score
-3. [ ] **Spørgsmåls-gennemgang**
+4. [ ] **Spørgsmåls-gennemgang**
    - Gennemgå hvert spørgsmål mod teorien
    - Vurder om det måler det rigtige felt/lag
    - Identificer manglende nuancer
-4. [ ] **Brugertest**
+5. [ ] **Brugertest**
    - Få rigtige brugere til at teste og give feedback
 
 ### Status
-⏳ Afventer opdateret teori-dokumentation
+⏳ Venter på: Frankfurt-migrering + agentic system opsætning
 
 ---
 

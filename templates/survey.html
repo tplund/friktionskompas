@@ -231,7 +231,7 @@
             {% endif %}
         </div>
 
-        <form method="POST" action="/submit" id="surveyForm">
+        <form method="POST" action="/s/{{ token }}/submit" id="surveyForm">
             <input type="hidden" name="token" value="{{ token }}">
 
             {% set field_order = ['MENING', 'TRYGHED', 'KAN', 'BESVÆR'] %}

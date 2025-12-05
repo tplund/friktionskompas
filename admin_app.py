@@ -30,7 +30,8 @@ from csv_upload_hierarchical import (
 )
 from mailjet_integration import (
     send_campaign_batch, get_email_stats, get_email_logs, update_email_status,
-    get_template, save_template, list_templates, DEFAULT_TEMPLATES
+    get_template, save_template, list_templates, DEFAULT_TEMPLATES,
+    check_and_notify_campaign_completed
 )
 from db_hierarchical import init_db
 from db_profil import (
@@ -2059,6 +2060,198 @@ def profil_delete():
         'success': True,
         'deleted': deleted
     })
+
+
+# ========================================
+# SURVEY ROUTES (for respondents)
+# ========================================
+
+@app.route('/s/<token>')
+def survey(token):
+    """Survey landing page - validates token and shows questions"""
+    if not token:
+        return render_template('survey_error.html',
+            error="Ingen token angivet. Du skal have et link fra din organisation.")
+
+    # Validate token (without marking as used yet)
+    with get_db() as conn:
+        token_info = conn.execute("""
+            SELECT t.*, c.name as campaign_name
+            FROM tokens t
+            JOIN campaigns c ON t.campaign_id = c.id
+            WHERE t.token = ?
+        """, (token,)).fetchone()
+
+        if not token_info:
+            return render_template('survey_error.html',
+                error="Ugyldig token. Linket er muligvis forkert.")
+
+        if token_info['is_used']:
+            return render_template('survey_error.html',
+                error="Dette link er allerede blevet brugt. Hvert link kan kun bruges én gang.")
+
+    # Get questions
+    questions = get_questions()
+
+    respondent_type = token_info['respondent_type']
+    respondent_name = token_info['respondent_name']
+
+    # Instructions based on respondent type
+    instructions = {
+        'employee': {
+            'title': 'Medarbejder-spørgeskema',
+            'instruction': 'Svar ud fra din egen oplevelse af arbejdet',
+            'description': 'Besvar spørgsmålene ærligt baseret på hvordan DU oplever din arbejdssituation.'
+        },
+        'leader_assess': {
+            'title': 'Leder: Vurdering af teamet',
+            'instruction': 'Svar IKKE om dig selv, men om hvad du tror dine medarbejdere oplever',
+            'description': 'Forestil dig gennemsnitsmedarbejderen i dit team. Hvad ville de svare på disse spørgsmål?'
+        },
+        'leader_self': {
+            'title': 'Leder: Egne friktioner',
+            'instruction': 'Svar om dine EGNE friktioner som leder',
+            'description': 'Har DU de værktøjer, den tryghed og mening du skal bruge for at lede godt?'
+        }
+    }
+
+    instr = instructions.get(respondent_type, instructions['employee'])
+
+    return render_template('survey.html',
+        token=token,
+        questions=questions,
+        respondent_type=respondent_type,
+        respondent_name=respondent_name,
+        title=instr['title'],
+        instruction=instr['instruction'],
+        description=instr['description'],
+        is_preview=False
+    )
+
+
+@app.route('/s/<token>/submit', methods=['POST'])
+def survey_submit(token):
+    """Save survey responses and mark token as used"""
+    if not token:
+        flash('Ingen token angivet', 'error')
+        return redirect(url_for('index'))
+
+    # Get token info
+    with get_db() as conn:
+        token_info = conn.execute("""
+            SELECT campaign_id, unit_id, respondent_type, respondent_name, is_used
+            FROM tokens
+            WHERE token = ?
+        """, (token,)).fetchone()
+
+        if not token_info:
+            flash('Ugyldig token', 'error')
+            return redirect(url_for('index'))
+
+        if token_info['is_used']:
+            return render_template('survey_error.html',
+                error="Dette link er allerede blevet brugt.")
+
+    campaign_id = token_info['campaign_id']
+    unit_id = token_info['unit_id']
+    respondent_type = token_info['respondent_type']
+    respondent_name = token_info['respondent_name']
+
+    # Get free text responses
+    free_text_situation = request.form.get('free_text_situation', '').strip()
+    free_text_general = request.form.get('free_text_general', '').strip()
+
+    # Combine free text
+    combined_comment = ""
+    if free_text_situation:
+        combined_comment += f"SITUATION: {free_text_situation}"
+    if free_text_general:
+        if combined_comment:
+            combined_comment += "\n\n"
+        combined_comment += f"GENERELT: {free_text_general}"
+
+    # Save all responses
+    questions = get_questions()
+    saved_count = 0
+
+    for question in questions:
+        q_id = question['id']
+        score = request.form.get(f'q_{q_id}')
+
+        if score:
+            score = int(score)
+
+            # Save response with respondent_type, name, and free text (only on first response)
+            with get_db() as conn:
+                comment = combined_comment if saved_count == 0 and combined_comment else None
+
+                conn.execute("""
+                    INSERT INTO responses
+                    (campaign_id, unit_id, question_id, score, respondent_type, respondent_name, comment)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                """, (campaign_id, unit_id, q_id, score, respondent_type, respondent_name, comment))
+
+            saved_count += 1
+
+    # Mark token as used
+    with get_db() as conn:
+        conn.execute("""
+            UPDATE tokens
+            SET is_used = 1, used_at = CURRENT_TIMESTAMP
+            WHERE token = ?
+        """, (token,))
+
+    # Check if campaign is now complete and send notification
+    # Default threshold is 100% (all tokens used)
+    try:
+        check_and_notify_campaign_completed(campaign_id)
+    except Exception as e:
+        # Don't fail the survey submission if notification fails
+        print(f"Warning: Could not send completion notification: {e}")
+
+    return render_template('survey_thanks.html',
+        saved_count=saved_count,
+        respondent_type=respondent_type
+    )
+
+
+@app.route('/survey/preview')
+def survey_preview():
+    """Preview mode - no token required"""
+    respondent_type = request.args.get('type', 'employee')
+
+    questions = get_questions()
+
+    instructions = {
+        'employee': {
+            'title': 'Medarbejder-spørgeskema',
+            'instruction': 'Svar ud fra din egen oplevelse af arbejdet',
+            'description': 'Besvar spørgsmålene ærligt baseret på hvordan DU oplever din arbejdssituation.'
+        },
+        'leader_assess': {
+            'title': 'Leder: Vurdering af teamet',
+            'instruction': 'Svar IKKE om dig selv, men om hvad du tror dine medarbejdere oplever',
+            'description': 'Forestil dig gennemsnitsmedarbejderen i dit team. Hvad ville de svare på disse spørgsmål?'
+        },
+        'leader_self': {
+            'title': 'Leder: Egne friktioner',
+            'instruction': 'Svar om dine EGNE friktioner som leder',
+            'description': 'Har DU de værktøjer, den tryghed og mening du skal bruge for at lede godt?'
+        }
+    }
+
+    instr = instructions.get(respondent_type, instructions['employee'])
+
+    return render_template('survey.html',
+        token='preview',
+        questions=questions,
+        respondent_type=respondent_type,
+        respondent_name='Preview',
+        title=instr['title'],
+        instruction=instr['instruction'],
+        description=instr['description'],
+        is_preview=True
+    )
 
 
 # ========================================
