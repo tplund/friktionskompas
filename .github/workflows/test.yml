@@ -31,12 +31,25 @@ jobs:
         pip install -r requirements.txt
         pip install pytest pytest-flask pytest-cov
 
+    - name: Verify imports
+      run: |
+        python -c "import flask; print('Flask OK')"
+        python -c "from xhtml2pdf import pisa; print('xhtml2pdf OK')"
+        python -c "import admin_app; print('admin_app OK')"
+
     - name: Run tests
       env:
         SECRET_KEY: test-secret-key-for-ci
         FLASK_ENV: testing
       run: |
-        python -m pytest tests/ -v --tb=short
+        python -m pytest tests/ -v --tb=long 2>&1 | tee test_output.txt
+
+    - name: Upload test results on failure
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-failure-log
+        path: test_output.txt
 
     - name: Run tests with coverage
       env:
