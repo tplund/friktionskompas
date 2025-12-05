@@ -11,7 +11,7 @@
 - [x] ~~**Seed oversættelser** - 147 oversættelser seedet til database (DA/EN)~~
 - [x] ~~**Template migrering (resterende)** - new_unit, view_unit, new_campaign konverteret til layout.html + t()~~
 - [x] ~~**Spørgsmålsoversættelse** - 24 friktionsanalyse + 30 profil spørgsmål oversat til engelsk~~
-- [ ] **Email templates** - Tilføj sprog til email templates
+- [x] ~~**Email templates** - Alle 3 email types (invitation, reminder, profil) med DA/EN templates~~
 - Se detaljeret plan: `PLAN_flersproget.md`
 
 ### Automatiseret Test
@@ -22,7 +22,7 @@
 - [x] ~~**Sikkerhedstest** - SQL injection, XSS, auth bypass, session hijacking (12 tests)~~
 - [ ] **UI/UX test** - Selenium/Playwright tests af brugerflows
 - [ ] **Integration test** - End-to-end test af survey flow
-- [ ] **CI/CD** - Automatisk test ved push til GitHub
+- [x] ~~**CI/CD** - GitHub Actions workflow kører 55 tests automatisk ved push~~
 
 ### ⚠️ VIGTIGT - Dokumentation
 - [ ] **Ved ALLE ændringer i analyselogik:** Opdater `ANALYSELOGIK.md`
