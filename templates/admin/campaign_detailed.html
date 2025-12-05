@@ -7,8 +7,17 @@
     <!-- Header -->
     <div class="row mb-4">
         <div class="col-12">
-            <h1 class="h2">📊 Friktionsmåling - {{ campaign.name }}</h1>
-            <p class="text-muted">{% if last_response_date %}Sidste besvarelse: {{ last_response_date }}{% endif %}</p>
+            <div style="display: flex; justify-content: space-between; align-items: start; flex-wrap: wrap; gap: 15px;">
+                <div>
+                    <h1 class="h2">📊 Friktionsmåling - {{ campaign.name }}</h1>
+                    <p class="text-muted">{% if last_response_date %}Sidste besvarelse: {{ last_response_date }}{% endif %}</p>
+                </div>
+                <a href="/admin/campaign/{{ campaign.id }}/pdf"
+                   style="display: inline-block; padding: 10px 20px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 0.9rem;"
+                   data-loading="Genererer PDF...">
+                    📄 Download PDF
+                </a>
+            </div>
         </div>
     </div>
 

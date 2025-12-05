@@ -71,11 +71,16 @@
     <p>{{ campaign.period }} · Target: {{ target_breadcrumbs[-1].name if target_breadcrumbs else 'Unknown' }}</p>
 </div>
 
-<!-- Link til detaljeret analyse -->
-<div style="margin-bottom: 20px;">
+<!-- Link til detaljeret analyse og PDF -->
+<div style="margin-bottom: 20px; display: flex; gap: 15px; flex-wrap: wrap;">
     <a href="/admin/campaign/{{ campaign.id }}/detailed"
        style="display: inline-block; padding: 12px 24px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; border-radius: 8px; font-weight: 600;">
         📊 Se Detaljeret Analyse med Lagdeling
+    </a>
+    <a href="/admin/campaign/{{ campaign.id }}/pdf"
+       style="display: inline-block; padding: 12px 24px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; text-decoration: none; border-radius: 8px; font-weight: 600;"
+       data-loading="Genererer PDF...">
+        📄 Download PDF Rapport
     </a>
 </div>
 

@@ -1715,6 +1715,124 @@ def campaign_detailed_analysis(campaign_id):
         return f"<h1>Fejl i campaign_detailed_analysis</h1><pre>{error_details}</pre>", 500
 
 
+@app.route('/admin/campaign/<campaign_id>/pdf')
+@login_required
+def campaign_pdf_export(campaign_id):
+    """Eksporter måling til PDF"""
+    from datetime import datetime
+    from io import BytesIO
+
+    user = get_current_user()
+
+    try:
+        with get_db() as conn:
+            # Hent campaign
+            if user['role'] == 'admin':
+                campaign = conn.execute("""
+                    SELECT c.*, ou.customer_id FROM campaigns c
+                    JOIN organizational_units ou ON c.target_unit_id = ou.id
+                    WHERE c.id = ?
+                """, [campaign_id]).fetchone()
+            else:
+                campaign = conn.execute("""
+                    SELECT c.*, ou.customer_id FROM campaigns c
+                    JOIN organizational_units ou ON c.target_unit_id = ou.id
+                    WHERE c.id = ? AND ou.customer_id = ?
+                """, [campaign_id, user['customer_id']]).fetchone()
+
+            if not campaign:
+                flash("Måling ikke fundet eller ingen adgang", 'error')
+                return redirect(url_for('admin_home'))
+
+        target_unit_id = campaign['target_unit_id']
+
+        # Check anonymity
+        anonymity = check_anonymity_threshold(campaign_id, target_unit_id)
+        if not anonymity.get('can_show_results'):
+            flash("Ikke nok svar til at generere PDF", 'warning')
+            return redirect(url_for('view_campaign', campaign_id=campaign_id))
+
+        # Get all data
+        breakdown = get_detailed_breakdown(target_unit_id, campaign_id, include_children=True)
+        substitution = calculate_substitution(target_unit_id, campaign_id, 'employee')
+        free_text_comments = get_free_text_comments(target_unit_id, campaign_id, include_children=True)
+
+        employee_stats = breakdown.get('employee', {})
+        comparison = breakdown.get('comparison', {})
+        kkc_recommendations = get_kkc_recommendations(employee_stats, comparison)
+        start_here = get_start_here_recommendation(kkc_recommendations)
+
+        from analysis import get_alerts_and_findings
+        alerts = get_alerts_and_findings(breakdown, comparison, substitution)
+
+        # Token stats
+        with get_db() as conn:
+            token_stats = conn.execute("""
+                SELECT
+                    COUNT(*) as tokens_sent,
+                    SUM(CASE WHEN is_used = 1 THEN 1 ELSE 0 END) as tokens_used
+                FROM tokens
+                WHERE campaign_id = ?
+            """, (campaign_id,)).fetchone()
+
+        # Calculate overall score
+        emp = breakdown.get('employee', {})
+        if emp:
+            fields = ['MENING', 'TRYGHED', 'KAN', 'BESVÆR']
+            scores = [emp.get(f, {}).get('avg_score', 3) for f in fields]
+            avg_score = sum(scores) / len(scores)
+            overall_score = (avg_score - 1) / 4 * 100
+        else:
+            overall_score = 0
+
+        response_rate = (token_stats['tokens_used'] / token_stats['tokens_sent'] * 100) if token_stats['tokens_sent'] > 0 else 0
+
+        # Render HTML template
+        html = render_template('admin/campaign_pdf.html',
+            campaign=dict(campaign),
+            breakdown=breakdown,
+            alerts=alerts,
+            start_here=start_here,
+            free_text_comments=free_text_comments,
+            token_stats=dict(token_stats),
+            overall_score=overall_score,
+            response_rate=response_rate,
+            generated_date=datetime.now().strftime('%d-%m-%Y %H:%M')
+        )
+
+        # Generate PDF
+        try:
+            from xhtml2pdf import pisa
+
+            pdf_buffer = BytesIO()
+            pisa_status = pisa.CreatePDF(html, dest=pdf_buffer)
+
+            if pisa_status.err:
+                flash("Fejl ved PDF generering", 'error')
+                return redirect(url_for('view_campaign', campaign_id=campaign_id))
+
+            pdf_buffer.seek(0)
+
+            # Create filename
+            safe_name = campaign['name'].replace(' ', '_').replace('/', '-')
+            filename = f"Friktionsmaaling_{safe_name}_{datetime.now().strftime('%Y%m%d')}.pdf"
+
+            return Response(
+                pdf_buffer.getvalue(),
+                mimetype='application/pdf',
+                headers={'Content-Disposition': f'attachment; filename="{filename}"'}
+            )
+        except ImportError:
+            flash("PDF bibliotek ikke installeret. Kontakt administrator.", 'error')
+            return redirect(url_for('view_campaign', campaign_id=campaign_id))
+
+    except Exception as e:
+        import traceback
+        print(f"PDF export error: {traceback.format_exc()}")
+        flash(f"Fejl ved PDF eksport: {str(e)}", 'error')
+        return redirect(url_for('view_campaign', campaign_id=campaign_id))
+
+
 # ========================================
 # FRIKTIONSPROFIL ROUTES
 # ========================================

@@ -64,8 +64,8 @@
 ## 📊 Medium Prioritet
 
 ### Rapportering
-- [ ] Eksporter resultater til PDF
-- [ ] Email notifikationer når kampagne er færdig
+- [x] ~~Eksporter resultater til PDF~~ (xhtml2pdf med dedikeret PDF template)
+- [ ] Email notifikationer når måling er færdig
 - [ ] Dashboard med nøgletal
 
 ### Data Management
