@@ -672,17 +672,19 @@ def analyser():
 @app.route('/admin/bulk-upload', methods=['GET', 'POST'])
 @login_required
 def bulk_upload():
-    """Bulk upload af units fra CSV med hierarkisk struktur"""
-    user = get_current_user()
+    """Bulk upload af units fra CSV med hierarkisk struktur - Step 1: Preview"""
+    import base64
+    import io
+    import csv
 
     if request.method == 'POST':
         if 'file' not in request.files:
-            flash('❌ Ingen fil uploaded', 'error')
+            flash('Ingen fil uploaded', 'error')
             return redirect(request.url)
 
         file = request.files['file']
         if file.filename == '':
-            flash('❌ Ingen fil valgt', 'error')
+            flash('Ingen fil valgt', 'error')
             return redirect(request.url)
 
         # Læs fil
@@ -692,25 +694,99 @@ def bulk_upload():
         validation = validate_csv_format(content)
         if not validation['valid']:
             for error in validation['errors']:
-                flash(f"❌ {error}", 'error')
+                flash(error, 'error')
             return redirect(request.url)
 
-        # Vis advarsler
-        for warning in validation['warnings']:
-            flash(f"⚠️ {warning}", 'warning')
+        # Parse hele filen for at få bedre preview
+        if content.startswith('\ufeff'):
+            content_clean = content[1:]
+        else:
+            content_clean = content
 
-        # Upload med customer_id
-        stats = bulk_upload_from_csv(content, customer_id=user['customer_id'])
+        stream = io.StringIO(content_clean)
+        csv_reader = csv.DictReader(stream, delimiter=';')
 
-        if stats['errors']:
-            for error in stats['errors']:
-                flash(f"⚠️ {error}", 'warning')
+        all_rows = []
+        org_paths = set()
+        for row_num, row in enumerate(csv_reader, start=2):
+            org_path = row.get('Organisation', '').strip()
+            if org_path:
+                org_paths.add(org_path)
+                firstname = row.get('FirstName', '').strip()
+                lastname = row.get('Lastname', '').strip()
+                all_rows.append({
+                    'row': row_num,
+                    'path': org_path,
+                    'levels': len(org_path.split('//')),
+                    'name': f"{firstname} {lastname}".strip() or '-',
+                    'email': row.get('Email', '').strip() or '-',
+                })
 
-        flash(f"{stats['units_created']} organisationer oprettet! {stats['contacts_created']} kontakter tilføjet.", 'success')
-        return redirect(url_for('admin_home'))
+        # Byg hierarki preview
+        hierarchy = {}
+        for path in sorted(org_paths):
+            parts = path.split('//')
+            for i, part in enumerate(parts):
+                key = '//'.join(parts[:i+1])
+                if key not in hierarchy:
+                    hierarchy[key] = {'name': part, 'indent': i, 'count': 0}
+
+        # Tæl personer per organisation
+        for row in all_rows:
+            if row['path'] in hierarchy:
+                hierarchy[row['path']]['count'] += 1
+
+        hierarchy_preview = list(hierarchy.values())
+        for i, item in enumerate(hierarchy_preview):
+            item['last'] = (i == len(hierarchy_preview) - 1)
+
+        # Encode CSV data til hidden field
+        csv_data_encoded = base64.b64encode(content.encode('utf-8')).decode('ascii')
+
+        # Max dybde
+        max_depth = max((r['levels'] for r in all_rows), default=0)
+
+        return render_template('admin/bulk_upload.html',
+            preview=all_rows[:20],  # Vis max 20 rækker i preview
+            total_rows=len(all_rows),
+            unique_orgs=len(org_paths),
+            max_depth=max_depth,
+            hierarchy_preview=hierarchy_preview[:30],  # Max 30 hierarki items
+            warnings=validation['warnings'],
+            csv_data_encoded=csv_data_encoded
+        )
 
     # GET: Vis upload form
     return render_template('admin/bulk_upload.html')
+
+
+@app.route('/admin/bulk-upload/confirm', methods=['POST'])
+@login_required
+def bulk_upload_confirm():
+    """Bulk upload af units fra CSV - Step 2: Bekræft og importer"""
+    import base64
+    user = get_current_user()
+
+    csv_data_encoded = request.form.get('csv_data', '')
+    if not csv_data_encoded:
+        flash('Ingen data at importere', 'error')
+        return redirect(url_for('bulk_upload'))
+
+    try:
+        content = base64.b64decode(csv_data_encoded).decode('utf-8')
+    except Exception as e:
+        flash(f'Fejl ved dekodning af data: {str(e)}', 'error')
+        return redirect(url_for('bulk_upload'))
+
+    # Upload med customer_id
+    stats = bulk_upload_from_csv(content, customer_id=user['customer_id'])
+
+    if stats['errors']:
+        for error in stats['errors']:
+            flash(error, 'warning')
+
+    flash(f"{stats['units_created']} organisationer oprettet! {stats['contacts_created']} kontakter tilføjet.", 'success')
+    return redirect(url_for('admin_home'))
 
 
 @app.route('/admin/csv-template')

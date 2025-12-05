@@ -230,7 +230,7 @@ DEFAULT_TEMPLATES_DA = {
             {sender_name}</p>
 
             <div class="footer">
-                <p>Dette er en del af kampagnen: <strong>{campaign_name}</strong></p>
+                <p>Dette er en del af målingen: <strong>{campaign_name}</strong></p>
                 <p>Spørgsmål? Kontakt {contact_email}</p>
             </div>
         </div>
@@ -256,7 +256,7 @@ Mvh
 {sender_name}
 
 ---
-Kampagne: {campaign_name}
+Måling: {campaign_name}
 '''
     },
     'reminder': {
@@ -902,7 +902,7 @@ def send_campaign_batch(contacts: List[Dict], tokens: List[str],
                        campaign_name: str, sender_name: str = "HR",
                        language: str = 'da') -> Dict:
     """
-    Send kampagne til hele batch af kontakter
+    Send måling til hele batch af kontakter
 
     contacts: List[{'email': '...', 'phone': '...'}]
     tokens: List[str] - samme længde som contacts

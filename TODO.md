@@ -57,7 +57,7 @@
 - [x] ~~Semikolon separator (Excel standard)~~
 - [x] ~~UTF-8 BOM encoding~~
 - [x] ~~Auto-opret kontakter fra CSV~~
-- [ ] Bedre fejlhåndtering og preview før import
+- [x] ~~Bedre fejlhåndtering og preview før import~~ (2-trins flow med drag-drop, hierarki-preview)
 
 ---
 
@@ -76,7 +76,7 @@
 ### UX
 - [x] ~~Loading spinners ved lange operationer~~ (global loading overlay i layout.html)
 - [x] ~~Konfirmation dialogs ved sletning~~ (allerede implementeret alle steder)
-- [ ] Toast notifications i stedet for flash messages
+- [x] ~~Toast notifications i stedet for flash messages~~ (slide-in toasts med auto-dismiss)
 
 ---
 
@@ -111,6 +111,34 @@
 - [ ] Caching af aggregerede data
 - [ ] Pagination i lange lister
 - [ ] Database indexes optimering
+
+---
+
+## 🎯 STOR OPGAVE: Validering af spørgsmål
+
+### Mål
+Sikre at spørgsmålene præcist måler det teorien beskriver.
+
+### Problem
+- Når man beskriver adfærd til en chatbot med teorien som baggrund → præcist svar
+- Når man tager testen med nuværende spørgsmål → mindre præcist svar
+- Spørgsmålene fanger måske ikke nuancerne godt nok
+
+### Tilgang
+1. [ ] **Opdater teori-dokumentation** (Thomas arbejder på dette)
+2. [ ] **Agentbaseret validering**
+   - Beskriv personas med specifik adfærd
+   - Lad agent svare på spørgsmål som persona
+   - Sammenlign resultat med forventet teoretisk score
+3. [ ] **Spørgsmåls-gennemgang**
+   - Gennemgå hvert spørgsmål mod teorien
+   - Vurder om det måler det rigtige felt/lag
+   - Identificer manglende nuancer
+4. [ ] **Brugertest**
+   - Få rigtige brugere til at teste og give feedback
+
+### Status
+⏳ Afventer opdateret teori-dokumentation
 
 ---
 

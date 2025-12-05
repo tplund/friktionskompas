@@ -179,15 +179,62 @@
             padding: 20px;
         }
 
-        /* Flash messages */
-        .flash {
-            padding: 15px 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
+        /* Toast notifications */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-width: 400px;
         }
-        .flash.success { background: #d1fae5; color: #065f46; }
-        .flash.error { background: #fee2e2; color: #991b1b; }
-        .flash.warning { background: #fef3c7; color: #92400e; }
+        .toast {
+            padding: 16px 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            animation: slideIn 0.3s ease-out;
+            cursor: pointer;
+            transition: opacity 0.3s, transform 0.3s;
+        }
+        .toast:hover {
+            transform: translateX(-5px);
+        }
+        .toast.hiding {
+            opacity: 0;
+            transform: translateX(100%);
+        }
+        .toast-icon {
+            font-size: 1.2rem;
+            flex-shrink: 0;
+        }
+        .toast-message {
+            flex: 1;
+            font-size: 0.95rem;
+            line-height: 1.4;
+        }
+        .toast-close {
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            cursor: pointer;
+            opacity: 0.6;
+            padding: 0;
+            line-height: 1;
+        }
+        .toast-close:hover { opacity: 1; }
+        .toast.success { background: #d1fae5; color: #065f46; border-left: 4px solid #10b981; }
+        .toast.error { background: #fee2e2; color: #991b1b; border-left: 4px solid #ef4444; }
+        .toast.warning { background: #fef3c7; color: #92400e; border-left: 4px solid #f59e0b; }
+        .toast.info { background: #dbeafe; color: #1e40af; border-left: 4px solid #3b82f6; }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(100%); }
+            to { opacity: 1; transform: translateX(0); }
+        }
     </style>
     {% block extra_css %}{% endblock %}
 </head>
@@ -283,17 +330,25 @@
         </div>
     </div>
 
-    <div class="container">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                <div class="flash {{ category }}">{{ message }}</div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
+    <!-- Toast container for notifications -->
+    <div id="toastContainer" class="toast-container"></div>
 
+    <div class="container">
         {% block content %}{% endblock %}
     </div>
+
+    <!-- Flash messages as toasts (from server) -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                {% for category, message in messages %}
+                showToast('{{ message|e }}', '{{ category }}');
+                {% endfor %}
+            });
+        </script>
+        {% endif %}
+    {% endwith %}
 
     <!-- Loading overlay -->
     <div id="loadingOverlay" class="loading-overlay">
@@ -374,6 +429,45 @@
             });
         });
     });
+
+    // Toast notification system
+    function showToast(message, type, duration) {
+        type = type || 'info';
+        duration = duration || (type === 'error' ? 8000 : 5000);
+
+        var container = document.getElementById('toastContainer');
+        var toast = document.createElement('div');
+        toast.className = 'toast ' + type;
+
+        var icons = {
+            'success': '✓',
+            'error': '✕',
+            'warning': '⚠',
+            'info': 'ℹ'
+        };
+
+        toast.innerHTML =
+            '<span class="toast-icon">' + (icons[type] || icons.info) + '</span>' +
+            '<span class="toast-message">' + message + '</span>' +
+            '<button class="toast-close" onclick="closeToast(this.parentElement)">×</button>';
+
+        container.appendChild(toast);
+
+        // Auto-dismiss
+        setTimeout(function() {
+            closeToast(toast);
+        }, duration);
+    }
+
+    function closeToast(toast) {
+        if (!toast || toast.classList.contains('hiding')) return;
+        toast.classList.add('hiding');
+        setTimeout(function() {
+            if (toast.parentElement) {
+                toast.parentElement.removeChild(toast);
+            }
+        }, 300);
+    }
     </script>
 </body>
 </html>

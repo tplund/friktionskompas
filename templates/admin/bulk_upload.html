@@ -1,176 +1,362 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>Upload CSV - Admin</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
-            background: #f9fafb;
-            padding: 20px;
-        }
-        .container { max-width: 900px; margin: 0 auto; }
-        .header {
-            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-            color: white;
-            padding: 30px;
-            border-radius: 12px;
-            margin-bottom: 30px;
-        }
-        .card { background: white; border-radius: 12px; padding: 30px; margin-bottom: 20px; }
-        .btn {
-            background: #3b82f6;
-            color: white;
-            padding: 12px 24px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 1rem;
-            text-decoration: none;
-            display: inline-block;
-        }
-        .info-box {
-            background: #f0f9ff;
-            padding: 20px;
-            border-left: 4px solid #3b82f6;
-            border-radius: 4px;
-            margin: 20px 0;
-        }
-        .example-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 15px 0;
-            font-size: 0.875rem;
-        }
-        .example-table th,
-        .example-table td {
-            padding: 8px;
-            border: 1px solid #e5e7eb;
-            text-align: left;
-        }
-        .example-table th {
-            background: #f9fafb;
-            font-weight: 600;
-        }
-        a { color: #3b82f6; text-decoration: none; }
-        code {
-            background: #f3f4f6;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-family: monospace;
-        }
-        .flash {
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-        }
-        .flash.success { background: #d1fae5; color: #065f46; }
-        .flash.error { background: #fee2e2; color: #991b1b; }
-        .flash.warning { background: #fef3c7; color: #92400e; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>📤 Upload CSV</h1>
-            <p>Upload CSV med hierarkiske organisationer</p>
-            <p><a href="/admin" style="color: white; opacity: 0.9;">← Tilbage til oversigt</a></p>
+{% extends "admin/layout.html" %}
+
+{% block title %}{{ t('csv.upload_title') if t else 'Upload CSV' }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-header {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        color: white;
+        padding: 30px;
+        border-radius: 12px;
+        margin-bottom: 30px;
+    }
+    .page-header a { color: white; opacity: 0.9; text-decoration: none; }
+    .card { background: white; border-radius: 12px; padding: 30px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .btn {
+        background: #3b82f6;
+        color: white;
+        padding: 12px 24px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 1rem;
+        text-decoration: none;
+        display: inline-block;
+    }
+    .btn:hover { background: #2563eb; }
+    .btn-secondary { background: #6b7280; }
+    .btn-secondary:hover { background: #4b5563; }
+    .btn-success { background: #10b981; }
+    .btn-success:hover { background: #059669; }
+    .info-box {
+        background: #f0f9ff;
+        padding: 20px;
+        border-left: 4px solid #3b82f6;
+        border-radius: 4px;
+        margin: 20px 0;
+    }
+    .example-table, .preview-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 15px 0;
+        font-size: 0.875rem;
+    }
+    .example-table th, .example-table td,
+    .preview-table th, .preview-table td {
+        padding: 10px 12px;
+        border: 1px solid #e5e7eb;
+        text-align: left;
+    }
+    .example-table th, .preview-table th {
+        background: #f9fafb;
+        font-weight: 600;
+    }
+    .preview-table tr:hover { background: #f9fafb; }
+    code {
+        background: #f3f4f6;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-family: monospace;
+    }
+    .upload-zone {
+        border: 2px dashed #d1d5db;
+        border-radius: 12px;
+        padding: 40px;
+        text-align: center;
+        transition: all 0.2s;
+        cursor: pointer;
+    }
+    .upload-zone:hover, .upload-zone.dragover {
+        border-color: #3b82f6;
+        background: #f0f9ff;
+    }
+    .upload-zone input[type="file"] {
+        display: none;
+    }
+    .upload-icon {
+        font-size: 3rem;
+        margin-bottom: 15px;
+    }
+    .file-selected {
+        background: #d1fae5;
+        border-color: #10b981;
+    }
+    .file-selected .upload-icon::before {
+        content: "✓";
+    }
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 15px;
+        margin: 20px 0;
+    }
+    .stat-card {
+        background: #f9fafb;
+        padding: 15px;
+        border-radius: 8px;
+        text-align: center;
+    }
+    .stat-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #3b82f6;
+    }
+    .stat-label {
+        font-size: 0.875rem;
+        color: #6b7280;
+    }
+    .hierarchy-preview {
+        background: #f9fafb;
+        padding: 15px;
+        border-radius: 8px;
+        margin: 15px 0;
+        font-family: monospace;
+        font-size: 0.875rem;
+    }
+    .hierarchy-preview .level { margin-left: 20px; }
+    .warning-box {
+        background: #fef3c7;
+        padding: 15px;
+        border-left: 4px solid #f59e0b;
+        border-radius: 4px;
+        margin: 15px 0;
+    }
+    .error-box {
+        background: #fee2e2;
+        padding: 15px;
+        border-left: 4px solid #ef4444;
+        border-radius: 4px;
+        margin: 15px 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>📤 Upload CSV</h1>
+    <p>Upload CSV med hierarkiske organisationer</p>
+    <p><a href="/admin">← {{ t('unit.back_to_overview') if t else 'Tilbage til oversigt' }}</a></p>
+</div>
+
+{% if preview %}
+<!-- STEP 2: Preview before import -->
+<div class="card">
+    <h2>👁️ Preview - Bekræft import</h2>
+    <p style="color: #6b7280; margin-bottom: 20px;">Gennemgå data nedenfor og bekræft at det ser korrekt ud.</p>
+
+    {% if warnings %}
+    <div class="warning-box">
+        <strong>⚠️ Advarsler:</strong>
+        <ul style="margin: 10px 0 0 20px;">
+            {% for warning in warnings %}
+            <li>{{ warning }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-value">{{ preview|length }}</div>
+            <div class="stat-label">Rækker i preview</div>
         </div>
-
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                <div class="flash {{ category }}">{{ message }}</div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
-
-        <div class="card">
-            <h2>📋 CSV Format (Hierarkisk)</h2>
-
-            <div class="info-box">
-                <p><strong>Kolonner (i denne rækkefølge):</strong></p>
-                <code>FirstName;Lastname;Email;phone;Organisation</code>
-                <p style="margin-top: 15px;"><strong>⚠️ VIGTIGT:</strong></p>
-                <ul style="margin-top: 5px; line-height: 1.8;">
-                    <li>Brug <strong>semikolon (;)</strong> som separator - Excel standard i Danmark</li>
-                    <li>Gem som <strong>UTF-8 med BOM</strong> encoding for at Excel kan læse danske tegn</li>
-                    <li>Brug <code>//</code> til at adskille niveauer i hierarkiet</li>
-                    <li>Hver række = én medarbejder (flere medarbejdere i samme afdeling = flere rækker)</li>
-                </ul>
-            </div>
-
-            <table class="example-table">
-                <thead>
-                    <tr>
-                        <th>FirstName</th>
-                        <th>Lastname</th>
-                        <th>Email</th>
-                        <th>phone</th>
-                        <th>Organisation</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>Anders</td>
-                        <td>Hansen</td>
-                        <td>anders@tech.dk</td>
-                        <td>+4512345678</td>
-                        <td><strong>TechCorp//IT Afdeling//Development</strong></td>
-                    </tr>
-                    <tr>
-                        <td>Mette</td>
-                        <td>Nielsen</td>
-                        <td>mette@tech.dk</td>
-                        <td></td>
-                        <td><strong>TechCorp//IT Afdeling//Development</strong></td>
-                    </tr>
-                    <tr>
-                        <td>Lars</td>
-                        <td>Berg</td>
-                        <td>lars@tech.dk</td>
-                        <td>+4587654321</td>
-                        <td><strong>TechCorp//IT Afdeling//Support</strong></td>
-                    </tr>
-                </tbody>
-            </table>
-
-            <div class="info-box">
-                <p><strong>💡 Sådan virker det:</strong></p>
-                <ul style="margin-top: 10px; line-height: 2;">
-                    <li><code>TechCorp//IT Afdeling//Development</code> opretter 3 niveauer:
-                        <ul style="margin-left: 20px; margin-top: 5px;">
-                            <li>TechCorp (top-level)</li>
-                            <li>IT Afdeling (underorganisation)</li>
-                            <li>Development (afdeling)</li>
-                        </ul>
-                    </li>
-                    <li>Overorganisationer oprettes automatisk hvis de ikke findes</li>
-                    <li>Første person i hver afdeling bliver leder</li>
-                    <li>Alle personer oprettes som kontakter med email/telefon</li>
-                    <li>Antal medarbejdere beregnes automatisk fra antal kontakter</li>
-                </ul>
-            </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ unique_orgs }}</div>
+            <div class="stat-label">Unikke organisationer</div>
         </div>
-
-        <div class="card">
-            <h2>📤 Upload CSV</h2>
-
-            <form method="POST" enctype="multipart/form-data" data-loading="Uploader og opretter organisationer...">
-                <div style="margin: 20px 0;">
-                    <input type="file" name="file" accept=".csv" required style="padding: 10px;">
-                </div>
-
-                <button type="submit" class="btn">✅ Upload og opret</button>
-            </form>
-        </div>
-
-        <div class="card">
-            <h2>📥 Download skabelon</h2>
-            <p>Download en CSV-skabelon du kan udfylde:</p>
-            <a href="/admin/csv-template" class="btn" style="margin-top: 15px;">⬇️ Download CSV skabelon</a>
+        <div class="stat-card">
+            <div class="stat-value">{{ max_depth }}</div>
+            <div class="stat-label">Max dybde</div>
         </div>
     </div>
-</body>
-</html>
+
+    <h3 style="margin-top: 25px;">📋 Data preview (første {{ preview|length }} rækker)</h3>
+    <table class="preview-table">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Navn</th>
+                <th>Email</th>
+                <th>Organisation</th>
+                <th>Niveau</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in preview %}
+            <tr>
+                <td>{{ row.row }}</td>
+                <td>{{ row.name }}</td>
+                <td>{{ row.email }}</td>
+                <td><code>{{ row.path }}</code></td>
+                <td>{{ row.levels }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% if total_rows > preview|length %}
+    <p style="color: #6b7280; font-style: italic; margin-top: 10px;">
+        ... og {{ total_rows - preview|length }} flere rækker
+    </p>
+    {% endif %}
+
+    <h3 style="margin-top: 25px;">🌳 Hierarki (preview)</h3>
+    <div class="hierarchy-preview">
+        {% for org in hierarchy_preview %}
+        <div style="margin-left: {{ org.indent * 20 }}px;">
+            {{ '├── ' if not org.last else '└── ' }}{{ org.name }} {% if org.count > 0 %}({{ org.count }} personer){% endif %}
+        </div>
+        {% endfor %}
+    </div>
+
+    <div style="margin-top: 25px; display: flex; gap: 15px;">
+        <form method="POST" action="/admin/bulk-upload/confirm" style="display: inline;">
+            <input type="hidden" name="csv_data" value="{{ csv_data_encoded }}">
+            <button type="submit" class="btn btn-success" data-loading="Importerer data...">
+                ✅ Bekræft og importer
+            </button>
+        </form>
+        <a href="/admin/bulk-upload" class="btn btn-secondary">← Annuller</a>
+    </div>
+</div>
+
+{% else %}
+<!-- STEP 1: Upload form -->
+<div class="card">
+    <h2>📋 CSV Format (Hierarkisk)</h2>
+
+    <div class="info-box">
+        <p><strong>Kolonner (i denne rækkefølge):</strong></p>
+        <code>FirstName;Lastname;Email;phone;Organisation</code>
+        <p style="margin-top: 15px;"><strong>⚠️ VIGTIGT:</strong></p>
+        <ul style="margin-top: 5px; line-height: 1.8;">
+            <li>Brug <strong>semikolon (;)</strong> som separator - Excel standard i Danmark</li>
+            <li>Gem som <strong>UTF-8 med BOM</strong> encoding for at Excel kan læse danske tegn</li>
+            <li>Brug <code>//</code> til at adskille niveauer i hierarkiet</li>
+            <li>Hver række = én medarbejder (flere medarbejdere i samme afdeling = flere rækker)</li>
+        </ul>
+    </div>
+
+    <table class="example-table">
+        <thead>
+            <tr>
+                <th>FirstName</th>
+                <th>Lastname</th>
+                <th>Email</th>
+                <th>phone</th>
+                <th>Organisation</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Anders</td>
+                <td>Hansen</td>
+                <td>anders@tech.dk</td>
+                <td>+4512345678</td>
+                <td><strong>TechCorp//IT Afdeling//Development</strong></td>
+            </tr>
+            <tr>
+                <td>Mette</td>
+                <td>Nielsen</td>
+                <td>mette@tech.dk</td>
+                <td></td>
+                <td><strong>TechCorp//IT Afdeling//Development</strong></td>
+            </tr>
+            <tr>
+                <td>Lars</td>
+                <td>Berg</td>
+                <td>lars@tech.dk</td>
+                <td>+4587654321</td>
+                <td><strong>TechCorp//IT Afdeling//Support</strong></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="info-box">
+        <p><strong>💡 Sådan virker det:</strong></p>
+        <ul style="margin-top: 10px; line-height: 2;">
+            <li><code>TechCorp//IT Afdeling//Development</code> opretter 3 niveauer:
+                <ul style="margin-left: 20px; margin-top: 5px;">
+                    <li>TechCorp (top-level)</li>
+                    <li>IT Afdeling (underorganisation)</li>
+                    <li>Development (afdeling)</li>
+                </ul>
+            </li>
+            <li>Overorganisationer oprettes automatisk hvis de ikke findes</li>
+            <li>Første person i hver afdeling bliver leder</li>
+            <li>Alle personer oprettes som kontakter med email/telefon</li>
+            <li>Antal medarbejdere beregnes automatisk fra antal kontakter</li>
+        </ul>
+    </div>
+</div>
+
+<div class="card">
+    <h2>📤 Upload CSV</h2>
+
+    <form method="POST" enctype="multipart/form-data" id="uploadForm">
+        <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click();">
+            <div class="upload-icon">📁</div>
+            <p style="font-size: 1.1rem; margin-bottom: 10px;"><strong>Klik for at vælge fil</strong></p>
+            <p style="color: #6b7280;">eller træk og slip CSV-fil her</p>
+            <input type="file" name="file" id="fileInput" accept=".csv" required>
+            <p id="fileName" style="margin-top: 15px; color: #10b981; font-weight: 500; display: none;"></p>
+        </div>
+
+        <button type="submit" class="btn" style="margin-top: 20px;" data-loading="Analyserer CSV...">
+            👁️ Preview data
+        </button>
+    </form>
+</div>
+
+<div class="card">
+    <h2>📥 Download skabelon</h2>
+    <p>Download en CSV-skabelon du kan udfylde:</p>
+    <a href="/admin/csv-template" class="btn btn-secondary" style="margin-top: 15px;">⬇️ Download CSV skabelon</a>
+</div>
+
+<script>
+// Drag and drop handling
+const uploadZone = document.getElementById('uploadZone');
+const fileInput = document.getElementById('fileInput');
+const fileName = document.getElementById('fileName');
+
+['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+    uploadZone.addEventListener(eventName, preventDefaults, false);
+});
+
+function preventDefaults(e) {
+    e.preventDefault();
+    e.stopPropagation();
+}
+
+['dragenter', 'dragover'].forEach(eventName => {
+    uploadZone.addEventListener(eventName, () => uploadZone.classList.add('dragover'), false);
+});
+
+['dragleave', 'drop'].forEach(eventName => {
+    uploadZone.addEventListener(eventName, () => uploadZone.classList.remove('dragover'), false);
+});
+
+uploadZone.addEventListener('drop', (e) => {
+    const files = e.dataTransfer.files;
+    if (files.length > 0 && files[0].name.endsWith('.csv')) {
+        fileInput.files = files;
+        showSelectedFile(files[0].name);
+    }
+});
+
+fileInput.addEventListener('change', () => {
+    if (fileInput.files.length > 0) {
+        showSelectedFile(fileInput.files[0].name);
+    }
+});
+
+function showSelectedFile(name) {
+    fileName.textContent = '✓ ' + name;
+    fileName.style.display = 'block';
+    uploadZone.classList.add('file-selected');
+}
+</script>
+{% endif %}
+{% endblock %}
