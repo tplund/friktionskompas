@@ -208,10 +208,14 @@ def set_user_language(lang):
 
 
 @app.route('/admin/seed-translations', methods=['POST'])
-@admin_required
 def admin_seed_translations():
-    """Seed translations til database (admin only)"""
+    """Seed translations til database (public for db-status access)"""
     seed_translations()
+    clear_translation_cache()
+    # Check if request came from db-status (no flash, just redirect)
+    referrer = request.referrer or ''
+    if 'db-status' in referrer:
+        return redirect('/admin/db-status')
     flash('Oversættelser er seedet til databasen', 'success')
     return redirect(request.referrer or url_for('admin_home'))
 
@@ -2671,6 +2675,15 @@ def db_status():
             questions_count = 0
             questions_total = 0
 
+        # Translations check
+        try:
+            translations_count = conn.execute("SELECT COUNT(*) FROM translations").fetchone()[0]
+            translations_sample = conn.execute("SELECT key, da, en FROM translations LIMIT 5").fetchall()
+        except Exception as e:
+            translations_count = 0
+            translations_sample = []
+            translations_error = str(e)
+
     html = f"""
     <html><head><style>
         body {{ font-family: monospace; padding: 20px; }}
@@ -2711,7 +2724,22 @@ def db_status():
         {'OK - Nok spørgsmål' if questions_count >= 20 else 'FEJL - Mangler spørgsmål! Upload database igen.'}
     </p>
 
+    <h2>Translations</h2>
+    <p><b>Total translations:</b> {translations_count}</p>
+    <p style="color: {'green' if translations_count >= 100 else 'red'};">
+        {'OK - Oversættelser loaded' if translations_count >= 100 else 'FEJL - Mangler oversættelser! Klik Seed Translations.'}
+    </p>
+    <table><tr><th>Key</th><th>DA</th><th>EN</th></tr>
+    {''.join(f"<tr><td>{t['key']}</td><td>{t['da'][:30]}...</td><td>{t['en'][:30] if t['en'] else '-'}...</td></tr>" for t in translations_sample)}
+    </table>
+
     <h2>Actions</h2>
+    <form action="/admin/seed-translations" method="POST" style="display: inline;">
+        <button type="submit" style="padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 5px; cursor: pointer;">
+            Seed Translations (Genindlæs oversættelser)
+        </button>
+    </form>
+    <br><br>
     <p><a href="/admin/full-reset">FULD RESET - Slet alt og genimporter</a></p>
     <p><a href="/admin/upload-database">Upload database fil</a></p>
     </body></html>
