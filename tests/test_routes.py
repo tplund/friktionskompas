@@ -62,6 +62,14 @@ class TestAdminRoutes:
         response = authenticated_client.get('/admin/profil-questions')
         assert response.status_code == 200
 
+    def test_admin_noegletal(self, authenticated_client):
+        """Test nøgletal dashboard page."""
+        response = authenticated_client.get('/admin/noegletal')
+        assert response.status_code == 200
+        # Check that key elements are present
+        html = response.data.decode('utf-8')
+        assert 'Besvarelser' in html or 'Responses' in html
+
 
 class TestManagerRoutes:
     """Test routes accessible by managers."""
@@ -292,3 +300,61 @@ class TestDeleteOperations:
 
                 unit = conn.execute("SELECT * FROM organizational_units WHERE id = ?", ('test-unit-under-customer',)).fetchone()
                 assert unit is None, "Units under customer should be cascade deleted"
+
+    def test_backup_page(self, authenticated_client):
+        """Test backup page loads."""
+        response = authenticated_client.get('/admin/backup')
+        assert response.status_code == 200
+        html = response.data.decode('utf-8')
+        assert 'Backup' in html
+
+    def test_backup_download(self, authenticated_client):
+        """Test backup download returns valid JSON."""
+        import json
+        response = authenticated_client.get('/admin/backup/download')
+        assert response.status_code == 200
+        assert response.content_type == 'application/json'
+        data = json.loads(response.data)
+        assert 'version' in data
+        assert 'tables' in data
+        assert 'backup_date' in data
+
+    def test_delete_campaign(self, authenticated_client, app):
+        """Test deleting a campaign."""
+        from db_multitenant import get_db
+
+        with app.app_context():
+            with get_db() as conn:
+                # Get first customer and unit for testing
+                customer = conn.execute("SELECT id FROM customers LIMIT 1").fetchone()
+                if not customer:
+                    pytest.skip("No customers in test database")
+
+                unit = conn.execute(
+                    "SELECT id FROM organizational_units WHERE customer_id = ? LIMIT 1",
+                    (customer['id'],)
+                ).fetchone()
+                if not unit:
+                    pytest.skip("No units in test database")
+
+                # Create a test campaign
+                test_campaign_id = 'test-campaign-delete'
+                conn.execute("""
+                    INSERT INTO campaigns (id, name, target_unit_id, period)
+                    VALUES (?, 'Test Campaign Delete', ?, 'Q1 2025')
+                """, (test_campaign_id, unit['id']))
+                conn.commit()
+
+                # Verify campaign exists
+                campaign = conn.execute("SELECT * FROM campaigns WHERE id = ?", (test_campaign_id,)).fetchone()
+                assert campaign is not None
+
+        # Delete campaign
+        response = authenticated_client.post(f'/admin/campaign/{test_campaign_id}/delete', follow_redirects=False)
+        assert response.status_code == 302
+
+        # Verify campaign is gone
+        with app.app_context():
+            with get_db() as conn:
+                campaign = conn.execute("SELECT * FROM campaigns WHERE id = ?", (test_campaign_id,)).fetchone()
+                assert campaign is None, "Campaign should be deleted"

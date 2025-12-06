@@ -20,9 +20,9 @@
 - [x] ~~**Auth test** - Login, logout, authorization (8 tests)~~
 - [x] ~~**Route test** - Alle endpoints, navigation, 404 håndtering (21 tests)~~
 - [x] ~~**Sikkerhedstest** - SQL injection, XSS, auth bypass, session hijacking (12 tests)~~
-- [ ] **UI/UX test** - Selenium/Playwright tests af brugerflows
-- [ ] **Integration test** - End-to-end test af survey flow
-- [x] ~~**CI/CD** - GitHub Actions workflow kører 55 tests automatisk ved push~~
+- [x] ~~**UI/UX test** - Playwright tests af brugerflows~~ (16 tests: login, navigation, organisation tree, campaigns, backup, responsive)
+- [x] ~~**Integration test** - End-to-end test af survey flow~~ (14 tests: survey workflow, organisation CRUD, backup cycle, email, analysis, multi-tenant)
+- [x] ~~**CI/CD** - GitHub Actions workflow kører tests automatisk ved push~~ (72 unit/integration tests + 16 UI tests = 88 total)
 
 ### ⚠️ VIGTIGT - Dokumentation
 - [ ] **Ved ALLE ændringer i analyselogik:** Opdater `ANALYSELOGIK.md`
@@ -66,12 +66,12 @@
 ### Rapportering
 - [x] ~~Eksporter resultater til PDF~~ (xhtml2pdf med dedikeret PDF template)
 - [x] ~~Email notifikationer når måling er færdig~~ (auto-send ved 100% svarprocent, DA/EN templates)
-- [ ] Dashboard med nøgletal
+- [x] ~~Dashboard med nøgletal~~ (/admin/noegletal med stats, friktionsfelter, seneste målinger, per-kunde oversigt)
 
 ### Data Management
 - [ ] Bulk edit af organisationer
-- [ ] Slet/arkiver gamle kampagner
-- [ ] Backup/restore funktionalitet
+- [x] ~~Slet/arkiver gamle kampagner~~ (slet-knap på campaigns_overview med bekræftelse)
+- [x] ~~Backup/restore funktionalitet~~ (/admin/backup med download JSON og restore med merge/replace)
 
 ### UX
 - [x] ~~Loading spinners ved lange operationer~~ (global loading overlay i layout.html)

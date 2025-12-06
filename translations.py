@@ -122,8 +122,10 @@ def get_question_translation(question_id, lang=None):
 # Initial translations for seeding
 INITIAL_TRANSLATIONS = {
     # Navigation
+    'nav.noegletal': {'da': 'Nøgletal', 'en': 'Key Metrics'},
     'nav.dashboard': {'da': 'Dashboard', 'en': 'Dashboard'},
     'nav.analyser': {'da': 'Analyser', 'en': 'Analyses'},
+    'nav.alle_maalinger': {'da': 'Alle målinger', 'en': 'All measurements'},
     'nav.organisationer': {'da': 'Organisationer', 'en': 'Organizations'},
     'nav.friktionsprofiler': {'da': 'Friktionsprofiler', 'en': 'Friction Profiles'},
     'nav.kunder_brugere': {'da': 'Kunder & Brugere', 'en': 'Customers & Users'},
@@ -297,6 +299,18 @@ INITIAL_TRANSLATIONS = {
     'campaign.sent': {'da': 'Sendt', 'en': 'Sent'},
     'campaign.response_rate': {'da': 'Response rate', 'en': 'Response rate'},
     'campaign.no_campaigns': {'da': 'Ingen målinger endnu', 'en': 'No measurements yet'},
+
+    # Nøgletal dashboard
+    'noegletal.kunder': {'da': 'Kunder', 'en': 'Customers'},
+    'noegletal.besvarelser': {'da': 'Besvarelser', 'en': 'Responses'},
+    'noegletal.svarprocent': {'da': 'Svarprocent', 'en': 'Response Rate'},
+    'noegletal.gennemsnit': {'da': 'gennemsnit', 'en': 'average'},
+    'noegletal.friktionsfelter': {'da': 'Friktionsfelter (gennemsnit)', 'en': 'Friction Fields (average)'},
+    'noegletal.skala_note': {'da': 'Skala 1-5: Lavere er mere friktion, højere er mindre friktion', 'en': 'Scale 1-5: Lower means more friction, higher means less friction'},
+    'noegletal.ingen_data': {'da': 'Ingen data endnu', 'en': 'No data yet'},
+    'noegletal.seneste_maalinger': {'da': 'Seneste målinger', 'en': 'Recent measurements'},
+    'noegletal.ingen_maalinger': {'da': 'Ingen målinger endnu', 'en': 'No measurements yet'},
+    'noegletal.per_kunde': {'da': 'Per kunde', 'en': 'Per customer'},
 
     # Layers
     'layer.biologi': {'da': 'Biologi', 'en': 'Biology'},

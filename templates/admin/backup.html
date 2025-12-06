@@ -1,0 +1,251 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}Backup & Restore{% endblock %}
+
+{% block extra_css %}
+<style>
+    .card {
+        background: white;
+        border-radius: 8px;
+        padding: 25px;
+        margin-bottom: 20px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        border: 1px solid #e5e7eb;
+    }
+    .card h2 {
+        margin-bottom: 20px;
+        color: #374151;
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+    .stat-item {
+        background: #f9fafb;
+        padding: 12px;
+        border-radius: 6px;
+        text-align: center;
+        border: 1px solid #e5e7eb;
+    }
+    .stat-item .value {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #374151;
+    }
+    .stat-item .label {
+        font-size: 0.75rem;
+        color: #6b7280;
+        text-transform: uppercase;
+    }
+
+    .btn {
+        padding: 12px 24px;
+        border-radius: 6px;
+        font-weight: 500;
+        text-decoration: none;
+        display: inline-block;
+        cursor: pointer;
+        border: none;
+        font-size: 0.9rem;
+        transition: all 0.15s;
+    }
+    .btn-primary {
+        background: #4f46e5;
+        color: white;
+    }
+    .btn-primary:hover {
+        background: #4338ca;
+    }
+    .btn-success {
+        background: #10b981;
+        color: white;
+    }
+    .btn-success:hover {
+        background: #059669;
+    }
+    .btn-danger {
+        background: #dc2626;
+        color: white;
+    }
+    .btn-danger:hover {
+        background: #b91c1c;
+    }
+
+    .section {
+        margin-bottom: 30px;
+        padding-bottom: 30px;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    .section:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+        padding-bottom: 0;
+    }
+    .section h3 {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 10px;
+    }
+    .section p {
+        color: #6b7280;
+        font-size: 0.9rem;
+        margin-bottom: 15px;
+    }
+
+    .warning-box {
+        background: #fef3c7;
+        border: 1px solid #f59e0b;
+        border-radius: 6px;
+        padding: 15px;
+        margin-bottom: 15px;
+    }
+    .warning-box p {
+        margin: 0;
+        color: #92400e;
+        font-size: 0.85rem;
+    }
+
+    .restore-options {
+        margin: 15px 0;
+    }
+    .restore-options label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 10px;
+        cursor: pointer;
+    }
+    .restore-options input[type="radio"] {
+        width: 18px;
+        height: 18px;
+    }
+    .restore-options .option-text {
+        font-weight: 500;
+        color: #374151;
+    }
+    .restore-options .option-desc {
+        font-size: 0.8rem;
+        color: #6b7280;
+        margin-left: 26px;
+        margin-top: -5px;
+    }
+
+    .file-input-wrapper {
+        margin: 15px 0;
+    }
+    .file-input-wrapper input[type="file"] {
+        display: block;
+        padding: 10px;
+        border: 2px dashed #d1d5db;
+        border-radius: 6px;
+        width: 100%;
+        cursor: pointer;
+    }
+    .file-input-wrapper input[type="file"]:hover {
+        border-color: #9ca3af;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>Backup & Restore</h2>
+
+    <div class="section">
+        <h3>Nuværende database</h3>
+        <div class="stats-grid">
+            <div class="stat-item">
+                <div class="value">{{ stats.customers }}</div>
+                <div class="label">Kunder</div>
+            </div>
+            <div class="stat-item">
+                <div class="value">{{ stats.users }}</div>
+                <div class="label">Brugere</div>
+            </div>
+            <div class="stat-item">
+                <div class="value">{{ stats.units }}</div>
+                <div class="label">Enheder</div>
+            </div>
+            <div class="stat-item">
+                <div class="value">{{ stats.campaigns }}</div>
+                <div class="label">Målinger</div>
+            </div>
+            <div class="stat-item">
+                <div class="value">{{ stats.responses }}</div>
+                <div class="label">Svar</div>
+            </div>
+            <div class="stat-item">
+                <div class="value">{{ stats.contacts }}</div>
+                <div class="label">Kontakter</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h3>Download backup</h3>
+        <p>Download en komplet backup af alle data som JSON fil. Denne fil kan bruges til at gendanne data senere.</p>
+        <a href="/admin/backup/download" class="btn btn-success">Download Backup</a>
+    </div>
+
+    <div class="section">
+        <h3>Restore fra backup</h3>
+        <p>Upload en tidligere backup-fil for at gendanne data.</p>
+
+        <div class="warning-box">
+            <p><strong>Advarsel:</strong> Restore kan overskrive eksisterende data. Sørg for at have en backup af nuværende data før du fortsætter.</p>
+        </div>
+
+        <form method="POST" action="/admin/backup/restore" enctype="multipart/form-data" onsubmit="return confirmRestore()">
+            <div class="file-input-wrapper">
+                <input type="file" name="backup_file" accept=".json" required>
+            </div>
+
+            <div class="restore-options">
+                <label>
+                    <input type="radio" name="restore_mode" value="merge" checked>
+                    <span class="option-text">Merge (anbefalet)</span>
+                </label>
+                <p class="option-desc">Tilføjer kun nye data, springer eksisterende over</p>
+
+                <label>
+                    <input type="radio" name="restore_mode" value="replace">
+                    <span class="option-text">Erstat alt</span>
+                </label>
+                <p class="option-desc">Sletter al eksisterende data og erstatter med backup</p>
+            </div>
+
+            <button type="submit" class="btn btn-danger">Restore Backup</button>
+        </form>
+    </div>
+</div>
+
+<script>
+function confirmRestore() {
+    const mode = document.querySelector('input[name="restore_mode"]:checked').value;
+    let message;
+
+    if (mode === 'replace') {
+        message = 'ADVARSEL!\n\n' +
+            'Du er ved at ERSTATTE AL DATA med backup-filen.\n\n' +
+            'Dette vil slette:\n' +
+            '- Alle kunder og brugere\n' +
+            '- Alle organisationer\n' +
+            '- Alle målinger og besvarelser\n\n' +
+            'Dette kan IKKE fortrydes!\n\n' +
+            'Er du HELT sikker?';
+    } else {
+        message = 'Du er ved at importere data fra backup-filen.\n\n' +
+            'Eksisterende data bevares, kun nye poster tilføjes.\n\n' +
+            'Vil du fortsætte?';
+    }
+
+    return confirm(message);
+}
+</script>
+{% endblock %}

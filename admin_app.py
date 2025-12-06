@@ -414,6 +414,134 @@ def admin_home():
                          current_filter_name=session.get('customer_filter_name'))
 
 
+@app.route('/admin/noegletal')
+@login_required
+def admin_noegletal():
+    """Dashboard med nøgletal - samlet overblik over systemet"""
+    user = get_current_user()
+    customer_filter = session.get('customer_filter') or user.get('customer_id')
+
+    with get_db() as conn:
+        # Base filter for queries
+        if customer_filter:
+            customer_where = "WHERE ou.customer_id = ?"
+            customer_params = [customer_filter]
+        elif user['role'] != 'admin':
+            customer_where = "WHERE ou.customer_id = ?"
+            customer_params = [user['customer_id']]
+        else:
+            customer_where = ""
+            customer_params = []
+
+        # Totale stats
+        if customer_filter or user['role'] != 'admin':
+            cid = customer_filter or user['customer_id']
+            total_customers = 1
+            total_units = conn.execute(
+                "SELECT COUNT(*) as cnt FROM organizational_units WHERE customer_id = ?",
+                [cid]
+            ).fetchone()['cnt']
+            total_campaigns = conn.execute("""
+                SELECT COUNT(*) as cnt FROM campaigns c
+                JOIN organizational_units ou ON c.target_unit_id = ou.id
+                WHERE ou.customer_id = ?
+            """, [cid]).fetchone()['cnt']
+            total_responses = conn.execute("""
+                SELECT COUNT(*) as cnt FROM responses r
+                JOIN campaigns c ON r.campaign_id = c.id
+                JOIN organizational_units ou ON c.target_unit_id = ou.id
+                WHERE ou.customer_id = ?
+            """, [cid]).fetchone()['cnt']
+        else:
+            total_customers = conn.execute("SELECT COUNT(*) as cnt FROM customers").fetchone()['cnt']
+            total_units = conn.execute("SELECT COUNT(*) as cnt FROM organizational_units").fetchone()['cnt']
+            total_campaigns = conn.execute("SELECT COUNT(*) as cnt FROM campaigns").fetchone()['cnt']
+            total_responses = conn.execute("SELECT COUNT(*) as cnt FROM responses").fetchone()['cnt']
+
+        # Gennemsnitlige scores per felt
+        field_scores_query = """
+            SELECT
+                q.field,
+                AVG(CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END) as avg_score,
+                COUNT(*) as response_count
+            FROM responses r
+            JOIN questions q ON r.question_id = q.id
+            JOIN campaigns c ON r.campaign_id = c.id
+            JOIN organizational_units ou ON c.target_unit_id = ou.id
+            {where}
+            GROUP BY q.field
+            ORDER BY avg_score ASC
+        """.format(where=customer_where)
+        field_scores = conn.execute(field_scores_query, customer_params).fetchall()
+
+        # Seneste kampagner
+        recent_campaigns_query = """
+            SELECT
+                c.id,
+                c.name,
+                c.period,
+                c.created_at,
+                ou.name as unit_name,
+                cust.name as customer_name,
+                COUNT(DISTINCT r.id) as response_count,
+                (SELECT COUNT(*) FROM tokens t WHERE t.campaign_id = c.id) as token_count
+            FROM campaigns c
+            JOIN organizational_units ou ON c.target_unit_id = ou.id
+            JOIN customers cust ON ou.customer_id = cust.id
+            LEFT JOIN responses r ON r.campaign_id = c.id
+            {where}
+            GROUP BY c.id
+            ORDER BY c.created_at DESC
+            LIMIT 5
+        """.format(where=customer_where)
+        recent_campaigns = conn.execute(recent_campaigns_query, customer_params).fetchall()
+
+        # Per-kunde stats (kun for admin uden filter)
+        customer_stats = []
+        if user['role'] == 'admin' and not customer_filter:
+            customer_stats = conn.execute("""
+                SELECT
+                    cust.id,
+                    cust.name,
+                    COUNT(DISTINCT ou.id) as unit_count,
+                    COUNT(DISTINCT c.id) as campaign_count,
+                    COUNT(DISTINCT r.id) as response_count
+                FROM customers cust
+                LEFT JOIN organizational_units ou ON ou.customer_id = cust.id
+                LEFT JOIN campaigns c ON c.target_unit_id = ou.id
+                LEFT JOIN responses r ON r.campaign_id = c.id
+                GROUP BY cust.id
+                ORDER BY response_count DESC
+            """).fetchall()
+
+        # Svarprocent beregning
+        response_rate_data = conn.execute("""
+            SELECT
+                COUNT(DISTINCT CASE WHEN t.is_used = 1 THEN t.token END) as used_tokens,
+                COUNT(DISTINCT t.token) as total_tokens
+            FROM tokens t
+            JOIN campaigns c ON t.campaign_id = c.id
+            JOIN organizational_units ou ON c.target_unit_id = ou.id
+            {where}
+        """.format(where=customer_where), customer_params).fetchone()
+
+        if response_rate_data['total_tokens'] > 0:
+            avg_response_rate = (response_rate_data['used_tokens'] / response_rate_data['total_tokens']) * 100
+        else:
+            avg_response_rate = 0
+
+    return render_template('admin/noegletal.html',
+                         total_customers=total_customers,
+                         total_units=total_units,
+                         total_campaigns=total_campaigns,
+                         total_responses=total_responses,
+                         avg_response_rate=avg_response_rate,
+                         field_scores=[dict(f) for f in field_scores],
+                         recent_campaigns=[dict(c) for c in recent_campaigns],
+                         customer_stats=[dict(c) for c in customer_stats],
+                         show_customer_stats=(user['role'] == 'admin' and not customer_filter))
+
+
 @app.route('/admin/campaigns-overview')
 @login_required
 def campaigns_overview():
@@ -1235,6 +1363,36 @@ def view_campaign(campaign_id):
         overview=overview,
         aggregate_stats=aggregate_stats,
         token_stats=dict(token_stats))
+
+
+@app.route('/admin/campaign/<campaign_id>/delete', methods=['POST'])
+@login_required
+def delete_campaign(campaign_id):
+    """Slet en kampagne og alle tilhørende data"""
+    user = get_current_user()
+
+    with get_db() as conn:
+        # Hent campaign med customer filter for at verificere adgang
+        where_clause, params = get_customer_filter(user['role'], user['customer_id'])
+        campaign = conn.execute(f"""
+            SELECT c.*, ou.name as unit_name FROM campaigns c
+            JOIN organizational_units ou ON c.target_unit_id = ou.id
+            WHERE c.id = ? AND ({where_clause})
+        """, [campaign_id] + params).fetchone()
+
+        if not campaign:
+            flash("Måling ikke fundet eller ingen adgang", 'error')
+            return redirect(url_for('campaigns_overview'))
+
+        campaign_name = campaign['name']
+
+        # Slet kampagnen (CASCADE sletter responses og tokens automatisk)
+        conn.execute("DELETE FROM campaigns WHERE id = ?", [campaign_id])
+        conn.commit()
+
+        flash(f'Målingen "{campaign_name}" blev slettet', 'success')
+
+    return redirect(url_for('campaigns_overview'))
 
 
 @app.route('/admin/customers')
@@ -2638,6 +2796,169 @@ def seed_testdata_page():
     </body>
     </html>
     '''
+
+
+@app.route('/admin/dev-tools')
+@admin_required
+def dev_tools():
+    """Dev tools samlet side - kun admin"""
+    with get_db() as conn:
+        stats = {
+            'customers': conn.execute("SELECT COUNT(*) FROM customers").fetchone()[0],
+            'users': conn.execute("SELECT COUNT(*) FROM users").fetchone()[0],
+            'units': conn.execute("SELECT COUNT(*) FROM organizational_units").fetchone()[0],
+            'campaigns': conn.execute("SELECT COUNT(*) FROM campaigns").fetchone()[0],
+            'responses': conn.execute("SELECT COUNT(*) FROM responses").fetchone()[0],
+            'tokens': conn.execute("SELECT COUNT(*) FROM tokens").fetchone()[0],
+            'translations': conn.execute("SELECT COUNT(*) FROM translations").fetchone()[0],
+        }
+    return render_template('admin/dev_tools.html', stats=stats)
+
+
+@app.route('/admin/backup')
+@admin_required
+def backup_page():
+    """Backup/restore side"""
+    with get_db() as conn:
+        stats = {
+            'customers': conn.execute("SELECT COUNT(*) FROM customers").fetchone()[0],
+            'users': conn.execute("SELECT COUNT(*) FROM users").fetchone()[0],
+            'units': conn.execute("SELECT COUNT(*) FROM organizational_units").fetchone()[0],
+            'campaigns': conn.execute("SELECT COUNT(*) FROM campaigns").fetchone()[0],
+            'responses': conn.execute("SELECT COUNT(*) FROM responses").fetchone()[0],
+            'contacts': conn.execute("SELECT COUNT(*) FROM contacts").fetchone()[0],
+            'tokens': conn.execute("SELECT COUNT(*) FROM tokens").fetchone()[0],
+        }
+    return render_template('admin/backup.html', stats=stats)
+
+
+@app.route('/admin/backup/download')
+@admin_required
+def backup_download():
+    """Download fuld database backup som JSON"""
+    import json
+    from datetime import datetime
+
+    backup_data = {
+        'backup_date': datetime.now().isoformat(),
+        'version': '1.0',
+        'tables': {}
+    }
+
+    with get_db() as conn:
+        # Export alle relevante tabeller
+        tables_to_export = [
+            'customers',
+            'users',
+            'organizational_units',
+            'contacts',
+            'campaigns',
+            'tokens',
+            'responses',
+            'questions',
+            'email_logs',
+            'translations'
+        ]
+
+        for table in tables_to_export:
+            try:
+                rows = conn.execute(f"SELECT * FROM {table}").fetchall()
+                backup_data['tables'][table] = [dict(row) for row in rows]
+            except Exception as e:
+                backup_data['tables'][table] = {'error': str(e)}
+
+    # Returner som downloadbar JSON fil
+    json_str = json.dumps(backup_data, ensure_ascii=False, indent=2, default=str)
+    filename = f"friktionskompas_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+
+    return Response(
+        json_str,
+        mimetype='application/json',
+        headers={'Content-Disposition': f'attachment; filename={filename}'}
+    )
+
+
+@app.route('/admin/backup/restore', methods=['POST'])
+@admin_required
+def backup_restore():
+    """Restore database fra uploadet JSON backup"""
+    import json
+
+    if 'backup_file' not in request.files:
+        flash('Ingen fil uploadet', 'error')
+        return redirect(url_for('backup_page'))
+
+    file = request.files['backup_file']
+    if file.filename == '':
+        flash('Ingen fil valgt', 'error')
+        return redirect(url_for('backup_page'))
+
+    try:
+        backup_data = json.load(file)
+    except json.JSONDecodeError:
+        flash('Ugyldig JSON fil', 'error')
+        return redirect(url_for('backup_page'))
+
+    if 'tables' not in backup_data:
+        flash('Ugyldig backup fil format', 'error')
+        return redirect(url_for('backup_page'))
+
+    # Valider at det er en rigtig backup
+    if 'version' not in backup_data:
+        flash('Backup fil mangler versionsnummer', 'error')
+        return redirect(url_for('backup_page'))
+
+    restore_mode = request.form.get('restore_mode', 'merge')
+    stats = {'inserted': 0, 'skipped': 0, 'errors': 0}
+
+    with get_db() as conn:
+        conn.execute("PRAGMA foreign_keys=OFF")
+
+        if restore_mode == 'replace':
+            # Slet eksisterende data først (i omvendt rækkefølge pga. foreign keys)
+            delete_order = ['responses', 'tokens', 'email_logs', 'contacts', 'campaigns',
+                           'organizational_units', 'users', 'customers']
+            for table in delete_order:
+                try:
+                    conn.execute(f"DELETE FROM {table}")
+                except:
+                    pass
+
+        # Restore tabeller i rigtig rækkefølge (parents før children)
+        restore_order = ['customers', 'users', 'organizational_units', 'contacts',
+                        'campaigns', 'tokens', 'responses', 'questions', 'translations']
+
+        for table in restore_order:
+            if table not in backup_data['tables']:
+                continue
+
+            table_data = backup_data['tables'][table]
+            if isinstance(table_data, dict) and 'error' in table_data:
+                continue
+
+            for row in table_data:
+                try:
+                    # Check om row allerede eksisterer (baseret på id)
+                    if 'id' in row:
+                        existing = conn.execute(f"SELECT id FROM {table} WHERE id = ?", (row['id'],)).fetchone()
+                        if existing and restore_mode == 'merge':
+                            stats['skipped'] += 1
+                            continue
+
+                    # Insert row
+                    columns = ', '.join(row.keys())
+                    placeholders = ', '.join(['?' for _ in row])
+                    conn.execute(f"INSERT OR REPLACE INTO {table} ({columns}) VALUES ({placeholders})",
+                               list(row.values()))
+                    stats['inserted'] += 1
+                except Exception as e:
+                    stats['errors'] += 1
+
+        conn.execute("PRAGMA foreign_keys=ON")
+        conn.commit()
+
+    flash(f"Restore gennemført: {stats['inserted']} rækker importeret, {stats['skipped']} sprunget over, {stats['errors']} fejl", 'success')
+    return redirect(url_for('backup_page'))
 
 
 @app.route('/admin/db-status')

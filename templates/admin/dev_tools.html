@@ -1,0 +1,225 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}Dev Tools{% endblock %}
+
+{% block extra_css %}
+<style>
+    .card {
+        background: white;
+        border-radius: 8px;
+        padding: 25px;
+        margin-bottom: 20px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        border: 1px solid #e5e7eb;
+    }
+    .card h2 {
+        margin-bottom: 20px;
+        color: #374151;
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+
+    .warning-banner {
+        background: #fef3c7;
+        border: 1px solid #f59e0b;
+        border-radius: 6px;
+        padding: 15px;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .warning-banner .icon { font-size: 1.5rem; }
+    .warning-banner p { margin: 0; color: #92400e; }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+        gap: 10px;
+        margin-bottom: 20px;
+        padding: 15px;
+        background: #f9fafb;
+        border-radius: 6px;
+    }
+    .stat-item {
+        text-align: center;
+    }
+    .stat-item .value {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #374151;
+    }
+    .stat-item .label {
+        font-size: 0.7rem;
+        color: #6b7280;
+        text-transform: uppercase;
+    }
+
+    .tools-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 15px;
+    }
+    .tool-card {
+        background: #f9fafb;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        padding: 15px;
+    }
+    .tool-card h3 {
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 8px;
+    }
+    .tool-card p {
+        font-size: 0.85rem;
+        color: #6b7280;
+        margin-bottom: 12px;
+    }
+    .tool-card a, .tool-card button {
+        display: inline-block;
+        padding: 8px 14px;
+        border-radius: 4px;
+        font-size: 0.85rem;
+        text-decoration: none;
+        border: none;
+        cursor: pointer;
+        font-weight: 500;
+    }
+    .tool-card .btn-info {
+        background: #3b82f6;
+        color: white;
+    }
+    .tool-card .btn-info:hover {
+        background: #2563eb;
+    }
+    .tool-card .btn-warning {
+        background: #f59e0b;
+        color: white;
+    }
+    .tool-card .btn-warning:hover {
+        background: #d97706;
+    }
+    .tool-card .btn-danger {
+        background: #dc2626;
+        color: white;
+    }
+    .tool-card .btn-danger:hover {
+        background: #b91c1c;
+    }
+
+    .danger-zone {
+        border-color: #fecaca;
+        background: #fef2f2;
+    }
+    .danger-zone h3 {
+        color: #dc2626;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="warning-banner">
+    <span class="icon">⚠️</span>
+    <p><strong>Kun til udvikling!</strong> Disse værktøjer er kun beregnet til udvikling og test. Brug med forsigtighed.</p>
+</div>
+
+<div class="card">
+    <h2>Database Status</h2>
+    <div class="stats-grid">
+        <div class="stat-item">
+            <div class="value">{{ stats.customers }}</div>
+            <div class="label">Kunder</div>
+        </div>
+        <div class="stat-item">
+            <div class="value">{{ stats.users }}</div>
+            <div class="label">Brugere</div>
+        </div>
+        <div class="stat-item">
+            <div class="value">{{ stats.units }}</div>
+            <div class="label">Enheder</div>
+        </div>
+        <div class="stat-item">
+            <div class="value">{{ stats.campaigns }}</div>
+            <div class="label">Målinger</div>
+        </div>
+        <div class="stat-item">
+            <div class="value">{{ stats.responses }}</div>
+            <div class="label">Svar</div>
+        </div>
+        <div class="stat-item">
+            <div class="value">{{ stats.tokens }}</div>
+            <div class="label">Tokens</div>
+        </div>
+        <div class="stat-item">
+            <div class="value">{{ stats.translations }}</div>
+            <div class="label">Oversættelser</div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <h2>Debug & Info</h2>
+    <div class="tools-grid">
+        <div class="tool-card">
+            <h3>Database Status (JSON)</h3>
+            <p>Vis detaljeret database info i JSON format</p>
+            <a href="/admin/db-status" class="btn-info" target="_blank">Åbn</a>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <h2>Seed & Import</h2>
+    <div class="tools-grid">
+        <div class="tool-card">
+            <h3>Seed Testdata</h3>
+            <p>Generer testdata eller importer kommune-data</p>
+            <a href="/admin/seed-testdata" class="btn-info">Åbn</a>
+        </div>
+        <div class="tool-card">
+            <h3>Seed Oversættelser</h3>
+            <p>Genindlæs alle oversættelser til databasen</p>
+            <form method="POST" action="/admin/seed-translations" style="display:inline;">
+                <button type="submit" class="btn-warning">Kør</button>
+            </form>
+        </div>
+        <div class="tool-card">
+            <h3>CSV Skabelon</h3>
+            <p>Download CSV skabelon til bulk upload</p>
+            <a href="/admin/csv-template" class="btn-info">Download</a>
+        </div>
+        <div class="tool-card">
+            <h3>Generer Test CSV</h3>
+            <p>Generer en test CSV fil med eksempel data</p>
+            <a href="/admin/generate-test-csv" class="btn-info">Download</a>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <h2>Farlige Operationer</h2>
+    <div class="tools-grid">
+        <div class="tool-card danger-zone">
+            <h3>Cleanup & Import</h3>
+            <p>Slet alt og importer fra local_data_export.json</p>
+            <a href="/admin/cleanup-empty" class="btn-danger" onclick="return confirm('ADVARSEL: Dette sletter AL data og erstatter med lokal export. Fortsæt?')">Kør</a>
+        </div>
+        <div class="tool-card danger-zone">
+            <h3>Slet Alt Data</h3>
+            <p>Sletter ALLE data undtagen users og customers</p>
+            <form method="POST" action="/admin/delete-all-data" style="display:inline;" onsubmit="return confirm('ADVARSEL: Dette sletter ALLE responses, campaigns, tokens og units. Er du HELT sikker?')">
+                <button type="submit" class="btn-danger">Slet Alt</button>
+            </form>
+        </div>
+        <div class="tool-card danger-zone">
+            <h3>Fuld Reset</h3>
+            <p>Total reset af databasen - sletter ALT</p>
+            <form method="POST" action="/admin/full-reset" style="display:inline;" onsubmit="return confirm('ADVARSEL: Dette sletter ABSOLUT ALT inkl. brugere! Er du HELT sikker?')">
+                <button type="submit" class="btn-danger">Reset Alt</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

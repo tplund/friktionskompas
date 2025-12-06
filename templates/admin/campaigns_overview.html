@@ -84,6 +84,23 @@
     .btn-success:hover {
         background: #059669;
     }
+    .btn-delete {
+        background: transparent;
+        color: #9ca3af;
+        padding: 6px 10px;
+        font-size: 0.8rem;
+        border: 1px solid #e5e7eb;
+    }
+    .btn-delete:hover {
+        background: #fee2e2;
+        color: #dc2626;
+        border-color: #fecaca;
+    }
+    .campaign-actions {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
     .empty-state {
         text-align: center;
         padding: 60px 20px;
@@ -115,12 +132,19 @@
                         🏢 {{ campaign.target_name }}
                     </div>
                 </div>
-                <a href="/admin/campaign/{{ campaign.id }}/detailed"
-                   class="btn"
-                   style="font-size: 0.8rem; padding: 8px 16px;"
-                   onclick="event.stopPropagation();">
-                    📊 Se Analyse
-                </a>
+                <div class="campaign-actions">
+                    <a href="/admin/campaign/{{ campaign.id }}/detailed"
+                       class="btn"
+                       style="font-size: 0.8rem; padding: 8px 16px;"
+                       onclick="event.stopPropagation();">
+                        📊 Se Analyse
+                    </a>
+                    <button type="button"
+                            class="btn btn-delete"
+                            onclick="event.stopPropagation(); confirmDeleteCampaign('{{ campaign.id }}', '{{ campaign.name }}', {{ campaign.total_responses or 0 }});">
+                        Slet
+                    </button>
+                </div>
             </div>
 
             <div class="campaign-stats">
@@ -160,4 +184,31 @@
         </div>
     {% endif %}
 </div>
+
+<script>
+function confirmDeleteCampaign(campaignId, campaignName, responseCount) {
+    let message = 'ADVARSEL\n\n' +
+        `Er du SIKKER på at du vil slette målingen "${campaignName}"?\n\n`;
+
+    if (responseCount > 0) {
+        message += `Dette vil PERMANENT slette:\n` +
+            `- Målingen\n` +
+            `- ${responseCount} besvarelser\n` +
+            `- Alle tilhørende tokens\n\n`;
+    } else {
+        message += `Dette vil slette målingen og alle tilhørende data.\n\n`;
+    }
+
+    message += 'Dette kan IKKE fortrydes!\n\n' +
+        'Klik OK for at slette, eller Annuller for at afbryde.';
+
+    if (confirm(message)) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/admin/campaign/' + campaignId + '/delete';
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+</script>
 {% endblock %}
