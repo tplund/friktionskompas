@@ -1,0 +1,10 @@
+# Full test dependencies including UI tests
+# Install with: pip install -r requirements-test.txt
+
+-r requirements.txt
+
+# Playwright for UI tests (requires browser installation)
+pytest-playwright>=0.4.0
+playwright>=1.40.0
+
+# After install, run: python -m playwright install chromium
