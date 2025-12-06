@@ -46,10 +46,17 @@ def copy_seed_database():
     import shutil
     persistent_path = '/var/data/friktionskompas_v3.db'
     seed_path = os.path.join(os.path.dirname(__file__), 'seed_database.db')
+    force_marker = os.path.join(os.path.dirname(__file__), '.force_seed_v2')
 
     if os.path.exists('/var/data') and os.path.exists(seed_path):
-        # Check if persistent db is empty or missing
-        if not os.path.exists(persistent_path) or os.path.getsize(persistent_path) < 10000:
+        # Force copy if marker file exists (one-time migration)
+        # Or if persistent db is empty/missing
+        should_copy = (
+            not os.path.exists(persistent_path) or
+            os.path.getsize(persistent_path) < 10000 or
+            os.path.exists(force_marker)
+        )
+        if should_copy:
             print(f"[STARTUP] Copying seed database to {persistent_path}")
             shutil.copy2(seed_path, persistent_path)
             print(f"[STARTUP] Seed database copied successfully")
