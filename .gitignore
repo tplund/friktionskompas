@@ -11,6 +11,7 @@ env/
 
 # Database
 *.db
+!seed_database.db
 *.db-journal
 *.sqlite
 *.sqlite3
@@ -34,6 +35,8 @@ logs/
 .env
 secrets.py
 credentials.json
+env_backup.txt
+MIGRATION_FRANKFURT.md
 
 # Test data
 test_*.csv

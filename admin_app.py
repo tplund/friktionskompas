@@ -40,6 +40,22 @@ from db_profil import (
 )
 from translations import t, get_user_language, set_language, SUPPORTED_LANGUAGES, seed_translations, clear_translation_cache
 
+# Copy seed database to persistent disk on first deploy (if not exists)
+def copy_seed_database():
+    """Copy bundled database to persistent disk if empty/missing."""
+    import shutil
+    persistent_path = '/var/data/friktionskompas_v3.db'
+    seed_path = os.path.join(os.path.dirname(__file__), 'seed_database.db')
+
+    if os.path.exists('/var/data') and os.path.exists(seed_path):
+        # Check if persistent db is empty or missing
+        if not os.path.exists(persistent_path) or os.path.getsize(persistent_path) < 10000:
+            print(f"[STARTUP] Copying seed database to {persistent_path}")
+            shutil.copy2(seed_path, persistent_path)
+            print(f"[STARTUP] Seed database copied successfully")
+
+copy_seed_database()
+
 # Initialize databases
 init_db()  # Main hierarchical database
 init_profil_tables()  # Profil tables
