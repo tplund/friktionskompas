@@ -6,6 +6,33 @@
 <div class="container py-4">
     <div class="row justify-content-center">
         <div class="col-lg-10">
+
+            <!-- FRIKTIONSMATRIX - Visuelt overblik øverst -->
+            <div class="card shadow-sm mb-4" style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);">
+                <div class="card-body py-4">
+                    <h5 class="text-white text-center mb-4">Friktionsmatrix</h5>
+                    <div class="d-flex justify-content-around align-items-end" style="height: 160px;">
+                        {% set felter = [
+                            ('Tryghed', session.felt_tryghed, '#ef5350'),
+                            ('Mening', session.felt_mening, '#ab47bc'),
+                            ('Kan', session.felt_kan, '#42a5f5'),
+                            ('Besvær', session.felt_besvaer, '#ff7043')
+                        ] %}
+                        {% for name, score, color in felter %}
+                        <div class="text-center">
+                            <div style="width: 60px; height: {{ (score / 7 * 140)|int }}px; background: {{ color }}; border-radius: 4px 4px 0 0; margin: 0 auto; transition: height 0.5s;">
+                            </div>
+                            <div class="text-white mt-2 fw-bold">{{ score }}</div>
+                            <div class="text-white-50 small">{{ name }}</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div class="text-center mt-3">
+                        <small class="text-white-50">Højere søjle = mere friktion i feltet</small>
+                    </div>
+                </div>
+            </div>
+
             <div class="card shadow-sm">
                 <div class="card-header bg-primary text-white">
                     <h4 class="mb-0">Din Friktionsprofil (Screening)</h4>
