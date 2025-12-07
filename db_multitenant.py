@@ -86,6 +86,28 @@ def init_multitenant_db():
             ON translations(key, language)
         """)
 
+        # Domains tabel for multi-domain support
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS domains (
+                id TEXT PRIMARY KEY,
+                domain TEXT UNIQUE NOT NULL,
+                customer_id TEXT,
+                default_language TEXT DEFAULT 'da',
+                branding_logo_url TEXT,
+                branding_primary_color TEXT,
+                branding_company_name TEXT,
+                is_active INTEGER DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE SET NULL
+            )
+        """)
+
+        # Index for hurtig domain lookup
+        conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_domains_domain
+            ON domains(domain)
+        """)
+
         # Tilføj language kolonne til users hvis den ikke findes
         user_columns = conn.execute("PRAGMA table_info(users)").fetchall()
         user_column_names = [col['name'] for col in user_columns]
@@ -210,6 +232,89 @@ def list_customers() -> list:
         """).fetchall()
 
         return [dict(row) for row in rows]
+
+
+# ========================================
+# DOMAIN FUNCTIONS
+# ========================================
+
+def create_domain(domain: str, customer_id: Optional[str] = None,
+                  default_language: str = 'da', branding: Optional[Dict] = None) -> str:
+    """Opret nyt domain mapping"""
+    domain_id = f"dom-{secrets.token_urlsafe(8)}"
+
+    with get_db() as conn:
+        conn.execute("""
+            INSERT INTO domains (id, domain, customer_id, default_language,
+                                branding_logo_url, branding_primary_color, branding_company_name)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (
+            domain_id,
+            domain.lower(),
+            customer_id,
+            default_language,
+            branding.get('logo_url') if branding else None,
+            branding.get('primary_color') if branding else None,
+            branding.get('company_name') if branding else None
+        ))
+
+    return domain_id
+
+
+def get_domain_config(domain: str) -> Optional[Dict]:
+    """Hent domain konfiguration baseret på hostname"""
+    with get_db() as conn:
+        row = conn.execute("""
+            SELECT d.*, c.name as customer_name
+            FROM domains d
+            LEFT JOIN customers c ON d.customer_id = c.id
+            WHERE d.domain = ? AND d.is_active = 1
+        """, (domain.lower(),)).fetchone()
+
+        if row:
+            return dict(row)
+        return None
+
+
+def list_domains() -> list:
+    """List alle domains med customer info"""
+    with get_db() as conn:
+        rows = conn.execute("""
+            SELECT d.*, c.name as customer_name
+            FROM domains d
+            LEFT JOIN customers c ON d.customer_id = c.id
+            ORDER BY d.domain
+        """).fetchall()
+
+        return [dict(row) for row in rows]
+
+
+def update_domain(domain_id: str, **kwargs) -> bool:
+    """Opdater domain settings"""
+    allowed_fields = ['customer_id', 'default_language', 'branding_logo_url',
+                      'branding_primary_color', 'branding_company_name', 'is_active']
+
+    updates = {k: v for k, v in kwargs.items() if k in allowed_fields}
+
+    if not updates:
+        return False
+
+    set_clause = ", ".join([f"{k} = ?" for k in updates.keys()])
+    values = list(updates.values()) + [domain_id]
+
+    with get_db() as conn:
+        conn.execute(f"""
+            UPDATE domains SET {set_clause} WHERE id = ?
+        """, values)
+
+    return True
+
+
+def delete_domain(domain_id: str) -> bool:
+    """Slet domain"""
+    with get_db() as conn:
+        conn.execute("DELETE FROM domains WHERE id = ?", (domain_id,))
+    return True
 
 
 # ========================================

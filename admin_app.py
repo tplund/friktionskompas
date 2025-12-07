@@ -23,7 +23,8 @@ from analysis import (
 )
 from db_multitenant import (
     authenticate_user, create_customer, create_user, list_customers,
-    list_users, get_customer_filter, init_multitenant_db, get_customer
+    list_users, get_customer_filter, init_multitenant_db, get_customer,
+    get_domain_config, list_domains, create_domain, update_domain, delete_domain
 )
 from csv_upload_hierarchical import (
     validate_csv_format, bulk_upload_from_csv, generate_csv_template
@@ -80,6 +81,37 @@ app.secret_key = os.environ.get('SECRET_KEY') or secrets.token_hex(32)
 # Register Friktionsprofil Blueprint
 from friktionsprofil_routes import friktionsprofil
 app.register_blueprint(friktionsprofil)
+
+from flask import g
+
+# Domain middleware - detect domain and load config
+@app.before_request
+def detect_domain():
+    """Detect domain and load domain-specific config"""
+    host = request.host.split(':')[0].lower()  # Remove port if present
+
+    # Try to get domain config from database
+    domain_config = get_domain_config(host)
+
+    if domain_config:
+        g.domain_config = domain_config
+        # Auto-set language based on domain if not already set by user
+        if 'language' not in session:
+            session['language'] = domain_config.get('default_language', 'da')
+        # Auto-set customer filter based on domain if user is admin and no filter set
+        if domain_config.get('customer_id') and 'user' in session:
+            if session['user']['role'] == 'admin' and 'customer_filter' not in session:
+                session['customer_filter'] = domain_config['customer_id']
+    else:
+        g.domain_config = None
+
+
+@app.context_processor
+def inject_domain_config():
+    """Make domain config available in all templates"""
+    return {
+        'domain_config': getattr(g, 'domain_config', None)
+    }
 
 
 # Context processor for translations - gør t() tilgængelig i alle templates
@@ -1497,6 +1529,60 @@ def manage_customers():
     return render_template('admin/customers.html',
                          customers=customers,
                          users=users)
+
+
+@app.route('/admin/domains')
+@admin_required
+def manage_domains():
+    """Domain management - kun admin"""
+    domains = list_domains()
+    customers = list_customers()
+    return render_template('admin/domains.html',
+                         domains=domains,
+                         customers=customers)
+
+
+@app.route('/admin/domain/new', methods=['POST'])
+@admin_required
+def create_new_domain():
+    """Opret nyt domain mapping - kun admin"""
+    domain = request.form['domain'].strip().lower()
+    customer_id = request.form.get('customer_id') or None
+    default_language = request.form.get('default_language', 'da')
+    branding = {
+        'logo_url': request.form.get('branding_logo_url') or None,
+        'primary_color': request.form.get('branding_primary_color') or None,
+        'company_name': request.form.get('branding_company_name') or None
+    }
+
+    domain_id = create_domain(domain, customer_id, default_language, branding)
+    flash(f'Domain "{domain}" oprettet!', 'success')
+    return redirect(url_for('manage_domains'))
+
+
+@app.route('/admin/domain/<domain_id>/edit', methods=['POST'])
+@admin_required
+def edit_domain(domain_id):
+    """Rediger domain - kun admin"""
+    update_domain(
+        domain_id,
+        customer_id=request.form.get('customer_id') or None,
+        default_language=request.form.get('default_language', 'da'),
+        branding_logo_url=request.form.get('branding_logo_url') or None,
+        branding_primary_color=request.form.get('branding_primary_color') or None,
+        branding_company_name=request.form.get('branding_company_name') or None
+    )
+    flash('Domain opdateret!', 'success')
+    return redirect(url_for('manage_domains'))
+
+
+@app.route('/admin/domain/<domain_id>/delete', methods=['POST'])
+@admin_required
+def delete_domain_route(domain_id):
+    """Slet domain - kun admin"""
+    delete_domain(domain_id)
+    flash('Domain slettet!', 'success')
+    return redirect(url_for('manage_domains'))
 
 
 @app.route('/admin/customer/new', methods=['POST'])

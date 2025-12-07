@@ -78,6 +78,13 @@ class TestAdminRoutes:
         html = response.data.decode('utf-8')
         assert 'Trend' in html
 
+    def test_admin_domains(self, authenticated_client):
+        """Test domains management page."""
+        response = authenticated_client.get('/admin/domains')
+        assert response.status_code == 200
+        html = response.data.decode('utf-8')
+        assert 'Domæne' in html or 'domain' in html.lower()
+
 
 class TestManagerRoutes:
     """Test routes accessible by managers."""
@@ -127,6 +134,7 @@ class TestLinkIntegrity:
             '/admin/profiler',
             '/admin/customers',
             '/admin/trend',
+            '/admin/domains',
         ]
 
         for link in nav_links:

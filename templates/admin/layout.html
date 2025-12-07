@@ -4,8 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
-    <title>{% block title %}Admin{% endblock %} - Friktionskompasset</title>
+    <title>{% block title %}Admin{% endblock %} - {{ domain_config.branding_company_name or 'Friktionskompasset' }}</title>
     <style>
+        :root {
+            --primary-color: {{ domain_config.branding_primary_color or '#3b82f6' }};
+        }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
@@ -241,7 +244,14 @@
 <body>
     <nav class="nav">
         <div class="nav-container">
-            <div class="nav-brand">🏢 Friktionskompasset</div>
+            <div class="nav-brand">
+                {% if domain_config and domain_config.branding_logo_url %}
+                <img src="{{ domain_config.branding_logo_url }}" alt="{{ domain_config.branding_company_name or 'Logo' }}" style="height: 28px; margin-right: 8px; vertical-align: middle;">
+                {% else %}
+                🏢
+                {% endif %}
+                {{ domain_config.branding_company_name if domain_config and domain_config.branding_company_name else 'Friktionskompasset' }}
+            </div>
 
             {% if session.user.role == 'admin' and not session.impersonating %}
             <!-- View switcher - kun for admin -->
@@ -319,6 +329,7 @@
                 <li><a href="/admin/profiler" {% if 'profiler' in request.path and 'friktionsprofil' not in request.path %}class="active"{% endif %}>🔬 {{ t('nav.friktionsprofiler') }}</a></li>
                 <li><a href="/friktionsprofil/" {% if 'friktionsprofil' in request.path %}class="active"{% endif %} target="_blank">🧠 Individuel Profil ↗</a></li>
                 <li><a href="/admin/customers" {% if 'customers' in request.path %}class="active"{% endif %}>👥 {{ t('nav.kunder_brugere') }}</a></li>
+                <li><a href="/admin/domains" {% if 'domains' in request.path %}class="active"{% endif %}>🌐 Domæner</a></li>
                 <li><a href="/admin/campaigns-overview" {% if 'campaigns-overview' in request.path %}class="active"{% endif %}>📋 {{ t('nav.alle_maalinger') }}</a></li>
                 <li class="submenu-dropdown">
                     <a href="#" class="dropdown-toggle {% if 'email' in request.path or 'profil-questions' in request.path or 'backup' in request.path or 'dev-tools' in request.path %}active{% endif %}">⚙️ {{ t('nav.indstillinger') }} ▾</a>
