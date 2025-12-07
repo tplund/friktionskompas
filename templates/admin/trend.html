@@ -1,0 +1,299 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}{{ t('trend.title') }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .card {
+        background: white;
+        border-radius: 8px;
+        padding: 25px;
+        margin-bottom: 20px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        border: 1px solid #e5e7eb;
+    }
+    .card h2 {
+        margin-bottom: 20px;
+        color: #374151;
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+
+    .filter-bar {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        margin-bottom: 25px;
+        flex-wrap: wrap;
+    }
+    .filter-bar label {
+        color: #6b7280;
+        font-size: 0.9rem;
+    }
+    .filter-bar select {
+        padding: 8px 12px;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        background: white;
+        font-size: 0.9rem;
+        min-width: 200px;
+    }
+
+    .summary-cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 15px;
+        margin-bottom: 25px;
+    }
+    .summary-card {
+        background: #f9fafb;
+        border-radius: 6px;
+        padding: 15px;
+        text-align: center;
+    }
+    .summary-card .label {
+        color: #6b7280;
+        font-size: 0.75rem;
+        margin-bottom: 5px;
+    }
+    .summary-card .value {
+        color: #374151;
+        font-size: 1.5rem;
+        font-weight: 600;
+    }
+
+    .chart-container {
+        position: relative;
+        height: 350px;
+        margin: 20px 0;
+    }
+
+    .no-data {
+        text-align: center;
+        padding: 60px 20px;
+        color: #6b7280;
+    }
+    .no-data p {
+        margin-bottom: 15px;
+    }
+
+    .campaign-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 15px;
+    }
+    .campaign-table th,
+    .campaign-table td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    .campaign-table th {
+        background: #f9fafb;
+        font-weight: 600;
+        color: #374151;
+        font-size: 0.85rem;
+    }
+    .campaign-table td {
+        font-size: 0.9rem;
+        color: #4b5563;
+    }
+    .campaign-table tr:hover {
+        background: #f9fafb;
+    }
+
+    .score-badge {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        font-weight: 500;
+    }
+    .score-badge.high { background: #dcfce7; color: #166534; }
+    .score-badge.medium { background: #fef3c7; color: #92400e; }
+    .score-badge.low { background: #fee2e2; color: #991b1b; }
+
+    .trend-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 0.8rem;
+    }
+    .trend-indicator.up { color: #166534; }
+    .trend-indicator.down { color: #991b1b; }
+    .trend-indicator.stable { color: #6b7280; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{{ t('trend.title') }}</h1>
+    <p class="page-subtitle">{{ t('trend.subtitle') }}</p>
+</div>
+
+<div class="card">
+    <div class="filter-bar">
+        <label>{{ t('trend.filter_unit') }}:</label>
+        <select id="unitFilter" onchange="filterByUnit(this.value)">
+            <option value="">{{ t('trend.all_units') }}</option>
+            {% for unit in units %}
+            <option value="{{ unit.id }}" {% if selected_unit == unit.id %}selected{% endif %}>
+                {{ '—' * unit.level }} {{ unit.name }}
+            </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    {% if trend_data.campaigns %}
+    <div class="summary-cards">
+        <div class="summary-card">
+            <div class="label">{{ t('trend.total_campaigns') }}</div>
+            <div class="value">{{ trend_data.summary.total_campaigns }}</div>
+        </div>
+        <div class="summary-card">
+            <div class="label">{{ t('trend.date_range') }}</div>
+            <div class="value" style="font-size: 1rem;">{{ trend_data.summary.date_range }}</div>
+        </div>
+    </div>
+
+    <h2>{{ t('trend.chart_title') }}</h2>
+    <div class="chart-container">
+        <canvas id="trendChart"></canvas>
+    </div>
+
+    <h2 style="margin-top: 30px;">{{ t('trend.details_title') }}</h2>
+    <div style="overflow-x: auto;">
+        <table class="campaign-table">
+            <thead>
+                <tr>
+                    <th>{{ t('trend.col_date') }}</th>
+                    <th>{{ t('trend.col_campaign') }}</th>
+                    <th>{{ t('trend.col_unit') }}</th>
+                    <th>{{ t('trend.col_responses') }}</th>
+                    {% for field in trend_data.fields %}
+                    <th>{{ field }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for camp in trend_data.campaigns %}
+                <tr>
+                    <td>{{ camp.date }}</td>
+                    <td>{{ camp.name }} {% if camp.period %}({{ camp.period }}){% endif %}</td>
+                    <td>{{ camp.unit_name }}</td>
+                    <td>{{ camp.response_count }}</td>
+                    {% for field in trend_data.fields %}
+                    <td>
+                        {% set score = camp.scores.get(field, '-') %}
+                        {% if score != '-' %}
+                            {% if score >= 3.5 %}
+                            <span class="score-badge high">{{ score }}</span>
+                            {% elif score >= 2.5 %}
+                            <span class="score-badge medium">{{ score }}</span>
+                            {% else %}
+                            <span class="score-badge low">{{ score }}</span>
+                            {% endif %}
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="no-data">
+        <p>{{ t('trend.no_data') }}</p>
+        <a href="/admin" class="btn btn-primary">{{ t('trend.create_campaign') }}</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+function filterByUnit(unitId) {
+    if (unitId) {
+        window.location.href = '/admin/trend?unit_id=' + unitId;
+    } else {
+        window.location.href = '/admin/trend';
+    }
+}
+
+{% if trend_data.campaigns %}
+// Prepare chart data
+const campaigns = {{ trend_data.campaigns | tojson }};
+const fields = {{ trend_data.fields | tojson }};
+
+const labels = campaigns.map(c => c.date || c.name);
+
+const colors = {
+    'MENING': { border: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.1)' },
+    'TRYGHED': { border: '#22c55e', bg: 'rgba(34, 197, 94, 0.1)' },
+    'KAN': { border: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)' },
+    'BESVÆR': { border: '#ef4444', bg: 'rgba(239, 68, 68, 0.1)' }
+};
+
+const datasets = fields.map(field => ({
+    label: field,
+    data: campaigns.map(c => c.scores[field] || null),
+    borderColor: colors[field]?.border || '#6b7280',
+    backgroundColor: colors[field]?.bg || 'rgba(107, 114, 128, 0.1)',
+    borderWidth: 2,
+    tension: 0.3,
+    fill: false,
+    pointRadius: 5,
+    pointHoverRadius: 7
+}));
+
+const ctx = document.getElementById('trendChart').getContext('2d');
+new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: {
+            mode: 'index',
+            intersect: false
+        },
+        scales: {
+            y: {
+                min: 1,
+                max: 5,
+                ticks: { stepSize: 0.5 },
+                title: {
+                    display: true,
+                    text: '{{ t("trend.score_axis") }}'
+                }
+            },
+            x: {
+                title: {
+                    display: true,
+                    text: '{{ t("trend.date_axis") }}'
+                }
+            }
+        },
+        plugins: {
+            legend: {
+                position: 'top',
+                labels: { usePointStyle: true }
+            },
+            tooltip: {
+                callbacks: {
+                    title: function(context) {
+                        const idx = context[0].dataIndex;
+                        const camp = campaigns[idx];
+                        return camp.name + (camp.period ? ' (' + camp.period + ')' : '');
+                    }
+                }
+            }
+        }
+    }
+});
+{% endif %}
+</script>
+{% endblock %}

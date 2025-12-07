@@ -951,3 +951,198 @@ if __name__ == "__main__":
         print(f"  Employee: {comp['employee']}")
         print(f"  Leader assess: {comp['leader_assess']}")
         print(f"  Gap: {comp['gap']} {'⚠️ MISALIGNMENT' if comp['has_misalignment'] else '✓'}")
+
+
+# ============================================
+# TREND ANALYSE
+# ============================================
+
+def get_trend_data(unit_id: str = None, customer_id: str = None) -> Dict:
+    """
+    Hent trend-data: friktionsscores over tid for sammenligning.
+
+    Args:
+        unit_id: Specifik unit at analysere (valgfri)
+        customer_id: Filtrer på kunde (valgfri)
+
+    Returns:
+        {
+            'campaigns': [
+                {
+                    'id': 'camp-xxx',
+                    'name': 'Måling Q1',
+                    'period': 'Q1 2025',
+                    'date': '2025-01-15',
+                    'unit_name': 'Herning Kommune',
+                    'response_count': 45,
+                    'scores': {
+                        'MENING': 3.2,
+                        'TRYGHED': 2.8,
+                        'KAN': 3.5,
+                        'BESVÆR': 2.1
+                    }
+                },
+                ...
+            ],
+            'fields': ['MENING', 'TRYGHED', 'KAN', 'BESVÆR'],
+            'summary': {
+                'total_campaigns': 5,
+                'date_range': '2024-06 til 2025-03'
+            }
+        }
+    """
+    with get_db() as conn:
+        # Build filter
+        filters = []
+        params = []
+
+        if unit_id:
+            # Include unit and all children
+            filters.append("""
+                c.target_unit_id IN (
+                    WITH RECURSIVE subtree AS (
+                        SELECT id FROM organizational_units WHERE id = ?
+                        UNION ALL
+                        SELECT ou.id FROM organizational_units ou
+                        JOIN subtree st ON ou.parent_id = st.id
+                    )
+                    SELECT id FROM subtree
+                )
+            """)
+            params.append(unit_id)
+
+        if customer_id:
+            filters.append("ou.customer_id = ?")
+            params.append(customer_id)
+
+        where_clause = " AND ".join(filters) if filters else "1=1"
+
+        # Get campaigns with response counts
+        campaigns_query = f"""
+            SELECT
+                c.id,
+                c.name,
+                c.period,
+                DATE(c.created_at) as date,
+                c.target_unit_id,
+                ou.name as unit_name,
+                ou.full_path,
+                COUNT(DISTINCT r.id) as response_count
+            FROM campaigns c
+            JOIN organizational_units ou ON c.target_unit_id = ou.id
+            LEFT JOIN responses r ON r.campaign_id = c.id
+            WHERE {where_clause}
+            GROUP BY c.id
+            HAVING response_count > 0
+            ORDER BY c.created_at ASC
+        """
+
+        campaigns_raw = conn.execute(campaigns_query, params).fetchall()
+
+        if not campaigns_raw:
+            return {
+                'campaigns': [],
+                'fields': ['MENING', 'TRYGHED', 'KAN', 'BESVÆR'],
+                'summary': {'total_campaigns': 0, 'date_range': '-'}
+            }
+
+        campaigns = []
+        for camp in campaigns_raw:
+            # Get field averages for this campaign
+            scores_query = """
+                SELECT
+                    q.field,
+                    AVG(CASE
+                        WHEN q.reverse_scored = 1 THEN 6 - r.score
+                        ELSE r.score
+                    END) as avg_score
+                FROM responses r
+                JOIN questions q ON r.question_id = q.id
+                WHERE r.campaign_id = ?
+                GROUP BY q.field
+            """
+            score_rows = conn.execute(scores_query, (camp['id'],)).fetchall()
+
+            scores = {}
+            for row in score_rows:
+                scores[row['field']] = round(row['avg_score'], 2)
+
+            campaigns.append({
+                'id': camp['id'],
+                'name': camp['name'],
+                'period': camp['period'],
+                'date': camp['date'],
+                'unit_id': camp['target_unit_id'],
+                'unit_name': camp['unit_name'],
+                'full_path': camp['full_path'],
+                'response_count': camp['response_count'],
+                'scores': scores
+            })
+
+        # Calculate summary
+        dates = [c['date'] for c in campaigns if c['date']]
+        date_range = f"{min(dates)} til {max(dates)}" if dates else "-"
+
+        return {
+            'campaigns': campaigns,
+            'fields': ['MENING', 'TRYGHED', 'KAN', 'BESVÆR'],
+            'summary': {
+                'total_campaigns': len(campaigns),
+                'date_range': date_range
+            }
+        }
+
+
+def get_unit_trend(unit_id: str) -> Dict:
+    """
+    Hent trend for specifik unit (og children) over alle kampagner.
+
+    Returns:
+        {
+            'unit_name': 'Herning Kommune',
+            'campaigns': [...],  # Sorteret efter dato
+            'trend': {
+                'MENING': {'first': 3.0, 'last': 3.5, 'change': +0.5, 'direction': 'up'},
+                ...
+            }
+        }
+    """
+    data = get_trend_data(unit_id=unit_id)
+
+    if not data['campaigns']:
+        return {
+            'unit_name': 'Ukendt',
+            'campaigns': [],
+            'trend': {}
+        }
+
+    unit_name = data['campaigns'][0]['unit_name'] if data['campaigns'] else 'Ukendt'
+
+    # Calculate trend for each field
+    trend = {}
+    for field in data['fields']:
+        scores = [c['scores'].get(field) for c in data['campaigns'] if c['scores'].get(field)]
+        if len(scores) >= 2:
+            first = scores[0]
+            last = scores[-1]
+            change = round(last - first, 2)
+            direction = 'up' if change > 0.1 else ('down' if change < -0.1 else 'stable')
+            trend[field] = {
+                'first': first,
+                'last': last,
+                'change': change,
+                'direction': direction
+            }
+        elif len(scores) == 1:
+            trend[field] = {
+                'first': scores[0],
+                'last': scores[0],
+                'change': 0,
+                'direction': 'stable'
+            }
+
+    return {
+        'unit_name': unit_name,
+        'campaigns': data['campaigns'],
+        'trend': trend
+    }

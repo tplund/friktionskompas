@@ -312,7 +312,8 @@
             <!-- Adminvisning submenu -->
             <ul class="submenu-links">
                 <li><a href="/admin/noegletal" {% if 'noegletal' in request.path %}class="active"{% endif %}>📊 {{ t('nav.noegletal') }}</a></li>
-                <li><a href="/admin/dashboard" {% if 'dashboard' in request.path and 'noegletal' not in request.path %}class="active"{% endif %}>📈 {{ t('nav.dashboard') }}</a></li>
+                <li><a href="/admin/trend" {% if 'trend' in request.path %}class="active"{% endif %}>📈 {{ t('nav.trend') }}</a></li>
+                <li><a href="/admin/dashboard" {% if 'dashboard' in request.path and 'noegletal' not in request.path and 'trend' not in request.path %}class="active"{% endif %}>🏠 {{ t('nav.dashboard') }}</a></li>
                 <li><a href="/admin/analyser" {% if 'analyser' in request.path and 'dashboard' not in request.path %}class="active"{% endif %}>📋 {{ t('nav.analyser') }}</a></li>
                 <li><a href="/admin" {% if request.path == '/admin' and 'campaign' not in request.path and 'dashboard' not in request.path and 'analyser' not in request.path %}class="active"{% endif %}>🏢 {{ t('nav.organisationer') }}</a></li>
                 <li><a href="/admin/profiler" {% if 'profiler' in request.path and 'friktionsprofil' not in request.path %}class="active"{% endif %}>🔬 {{ t('nav.friktionsprofiler') }}</a></li>

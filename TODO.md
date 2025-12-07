@@ -124,7 +124,7 @@
 - [ ] API for integration med andre systemer
 
 ### Analytics
-- [ ] Trend analyse (sammenlign kampagner over tid)
+- [x] ~~Trend analyse~~ (sammenlign kampagner over tid, Chart.js grafer, filter per enhed)
 - [ ] Benchmarking på tværs af brancher
 - [ ] AI-baseret indsigter fra fritekst kommentarer
 

@@ -131,6 +131,25 @@ INITIAL_TRANSLATIONS = {
     'nav.kunder_brugere': {'da': 'Kunder & Brugere', 'en': 'Customers & Users'},
     'nav.indstillinger': {'da': 'Indstillinger', 'en': 'Settings'},
     'nav.logout': {'da': 'Log ud', 'en': 'Log out'},
+    'nav.trend': {'da': 'Trend', 'en': 'Trend'},
+
+    # Trend Analysis
+    'trend.title': {'da': 'Trend Analyse', 'en': 'Trend Analysis'},
+    'trend.subtitle': {'da': 'Sammenlign friktionsscores over tid', 'en': 'Compare friction scores over time'},
+    'trend.filter_unit': {'da': 'Filtrer efter enhed', 'en': 'Filter by unit'},
+    'trend.all_units': {'da': 'Alle enheder', 'en': 'All units'},
+    'trend.total_campaigns': {'da': 'Målinger', 'en': 'Measurements'},
+    'trend.date_range': {'da': 'Periode', 'en': 'Period'},
+    'trend.chart_title': {'da': 'Score udvikling', 'en': 'Score development'},
+    'trend.details_title': {'da': 'Detaljer per måling', 'en': 'Details per measurement'},
+    'trend.col_date': {'da': 'Dato', 'en': 'Date'},
+    'trend.col_campaign': {'da': 'Måling', 'en': 'Measurement'},
+    'trend.col_unit': {'da': 'Enhed', 'en': 'Unit'},
+    'trend.col_responses': {'da': 'Svar', 'en': 'Responses'},
+    'trend.no_data': {'da': 'Ingen målinger fundet. Opret en måling for at se trends.', 'en': 'No measurements found. Create a measurement to see trends.'},
+    'trend.create_campaign': {'da': 'Opret måling', 'en': 'Create measurement'},
+    'trend.score_axis': {'da': 'Score (1-5)', 'en': 'Score (1-5)'},
+    'trend.date_axis': {'da': 'Dato', 'en': 'Date'},
 
     # Common buttons
     'btn.save': {'da': 'Gem', 'en': 'Save'},

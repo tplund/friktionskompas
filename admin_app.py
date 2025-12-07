@@ -19,7 +19,7 @@ from analysis import (
     get_detailed_breakdown, check_anonymity_threshold,
     get_layer_interpretation, calculate_substitution,
     get_free_text_comments, get_kkc_recommendations,
-    get_start_here_recommendation
+    get_start_here_recommendation, get_trend_data
 )
 from db_multitenant import (
     authenticate_user, create_customer, create_user, list_customers,
@@ -567,6 +567,46 @@ def admin_noegletal():
                          recent_campaigns=[dict(c) for c in recent_campaigns],
                          customer_stats=[dict(c) for c in customer_stats],
                          show_customer_stats=(user['role'] == 'admin' and not customer_filter))
+
+
+@app.route('/admin/trend')
+@login_required
+def admin_trend():
+    """Trend analyse - sammenlign friktionsscores over tid"""
+    user = get_current_user()
+    customer_filter = session.get('customer_filter') or user.get('customer_id')
+
+    # Get unit_id from query param (optional)
+    unit_id = request.args.get('unit_id')
+
+    # Get trend data
+    if customer_filter or user['role'] != 'admin':
+        cid = customer_filter or user['customer_id']
+        trend_data = get_trend_data(unit_id=unit_id, customer_id=cid)
+    else:
+        trend_data = get_trend_data(unit_id=unit_id)
+
+    # Get available units for filter dropdown
+    with get_db() as conn:
+        if customer_filter or user['role'] != 'admin':
+            cid = customer_filter or user['customer_id']
+            units = conn.execute("""
+                SELECT id, name, full_path, level
+                FROM organizational_units
+                WHERE customer_id = ?
+                ORDER BY full_path
+            """, [cid]).fetchall()
+        else:
+            units = conn.execute("""
+                SELECT id, name, full_path, level
+                FROM organizational_units
+                ORDER BY full_path
+            """).fetchall()
+
+    return render_template('admin/trend.html',
+                         trend_data=trend_data,
+                         units=[dict(u) for u in units],
+                         selected_unit=unit_id)
 
 
 @app.route('/admin/campaigns-overview')
