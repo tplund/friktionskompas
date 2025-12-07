@@ -315,7 +315,8 @@
                 <li><a href="/admin/dashboard" {% if 'dashboard' in request.path and 'noegletal' not in request.path %}class="active"{% endif %}>📈 {{ t('nav.dashboard') }}</a></li>
                 <li><a href="/admin/analyser" {% if 'analyser' in request.path and 'dashboard' not in request.path %}class="active"{% endif %}>📋 {{ t('nav.analyser') }}</a></li>
                 <li><a href="/admin" {% if request.path == '/admin' and 'campaign' not in request.path and 'dashboard' not in request.path and 'analyser' not in request.path %}class="active"{% endif %}>🏢 {{ t('nav.organisationer') }}</a></li>
-                <li><a href="/admin/profiler" {% if 'profiler' in request.path %}class="active"{% endif %}>🔬 {{ t('nav.friktionsprofiler') }}</a></li>
+                <li><a href="/admin/profiler" {% if 'profiler' in request.path and 'friktionsprofil' not in request.path %}class="active"{% endif %}>🔬 {{ t('nav.friktionsprofiler') }}</a></li>
+                <li><a href="/friktionsprofil/" {% if 'friktionsprofil' in request.path %}class="active"{% endif %} target="_blank">🧠 Individuel Profil ↗</a></li>
                 <li><a href="/admin/customers" {% if 'customers' in request.path %}class="active"{% endif %}>👥 {{ t('nav.kunder_brugere') }}</a></li>
                 <li><a href="/admin/campaigns-overview" {% if 'campaigns-overview' in request.path %}class="active"{% endif %}>📋 {{ t('nav.alle_maalinger') }}</a></li>
                 <li class="submenu-dropdown">

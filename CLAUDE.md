@@ -8,6 +8,11 @@
 - Hold TODO.md som den centrale kilde til projektets status
 - Nye features, bugs, og teknisk gæld skal tilføjes til TODO.md
 
+### UI Navigation
+- **ALTID** tilføj links til nye sider i admin navigation (`templates/admin/layout.html`)
+- Nye features skal være tilgængelige fra UI - brugerne skal kunne finde dem
+- Brug `target="_blank"` og ↗ ikon for links der åbner i nyt vindue
+
 ### Automatiseret Test & CI/CD
 
 #### GitHub Actions (CI)
