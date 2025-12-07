@@ -80,6 +80,27 @@
 
 ---
 
+## 🌐 Multi-Domain Setup (efter Frankfurt)
+
+### Mål
+- Samme instans håndterer flere domæner
+- Domæne bestemmer: sprog, kunde-filter, branding
+- Alt konfigureres programmatisk via admin
+
+### Domæne-typer
+1. **Hoved-domæner**: friktionskompasset.dk (da), frictioncompass.com (en)
+2. **Kunde-subdomæner**: herning.friktionskompasset.dk → kun Herning data
+3. **Hvidelabel**: kunde-ejet-domæne.dk → kunde branding
+
+### Tasks
+- [ ] Database: `domains` tabel med mapping
+- [ ] Middleware: Detect domæne → sæt sprog/kunde/branding
+- [ ] Admin UI: CRUD for domæner
+- [ ] Render: Tilføj custom domains via API
+- [ ] DNS: Wildcard eller individuelle CNAME records
+
+---
+
 ## 🔮 Lav Prioritet / Future
 
 ### Friktionsprofil V2 (i gang)
@@ -97,7 +118,7 @@
   - Intro/outro tekster per version
 
 ### Features
-- [ ] Drag-and-drop reorganisering af units
+- [x] ~~Drag-and-drop reorganisering af units~~ (Flyt-mode med visuel feedback)
 - [ ] Custom spørgsmål per organisation
 - [ ] Scheduled campaigns (send automatisk)
 - [ ] API for integration med andre systemer
