@@ -1288,6 +1288,32 @@ def bulk_delete_units():
     return redirect(url_for('admin_home'))
 
 
+@app.route('/api/units/<unit_id>/move', methods=['POST'])
+@login_required
+def api_move_unit(unit_id):
+    """API: Flyt organisation til ny parent"""
+    from db_hierarchical import move_unit
+
+    user = get_current_user()
+    if user['role'] != 'admin':
+        return jsonify({'success': False, 'error': 'Kun administratorer kan flytte organisationer'}), 403
+
+    data = request.get_json()
+    new_parent_id = data.get('new_parent_id')  # None for toplevel
+
+    # Konverter tom streng til None
+    if new_parent_id == '' or new_parent_id == 'null':
+        new_parent_id = None
+
+    try:
+        move_unit(unit_id, new_parent_id)
+        return jsonify({'success': True})
+    except ValueError as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+    except Exception as e:
+        return jsonify({'success': False, 'error': f'Fejl ved flytning: {str(e)}'}), 500
+
+
 @app.route('/admin/campaign/new', methods=['GET', 'POST'])
 @login_required
 def new_campaign():

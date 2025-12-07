@@ -935,5 +935,102 @@ def get_campaign_modes() -> List[Dict]:
         return [dict(row) for row in rows]
 
 
+def move_unit(unit_id: str, new_parent_id: Optional[str]) -> bool:
+    """
+    Flyt en unit til en ny parent.
+    Opdaterer full_path og level for unit og alle descendants.
+
+    Args:
+        unit_id: ID for unit der skal flyttes
+        new_parent_id: ID for ny parent (None for toplevel)
+
+    Returns:
+        True hvis flytning lykkedes
+    """
+    with get_db() as conn:
+        # Hent unit der skal flyttes
+        unit = conn.execute(
+            "SELECT * FROM organizational_units WHERE id = ?",
+            (unit_id,)
+        ).fetchone()
+
+        if not unit:
+            raise ValueError(f"Unit {unit_id} ikke fundet")
+
+        old_full_path = unit['full_path']
+        unit_name = unit['name']
+
+        # Tjek at vi ikke flytter til sig selv eller descendant
+        if new_parent_id:
+            # Find alle descendants af unit
+            descendants = conn.execute("""
+                WITH RECURSIVE subtree AS (
+                    SELECT id FROM organizational_units WHERE id = ?
+                    UNION ALL
+                    SELECT ou.id FROM organizational_units ou
+                    JOIN subtree st ON ou.parent_id = st.id
+                )
+                SELECT id FROM subtree
+            """, (unit_id,)).fetchall()
+
+            descendant_ids = {row['id'] for row in descendants}
+            if new_parent_id in descendant_ids:
+                raise ValueError("Kan ikke flytte unit til sin egen descendant")
+
+            # Hent ny parent info
+            new_parent = conn.execute(
+                "SELECT level, full_path, customer_id FROM organizational_units WHERE id = ?",
+                (new_parent_id,)
+            ).fetchone()
+
+            if not new_parent:
+                raise ValueError(f"Ny parent {new_parent_id} ikke fundet")
+
+            new_level = new_parent['level'] + 1
+            new_full_path = f"{new_parent['full_path']}//{unit_name}"
+            new_customer_id = new_parent['customer_id']
+        else:
+            # Toplevel
+            new_level = 0
+            new_full_path = unit_name
+            new_customer_id = unit['customer_id']  # Behold customer_id
+
+        # Beregn level-diff og path-prefix ændring
+        old_level = unit['level']
+        level_diff = new_level - old_level
+
+        # Opdater unit selv
+        conn.execute("""
+            UPDATE organizational_units
+            SET parent_id = ?, level = ?, full_path = ?, customer_id = ?
+            WHERE id = ?
+        """, (new_parent_id, new_level, new_full_path, new_customer_id, unit_id))
+
+        # Opdater alle descendants rekursivt
+        # Hent alle descendants med deres nuværende path
+        descendants = conn.execute("""
+            WITH RECURSIVE subtree AS (
+                SELECT id, full_path, level FROM organizational_units WHERE parent_id = ?
+                UNION ALL
+                SELECT ou.id, ou.full_path, ou.level FROM organizational_units ou
+                JOIN subtree st ON ou.parent_id = st.id
+            )
+            SELECT * FROM subtree
+        """, (unit_id,)).fetchall()
+
+        for desc in descendants:
+            # Erstat den gamle path-prefix med den nye
+            desc_new_path = desc['full_path'].replace(old_full_path, new_full_path, 1)
+            desc_new_level = desc['level'] + level_diff
+
+            conn.execute("""
+                UPDATE organizational_units
+                SET full_path = ?, level = ?, customer_id = ?
+                WHERE id = ?
+            """, (desc_new_path, desc_new_level, new_customer_id, desc['id']))
+
+        return True
+
+
 # Initialize on import
 init_db()

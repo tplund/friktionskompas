@@ -271,6 +271,71 @@
         margin-left: 5px;
         font-weight: normal;
     }
+
+    /* Drag and drop styles */
+    .tree-node.dragging {
+        opacity: 0.5;
+        background: #dbeafe !important;
+    }
+    .tree-node.drag-over {
+        background: #fef3c7 !important;
+        border-left-color: #f59e0b !important;
+        box-shadow: 0 0 0 2px #fbbf24;
+    }
+    .tree-node.drag-over-invalid {
+        background: #fee2e2 !important;
+        border-left-color: #dc2626 !important;
+    }
+    .drag-handle {
+        cursor: grab;
+        color: #9ca3af;
+        margin-right: 8px;
+        font-size: 14px;
+        user-select: none;
+    }
+    .drag-handle:hover {
+        color: #6b7280;
+    }
+    .drag-handle:active {
+        cursor: grabbing;
+    }
+    .drop-zone-toplevel {
+        display: none;
+        padding: 15px;
+        margin: 10px 0;
+        border: 2px dashed #d1d5db;
+        border-radius: 6px;
+        text-align: center;
+        color: #6b7280;
+        background: #f9fafb;
+    }
+    .drop-zone-toplevel.visible {
+        display: block;
+    }
+    .drop-zone-toplevel.drag-over {
+        border-color: #3b82f6;
+        background: #dbeafe;
+        color: #1e40af;
+    }
+    .drag-mode-toggle {
+        background: transparent;
+        color: #6b7280;
+        padding: 6px 12px;
+        border: 1px solid #d1d5db;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.8rem;
+        margin-left: 8px;
+    }
+    .drag-mode-toggle:hover {
+        background: #f3f4f6;
+        color: #374151;
+    }
+    .drag-mode-toggle.active {
+        background: #3b82f6;
+        color: white;
+        border-color: #3b82f6;
+    }
 </style>
 {% endblock %}
 
@@ -296,6 +361,7 @@
             <button class="expand-all-btn" onclick="toggleAll(true)">Fold ud</button>
         </div>
         <div class="action-buttons">
+            <button class="drag-mode-toggle" onclick="toggleDragMode()">⇅ Flyt</button>
             <button class="bulk-mode-toggle" onclick="toggleBulkMode()">Vælg flere</button>
             <a href="/admin/unit/new" class="btn">{{ t('btn.create') }}</a>
             <a href="/admin/bulk-upload" class="btn">{{ t('btn.upload') }} CSV</a>
@@ -324,6 +390,9 @@
                             <button onclick="confirmDeleteCustomer('{{ customer_id }}', '{{ customer_name }}')" class="btn-delete" title="Slet kunde">Slet</button>
                         </div>
                     </div>
+                    <div class="drop-zone-toplevel" data-customer-id="{{ customer_id }}">
+                        Slip her for at gøre til toplevel under {{ customer_name }}
+                    </div>
                     <div class="org-tree">
                         {% for unit in units %}
                             {% if unit.customer_id == customer_id and not unit.parent_id %}
@@ -344,6 +413,9 @@
                             <a href="/admin/unit/new?customer={{ customer_id }}" class="btn-create" title="Opret organisation">+</a>
                             <button onclick="confirmDeleteCustomer('{{ customer_id }}', '{{ customer_name }}')" class="btn-delete" title="Slet kunde">Slet</button>
                         </div>
+                    </div>
+                    <div class="drop-zone-toplevel" data-customer-id="{{ customer_id }}">
+                        Slip her for at gøre til toplevel under {{ customer_name }}
                     </div>
                     <div class="org-tree">
                         {% for unit in units %}
@@ -574,6 +646,194 @@
             document.body.appendChild(form);
             form.submit();
         }
+    }
+
+    // ========================================
+    // DRAG AND DROP
+    // ========================================
+    let dragMode = false;
+    let draggedElement = null;
+    let draggedUnitId = null;
+
+    function toggleDragMode() {
+        dragMode = !dragMode;
+        const toggleBtn = document.querySelector('.drag-mode-toggle');
+        const allNodes = document.querySelectorAll('.tree-node');
+
+        if (dragMode) {
+            toggleBtn.classList.add('active');
+            toggleBtn.textContent = '⇅ Afslut flyt';
+
+            // Add drag handles to all nodes
+            allNodes.forEach(node => {
+                node.setAttribute('draggable', 'true');
+                const header = node.querySelector('.tree-node-header > div:first-child');
+                if (header && !header.querySelector('.drag-handle')) {
+                    const handle = document.createElement('span');
+                    handle.className = 'drag-handle';
+                    handle.innerHTML = '⋮⋮';
+                    handle.title = 'Træk for at flytte';
+                    header.insertBefore(handle, header.firstChild);
+                }
+            });
+
+            // Show toplevel drop zone
+            document.querySelectorAll('.drop-zone-toplevel').forEach(z => z.classList.add('visible'));
+        } else {
+            toggleBtn.classList.remove('active');
+            toggleBtn.textContent = '⇅ Flyt';
+
+            // Remove drag handles
+            allNodes.forEach(node => {
+                node.removeAttribute('draggable');
+                const handle = node.querySelector('.drag-handle');
+                if (handle) handle.remove();
+            });
+
+            // Hide toplevel drop zone
+            document.querySelectorAll('.drop-zone-toplevel').forEach(z => z.classList.remove('visible'));
+        }
+    }
+
+    // Drag events
+    document.addEventListener('dragstart', function(e) {
+        if (!dragMode) return;
+        const node = e.target.closest('.tree-node');
+        if (!node) return;
+
+        draggedElement = node;
+        draggedUnitId = node.dataset.unitId;
+        node.classList.add('dragging');
+
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', draggedUnitId);
+    });
+
+    document.addEventListener('dragend', function(e) {
+        if (draggedElement) {
+            draggedElement.classList.remove('dragging');
+        }
+        document.querySelectorAll('.tree-node').forEach(n => {
+            n.classList.remove('drag-over', 'drag-over-invalid');
+        });
+        document.querySelectorAll('.drop-zone-toplevel').forEach(z => {
+            z.classList.remove('drag-over');
+        });
+        draggedElement = null;
+        draggedUnitId = null;
+    });
+
+    document.addEventListener('dragover', function(e) {
+        if (!dragMode || !draggedUnitId) return;
+
+        const node = e.target.closest('.tree-node');
+        const dropZone = e.target.closest('.drop-zone-toplevel');
+
+        if (node || dropZone) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+        }
+    });
+
+    document.addEventListener('dragenter', function(e) {
+        if (!dragMode || !draggedUnitId) return;
+
+        const node = e.target.closest('.tree-node');
+        const dropZone = e.target.closest('.drop-zone-toplevel');
+
+        if (dropZone) {
+            dropZone.classList.add('drag-over');
+            return;
+        }
+
+        if (!node) return;
+
+        const targetId = node.dataset.unitId;
+
+        // Check if target is descendant of dragged (invalid)
+        if (isDescendant(draggedUnitId, targetId)) {
+            node.classList.add('drag-over-invalid');
+        } else if (targetId !== draggedUnitId) {
+            node.classList.add('drag-over');
+        }
+    });
+
+    document.addEventListener('dragleave', function(e) {
+        const node = e.target.closest('.tree-node');
+        const dropZone = e.target.closest('.drop-zone-toplevel');
+
+        if (dropZone && !dropZone.contains(e.relatedTarget)) {
+            dropZone.classList.remove('drag-over');
+        }
+
+        if (node && !node.contains(e.relatedTarget)) {
+            node.classList.remove('drag-over', 'drag-over-invalid');
+        }
+    });
+
+    document.addEventListener('drop', function(e) {
+        if (!dragMode || !draggedUnitId) return;
+
+        e.preventDefault();
+
+        const node = e.target.closest('.tree-node');
+        const dropZone = e.target.closest('.drop-zone-toplevel');
+
+        let newParentId = null;
+
+        if (dropZone) {
+            // Drop to toplevel
+            newParentId = null;
+        } else if (node) {
+            const targetId = node.dataset.unitId;
+
+            // Can't drop on self or descendant
+            if (targetId === draggedUnitId || isDescendant(draggedUnitId, targetId)) {
+                return;
+            }
+
+            newParentId = targetId;
+        } else {
+            return;
+        }
+
+        // Call API to move
+        moveUnit(draggedUnitId, newParentId);
+    });
+
+    function isDescendant(ancestorId, nodeId) {
+        // Check if nodeId is a descendant of ancestorId
+        const allNodes = document.querySelectorAll('.tree-node');
+        let current = Array.from(allNodes).find(n => n.dataset.unitId === nodeId);
+
+        while (current) {
+            const parentId = current.dataset.parentId;
+            if (parentId === ancestorId) return true;
+            if (!parentId) break;
+            current = Array.from(allNodes).find(n => n.dataset.unitId === parentId);
+        }
+
+        return false;
+    }
+
+    function moveUnit(unitId, newParentId) {
+        fetch(`/api/units/${unitId}/move`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ new_parent_id: newParentId })
+        })
+        .then(r => r.json())
+        .then(result => {
+            if (result.success) {
+                // Reload page to show updated tree
+                location.reload();
+            } else {
+                alert('Fejl: ' + (result.error || 'Kunne ikke flytte'));
+            }
+        })
+        .catch(err => {
+            alert('Netværksfejl: ' + err.message);
+        });
     }
 </script>
 {% endblock %}
