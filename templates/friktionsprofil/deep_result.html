@@ -1,0 +1,280 @@
+{% extends "profil/layout.html" %}
+
+{% block title %}Dyb Måling Resultat - Friktionsprofil{% endblock %}
+
+{% block content %}
+<style>
+.bar-container { height: 24px; background: #e9ecef; border-radius: 4px; overflow: hidden; }
+.bar { height: 100%; display: flex; align-items: center; padding-left: 8px; color: white; font-weight: bold; }
+.bar-low { background: #28a745; }
+.bar-medium { background: #ffc107; color: #333; }
+.bar-high { background: #dc3545; }
+.chain-layer { padding: 8px 16px; border-left: 4px solid #dee2e6; margin-bottom: 8px; }
+.chain-transition { padding: 4px 16px; margin-left: 20px; font-size: 0.9em; }
+</style>
+
+<div class="container py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2>Dyb Friktionsprofil</h2>
+                    {% if session.person_name %}
+                    <p class="text-muted mb-0">{{ session.person_name }} • {{ session.created_at[:10] }}</p>
+                    {% endif %}
+                </div>
+                <div>
+                    <button onclick="window.print()" class="btn btn-outline-secondary">
+                        <i class="bi bi-printer"></i> Print
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- VENSTRE KOLONNE: Felter og Manifestation -->
+        <div class="col-lg-6">
+            <!-- FELTER -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Baseline-friktion (Felter)</h5>
+                </div>
+                <div class="card-body">
+                    {% macro render_bar(name, score, is_primary=False) %}
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <strong>{{ name }} {% if is_primary %}<span class="badge bg-primary">Primært</span>{% endif %}</strong>
+                            <span>{{ "%.1f"|format(score) }}</span>
+                        </div>
+                        <div class="bar-container">
+                            <div class="bar {% if score >= 5 %}bar-high{% elif score >= 3.5 %}bar-medium{% else %}bar-low{% endif %}"
+                                 style="width: {{ (score / 7 * 100)|int }}%">
+                            </div>
+                        </div>
+                    </div>
+                    {% endmacro %}
+
+                    {{ render_bar('Tryghed', session.field_tryghed, session.primary_field == 'tryghed') }}
+                    {{ render_bar('Mening', session.field_mening, session.primary_field == 'mening') }}
+                    {{ render_bar('Kan', session.field_kan, session.primary_field == 'kan') }}
+                    {{ render_bar('Besvær', session.field_besvaer, session.primary_field == 'besvaer') }}
+
+                    <div class="alert alert-light mt-3 mb-0">
+                        <strong>Primært felt: {{ session.primary_field|upper }}</strong><br>
+                        {% if session.primary_field == 'tryghed' %}
+                        Du bruger mest energi på at føle dig sikker og rolig.
+                        {% elif session.primary_field == 'mening' %}
+                        Du bruger mest energi på at finde formål og engagement.
+                        {% elif session.primary_field == 'kan' %}
+                        Du bruger mest energi på at føle dig kompetent.
+                        {% else %}
+                        Du bruger mest energi på at overkomme praktiske forhindringer.
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- MANIFESTATION -->
+            <div class="card mb-4">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">Manifestationslag</h5>
+                </div>
+                <div class="card-body">
+                    {{ render_bar('Biologi', session.manifest_biologi, session.primary_manifest == 'biologi') }}
+                    {{ render_bar('Emotion', session.manifest_emotion, session.primary_manifest == 'emotion') }}
+                    {{ render_bar('Indre', session.manifest_indre, session.primary_manifest == 'indre') }}
+                    {{ render_bar('Kognition', session.manifest_kognition, session.primary_manifest == 'kognition') }}
+                    {{ render_bar('Ekstern', session.manifest_ekstern, session.primary_manifest == 'ekstern') }}
+
+                    <div class="alert alert-light mt-3 mb-0">
+                        <strong>Primært lag: {{ session.primary_manifest|upper }}</strong><br>
+                        Under pres lander dit pres oftest her.
+                    </div>
+                </div>
+            </div>
+
+            <!-- REGULERING -->
+            <div class="card mb-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Reguleringsstrategier</h5>
+                </div>
+                <div class="card-body">
+                    {{ render_bar('Kropslig', session.reg_kropslig, session.primary_regulation == 'kropslig') }}
+                    {{ render_bar('Emotionel', session.reg_emotionel, session.primary_regulation == 'emotionel') }}
+                    {{ render_bar('Indre', session.reg_indre, session.primary_regulation == 'indre') }}
+                    {{ render_bar('Kognitiv', session.reg_kognitiv, session.primary_regulation == 'kognitiv') }}
+                    {{ render_bar('Ekstern', session.reg_ekstern, session.primary_regulation == 'ekstern') }}
+
+                    <hr>
+                    <div class="d-flex justify-content-between">
+                        <span>Robusthed (evne til at regulere)</span>
+                        <span class="fw-bold {% if session.reg_robusthed >= 5 %}text-danger{% elif session.reg_robusthed >= 3.5 %}text-warning{% else %}text-success{% endif %}">
+                            {{ "%.1f"|format(session.reg_robusthed) }}
+                        </span>
+                    </div>
+                    <small class="text-muted">Høj score = svært at finde effektive strategier</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- HØJRE KOLONNE: Kæder og Forbrug -->
+        <div class="col-lg-6">
+            <!-- OPAD-KÆDE -->
+            <div class="card mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Opad-kæde (fra krop til handling)</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-2 text-muted small">
+                        Kæde-status:
+                        <span class="badge {% if session.chain_status == 'intact' %}bg-success{% elif session.chain_status == 'partial' %}bg-warning{% else %}bg-danger{% endif %}">
+                            {{ session.chain_status|upper }}
+                        </span>
+                    </div>
+
+                    {% set opad_data = [
+                        ('EKSTERN', session.index_kog_ekstern, 'kog_ekstern'),
+                        ('KOGNITION', session.index_indre_kog, 'indre_kog'),
+                        ('INDRE', session.index_emo_indre, 'emo_indre'),
+                        ('EMOTION', session.index_bio_emo, 'bio_emo'),
+                        ('BIOLOGI', None, None)
+                    ] %}
+
+                    {% for lag, index, key in opad_data %}
+                    <div class="chain-layer {% if key and session.stop_point == key %}border-danger{% endif %}">
+                        <strong>{{ lag }}</strong>
+                        {% if key and session.stop_point == key %}
+                        <span class="badge bg-danger ms-2">STOP</span>
+                        {% endif %}
+                    </div>
+                    {% if index is not none %}
+                    <div class="chain-transition">
+                        <div class="d-flex align-items-center">
+                            <span class="me-2">↑</span>
+                            <div class="flex-grow-1">
+                                <div class="bar-container" style="height: 16px;">
+                                    <div class="bar {% if index >= 4.5 %}bar-low{% elif index >= 2.5 %}bar-medium{% else %}bar-high{% endif %}"
+                                         style="width: {{ (index / 7 * 100)|int }}%">
+                                    </div>
+                                </div>
+                            </div>
+                            <span class="ms-2 fw-bold" style="width: 40px;">{{ "%.1f"|format(index) }}</span>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+
+                    <div class="alert alert-light mt-3 mb-0">
+                        <strong>Stop-punkt: {{ session.stop_point|replace('_', ' → ')|upper }}</strong><br>
+                        Her har kæden lavest båndbredde opad.
+                    </div>
+                </div>
+            </div>
+
+            <!-- NEDAD-KÆDE -->
+            <div class="card mb-4">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0">Nedad-kæde (fra omverden til krop)</h5>
+                </div>
+                <div class="card-body">
+                    {% set nedad_data = [
+                        ('EKSTERN', None, None),
+                        ('KOGNITION', session.index_ekstern_kog, 'ekstern_kog'),
+                        ('INDRE', session.index_kog_indre, 'kog_indre'),
+                        ('EMOTION', session.index_indre_emo, 'indre_emo'),
+                        ('BIOLOGI', session.index_emo_bio, 'emo_bio')
+                    ] %}
+
+                    {% for lag, index, key in nedad_data %}
+                    <div class="chain-layer">
+                        <strong>{{ lag }}</strong>
+                    </div>
+                    {% if index is not none %}
+                    <div class="chain-transition">
+                        <div class="d-flex align-items-center">
+                            <span class="me-2">↓</span>
+                            <div class="flex-grow-1">
+                                <div class="bar-container" style="height: 16px;">
+                                    <div class="bar {% if index >= 4.5 %}bar-low{% elif index >= 2.5 %}bar-medium{% else %}bar-high{% endif %}"
+                                         style="width: {{ (index / 7 * 100)|int }}%">
+                                    </div>
+                                </div>
+                            </div>
+                            <span class="ms-2 fw-bold" style="width: 40px;">{{ "%.1f"|format(index) }}</span>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- FORBRUG -->
+            <div class="card mb-4">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0">Forbrugsmønstre</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-6">
+                            <h6>Stoffer</h6>
+                            <div class="display-6 {% if session.forbrug_stof >= 5 %}text-danger{% elif session.forbrug_stof >= 3.5 %}text-warning{% else %}text-success{% endif %}">
+                                {{ "%.1f"|format(session.forbrug_stof) }}
+                            </div>
+                            <small class="text-muted">Alkohol, nikotin, koffein</small>
+                        </div>
+                        <div class="col-6">
+                            <h6>Adfærd</h6>
+                            <div class="display-6 {% if session.forbrug_adfaerd >= 5 %}text-danger{% elif session.forbrug_adfaerd >= 3.5 %}text-warning{% else %}text-success{% endif %}">
+                                {{ "%.1f"|format(session.forbrug_adfaerd) }}
+                            </div>
+                            <small class="text-muted">Mad, skærm, shopping, søvn</small>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="d-flex justify-content-between">
+                        <span>Afhængighedsgrad</span>
+                        <span class="fw-bold {% if session.afhaengighed >= 5 %}text-danger{% elif session.afhaengighed >= 3.5 %}text-warning{% else %}text-success{% endif %}">
+                            {{ "%.1f"|format(session.afhaengighed) }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SAMMENFATNING -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <h4><i class="bi bi-clipboard-check"></i> Profil-sammenfatning</h4>
+                    <p class="lead">
+                        Du har primært <strong>{{ session.primary_field }}</strong>-friktion.
+                        Din opad-kæde stopper typisk ved <strong>{{ session.stop_point|replace('_', ' → ') }}</strong>
+                        (kæde-status: <span class="badge {% if session.chain_status == 'intact' %}bg-success{% elif session.chain_status == 'partial' %}bg-warning{% else %}bg-danger{% endif %}">{{ session.chain_status }}</span>).
+                    </p>
+                    <p>
+                        Under pres manifesterer dit system sig primært i <strong>{{ session.primary_manifest }}</strong>-laget,
+                        og du regulerer primært via <strong>{{ session.primary_regulation }}</strong> strategier.
+                    </p>
+
+                    {% if session.chain_status == 'broken' %}
+                    <div class="alert alert-warning">
+                        <strong>Bemærk:</strong> Din kæde har mindst ét stop-punkt med lav båndbredde (< 2.5).
+                        Dette kan betyde at pres har svært ved at bevæge sig op til bevidst bearbejdning.
+                    </div>
+                    {% endif %}
+
+                    {% if session.afhaengighed >= 5 %}
+                    <div class="alert alert-warning">
+                        <strong>Bemærk:</strong> Din afhængighedsgrad er høj. Du bruger muligvis eksterne stoffer/adfærd
+                        som primær regulering, fordi pres ikke kan bevæge sig op i systemet.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

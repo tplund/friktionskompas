@@ -1,0 +1,103 @@
+{% extends "profil/layout.html" %}
+
+{% block title %}Screening - Friktionsprofil{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            {% if not session_id %}
+            <!-- Start screen -->
+            <div class="card shadow-sm">
+                <div class="card-body p-4">
+                    <h1 class="h3 mb-3">Friktionsprofil Screening</h1>
+                    <p class="lead text-muted">13 spørgsmål • ca. 3 minutter</p>
+
+                    <div class="alert alert-info">
+                        <strong>Hvad måler screeningen?</strong>
+                        <ul class="mb-0 mt-2">
+                            <li><strong>Felt-mønster:</strong> Hvor ligger din baseline-friktion?</li>
+                            <li><strong>Opad-kæde:</strong> Hvor knækker din reguleringskæde?</li>
+                            <li><strong>Manifestation:</strong> Hvor lander presset i din krop/sind?</li>
+                        </ul>
+                    </div>
+
+                    <form method="POST" action="{{ url_for('friktionsprofil.start_screening') }}">
+                        <div class="mb-3">
+                            <label class="form-label">Navn (valgfrit)</label>
+                            <input type="text" name="person_name" class="form-control" placeholder="Dit navn">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Email (valgfrit - til at modtage resultat)</label>
+                            <input type="email" name="person_email" class="form-control" placeholder="din@email.dk">
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            Start Screening →
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            {% else %}
+            <!-- Survey -->
+            <form method="POST" action="{{ url_for('friktionsprofil.submit_screening', session_id=session_id) }}">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">Friktionsprofil Screening</h5>
+                        <small>Besvar på en skala fra 1-7 hvor typisk hvert udsagn er for dig</small>
+                    </div>
+                    <div class="card-body">
+                        <!-- Progress -->
+                        <div class="progress mb-4" style="height: 8px;">
+                            <div class="progress-bar" role="progressbar" style="width: 0%" id="progress-bar"></div>
+                        </div>
+
+                        <!-- Scale legend -->
+                        <div class="row text-center small text-muted mb-4">
+                            <div class="col">1 = Slet ikke typisk</div>
+                            <div class="col">4 = Hverken/eller</div>
+                            <div class="col">7 = Meget typisk</div>
+                        </div>
+
+                        {% for q in questions %}
+                        <div class="question-item mb-4 pb-3 border-bottom" data-index="{{ loop.index }}">
+                            <p class="mb-3">
+                                <strong>{{ loop.index }}.</strong> {{ q.text_da }}
+                            </p>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="text-muted small">Slet ikke</span>
+                                <div class="btn-group" role="group">
+                                    {% for i in range(1, 8) %}
+                                    <input type="radio" class="btn-check" name="{{ q.question_id }}"
+                                           id="{{ q.question_id }}_{{ i }}" value="{{ i }}" required
+                                           onchange="updateProgress()">
+                                    <label class="btn btn-outline-primary" for="{{ q.question_id }}_{{ i }}">{{ i }}</label>
+                                    {% endfor %}
+                                </div>
+                                <span class="text-muted small">Meget typisk</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div class="card-footer">
+                        <button type="submit" class="btn btn-success btn-lg w-100" id="submit-btn" disabled>
+                            Se dit resultat →
+                        </button>
+                    </div>
+                </div>
+            </form>
+
+            <script>
+            function updateProgress() {
+                const total = {{ questions|length }};
+                const answered = document.querySelectorAll('input[type="radio"]:checked').length;
+                const pct = Math.round((answered / total) * 100);
+                document.getElementById('progress-bar').style.width = pct + '%';
+                document.getElementById('submit-btn').disabled = (answered < total);
+            }
+            </script>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

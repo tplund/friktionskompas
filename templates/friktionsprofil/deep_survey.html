@@ -1,0 +1,180 @@
+{% extends "profil/layout.html" %}
+
+{% block title %}Dyb Måling - Friktionsprofil{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            {% if not session_id %}
+            <!-- Start screen -->
+            <div class="card shadow-sm">
+                <div class="card-body p-4">
+                    <h1 class="h3 mb-3">Dyb Måling - Komplet Friktionsprofil</h1>
+                    <p class="lead text-muted">88 spørgsmål • ca. 15-20 minutter</p>
+
+                    <div class="alert alert-primary">
+                        <strong>Den dybe måling kortlægger:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li><strong>Baseline-friktion</strong> i 4 felter (Tryghed, Mening, Kan, Besvær)</li>
+                            <li><strong>Båndbredde</strong> op og ned gennem 5 lag</li>
+                            <li><strong>Stop-punkter</strong> hvor din kæde knækker</li>
+                            <li><strong>Manifestationslag</strong> hvor pres lander</li>
+                            <li><strong>Reguleringsstrategier</strong> du bruger</li>
+                            <li><strong>Forbrugsmønstre</strong> til selvmedicinering</li>
+                        </ul>
+                    </div>
+
+                    <form method="POST" action="{{ url_for('friktionsprofil.start_deep') }}">
+                        <div class="mb-3">
+                            <label class="form-label">Navn (valgfrit)</label>
+                            <input type="text" name="person_name" class="form-control" placeholder="Dit navn">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Email (valgfrit)</label>
+                            <input type="email" name="person_email" class="form-control" placeholder="din@email.dk">
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            Start Dyb Måling →
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            {% else %}
+            <!-- Survey with sections -->
+            <form method="POST" action="{{ url_for('friktionsprofil.submit_deep', session_id=session_id) }}">
+                <input type="hidden" name="current_section" value="{{ current_section }}">
+
+                <!-- Section navigation -->
+                <div class="mb-4">
+                    <div class="d-flex justify-content-between">
+                        {% set sections = [
+                            ('A', 'Felter', 16),
+                            ('B', 'Båndbredde', 32),
+                            ('C', 'Manifestation', 10),
+                            ('D', 'Regulering', 12),
+                            ('E', 'Kapacitet', 8),
+                            ('F', 'Forbrug', 10)
+                        ] %}
+                        {% for sec_id, sec_name, sec_count in sections %}
+                        <div class="text-center flex-fill">
+                            <div class="rounded-circle mx-auto mb-1 d-flex align-items-center justify-content-center
+                                        {% if sec_id == current_section %}bg-primary text-white
+                                        {% elif sec_id < current_section %}bg-success text-white
+                                        {% else %}bg-light{% endif %}"
+                                 style="width: 32px; height: 32px;">
+                                {% if sec_id < current_section %}✓{% else %}{{ sec_id }}{% endif %}
+                            </div>
+                            <small class="{% if sec_id == current_section %}fw-bold{% else %}text-muted{% endif %}">
+                                {{ sec_name }}
+                            </small>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">
+                            {% if current_section == 'A' %}Sektion A: Felter - Baseline-friktion
+                            {% elif current_section == 'B' %}Sektion B: Båndbredde mellem lag
+                            {% elif current_section == 'C' %}Sektion C: Manifestationslag
+                            {% elif current_section == 'D' %}Sektion D: Reguleringsstrategier
+                            {% elif current_section == 'E' %}Sektion E: Opad-kapacitet
+                            {% elif current_section == 'F' %}Sektion F: Forbrugsmønstre
+                            {% endif %}
+                        </h5>
+                        <small>{{ questions|length }} spørgsmål</small>
+                    </div>
+                    <div class="card-body">
+                        {% if current_section == 'F' and questions[0].subsection == 'frequency' %}
+                        <!-- Special instruction for frequency questions -->
+                        <div class="alert alert-info mb-4">
+                            <strong>Instruktion:</strong> Hvor ofte bruger du følgende til at regulere dit humør, stress eller indre uro?
+                            <div class="row text-center small mt-2">
+                                <div class="col">1 = Aldrig</div>
+                                <div class="col">4 = Ugentligt</div>
+                                <div class="col">7 = Flere gange dagligt</div>
+                            </div>
+                        </div>
+                        {% elif current_section == 'C' %}
+                        <div class="alert alert-info mb-4">
+                            <strong>Instruktion:</strong> Tænk på situationer, hvor du er presset.
+                        </div>
+                        {% else %}
+                        <!-- Standard scale legend -->
+                        <div class="row text-center small text-muted mb-4">
+                            <div class="col">1 = Slet ikke typisk</div>
+                            <div class="col">4 = Hverken/eller</div>
+                            <div class="col">7 = Meget typisk</div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Progress within section -->
+                        <div class="progress mb-4" style="height: 8px;">
+                            <div class="progress-bar" role="progressbar" style="width: 0%" id="progress-bar"></div>
+                        </div>
+
+                        {% for q in questions %}
+                        <div class="question-item mb-4 pb-3 {% if not loop.last %}border-bottom{% endif %}">
+                            <p class="mb-3">
+                                <strong>{{ q.question_id }}.</strong> {{ q.text_da }}
+                            </p>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="text-muted small">
+                                    {% if current_section == 'F' and q.subsection == 'frequency' %}Aldrig{% else %}Slet ikke{% endif %}
+                                </span>
+                                <div class="btn-group" role="group">
+                                    {% for i in range(1, 8) %}
+                                    <input type="radio" class="btn-check" name="{{ q.question_id }}"
+                                           id="{{ q.question_id }}_{{ i }}" value="{{ i }}" required
+                                           {% if saved_responses and saved_responses.get(q.question_id) == i %}checked{% endif %}
+                                           onchange="updateProgress()">
+                                    <label class="btn btn-outline-primary" for="{{ q.question_id }}_{{ i }}">{{ i }}</label>
+                                    {% endfor %}
+                                </div>
+                                <span class="text-muted small">
+                                    {% if current_section == 'F' and q.subsection == 'frequency' %}Dagligt{% else %}Meget typisk{% endif %}
+                                </span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <div class="card-footer d-flex justify-content-between">
+                        {% if current_section != 'A' %}
+                        <a href="{{ url_for('friktionsprofil.deep_section', session_id=session_id, section=prev_section) }}"
+                           class="btn btn-outline-secondary">
+                            ← Forrige sektion
+                        </a>
+                        {% else %}
+                        <div></div>
+                        {% endif %}
+
+                        <button type="submit" class="btn btn-primary btn-lg" id="submit-btn" disabled>
+                            {% if current_section == 'F' %}
+                            Se dit resultat →
+                            {% else %}
+                            Næste sektion →
+                            {% endif %}
+                        </button>
+                    </div>
+                </div>
+            </form>
+
+            <script>
+            function updateProgress() {
+                const total = {{ questions|length }};
+                const answered = document.querySelectorAll('input[type="radio"]:checked').length;
+                const pct = Math.round((answered / total) * 100);
+                document.getElementById('progress-bar').style.width = pct + '%';
+                document.getElementById('submit-btn').disabled = (answered < total);
+            }
+            // Check on load if we have saved responses
+            document.addEventListener('DOMContentLoaded', updateProgress);
+            </script>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

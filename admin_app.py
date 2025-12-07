@@ -77,6 +77,10 @@ app = Flask(__name__)
 # Sikker secret key fra miljøvariabel (fallback til autogeneret i development)
 app.secret_key = os.environ.get('SECRET_KEY') or secrets.token_hex(32)
 
+# Register Friktionsprofil Blueprint
+from friktionsprofil_routes import friktionsprofil
+app.register_blueprint(friktionsprofil)
+
 
 # Context processor for translations - gør t() tilgængelig i alle templates
 @app.context_processor

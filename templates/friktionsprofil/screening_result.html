@@ -1,0 +1,197 @@
+{% extends "profil/layout.html" %}
+
+{% block title %}Screening Resultat - Friktionsprofil{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Din Friktionsprofil (Screening)</h4>
+                    {% if session.person_name %}
+                    <small>{{ session.person_name }}</small>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+
+                    <!-- FELT-MØNSTER -->
+                    <div class="mb-5">
+                        <h5 class="border-bottom pb-2 mb-3">
+                            <i class="bi bi-bullseye text-primary"></i> Felt-mønster
+                            <small class="text-muted">(hvor ligger basisfriktionen?)</small>
+                        </h5>
+                        <div class="row">
+                            {% set felter = [
+                                ('Tryghed', session.felt_tryghed, 'tryghed'),
+                                ('Mening', session.felt_mening, 'mening'),
+                                ('Kan', session.felt_kan, 'kan'),
+                                ('Besvær', session.felt_besvaer, 'besvaer')
+                            ] %}
+                            {% for name, score, key in felter %}
+                            <div class="col-md-3 mb-3">
+                                <div class="card h-100 {% if session.primaert_felt == key %}border-primary{% endif %}">
+                                    <div class="card-body text-center">
+                                        <h6 class="card-title">{{ name }}</h6>
+                                        <div class="display-4 {% if score >= 5 %}text-danger{% elif score >= 3.5 %}text-warning{% else %}text-success{% endif %}">
+                                            {{ score }}
+                                        </div>
+                                        <div class="progress" style="height: 10px;">
+                                            <div class="progress-bar {% if score >= 5 %}bg-danger{% elif score >= 3.5 %}bg-warning{% else %}bg-success{% endif %}"
+                                                 style="width: {{ (score / 7 * 100)|int }}%"></div>
+                                        </div>
+                                        {% if session.primaert_felt == key %}
+                                        <span class="badge bg-primary mt-2">Primært felt</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <div class="alert alert-light mt-3">
+                            <strong>→ Din største friktion ligger i {{ session.primaert_felt|upper }}-feltet.</strong>
+                            {% if session.primaert_felt == 'tryghed' %}
+                            Du bruger energi på at føle dig sikker og rolig.
+                            {% elif session.primaert_felt == 'mening' %}
+                            Du bruger energi på at finde formål og engagement.
+                            {% elif session.primaert_felt == 'kan' %}
+                            Du bruger energi på at føle dig kompetent og handlekraftig.
+                            {% else %}
+                            Du bruger energi på at overkomme praktiske forhindringer.
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- OPAD-KÆDE -->
+                    <div class="mb-5">
+                        <h5 class="border-bottom pb-2 mb-3">
+                            <i class="bi bi-arrow-up-circle text-primary"></i> Opad-kæde
+                            <small class="text-muted">(hvor knækker kæden?)</small>
+                        </h5>
+
+                        <div class="position-relative" style="padding-left: 20px;">
+                            {% set overgange = [
+                                ('EKSTERN', 'kog_ekstern', session.opad_kog_ekstern, 'Forståelse → Handling'),
+                                ('KOGNITION', 'indre_kog', session.opad_indre_kog, 'Selvoplevelse → Forståelse'),
+                                ('INDRE', 'emo_indre', session.opad_emo_indre, 'Følelse → Selvoplevelse'),
+                                ('EMOTION', 'bio_emo', session.opad_bio_emo, 'Krop → Følelse'),
+                                ('BIOLOGI', None, None, None)
+                            ] %}
+
+                            {% for lag, key, score, desc in overgange %}
+                            <div class="d-flex align-items-center mb-2">
+                                <div class="fw-bold" style="width: 100px;">{{ lag }}</div>
+                                {% if score is not none %}
+                                <div class="flex-grow-1 mx-3">
+                                    <div class="small text-muted mb-1">↑ {{ desc }}</div>
+                                    <div class="progress" style="height: 20px;">
+                                        <div class="progress-bar {% if score >= 5 %}bg-danger{% elif score >= 3.5 %}bg-warning{% else %}bg-success{% endif %}"
+                                             style="width: {{ (score / 7 * 100)|int }}%">
+                                            {{ score }}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div style="width: 80px;">
+                                    {% if session.stop_punkt == key %}
+                                    <span class="badge bg-danger">STOP</span>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="alert alert-light mt-3">
+                            <strong>→ Din kæde stopper typisk ved {{ session.stop_punkt|replace('_', '→')|upper }}.</strong>
+                            {% if session.stop_punkt == 'kog_ekstern' %}
+                            Du forstår hvad du skal gøre, men får det ikke gjort.
+                            {% elif session.stop_punkt == 'indre_kog' %}
+                            Du mærker hvad der sker, men kan ikke tænke klart over det.
+                            {% elif session.stop_punkt == 'emo_indre' %}
+                            Dine følelser når ikke op til at blive til klare behov.
+                            {% else %}
+                            Din krop larmer, men signalerne bliver ikke til følelser.
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- MANIFESTATIONSLAG -->
+                    <div class="mb-5">
+                        <h5 class="border-bottom pb-2 mb-3">
+                            <i class="bi bi-layers text-primary"></i> Manifestationslag
+                            <small class="text-muted">(hvor lander presset?)</small>
+                        </h5>
+
+                        {% set manifest = [
+                            ('Biologi', session.manifest_biologi, 'biologi', 'Kroppen tager regningen'),
+                            ('Emotion', session.manifest_emotion, 'emotion', 'Følelserne tager regningen'),
+                            ('Indre', session.manifest_indre, 'indre', 'Selvkritik og skam'),
+                            ('Kognition', session.manifest_kognition, 'kognition', 'Overanalyse og grublen'),
+                            ('Ekstern', session.manifest_ekstern, 'ekstern', 'Ændrer omgivelserne')
+                        ] %}
+
+                        <div class="row">
+                            {% for name, score, key, desc in manifest %}
+                            <div class="col-md-4 mb-3">
+                                <div class="card h-100 {% if session.primaert_lag == key %}border-warning{% endif %}">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                            <strong>{{ name }}</strong>
+                                            <span class="h4 mb-0 {% if score >= 5 %}text-danger{% elif score >= 3.5 %}text-warning{% else %}text-success{% endif %}">{{ score }}</span>
+                                        </div>
+                                        <div class="progress mb-2" style="height: 8px;">
+                                            <div class="progress-bar {% if score >= 5 %}bg-danger{% elif score >= 3.5 %}bg-warning{% else %}bg-success{% endif %}"
+                                                 style="width: {{ (score / 7 * 100)|int }}%"></div>
+                                        </div>
+                                        <small class="text-muted">{{ desc }}</small>
+                                        {% if session.primaert_lag == key %}
+                                        <div><span class="badge bg-warning text-dark mt-2">Primært lag</span></div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="alert alert-light mt-3">
+                            <strong>→ Under pres går du mest i {{ session.primaert_lag|upper }}-laget.</strong>
+                            {% if session.primaert_lag == 'biologi' %}
+                            Du mærker presset i kroppen - søvn, spænding, symptomer.
+                            {% elif session.primaert_lag == 'emotion' %}
+                            Du reagerer mest følelsesmæssigt - vrede, tristhed, opgivenhed.
+                            {% elif session.primaert_lag == 'indre' %}
+                            Du går i selvkritik og føler dig forkert.
+                            {% elif session.primaert_lag == 'kognition' %}
+                            Du analyserer, tænker, planlægger - men handler ikke.
+                            {% else %}
+                            Du ændrer omgivelserne for at undgå presset.
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- SAMMENFATNING -->
+                    <div class="card bg-light">
+                        <div class="card-body">
+                            <h5><i class="bi bi-clipboard-check"></i> Sammenfatning</h5>
+                            <p>
+                                Du har primært <strong>{{ session.primaert_felt }}</strong>-friktion,
+                                og din kæde stopper typisk ved overgangen
+                                <strong>{{ session.stop_punkt|replace('_', ' → ') }}</strong>.
+                                Under pres går du mest i <strong>{{ session.primaert_lag }}</strong>-laget.
+                            </p>
+                            <hr>
+                            <p class="mb-0">
+                                <strong>Vil du have en mere detaljeret kortlægning?</strong><br>
+                                <a href="{{ url_for('friktionsprofil.deep_start') }}" class="btn btn-primary mt-2">
+                                    Tag den fulde Dyb Måling (88 spørgsmål) →
+                                </a>
+                            </p>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,112 @@
+{% extends "profil/layout.html" %}
+
+{% block title %}Friktionsprofil{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8 text-center">
+            <h1 class="display-5 mb-4">Friktionsprofil</h1>
+            <p class="lead text-muted mb-5">
+                Kortlæg din reguleringsarkitektur - hvor opstår friktion, og hvordan håndterer du den?
+            </p>
+        </div>
+    </div>
+
+    <div class="row justify-content-center g-4">
+        <!-- SCREENING -->
+        <div class="col-md-5">
+            <div class="card h-100 shadow-sm border-primary">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Screening</h4>
+                </div>
+                <div class="card-body">
+                    <div class="display-6 text-primary mb-3">13 spørgsmål</div>
+                    <p class="text-muted">Ca. 3 minutter</p>
+
+                    <ul class="list-unstyled">
+                        <li class="mb-2"><i class="bi bi-check-circle text-success"></i> Felt-mønster (Tryghed/Mening/Kan/Besvær)</li>
+                        <li class="mb-2"><i class="bi bi-check-circle text-success"></i> Hvor knækker opad-kæden?</li>
+                        <li class="mb-2"><i class="bi bi-check-circle text-success"></i> Primært manifestationslag</li>
+                    </ul>
+
+                    <p class="small text-muted">
+                        Hurtig kortlægning til at spotte mønstre og vurdere om en dybere måling er relevant.
+                    </p>
+                </div>
+                <div class="card-footer">
+                    <a href="{{ url_for('friktionsprofil.screening') }}" class="btn btn-primary btn-lg w-100">
+                        Tag Screening →
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- DYB MÅLING -->
+        <div class="col-md-5">
+            <div class="card h-100 shadow-sm border-success">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0">Dyb Måling</h4>
+                </div>
+                <div class="card-body">
+                    <div class="display-6 text-success mb-3">88 spørgsmål</div>
+                    <p class="text-muted">Ca. 15-20 minutter</p>
+
+                    <ul class="list-unstyled">
+                        <li class="mb-2"><i class="bi bi-check-circle text-success"></i> Komplet felt-analyse (4×4 items)</li>
+                        <li class="mb-2"><i class="bi bi-check-circle text-success"></i> Opad OG nedad båndbredde (8 overgange)</li>
+                        <li class="mb-2"><i class="bi bi-check-circle text-success"></i> Manifestations- og reguleringsmønstre</li>
+                        <li class="mb-2"><i class="bi bi-check-circle text-success"></i> Forbrugsmønstre og afhængighed</li>
+                        <li class="mb-2"><i class="bi bi-check-circle text-success"></i> Stop-punkt og kæde-status</li>
+                    </ul>
+
+                    <p class="small text-muted">
+                        Fuldt profileringsværktøj til detaljeret kortlægning af dit reguleringssystem.
+                    </p>
+                </div>
+                <div class="card-footer">
+                    <a href="{{ url_for('friktionsprofil.deep_start') }}" class="btn btn-success btn-lg w-100">
+                        Tag Dyb Måling →
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- INFO -->
+    <div class="row justify-content-center mt-5">
+        <div class="col-lg-10">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <h5>Om Friktionsprofilen</h5>
+                    <p>
+                        Friktionsprofilen kortlægger hvordan pres bevæger sig gennem din reguleringsarkitektur -
+                        fra krop til handling (opad) og fra omverden til krop (nedad).
+                    </p>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>De 4 Felter</h6>
+                            <ul class="small">
+                                <li><strong>Tryghed:</strong> Sikkerhed og ro</li>
+                                <li><strong>Mening:</strong> Formål og engagement</li>
+                                <li><strong>Kan:</strong> Kompetence og handleevne</li>
+                                <li><strong>Besvær:</strong> Praktiske forhindringer</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>De 5 Lag</h6>
+                            <ul class="small">
+                                <li><strong>Biologi:</strong> Krop, fysiologi</li>
+                                <li><strong>Emotion:</strong> Følelser</li>
+                                <li><strong>Indre:</strong> Selvoplevelse, identitet</li>
+                                <li><strong>Kognition:</strong> Tanker, forståelse</li>
+                                <li><strong>Ekstern:</strong> Adfærd, omgivelser</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
