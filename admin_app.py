@@ -40,6 +40,13 @@ from db_profil import (
     get_db as get_profil_db
 )
 from translations import t, get_user_language, set_language, SUPPORTED_LANGUAGES, seed_translations, clear_translation_cache
+from scheduler import start_scheduler, get_scheduled_campaigns, cancel_scheduled_campaign, reschedule_campaign
+from oauth import (
+    init_oauth, oauth, get_enabled_providers, get_provider_info,
+    handle_oauth_callback, get_auth_providers_for_domain, save_auth_providers,
+    DEFAULT_AUTH_PROVIDERS
+)
+from cache import get_cache_stats, invalidate_all, invalidate_campaign_cache, Pagination
 
 # Copy seed database to persistent disk on first deploy (if not exists)
 def copy_seed_database():
@@ -69,6 +76,9 @@ init_db()  # Main hierarchical database
 init_profil_tables()  # Profil tables
 init_multitenant_db()  # Multi-tenant tables
 
+# Start scheduler for planned campaigns
+start_scheduler()
+
 # Seed translations and clear cache on startup
 seed_translations()  # Ensures translations exist in database
 clear_translation_cache()  # Clear any stale cached values
@@ -77,6 +87,9 @@ app = Flask(__name__)
 
 # Sikker secret key fra miljøvariabel (fallback til autogeneret i development)
 app.secret_key = os.environ.get('SECRET_KEY') or secrets.token_hex(32)
+
+# Initialize OAuth
+init_oauth(app)
 
 # Register Friktionsprofil Blueprint
 from friktionsprofil_routes import friktionsprofil
@@ -129,7 +142,7 @@ def inject_translation_helpers():
 def inject_customers():
     """Gør kundeliste tilgængelig i alle templates"""
     customers = []
-    if 'user' in session and session['user']['role'] == 'admin':
+    if 'user' in session and session['user']['role'] in ('admin', 'superadmin'):
         with get_db() as conn:
             customers = conn.execute("""
                 SELECT id, name
@@ -199,14 +212,28 @@ def login_required(f):
 
 
 def admin_required(f):
-    """Decorator til at kræve admin rolle"""
+    """Decorator til at kræve admin eller superadmin rolle"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user' not in session:
             flash('Du skal være logget ind', 'error')
             return redirect(url_for('login'))
-        if session['user']['role'] != 'admin':
+        if session['user']['role'] not in ('admin', 'superadmin'):
             flash('Kun admin har adgang til denne side', 'error')
+            return redirect(url_for('analyser'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+def superadmin_required(f):
+    """Decorator til at kræve superadmin rolle"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user' not in session:
+            flash('Du skal være logget ind', 'error')
+            return redirect(url_for('login'))
+        if session['user']['role'] != 'superadmin':
+            flash('Kun system administrator har adgang til denne side', 'error')
             return redirect(url_for('analyser'))
         return f(*args, **kwargs)
     return decorated_function
@@ -231,6 +258,12 @@ def zoho_verify():
     return send_from_directory('.', 'verifyforzoho.html')
 
 
+@app.route('/zoho-domain-verification.html')
+def zoho_domain_verify():
+    """Zoho domain verification (alternative file)"""
+    return send_from_directory('.', 'zoho-domain-verification.html')
+
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     """Login side"""
@@ -247,7 +280,95 @@ def login():
         else:
             flash('Forkert brugernavn eller password', 'error')
 
-    return render_template('login.html')
+    # Get enabled OAuth providers for this domain
+    domain = request.host.split(':')[0].lower()
+    enabled_providers = get_enabled_providers(domain)
+    providers_info = {p: get_provider_info(p) for p in enabled_providers if p != 'email_password'}
+    show_email_password = 'email_password' in enabled_providers
+
+    return render_template('login.html',
+                           oauth_providers=providers_info,
+                           show_email_password=show_email_password)
+
+
+# ========================================
+# OAUTH ROUTES
+# ========================================
+
+@app.route('/auth/<provider>')
+def oauth_login(provider):
+    """Start OAuth flow for a provider"""
+    if provider not in ['microsoft', 'google', 'apple', 'facebook']:
+        flash('Ukendt login-metode', 'error')
+        return redirect(url_for('login'))
+
+    # Check if provider is enabled for this domain
+    domain = request.host.split(':')[0].lower()
+    enabled = get_enabled_providers(domain)
+
+    if provider not in enabled:
+        flash(f'{provider.title()} login er ikke aktiveret', 'error')
+        return redirect(url_for('login'))
+
+    # Get the OAuth client
+    client = oauth.create_client(provider)
+    if not client:
+        flash(f'{provider.title()} er ikke konfigureret', 'error')
+        return redirect(url_for('login'))
+
+    # Generate redirect URI
+    redirect_uri = url_for('oauth_callback', provider=provider, _external=True)
+
+    return client.authorize_redirect(redirect_uri)
+
+
+@app.route('/auth/<provider>/callback')
+def oauth_callback(provider):
+    """Handle OAuth callback"""
+    if provider not in ['microsoft', 'google', 'apple', 'facebook']:
+        flash('Ukendt login-metode', 'error')
+        return redirect(url_for('login'))
+
+    try:
+        client = oauth.create_client(provider)
+        if not client:
+            flash(f'{provider.title()} er ikke konfigureret', 'error')
+            return redirect(url_for('login'))
+
+        # Get token
+        token = client.authorize_access_token()
+
+        # Get user info
+        if provider == 'microsoft':
+            # Microsoft returns userinfo in the token response
+            userinfo = token.get('userinfo')
+            if not userinfo:
+                # Fetch from userinfo endpoint
+                resp = client.get('https://graph.microsoft.com/oidc/userinfo')
+                userinfo = resp.json()
+        elif provider == 'google':
+            userinfo = token.get('userinfo')
+            if not userinfo:
+                resp = client.get('https://openidconnect.googleapis.com/v1/userinfo')
+                userinfo = resp.json()
+        else:
+            userinfo = token.get('userinfo', {})
+
+        # Handle the callback
+        user = handle_oauth_callback(provider, token, userinfo)
+
+        if user:
+            session['user'] = user
+            flash(f'Velkommen {user["name"]}!', 'success')
+            return redirect(url_for('analyser'))
+        else:
+            flash('Kunne ikke logge ind - kontakt administrator', 'error')
+            return redirect(url_for('login'))
+
+    except Exception as e:
+        print(f"[OAuth] Callback error for {provider}: {e}")
+        flash(f'Fejl ved login med {provider.title()}', 'error')
+        return redirect(url_for('login'))
 
 
 @app.route('/logout')
@@ -697,6 +818,104 @@ def campaigns_overview():
 
     return render_template('admin/campaigns_overview.html',
                          campaigns=[dict(c) for c in campaigns])
+
+
+@app.route('/admin/scheduled-campaigns')
+@login_required
+def scheduled_campaigns():
+    """Oversigt over planlagte målinger"""
+    user = get_current_user()
+    where_clause, params = get_customer_filter(user['role'], user['customer_id'])
+
+    with get_db() as conn:
+        # Hent scheduled campaigns
+        if user['role'] == 'admin':
+            campaigns = conn.execute("""
+                SELECT c.*, ou.name as target_name, ou.full_path
+                FROM campaigns c
+                JOIN organizational_units ou ON c.target_unit_id = ou.id
+                WHERE c.status = 'scheduled'
+                ORDER BY c.scheduled_at ASC
+            """).fetchall()
+        else:
+            campaigns = conn.execute("""
+                SELECT c.*, ou.name as target_name, ou.full_path
+                FROM campaigns c
+                JOIN organizational_units ou ON c.target_unit_id = ou.id
+                WHERE c.status = 'scheduled' AND ou.customer_id = ?
+                ORDER BY c.scheduled_at ASC
+            """, [user['customer_id']]).fetchall()
+
+    return render_template('admin/scheduled_campaigns.html',
+                         campaigns=[dict(c) for c in campaigns])
+
+
+@app.route('/admin/campaign/<campaign_id>/cancel', methods=['POST'])
+@login_required
+def cancel_campaign(campaign_id):
+    """Annuller en planlagt måling"""
+    user = get_current_user()
+
+    # Verificer at brugeren har adgang til kampagnen
+    with get_db() as conn:
+        where_clause, params = get_customer_filter(user['role'], user['customer_id'])
+        campaign = conn.execute(f"""
+            SELECT c.* FROM campaigns c
+            JOIN organizational_units ou ON c.target_unit_id = ou.id
+            WHERE c.id = ? AND c.status = 'scheduled' AND ({where_clause})
+        """, [campaign_id] + params).fetchone()
+
+        if not campaign:
+            flash('Måling ikke fundet eller kan ikke annulleres', 'error')
+            return redirect(url_for('scheduled_campaigns'))
+
+    # Annuller kampagnen
+    success = cancel_scheduled_campaign(campaign_id)
+    if success:
+        flash('Planlagt måling annulleret', 'success')
+    else:
+        flash('Kunne ikke annullere målingen', 'error')
+
+    return redirect(url_for('scheduled_campaigns'))
+
+
+@app.route('/admin/campaign/<campaign_id>/reschedule', methods=['POST'])
+@login_required
+def reschedule_campaign_route(campaign_id):
+    """Ændr tidspunkt for en planlagt måling"""
+    user = get_current_user()
+    from datetime import datetime
+
+    # Verificer at brugeren har adgang til kampagnen
+    with get_db() as conn:
+        where_clause, params = get_customer_filter(user['role'], user['customer_id'])
+        campaign = conn.execute(f"""
+            SELECT c.* FROM campaigns c
+            JOIN organizational_units ou ON c.target_unit_id = ou.id
+            WHERE c.id = ? AND c.status = 'scheduled' AND ({where_clause})
+        """, [campaign_id] + params).fetchone()
+
+        if not campaign:
+            flash('Måling ikke fundet eller kan ikke ændres', 'error')
+            return redirect(url_for('scheduled_campaigns'))
+
+    # Hent nyt tidspunkt fra form
+    new_date = request.form.get('new_date', '').strip()
+    new_time = request.form.get('new_time', '08:00').strip()
+
+    if not new_date:
+        flash('Vælg en ny dato', 'error')
+        return redirect(url_for('scheduled_campaigns'))
+
+    new_scheduled_at = datetime.fromisoformat(f"{new_date}T{new_time}:00")
+
+    success = reschedule_campaign(campaign_id, new_scheduled_at)
+    if success:
+        flash(f'Måling flyttet til {new_date} kl. {new_time}', 'success')
+    else:
+        flash('Kunne ikke ændre tidspunkt', 'error')
+
+    return redirect(url_for('scheduled_campaigns'))
 
 
 @app.route('/admin/analyser')
@@ -1389,7 +1608,7 @@ def api_move_unit(unit_id):
 @app.route('/admin/campaign/new', methods=['GET', 'POST'])
 @login_required
 def new_campaign():
-    """Opret og send ny kampagne"""
+    """Opret og send ny kampagne (eller planlæg til senere)"""
     user = get_current_user()
 
     if request.method == 'POST':
@@ -1399,30 +1618,46 @@ def new_campaign():
         sent_from = request.form.get('sent_from', 'admin')
         sender_name = request.form.get('sender_name', 'HR')
 
+        # Tjek om det er en scheduled campaign
+        scheduled_date = request.form.get('scheduled_date', '').strip()
+        scheduled_time = request.form.get('scheduled_time', '').strip()
+
+        scheduled_at = None
+        if scheduled_date:
+            # Kombiner dato og tid (default til 08:00 hvis ikke angivet)
+            if not scheduled_time:
+                scheduled_time = '08:00'
+            scheduled_at = f"{scheduled_date}T{scheduled_time}:00"
+
         # Opret kampagne
         campaign_id = create_campaign(
             target_unit_id=target_unit_id,
             name=name,
             period=period,
-            sent_from=sent_from
+            sent_from=sent_from,
+            scheduled_at=scheduled_at,
+            sender_name=sender_name
         )
 
-        # Generer tokens for alle leaf units
-        tokens_by_unit = generate_tokens_for_campaign(campaign_id)
+        if scheduled_at:
+            # Scheduled campaign - send ikke nu
+            flash(f'📅 Måling planlagt til {scheduled_date} kl. {scheduled_time}', 'success')
+            return redirect(url_for('scheduled_campaigns'))
+        else:
+            # Send nu
+            tokens_by_unit = generate_tokens_for_campaign(campaign_id)
 
-        # Send til hver unit
-        total_sent = 0
-        for unit_id, tokens in tokens_by_unit.items():
-            contacts = get_unit_contacts(unit_id)
-            if not contacts:
-                continue
+            total_sent = 0
+            for unit_id, tokens in tokens_by_unit.items():
+                contacts = get_unit_contacts(unit_id)
+                if not contacts:
+                    continue
 
-            # Match tokens med kontakter
-            results = send_campaign_batch(contacts, tokens, name, sender_name)
-            total_sent += results['emails_sent'] + results['sms_sent']
+                results = send_campaign_batch(contacts, tokens, name, sender_name)
+                total_sent += results['emails_sent'] + results['sms_sent']
 
-        flash(f'✅ Måling sendt! {sum(len(t) for t in tokens_by_unit.values())} tokens genereret, {total_sent} sendt.', 'success')
-        return redirect(url_for('view_campaign', campaign_id=campaign_id))
+            flash(f'Måling sendt! {sum(len(t) for t in tokens_by_unit.values())} tokens genereret, {total_sent} sendt.', 'success')
+            return redirect(url_for('view_campaign', campaign_id=campaign_id))
 
     # GET: Vis form - kun units fra samme customer
     where_clause, params = get_customer_filter(user['role'], user['customer_id'])
@@ -1679,6 +1914,7 @@ def edit_user(user_id):
 
         <label>Rolle</label>
         <select name="role">
+            <option value="superadmin" {"selected" if user["role"] == "superadmin" else ""}>Superadmin</option>
             <option value="admin" {"selected" if user["role"] == "admin" else ""}>Admin</option>
             <option value="manager" {"selected" if user["role"] == "manager" else ""}>Manager</option>
         </select>
@@ -2991,7 +3227,20 @@ def dev_tools():
             'tokens': conn.execute("SELECT COUNT(*) FROM tokens").fetchone()[0],
             'translations': conn.execute("SELECT COUNT(*) FROM translations").fetchone()[0],
         }
-    return render_template('admin/dev_tools.html', stats=stats)
+
+    # Get cache stats
+    cache_stats = get_cache_stats()
+
+    return render_template('admin/dev_tools.html', stats=stats, cache_stats=cache_stats)
+
+
+@app.route('/admin/clear-cache', methods=['POST'])
+@admin_required
+def clear_cache():
+    """Ryd hele cachen - kun admin"""
+    count = invalidate_all()
+    flash(f'Cache ryddet! ({count} entries fjernet)', 'success')
+    return redirect(url_for('dev_tools'))
 
 
 @app.route('/admin/backup')
@@ -3749,6 +3998,165 @@ def org_dashboard(customer_id=None, unit_id=None):
                              breadcrumb=breadcrumb,
                              customer_id=customer_id,
                              profiler=[dict(p) for p in profiler] if profiler else [])
+
+
+# ========================================
+# BRANDING ROUTES (for admin users)
+# ========================================
+
+@app.route('/admin/my-branding')
+@admin_required
+def my_branding():
+    """Admin users can edit branding for their customer's domains"""
+    user = session['user']
+
+    with get_db() as conn:
+        # Superadmin can see all domains, admin sees their customer's domains
+        if user['role'] == 'superadmin':
+            domains = conn.execute("""
+                SELECT d.*, c.name as customer_name
+                FROM domains d
+                LEFT JOIN customers c ON d.customer_id = c.id
+                ORDER BY d.domain
+            """).fetchall()
+        else:
+            # Admin sees only their customer's domains
+            customer_id = user.get('customer_id')
+            if not customer_id:
+                flash('Ingen kunde tilknyttet din bruger', 'error')
+                return redirect(url_for('analyser'))
+
+            domains = conn.execute("""
+                SELECT d.*, c.name as customer_name
+                FROM domains d
+                LEFT JOIN customers c ON d.customer_id = c.id
+                WHERE d.customer_id = ?
+                ORDER BY d.domain
+            """, (customer_id,)).fetchall()
+
+    return render_template('admin/my_branding.html', domains=domains)
+
+
+@app.route('/admin/my-branding/<domain_id>/edit', methods=['POST'])
+@admin_required
+def edit_my_branding(domain_id):
+    """Edit branding for a domain (with permission check)"""
+    user = session['user']
+
+    with get_db() as conn:
+        # Get domain and check permission
+        domain = conn.execute(
+            "SELECT * FROM domains WHERE id = ?", (domain_id,)
+        ).fetchone()
+
+        if not domain:
+            flash('Domæne ikke fundet', 'error')
+            return redirect(url_for('my_branding'))
+
+        # Check permission (superadmin can edit all, admin only their own)
+        if user['role'] != 'superadmin':
+            if domain['customer_id'] != user.get('customer_id'):
+                flash('Du har ikke adgang til dette domæne', 'error')
+                return redirect(url_for('my_branding'))
+
+        # Update branding
+        update_domain(
+            domain_id,
+            branding_logo_url=request.form.get('branding_logo_url') or None,
+            branding_primary_color=request.form.get('branding_primary_color') or None,
+            branding_company_name=request.form.get('branding_company_name') or None
+        )
+
+        flash(f'Branding for {domain["domain"]} opdateret!', 'success')
+
+    return redirect(url_for('my_branding'))
+
+
+# ========================================
+# AUTH CONFIG ROUTES (superadmin only)
+# ========================================
+
+@app.route('/admin/auth-config')
+@superadmin_required
+def auth_config():
+    """Configure authentication providers per customer (superadmin only)"""
+    customers = list_customers()
+    domains = list_domains()
+
+    # Parse auth_providers JSON for each
+    import json
+    for customer in customers:
+        try:
+            customer['auth_providers_parsed'] = json.loads(customer.get('auth_providers') or '{}')
+        except:
+            customer['auth_providers_parsed'] = {}
+
+    for domain in domains:
+        try:
+            domain['auth_providers_parsed'] = json.loads(domain.get('auth_providers') or '{}')
+        except:
+            domain['auth_providers_parsed'] = {}
+
+    return render_template('admin/auth_config.html',
+                         customers=customers,
+                         domains=domains,
+                         default_providers=DEFAULT_AUTH_PROVIDERS)
+
+
+@app.route('/admin/auth-config/customer/<customer_id>', methods=['POST'])
+@superadmin_required
+def update_customer_auth(customer_id):
+    """Update auth providers for a customer (superadmin only)"""
+    import json
+
+    providers = {
+        'email_password': 'email_password' in request.form,
+        'microsoft': {
+            'enabled': 'microsoft' in request.form
+        },
+        'google': {
+            'enabled': 'google' in request.form
+        },
+        'apple': {
+            'enabled': 'apple' in request.form
+        },
+        'facebook': {
+            'enabled': 'facebook' in request.form
+        }
+    }
+
+    save_auth_providers('customer', customer_id, providers)
+    flash('Auth providers opdateret for kunde!', 'success')
+
+    return redirect(url_for('auth_config'))
+
+
+@app.route('/admin/auth-config/domain/<domain_id>', methods=['POST'])
+@superadmin_required
+def update_domain_auth(domain_id):
+    """Update auth providers for a domain (superadmin only)"""
+    import json
+
+    providers = {
+        'email_password': 'email_password' in request.form,
+        'microsoft': {
+            'enabled': 'microsoft' in request.form
+        },
+        'google': {
+            'enabled': 'google' in request.form
+        },
+        'apple': {
+            'enabled': 'apple' in request.form
+        },
+        'facebook': {
+            'enabled': 'facebook' in request.form
+        }
+    }
+
+    save_auth_providers('domain', domain_id, providers)
+    flash('Auth providers opdateret for domæne!', 'success')
+
+    return redirect(url_for('auth_config'))
 
 
 if __name__ == '__main__':
