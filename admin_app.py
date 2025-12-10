@@ -709,7 +709,7 @@ def admin_seed_domains():
         conn.commit()
 
     flash(f'Domæner seedet: {created} oprettet, {updated} opdateret', 'success')
-    return redirect(request.referrer or url_for('admin_domains'))
+    return redirect(request.referrer or url_for('manage_domains'))
 
 
 @app.route('/admin/delete-all-data', methods=['POST'])
