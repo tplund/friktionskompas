@@ -42,8 +42,8 @@ def t(key, default=None, **kwargs):
     lang = get_user_language()
     translation = get_translation(key, lang)
 
-    # Brug default hvis oversættelse ikke fundet (returnerer key)
-    if translation == key and default:
+    # Brug default hvis oversættelse ikke fundet (returnerer [key])
+    if (translation == key or translation == f"[{key}]") and default:
         translation = default
 
     if kwargs:
@@ -173,6 +173,16 @@ INITIAL_TRANSLATIONS = {
     'login.password': {'da': 'Adgangskode', 'en': 'Password'},
     'login.button': {'da': 'Log ind', 'en': 'Log in'},
     'login.error': {'da': 'Forkert brugernavn eller adgangskode', 'en': 'Invalid username or password'},
+    'login.forgot_password': {'da': 'Glemt password?', 'en': 'Forgot password?'},
+    'login.email_code': {'da': 'Log ind med email-kode i stedet', 'en': 'Log in with email code instead'},
+    'login.no_account': {'da': 'Har du ikke en konto?', 'en': "Don't have an account?"},
+    'login.register_link': {'da': 'Opret konto', 'en': 'Create account'},
+    'login.need_help': {'da': 'Brug for hjælp?', 'en': 'Need help?'},
+    'login.or': {'da': 'eller', 'en': 'or'},
+    'login.microsoft': {'da': 'Log ind med Microsoft', 'en': 'Log in with Microsoft'},
+    'login.google': {'da': 'Log ind med Google', 'en': 'Log in with Google'},
+    'login.apple': {'da': 'Log ind med Apple', 'en': 'Log in with Apple'},
+    'login.facebook': {'da': 'Log ind med Facebook', 'en': 'Log in with Facebook'},
 
     # Dashboard
     'dashboard.title': {'da': 'Dashboard', 'en': 'Dashboard'},
