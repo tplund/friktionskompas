@@ -1,0 +1,335 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}Auth Konfiguration{% endblock %}
+
+{% block extra_css %}
+<style>
+    .card {
+        background: white;
+        border-radius: 12px;
+        padding: 30px;
+        margin-bottom: 20px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .card h2 {
+        margin-bottom: 20px;
+        color: #1f2937;
+    }
+
+    .info-box {
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 20px;
+        color: #1e40af;
+    }
+    .info-box strong {
+        display: block;
+        margin-bottom: 5px;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+    }
+    th, td {
+        text-align: left;
+        padding: 12px;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    th {
+        background: #f9fafb;
+        font-weight: 600;
+        color: #1f2937;
+    }
+    tr:hover {
+        background: #f9fafb;
+    }
+
+    .provider-toggle {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .provider-toggle input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+    }
+    .provider-toggle label {
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .provider-icon {
+        width: 20px;
+        height: 20px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .provider-icon.microsoft { color: #00a4ef; }
+    .provider-icon.google { color: #4285f4; }
+    .provider-icon.apple { color: #000000; }
+    .provider-icon.facebook { color: #1877f2; }
+
+    .btn {
+        background: #3b82f6;
+        color: white;
+        padding: 8px 16px;
+        text-decoration: none;
+        border-radius: 6px;
+        display: inline-block;
+        font-weight: 500;
+        border: none;
+        cursor: pointer;
+        font-size: 0.8rem;
+    }
+    .btn:hover {
+        background: #2563eb;
+    }
+    .btn-sm {
+        padding: 6px 12px;
+        font-size: 0.75rem;
+    }
+
+    .env-status {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+    .env-status.configured {
+        background: #dcfce7;
+        color: #166534;
+    }
+    .env-status.missing {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .section-divider {
+        margin: 40px 0 20px 0;
+        padding-top: 20px;
+        border-top: 2px solid #e5e7eb;
+    }
+    .section-divider h3 {
+        margin: 0;
+        color: #1f2937;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Auth Konfiguration</h1>
+    <p class="page-subtitle">Konfigurer login-metoder per kunde og domæne (kun superadmin)</p>
+</div>
+
+<!-- Environment Status -->
+<div class="card">
+    <h2>Provider Status</h2>
+    <div class="info-box">
+        <strong>Miljøvariabler kræves</strong>
+        OAuth providers kræver at miljøvariabler er sat på serveren. Se TODO.md for detaljer.
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Provider</th>
+                <th>Status</th>
+                <th>Miljøvariabel</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Email/Password</td>
+                <td><span class="env-status configured">Altid aktiv</span></td>
+                <td>-</td>
+            </tr>
+            <tr>
+                <td>
+                    <span class="provider-icon microsoft">
+                        <svg viewBox="0 0 21 21" width="16" height="16">
+                            <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
+                            <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
+                            <rect x="1" y="11" width="9" height="9" fill="#00a4ef"/>
+                            <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
+                        </svg>
+                    </span>
+                    Microsoft
+                </td>
+                <td>
+                    {% if config.get('MICROSOFT_CLIENT_ID') %}
+                    <span class="env-status configured">Konfigureret</span>
+                    {% else %}
+                    <span class="env-status missing">Mangler</span>
+                    {% endif %}
+                </td>
+                <td><code>MICROSOFT_CLIENT_ID</code></td>
+            </tr>
+            <tr>
+                <td>
+                    <span class="provider-icon google">
+                        <svg viewBox="0 0 24 24" width="16" height="16">
+                            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                        </svg>
+                    </span>
+                    Google
+                </td>
+                <td>
+                    {% if config.get('GOOGLE_CLIENT_ID') %}
+                    <span class="env-status configured">Konfigureret</span>
+                    {% else %}
+                    <span class="env-status missing">Mangler</span>
+                    {% endif %}
+                </td>
+                <td><code>GOOGLE_CLIENT_ID</code></td>
+            </tr>
+            <tr>
+                <td>Apple</td>
+                <td><span class="env-status missing">Ikke implementeret</span></td>
+                <td><code>APPLE_CLIENT_ID</code></td>
+            </tr>
+            <tr>
+                <td>Facebook</td>
+                <td><span class="env-status missing">Ikke implementeret</span></td>
+                <td><code>FACEBOOK_CLIENT_ID</code></td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- Customer Auth Config -->
+<div class="card">
+    <h2>Auth per Kunde</h2>
+    <p style="color: #6b7280; margin-bottom: 20px;">
+        Konfigurer hvilke login-metoder der er tilgængelige for hver kundes brugere.
+    </p>
+
+    {% if customers %}
+    <table>
+        <thead>
+            <tr>
+                <th>Kunde</th>
+                <th>Email/Password</th>
+                <th>Microsoft</th>
+                <th>Google</th>
+                <th>Handling</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for customer in customers %}
+            <tr>
+                <td><strong>{{ customer.name }}</strong></td>
+                <form method="POST" action="/admin/auth-config/customer/{{ customer.id }}">
+                <td>
+                    <div class="provider-toggle">
+                        <input type="checkbox" name="email_password" id="cust_ep_{{ customer.id }}"
+                               {% if customer.auth_providers_parsed.get('email_password', true) %}checked{% endif %}>
+                        <label for="cust_ep_{{ customer.id }}">Aktiv</label>
+                    </div>
+                </td>
+                <td>
+                    <div class="provider-toggle">
+                        <input type="checkbox" name="microsoft" id="cust_ms_{{ customer.id }}"
+                               {% if customer.auth_providers_parsed.get('microsoft', {}).get('enabled') %}checked{% endif %}>
+                        <label for="cust_ms_{{ customer.id }}">Aktiv</label>
+                    </div>
+                </td>
+                <td>
+                    <div class="provider-toggle">
+                        <input type="checkbox" name="google" id="cust_g_{{ customer.id }}"
+                               {% if customer.auth_providers_parsed.get('google', {}).get('enabled') %}checked{% endif %}>
+                        <label for="cust_g_{{ customer.id }}">Aktiv</label>
+                    </div>
+                </td>
+                <td>
+                    <button type="submit" class="btn btn-sm">Gem</button>
+                </td>
+                </form>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="color: #6b7280; text-align: center; padding: 20px;">
+        Ingen kunder oprettet endnu.
+    </p>
+    {% endif %}
+</div>
+
+<!-- Domain Auth Config -->
+<div class="card">
+    <div class="section-divider">
+        <h3>Auth per Domæne (override)</h3>
+    </div>
+    <p style="color: #6b7280; margin-bottom: 20px;">
+        Domæne-specifik konfiguration overskriver kundens standardindstillinger.
+    </p>
+
+    {% if domains %}
+    <table>
+        <thead>
+            <tr>
+                <th>Domæne</th>
+                <th>Kunde</th>
+                <th>Email/Password</th>
+                <th>Microsoft</th>
+                <th>Google</th>
+                <th>Handling</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for domain in domains %}
+            <tr>
+                <td>
+                    <a href="https://{{ domain.domain }}" target="_blank">{{ domain.domain }}</a>
+                </td>
+                <td>{{ domain.customer_name or '(Global)' }}</td>
+                <form method="POST" action="/admin/auth-config/domain/{{ domain.id }}">
+                <td>
+                    <div class="provider-toggle">
+                        <input type="checkbox" name="email_password" id="dom_ep_{{ domain.id }}"
+                               {% if domain.auth_providers_parsed.get('email_password', true) %}checked{% endif %}>
+                        <label for="dom_ep_{{ domain.id }}">Aktiv</label>
+                    </div>
+                </td>
+                <td>
+                    <div class="provider-toggle">
+                        <input type="checkbox" name="microsoft" id="dom_ms_{{ domain.id }}"
+                               {% if domain.auth_providers_parsed.get('microsoft', {}).get('enabled') %}checked{% endif %}>
+                        <label for="dom_ms_{{ domain.id }}">Aktiv</label>
+                    </div>
+                </td>
+                <td>
+                    <div class="provider-toggle">
+                        <input type="checkbox" name="google" id="dom_g_{{ domain.id }}"
+                               {% if domain.auth_providers_parsed.get('google', {}).get('enabled') %}checked{% endif %}>
+                        <label for="dom_g_{{ domain.id }}">Aktiv</label>
+                    </div>
+                </td>
+                <td>
+                    <button type="submit" class="btn btn-sm">Gem</button>
+                </td>
+                </form>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="color: #6b7280; text-align: center; padding: 20px;">
+        Ingen domæner konfigureret endnu.
+    </p>
+    {% endif %}
+</div>
+{% endblock %}

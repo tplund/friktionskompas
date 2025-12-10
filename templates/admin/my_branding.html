@@ -1,0 +1,235 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}Min Branding{% endblock %}
+
+{% block extra_css %}
+<style>
+    .card {
+        background: white;
+        border-radius: 12px;
+        padding: 30px;
+        margin-bottom: 20px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .card h2 {
+        margin-bottom: 20px;
+        color: #1f2937;
+    }
+
+    .domain-card {
+        border: 2px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 24px;
+        margin-bottom: 20px;
+    }
+    .domain-card:hover {
+        border-color: #3b82f6;
+    }
+    .domain-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 15px;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    .domain-header h3 {
+        margin: 0;
+        color: #1f2937;
+    }
+    .domain-header a {
+        color: #6b7280;
+        font-size: 0.875rem;
+    }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+        margin-bottom: 15px;
+    }
+    .form-group {
+        display: flex;
+        flex-direction: column;
+    }
+    .form-group label {
+        margin-bottom: 5px;
+        font-weight: 600;
+        color: #1f2937;
+        font-size: 0.875rem;
+    }
+    .form-group input {
+        padding: 10px;
+        border: 2px solid #e5e7eb;
+        border-radius: 8px;
+        font-size: 1rem;
+    }
+    .form-group input:focus {
+        outline: none;
+        border-color: #3b82f6;
+    }
+    input[type="color"] {
+        height: 42px;
+        cursor: pointer;
+    }
+
+    .btn {
+        background: #3b82f6;
+        color: white;
+        padding: 12px 24px;
+        text-decoration: none;
+        border-radius: 8px;
+        display: inline-block;
+        font-weight: 500;
+        border: none;
+        cursor: pointer;
+        font-size: 0.875rem;
+    }
+    .btn:hover {
+        background: #2563eb;
+    }
+
+    .preview-box {
+        background: #f9fafb;
+        border-radius: 8px;
+        padding: 20px;
+        margin-top: 20px;
+    }
+    .preview-box h4 {
+        margin: 0 0 15px 0;
+        color: #6b7280;
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+    .preview-header {
+        background: var(--brand-color, #475569);
+        padding: 15px 20px;
+        border-radius: 8px;
+        color: white;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+    .preview-logo {
+        width: 40px;
+        height: 40px;
+        background: white;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+    }
+    .preview-logo img {
+        max-width: 100%;
+        max-height: 100%;
+    }
+    .preview-name {
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #6b7280;
+    }
+    .empty-state p {
+        margin: 10px 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Min Branding</h1>
+    <p class="page-subtitle">Tilpas udseendet for dine domæner</p>
+</div>
+
+{% if domains %}
+<div class="card">
+    <h2>Dine domæner</h2>
+
+    {% for domain in domains %}
+    <div class="domain-card">
+        <div class="domain-header">
+            <h3>{{ domain.domain }}</h3>
+            <a href="https://{{ domain.domain }}" target="_blank">Besøg ↗</a>
+        </div>
+
+        <form method="POST" action="/admin/my-branding/{{ domain.id }}/edit">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Firmanavn</label>
+                    <input type="text" name="branding_company_name"
+                           value="{{ domain.branding_company_name or '' }}"
+                           placeholder="Dit firmanavn"
+                           oninput="updatePreview('{{ domain.id }}', this.form)">
+                </div>
+                <div class="form-group">
+                    <label>Primærfarve</label>
+                    <input type="color" name="branding_primary_color"
+                           value="{{ domain.branding_primary_color or '#475569' }}"
+                           oninput="updatePreview('{{ domain.id }}', this.form)">
+                </div>
+                <div class="form-group">
+                    <label>Logo URL</label>
+                    <input type="url" name="branding_logo_url"
+                           value="{{ domain.branding_logo_url or '' }}"
+                           placeholder="https://example.com/logo.png"
+                           oninput="updatePreview('{{ domain.id }}', this.form)">
+                </div>
+            </div>
+
+            <div class="preview-box">
+                <h4>Preview</h4>
+                <div class="preview-header" id="preview-{{ domain.id }}"
+                     style="background: {{ domain.branding_primary_color or '#475569' }}">
+                    <div class="preview-logo">
+                        {% if domain.branding_logo_url %}
+                        <img src="{{ domain.branding_logo_url }}" alt="Logo">
+                        {% else %}
+                        <span style="color: #1f2937;">Logo</span>
+                        {% endif %}
+                    </div>
+                    <span class="preview-name">{{ domain.branding_company_name or 'Firmanavn' }}</span>
+                </div>
+            </div>
+
+            <div style="margin-top: 20px;">
+                <button type="submit" class="btn">Gem ændringer</button>
+            </div>
+        </form>
+    </div>
+    {% endfor %}
+</div>
+
+{% else %}
+<div class="card">
+    <div class="empty-state">
+        <h2>Ingen domæner</h2>
+        <p>Der er ingen domæner tilknyttet din konto.</p>
+        <p>Kontakt system administrator for at få oprettet et domæne.</p>
+    </div>
+</div>
+{% endif %}
+
+<script>
+function updatePreview(domainId, form) {
+    const preview = document.getElementById('preview-' + domainId);
+    const color = form.branding_primary_color.value;
+    const name = form.branding_company_name.value || 'Firmanavn';
+    const logoUrl = form.branding_logo_url.value;
+
+    preview.style.background = color;
+    preview.querySelector('.preview-name').textContent = name;
+
+    const logoContainer = preview.querySelector('.preview-logo');
+    if (logoUrl) {
+        logoContainer.innerHTML = '<img src="' + logoUrl + '" alt="Logo" onerror="this.style.display=\'none\'">';
+    } else {
+        logoContainer.innerHTML = '<span style="color: #1f2937;">Logo</span>';
+    }
+}
+</script>
+{% endblock %}

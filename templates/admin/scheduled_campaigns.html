@@ -1,0 +1,203 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}{{ t('campaign.scheduled_campaigns', 'Planlagte målinger') }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-header {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+        padding: 30px;
+        border-radius: 12px;
+        margin-bottom: 30px;
+    }
+    .page-header h1 {
+        margin-bottom: 10px;
+    }
+    .page-header a {
+        color: white;
+        opacity: 0.9;
+        text-decoration: none;
+    }
+    .card {
+        background: white;
+        border-radius: 12px;
+        padding: 25px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+    }
+    .campaign-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        margin-bottom: 15px;
+        transition: box-shadow 0.2s;
+    }
+    .campaign-item:hover {
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .campaign-info h3 {
+        margin: 0 0 5px 0;
+        color: #1f2937;
+    }
+    .campaign-meta {
+        color: #6b7280;
+        font-size: 0.9rem;
+    }
+    .campaign-meta span {
+        margin-right: 15px;
+    }
+    .scheduled-time {
+        background: #f0fdf4;
+        color: #059669;
+        padding: 8px 15px;
+        border-radius: 6px;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .campaign-actions {
+        display: flex;
+        gap: 10px;
+    }
+    .btn {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        text-decoration: none;
+        display: inline-block;
+    }
+    .btn-primary {
+        background: #3b82f6;
+        color: white;
+    }
+    .btn-danger {
+        background: #ef4444;
+        color: white;
+    }
+    .btn-secondary {
+        background: #6b7280;
+        color: white;
+    }
+    .btn:hover {
+        opacity: 0.9;
+    }
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #6b7280;
+    }
+    .empty-state h2 {
+        color: #9ca3af;
+        margin-bottom: 10px;
+    }
+    .reschedule-form {
+        display: none;
+        background: #f9fafb;
+        padding: 15px;
+        border-radius: 8px;
+        margin-top: 15px;
+    }
+    .reschedule-form.active {
+        display: block;
+    }
+    .reschedule-inputs {
+        display: flex;
+        gap: 10px;
+        align-items: end;
+    }
+    .reschedule-inputs input {
+        padding: 8px;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>📅 {{ t('campaign.scheduled_campaigns', 'Planlagte målinger') }}</h1>
+    <p><a href="/admin/campaign/new">+ {{ t('campaign.new_analysis') }}</a></p>
+</div>
+
+<div class="card">
+    {% if campaigns %}
+        {% for campaign in campaigns %}
+        <div class="campaign-item">
+            <div class="campaign-info">
+                <h3>{{ campaign.name }}</h3>
+                <div class="campaign-meta">
+                    <span>📍 {{ campaign.target_name }}</span>
+                    <span>📁 {{ campaign.period }}</span>
+                    <span>👤 {{ campaign.sender_name or 'HR' }}</span>
+                </div>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 20px;">
+                <div class="scheduled-time">
+                    📅 {{ campaign.scheduled_at[:10] }} kl. {{ campaign.scheduled_at[11:16] }}
+                </div>
+
+                <div class="campaign-actions">
+                    <button class="btn btn-secondary" onclick="toggleReschedule('{{ campaign.id }}')">
+                        ✏️ {{ t('campaign.reschedule', 'Flyt') }}
+                    </button>
+                    <form action="/admin/campaign/{{ campaign.id }}/cancel" method="POST" style="display: inline;"
+                          onsubmit="return confirm('{{ t('campaign.cancel_confirm', 'Er du sikker på at du vil annullere denne planlagte måling?') }}');">
+                        <button type="submit" class="btn btn-danger">
+                            ❌ {{ t('campaign.cancel', 'Annuller') }}
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reschedule form (hidden by default) -->
+        <div id="reschedule-{{ campaign.id }}" class="reschedule-form">
+            <form action="/admin/campaign/{{ campaign.id }}/reschedule" method="POST">
+                <div class="reschedule-inputs">
+                    <div>
+                        <label>{{ t('campaign.new_date', 'Ny dato') }}:</label>
+                        <input type="date" name="new_date" required min="{{ campaign.scheduled_at[:10] }}">
+                    </div>
+                    <div>
+                        <label>{{ t('campaign.new_time', 'Nyt tidspunkt') }}:</label>
+                        <input type="time" name="new_time" value="{{ campaign.scheduled_at[11:16] }}">
+                    </div>
+                    <button type="submit" class="btn btn-primary">{{ t('campaign.save', 'Gem') }}</button>
+                    <button type="button" class="btn btn-secondary" onclick="toggleReschedule('{{ campaign.id }}')">
+                        {{ t('campaign.cancel', 'Annuller') }}
+                    </button>
+                </div>
+            </form>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="empty-state">
+            <h2>📭 {{ t('campaign.no_scheduled', 'Ingen planlagte målinger') }}</h2>
+            <p>{{ t('campaign.no_scheduled_hint', 'Opret en ny måling og vælg "Planlæg til senere" for at schedule den.') }}</p>
+            <a href="/admin/campaign/new" class="btn btn-primary" style="margin-top: 20px;">
+                + {{ t('campaign.new_analysis') }}
+            </a>
+        </div>
+    {% endif %}
+</div>
+
+<script>
+    function toggleReschedule(campaignId) {
+        const form = document.getElementById('reschedule-' + campaignId);
+        form.classList.toggle('active');
+
+        // Set min date to today
+        const dateInput = form.querySelector('input[type="date"]');
+        const today = new Date().toISOString().split('T')[0];
+        dateInput.min = today;
+    }
+</script>
+{% endblock %}
