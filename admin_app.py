@@ -23,7 +23,7 @@ from analysis import (
 )
 from db_multitenant import (
     authenticate_user, create_customer, create_user, list_customers,
-    list_users, get_customer_filter, init_multitenant_db, get_customer,
+    list_users, get_customer_filter, init_multitenant_db, get_customer, update_customer,
     get_domain_config, list_domains, create_domain, update_domain, delete_domain,
     generate_email_code, verify_email_code, find_user_by_email, create_b2c_user,
     get_or_create_b2c_customer, authenticate_by_email_code, reset_password_with_code
@@ -2076,6 +2076,38 @@ def create_new_customer():
 
     flash(f'Customer "{name}" oprettet!', 'success')
     return redirect(url_for('manage_customers'))
+
+
+@app.route('/admin/customer/<customer_id>/email-settings', methods=['GET', 'POST'])
+@admin_required
+def customer_email_settings(customer_id):
+    """Email-indstillinger for en kunde - kun admin"""
+    import os
+
+    customer = get_customer(customer_id)
+    if not customer:
+        flash('Kunde ikke fundet', 'error')
+        return redirect(url_for('manage_customers'))
+
+    if request.method == 'POST':
+        email_from_address = request.form.get('email_from_address', '').strip() or None
+        email_from_name = request.form.get('email_from_name', '').strip() or None
+
+        update_customer(customer_id,
+                       email_from_address=email_from_address,
+                       email_from_name=email_from_name)
+
+        flash(t('email_settings.saved', 'Email-indstillinger gemt!'), 'success')
+        return redirect(url_for('customer_email_settings', customer_id=customer_id))
+
+    # Default values fra environment
+    default_from_email = os.getenv('FROM_EMAIL', 'info@friktionskompasset.dk')
+    default_from_name = os.getenv('FROM_NAME', 'Friktionskompasset')
+
+    return render_template('admin/email_settings.html',
+                         customer=customer,
+                         default_from_email=default_from_email,
+                         default_from_name=default_from_name)
 
 
 @app.route('/admin/user/new', methods=['POST'])

@@ -15,9 +15,35 @@ load_dotenv()
 # Mailjet API credentials (sæt som environment variables)
 MAILJET_API_KEY = os.getenv('MAILJET_API_KEY', '')
 MAILJET_API_SECRET = os.getenv('MAILJET_API_SECRET', '')
-FROM_EMAIL = os.getenv('FROM_EMAIL', 'support@activatelms.com')
-FROM_NAME = os.getenv('FROM_NAME', 'Friktionskompasset')
+DEFAULT_FROM_EMAIL = os.getenv('FROM_EMAIL', 'info@friktionskompasset.dk')
+DEFAULT_FROM_NAME = os.getenv('FROM_NAME', 'Friktionskompasset')
 BASE_URL = os.getenv('BASE_URL', 'https://friktionskompas.onrender.com')
+
+# Legacy aliases for backwards compatibility
+FROM_EMAIL = DEFAULT_FROM_EMAIL
+FROM_NAME = DEFAULT_FROM_NAME
+
+
+def get_email_sender(customer_id: str = None) -> Dict[str, str]:
+    """
+    Hent email-afsender for en kunde.
+    Returnerer {'email': '...', 'name': '...'} dict til Mailjet.
+    """
+    if customer_id:
+        try:
+            from db_multitenant import get_customer_email_config
+            config = get_customer_email_config(customer_id)
+            return {
+                'Email': config['from_address'],
+                'Name': config['from_name']
+            }
+        except Exception as e:
+            print(f"[Mailjet] Error getting customer email config: {e}")
+
+    return {
+        'Email': DEFAULT_FROM_EMAIL,
+        'Name': DEFAULT_FROM_NAME
+    }
 
 # Initialize Mailjet client
 mailjet = Client(auth=(MAILJET_API_KEY, MAILJET_API_SECRET), version='v3.1')
@@ -899,7 +925,7 @@ def render_template(template: Dict, variables: Dict, language: str = 'da') -> Di
 
 
 def send_email_invitation(to_email: str, token: str, campaign_name: str,
-                         sender_name: str = "HR", customer_id: int = None,
+                         sender_name: str = "HR", customer_id: str = None,
                          language: str = 'da') -> bool:
     """
     Send email invitation med magic link
@@ -909,7 +935,7 @@ def send_email_invitation(to_email: str, token: str, campaign_name: str,
         token: Survey token
         campaign_name: Name of the campaign
         sender_name: Name of sender (default "HR")
-        customer_id: Optional customer ID for custom templates
+        customer_id: Optional customer ID for custom templates and email sender
         language: Language code ('da' or 'en', default 'da')
     """
     survey_url = f"{BASE_URL}/s/{token}"
@@ -924,13 +950,13 @@ def send_email_invitation(to_email: str, token: str, campaign_name: str,
         'campaign_name': campaign_name
     }, language)
 
+    # Get customer-specific email sender
+    email_sender = get_email_sender(customer_id)
+
     data = {
         'Messages': [
             {
-                "From": {
-                    "Email": FROM_EMAIL,
-                    "Name": FROM_NAME
-                },
+                "From": email_sender,
                 "To": [
                     {
                         "Email": to_email
@@ -994,7 +1020,7 @@ Mvh {sender_name}"""
 
 def send_reminder_email(to_email: str, token: str, campaign_name: str,
                        responses_so_far: int, sender_name: str = "HR",
-                       language: str = 'da') -> bool:
+                       customer_id: str = None, language: str = 'da') -> bool:
     """
     Send reminder email hvis folk ikke har svaret endnu
 
@@ -1004,6 +1030,7 @@ def send_reminder_email(to_email: str, token: str, campaign_name: str,
         campaign_name: Name of the campaign
         responses_so_far: Number of responses received
         sender_name: Name of sender (default "HR")
+        customer_id: Optional customer ID for email sender
         language: Language code ('da' or 'en', default 'da')
     """
     survey_url = f"{BASE_URL}/s/{token}"
@@ -1018,13 +1045,13 @@ def send_reminder_email(to_email: str, token: str, campaign_name: str,
         'responses_count': responses_so_far
     }, language)
 
+    # Get customer-specific email sender
+    email_sender = get_email_sender(customer_id)
+
     data = {
         'Messages': [
             {
-                "From": {
-                    "Email": FROM_EMAIL,
-                    "Name": FROM_NAME
-                },
+                "From": email_sender,
                 "To": [
                     {
                         "Email": to_email
@@ -1115,7 +1142,7 @@ def send_campaign_batch(contacts: List[Dict], tokens: List[str],
 
 def send_profil_invitation(to_email: str, session_id: str, person_name: str = None,
                           context: str = "general", sender_name: str = "HR",
-                          language: str = 'da') -> bool:
+                          customer_id: str = None, language: str = 'da') -> bool:
     """
     Send email invitation til friktionsprofil
 
@@ -1125,6 +1152,7 @@ def send_profil_invitation(to_email: str, session_id: str, person_name: str = No
         person_name: Optional name for personalized greeting
         context: Context type (general, mus, coaching, konflikt, onboarding)
         sender_name: Name of sender (default "HR")
+        customer_id: Optional customer ID for email sender
         language: Language code ('da' or 'en', default 'da')
     """
     survey_url = f"{BASE_URL}/profil/{session_id}"
@@ -1166,13 +1194,13 @@ def send_profil_invitation(to_email: str, session_id: str, person_name: str = No
         'context_text': context_text
     }, language)
 
+    # Get customer-specific email sender
+    email_sender = get_email_sender(customer_id)
+
     data = {
         'Messages': [
             {
-                "From": {
-                    "Email": FROM_EMAIL,
-                    "Name": FROM_NAME
-                },
+                "From": email_sender,
                 "To": [
                     {
                         "Email": to_email
@@ -1248,6 +1276,7 @@ def send_campaign_completed_notification(
     responses_count: int,
     tokens_sent: int,
     organization_name: str,
+    customer_id: str = None,
     language: str = 'da'
 ) -> bool:
     """
@@ -1261,6 +1290,7 @@ def send_campaign_completed_notification(
         responses_count: Number of responses received
         tokens_sent: Total number of invitations sent
         organization_name: Name of the target organization
+        customer_id: Optional customer ID for email sender
         language: Language code ('da' or 'en', default 'da')
     """
     results_url = f"{BASE_URL}/admin/campaign/{campaign_id}/detailed"
@@ -1280,13 +1310,13 @@ def send_campaign_completed_notification(
         'results_url': results_url
     }, language)
 
+    # Get customer-specific email sender
+    email_sender = get_email_sender(customer_id)
+
     data = {
         'Messages': [
             {
-                "From": {
-                    "Email": FROM_EMAIL,
-                    "Name": FROM_NAME
-                },
+                "From": email_sender,
                 "To": [
                     {
                         "Email": to_email

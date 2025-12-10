@@ -160,6 +160,17 @@ def init_multitenant_db():
                 ALTER TABLE customers ADD COLUMN auth_providers TEXT DEFAULT '{"email_password": true}'
             """)
 
+        # Tilføj email afsender kolonner til customers hvis de ikke findes
+        if 'email_from_address' not in customer_column_names:
+            conn.execute("""
+                ALTER TABLE customers ADD COLUMN email_from_address TEXT
+            """)
+
+        if 'email_from_name' not in customer_column_names:
+            conn.execute("""
+                ALTER TABLE customers ADD COLUMN email_from_name TEXT
+            """)
+
         # Tilføj auth_providers kolonne til domains hvis den ikke findes
         domain_columns = conn.execute("PRAGMA table_info(domains)").fetchall()
         domain_column_names = [col['name'] for col in domain_columns]
@@ -324,6 +335,58 @@ def get_customer(customer_id: str) -> Optional[Dict]:
         ).fetchone()
 
         return dict(row) if row else None
+
+
+def update_customer(customer_id: str, **kwargs) -> bool:
+    """Opdater customer felter"""
+    allowed_fields = ['name', 'contact_email', 'email_from_address', 'email_from_name', 'auth_providers', 'is_active']
+    updates = {k: v for k, v in kwargs.items() if k in allowed_fields}
+
+    if not updates:
+        return False
+
+    with get_db() as conn:
+        set_clause = ', '.join([f"{k} = ?" for k in updates.keys()])
+        values = list(updates.values()) + [customer_id]
+
+        conn.execute(f"""
+            UPDATE customers SET {set_clause} WHERE id = ?
+        """, values)
+
+    return True
+
+
+def get_customer_email_config(customer_id: str) -> Dict:
+    """
+    Hent email-afsender konfiguration for en kunde.
+    Returnerer default værdier hvis ikke sat.
+    """
+    import os
+    default_from_email = os.getenv('FROM_EMAIL', 'info@friktionskompasset.dk')
+    default_from_name = os.getenv('FROM_NAME', 'Friktionskompasset')
+
+    if not customer_id:
+        return {
+            'from_address': default_from_email,
+            'from_name': default_from_name
+        }
+
+    with get_db() as conn:
+        row = conn.execute("""
+            SELECT email_from_address, email_from_name
+            FROM customers WHERE id = ?
+        """, (customer_id,)).fetchone()
+
+        if row and row['email_from_address']:
+            return {
+                'from_address': row['email_from_address'],
+                'from_name': row['email_from_name'] or default_from_name
+            }
+
+    return {
+        'from_address': default_from_email,
+        'from_name': default_from_name
+    }
 
 
 def list_customers() -> list:

@@ -30,16 +30,21 @@ def get_user_language():
     return DEFAULT_LANGUAGE
 
 
-def t(key, **kwargs):
+def t(key, default=None, **kwargs):
     """
     Oversæt en streng baseret på brugerens sprog.
 
     Brug:
         t('nav.dashboard')
+        t('nav.planlagte', 'Planlagte')  # med default værdi
         t('welcome', name='John')
     """
     lang = get_user_language()
     translation = get_translation(key, lang)
+
+    # Brug default hvis oversættelse ikke fundet (returnerer key)
+    if translation == key and default:
+        translation = default
 
     if kwargs:
         try:
@@ -342,6 +347,45 @@ INITIAL_TRANSLATIONS = {
     'field.mening': {'da': 'Mening', 'en': 'Meaning'},
     'field.kan': {'da': 'Kan', 'en': 'Capability'},
     'field.besvaer': {'da': 'Besvær', 'en': 'Difficulty'},
+
+    # Email Settings
+    'email_settings.title': {'da': 'Email-indstillinger', 'en': 'Email Settings'},
+    'email_settings.subtitle': {'da': 'Konfigurer afsender-email for målingsinvitationer sendt til denne kundes medarbejdere.', 'en': 'Configure sender email for survey invitations sent to this customer\'s employees.'},
+    'email_settings.customer': {'da': 'Kunde', 'en': 'Customer'},
+    'email_settings.current_sender': {'da': 'Nuværende afsender', 'en': 'Current sender'},
+    'email_settings.configured': {'da': 'Konfigureret', 'en': 'Configured'},
+    'email_settings.using_default': {'da': 'Bruger standard', 'en': 'Using default'},
+    'email_settings.from_address': {'da': 'Afsender email-adresse', 'en': 'Sender email address'},
+    'email_settings.from_address_hint': {'da': 'F.eks. noreply@jeres-domæne.dk eller hr@jeres-virksomhed.dk', 'en': 'E.g. noreply@your-domain.com or hr@your-company.com'},
+    'email_settings.from_name': {'da': 'Afsender navn', 'en': 'Sender name'},
+    'email_settings.from_name_hint': {'da': 'Navnet der vises som afsender i modtagerens indbakke', 'en': 'The name shown as sender in recipient\'s inbox'},
+    'email_settings.saved': {'da': 'Email-indstillinger gemt!', 'en': 'Email settings saved!'},
+    'email_settings.dns_setup': {'da': 'DNS Opsætning (SPF & DKIM)', 'en': 'DNS Setup (SPF & DKIM)'},
+    'email_settings.important': {'da': 'Vigtigt', 'en': 'Important'},
+    'email_settings.dns_warning': {'da': 'For at emails ikke havner i spam, skal dit domæne have korrekte SPF og DKIM records. Kontakt din IT-afdeling eller domæne-administrator for at få disse tilføjet.', 'en': 'To prevent emails from going to spam, your domain needs correct SPF and DKIM records. Contact your IT department or domain administrator to add these.'},
+    'email_settings.what_to_setup': {'da': 'Hvad skal konfigureres?', 'en': 'What needs to be configured?'},
+    'email_settings.dns_intro': {'da': 'Vi bruger Mailjet til at sende emails. For at dit domæne kan sende via Mailjet, skal følgende DNS records tilføjes:', 'en': 'We use Mailjet to send emails. For your domain to send via Mailjet, the following DNS records need to be added:'},
+    'email_settings.spf_record': {'da': 'SPF Record', 'en': 'SPF Record'},
+    'email_settings.spf_description': {'da': 'SPF fortæller email-servere, at Mailjet har tilladelse til at sende emails på vegne af dit domæne.', 'en': 'SPF tells email servers that Mailjet is allowed to send emails on behalf of your domain.'},
+    'email_settings.spf_note': {'da': 'Hvis du allerede har en SPF record, tilføj "include:spf.mailjet.com" før "~all" eller "-all"', 'en': 'If you already have an SPF record, add "include:spf.mailjet.com" before "~all" or "-all"'},
+    'email_settings.dkim_record': {'da': 'DKIM Record', 'en': 'DKIM Record'},
+    'email_settings.dkim_description': {'da': 'DKIM signerer emails digitalt og beviser, at de ikke er blevet ændret undervejs.', 'en': 'DKIM digitally signs emails and proves they haven\'t been altered in transit.'},
+    'email_settings.setup_steps': {'da': 'Opsætnings-guide', 'en': 'Setup Guide'},
+    'email_settings.step1_title': {'da': 'Tilføj afsender i Mailjet', 'en': 'Add sender in Mailjet'},
+    'email_settings.step1_desc': {'da': 'Log ind på Mailjet og tilføj din email-adresse som godkendt afsender under "Sender domains & addresses".', 'en': 'Log in to Mailjet and add your email address as an approved sender under "Sender domains & addresses".'},
+    'email_settings.step2_title': {'da': 'Verificer domænet', 'en': 'Verify domain'},
+    'email_settings.step2_desc': {'da': 'Mailjet viser dig de DNS records (SPF + DKIM), du skal tilføje. Kopiér disse værdier.', 'en': 'Mailjet shows you the DNS records (SPF + DKIM) you need to add. Copy these values.'},
+    'email_settings.step3_title': {'da': 'Tilføj DNS records', 'en': 'Add DNS records'},
+    'email_settings.step3_desc': {'da': 'Log ind hos din domæne-udbyder (f.eks. One.com, Simply, GoDaddy) og tilføj TXT records for SPF og DKIM.', 'en': 'Log in to your domain provider (e.g. GoDaddy, Cloudflare, Namecheap) and add TXT records for SPF and DKIM.'},
+    'email_settings.step4_title': {'da': 'Bekræft i Mailjet', 'en': 'Confirm in Mailjet'},
+    'email_settings.step4_desc': {'da': 'Gå tilbage til Mailjet og klik "Check DNS" for at verificere, at records er korrekt konfigureret. Dette kan tage op til 24 timer.', 'en': 'Go back to Mailjet and click "Check DNS" to verify records are correctly configured. This can take up to 24 hours.'},
+    'email_settings.step5_title': {'da': 'Konfigurer her', 'en': 'Configure here'},
+    'email_settings.step5_desc': {'da': 'Når domænet er verificeret i Mailjet, indtast email-adressen i formularen ovenfor.', 'en': 'Once the domain is verified in Mailjet, enter the email address in the form above.'},
+    'email_settings.tips': {'da': 'Tips', 'en': 'Tips'},
+    'email_settings.tip1': {'da': 'Brug en "noreply@" adresse hvis I ikke vil modtage svar', 'en': 'Use a "noreply@" address if you don\'t want to receive replies'},
+    'email_settings.tip2': {'da': 'Brug et genkendeligt navn som afsender, f.eks. "HR Afdeling" eller virksomhedsnavnet', 'en': 'Use a recognizable sender name, e.g. "HR Department" or company name'},
+    'email_settings.tip3': {'da': 'Test altid ved at sende en test-invitation til dig selv efter opsætning', 'en': 'Always test by sending a test invitation to yourself after setup'},
+    'customers.email_settings': {'da': 'Email', 'en': 'Email'},
 }
 
 

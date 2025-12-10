@@ -1,0 +1,323 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}{{ t('email_settings.title', 'Email-indstillinger') }} - {{ customer.name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .card {
+        background: white;
+        border-radius: 12px;
+        padding: 30px;
+        margin-bottom: 20px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .card h2 {
+        margin-bottom: 20px;
+        color: #1f2937;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .card h3 {
+        color: #374151;
+        margin-top: 25px;
+        margin-bottom: 15px;
+        font-size: 1rem;
+    }
+    .form-group {
+        margin-bottom: 20px;
+    }
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: #1f2937;
+        font-size: 0.875rem;
+    }
+    .form-group input {
+        width: 100%;
+        max-width: 400px;
+        padding: 12px;
+        border: 2px solid #e5e7eb;
+        border-radius: 8px;
+        font-size: 1rem;
+    }
+    .form-group input:focus {
+        outline: none;
+        border-color: #3b82f6;
+    }
+    .form-group .hint {
+        margin-top: 5px;
+        font-size: 0.8rem;
+        color: #6b7280;
+    }
+    .btn {
+        background: linear-gradient(135deg, #475569 0%, #334155 100%);
+        color: white;
+        padding: 12px 24px;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(71, 85, 105, 0.3);
+    }
+    .btn-secondary {
+        background: #e5e7eb;
+        color: #1f2937;
+    }
+    .btn-secondary:hover {
+        background: #d1d5db;
+        box-shadow: none;
+    }
+    .info-box {
+        background: #f0f9ff;
+        border: 1px solid #0ea5e9;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 25px;
+    }
+    .info-box h4 {
+        color: #0369a1;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .info-box p {
+        color: #0c4a6e;
+        font-size: 0.875rem;
+        margin-bottom: 8px;
+    }
+    .info-box ul {
+        margin: 10px 0;
+        padding-left: 20px;
+        font-size: 0.875rem;
+        color: #0c4a6e;
+    }
+    .info-box li {
+        margin-bottom: 5px;
+    }
+    .warning-box {
+        background: #fef3c7;
+        border: 1px solid #f59e0b;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 25px;
+    }
+    .warning-box h4 {
+        color: #b45309;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .warning-box p {
+        color: #92400e;
+        font-size: 0.875rem;
+        margin-bottom: 8px;
+    }
+    .code-block {
+        background: #1e293b;
+        color: #e2e8f0;
+        padding: 15px;
+        border-radius: 6px;
+        font-family: 'Consolas', 'Monaco', monospace;
+        font-size: 0.8rem;
+        overflow-x: auto;
+        margin: 10px 0;
+    }
+    .code-block .comment {
+        color: #94a3b8;
+    }
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    .status-configured {
+        background: #d1fae5;
+        color: #065f46;
+    }
+    .status-default {
+        background: #e5e7eb;
+        color: #4b5563;
+    }
+    .current-settings {
+        background: #f9fafb;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+    .current-settings p {
+        margin: 5px 0;
+        font-size: 0.875rem;
+    }
+    .current-settings strong {
+        color: #1f2937;
+    }
+    .steps {
+        counter-reset: step;
+    }
+    .step {
+        position: relative;
+        padding-left: 40px;
+        margin-bottom: 20px;
+    }
+    .step::before {
+        counter-increment: step;
+        content: counter(step);
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 28px;
+        height: 28px;
+        background: #0ea5e9;
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 0.875rem;
+    }
+    .step h5 {
+        color: #1f2937;
+        margin-bottom: 8px;
+    }
+    .step p {
+        color: #6b7280;
+        font-size: 0.875rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>
+        <span>📧</span>
+        {{ t('email_settings.title', 'Email-indstillinger') }}
+    </h2>
+    <p style="color: #6b7280; margin-bottom: 20px;">
+        {{ t('email_settings.subtitle', 'Konfigurer afsender-email for målingsinvitationer sendt til denne kundes medarbejdere.') }}
+    </p>
+
+    <div class="current-settings">
+        <p><strong>{{ t('email_settings.customer', 'Kunde') }}:</strong> {{ customer.name }}</p>
+        <p>
+            <strong>{{ t('email_settings.current_sender', 'Nuværende afsender') }}:</strong>
+            {% if customer.email_from_address %}
+                {{ customer.email_from_name or customer.name }} &lt;{{ customer.email_from_address }}&gt;
+                <span class="status-badge status-configured">✓ {{ t('email_settings.configured', 'Konfigureret') }}</span>
+            {% else %}
+                {{ default_from_name }} &lt;{{ default_from_email }}&gt;
+                <span class="status-badge status-default">{{ t('email_settings.using_default', 'Bruger standard') }}</span>
+            {% endif %}
+        </p>
+    </div>
+
+    <form method="POST">
+        <div class="form-group">
+            <label for="email_from_address">{{ t('email_settings.from_address', 'Afsender email-adresse') }}</label>
+            <input type="email" id="email_from_address" name="email_from_address"
+                   value="{{ customer.email_from_address or '' }}"
+                   placeholder="noreply@jeres-domæne.dk">
+            <p class="hint">{{ t('email_settings.from_address_hint', 'F.eks. noreply@jeres-domæne.dk eller hr@jeres-virksomhed.dk') }}</p>
+        </div>
+
+        <div class="form-group">
+            <label for="email_from_name">{{ t('email_settings.from_name', 'Afsender navn') }}</label>
+            <input type="text" id="email_from_name" name="email_from_name"
+                   value="{{ customer.email_from_name or '' }}"
+                   placeholder="{{ customer.name }}">
+            <p class="hint">{{ t('email_settings.from_name_hint', 'Navnet der vises som afsender i modtagerens indbakke') }}</p>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 25px;">
+            <button type="submit" class="btn">{{ t('btn.save', 'Gem indstillinger') }}</button>
+            <a href="{{ url_for('manage_customers') }}" class="btn btn-secondary">{{ t('btn.cancel', 'Annuller') }}</a>
+        </div>
+    </form>
+</div>
+
+<div class="card">
+    <h2>
+        <span>🔐</span>
+        {{ t('email_settings.dns_setup', 'DNS Opsætning (SPF & DKIM)') }}
+    </h2>
+
+    <div class="warning-box">
+        <h4>⚠️ {{ t('email_settings.important', 'Vigtigt') }}</h4>
+        <p>{{ t('email_settings.dns_warning', 'For at emails ikke havner i spam, skal dit domæne have korrekte SPF og DKIM records. Kontakt din IT-afdeling eller domæne-administrator for at få disse tilføjet.') }}</p>
+    </div>
+
+    <div class="info-box">
+        <h4>📋 {{ t('email_settings.what_to_setup', 'Hvad skal konfigureres?') }}</h4>
+        <p>{{ t('email_settings.dns_intro', 'Vi bruger Mailjet til at sende emails. For at dit domæne kan sende via Mailjet, skal følgende DNS records tilføjes:') }}</p>
+    </div>
+
+    <h3>{{ t('email_settings.spf_record', 'SPF Record') }}</h3>
+    <p style="font-size: 0.875rem; color: #6b7280; margin-bottom: 10px;">
+        {{ t('email_settings.spf_description', 'SPF fortæller email-servere, at Mailjet har tilladelse til at sende emails på vegne af dit domæne.') }}
+    </p>
+    <div class="code-block">
+        <span class="comment"># Tilføj dette til dit domænes TXT record:</span><br>
+        v=spf1 include:spf.mailjet.com ~all
+    </div>
+    <p style="font-size: 0.8rem; color: #6b7280; margin-top: 5px;">
+        {{ t('email_settings.spf_note', 'Hvis du allerede har en SPF record, tilføj "include:spf.mailjet.com" før "~all" eller "-all"') }}
+    </p>
+
+    <h3>{{ t('email_settings.dkim_record', 'DKIM Record') }}</h3>
+    <p style="font-size: 0.875rem; color: #6b7280; margin-bottom: 10px;">
+        {{ t('email_settings.dkim_description', 'DKIM signerer emails digitalt og beviser, at de ikke er blevet ændret undervejs.') }}
+    </p>
+    <div class="code-block">
+        <span class="comment"># DKIM selector og nøgle fås fra Mailjet:</span><br>
+        1. Log ind på <a href="https://app.mailjet.com/account/sender" target="_blank" style="color: #60a5fa;">app.mailjet.com</a><br>
+        2. Gå til "Sender domains &amp; addresses"<br>
+        3. Klik på dit domæne<br>
+        4. Kopier DKIM record værdien
+    </div>
+
+    <h3 style="margin-top: 30px;">{{ t('email_settings.setup_steps', 'Opsætnings-guide') }}</h3>
+    <div class="steps">
+        <div class="step">
+            <h5>{{ t('email_settings.step1_title', 'Tilføj afsender i Mailjet') }}</h5>
+            <p>{{ t('email_settings.step1_desc', 'Log ind på Mailjet og tilføj din email-adresse som godkendt afsender under "Sender domains & addresses".') }}</p>
+        </div>
+        <div class="step">
+            <h5>{{ t('email_settings.step2_title', 'Verificer domænet') }}</h5>
+            <p>{{ t('email_settings.step2_desc', 'Mailjet viser dig de DNS records (SPF + DKIM), du skal tilføje. Kopiér disse værdier.') }}</p>
+        </div>
+        <div class="step">
+            <h5>{{ t('email_settings.step3_title', 'Tilføj DNS records') }}</h5>
+            <p>{{ t('email_settings.step3_desc', 'Log ind hos din domæne-udbyder (f.eks. One.com, Simply, GoDaddy) og tilføj TXT records for SPF og DKIM.') }}</p>
+        </div>
+        <div class="step">
+            <h5>{{ t('email_settings.step4_title', 'Bekræft i Mailjet') }}</h5>
+            <p>{{ t('email_settings.step4_desc', 'Gå tilbage til Mailjet og klik "Check DNS" for at verificere, at records er korrekt konfigureret. Dette kan tage op til 24 timer.') }}</p>
+        </div>
+        <div class="step">
+            <h5>{{ t('email_settings.step5_title', 'Konfigurer her') }}</h5>
+            <p>{{ t('email_settings.step5_desc', 'Når domænet er verificeret i Mailjet, indtast email-adressen i formularen ovenfor.') }}</p>
+        </div>
+    </div>
+
+    <div class="info-box" style="margin-top: 25px;">
+        <h4>💡 {{ t('email_settings.tips', 'Tips') }}</h4>
+        <ul>
+            <li>{{ t('email_settings.tip1', 'Brug en "noreply@" adresse hvis I ikke vil modtage svar') }}</li>
+            <li>{{ t('email_settings.tip2', 'Brug et genkendeligt navn som afsender, f.eks. "HR Afdeling" eller virksomhedsnavnet') }}</li>
+            <li>{{ t('email_settings.tip3', 'Test altid ved at sende en test-invitation til dig selv efter opsætning') }}</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}
