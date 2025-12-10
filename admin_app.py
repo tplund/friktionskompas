@@ -645,6 +645,72 @@ def admin_seed_translations():
     return redirect(request.referrer or url_for('admin_home'))
 
 
+@app.route('/admin/seed-domains', methods=['POST'])
+def admin_seed_domains():
+    """Seed standard domæner til database"""
+    import json
+    import secrets
+
+    # Domæne konfigurationer
+    domains_config = [
+        {
+            'domain': 'friktionskompasset.dk',
+            'default_language': 'da',
+            'auth_providers': {
+                'email_password': True,
+                'microsoft': {'enabled': True},
+                'google': {'enabled': True},
+                'apple': {'enabled': True},
+                'facebook': {'enabled': True}
+            }
+        },
+        {
+            'domain': 'frictioncompass.com',
+            'default_language': 'en',
+            'auth_providers': {
+                'email_password': True,
+                'microsoft': {'enabled': False},
+                'google': {'enabled': True},
+                'apple': {'enabled': False},
+                'facebook': {'enabled': False}
+            }
+        }
+    ]
+
+    conn = get_db()
+    created = 0
+    updated = 0
+
+    for config in domains_config:
+        # Check if domain exists
+        existing = conn.execute('SELECT id FROM domains WHERE domain = ?',
+                               (config['domain'],)).fetchone()
+
+        if existing:
+            # Update existing
+            conn.execute('''
+                UPDATE domains
+                SET default_language = ?, auth_providers = ?, is_active = 1
+                WHERE domain = ?
+            ''', (config['default_language'],
+                  json.dumps(config['auth_providers']),
+                  config['domain']))
+            updated += 1
+        else:
+            # Create new
+            domain_id = 'dom-' + secrets.token_urlsafe(8)
+            conn.execute('''
+                INSERT INTO domains (id, domain, default_language, auth_providers, is_active)
+                VALUES (?, ?, ?, ?, 1)
+            ''', (domain_id, config['domain'], config['default_language'],
+                  json.dumps(config['auth_providers'])))
+            created += 1
+
+    conn.commit()
+    flash(f'Domæner seedet: {created} oprettet, {updated} opdateret', 'success')
+    return redirect(request.referrer or url_for('admin_domains'))
+
+
 @app.route('/admin/delete-all-data', methods=['POST'])
 @admin_required
 def delete_all_data():
