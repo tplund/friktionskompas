@@ -63,6 +63,8 @@
 - [x] ~~**Google OAuth** - routes og callback~~
 - [x] ~~**Login-side opdateret** - Viser OAuth buttons baseret på domæne-config~~
 - [x] ~~**Admin UI til auth konfiguration** - Konfigurer providers per kunde/domæne (superadmin)~~
+- [x] ~~**Domæne-config** - friktionskompasset.dk (alle providers), frictioncompass.com (kun Google)~~
+- [ ] **Opsæt OAuth credentials på Render** - Opret apps hos Google/Microsoft, sæt env vars
 - [ ] **Apple Sign-In** - B2C (iOS brugere)
 - [ ] **Facebook Login** - B2C
 - [ ] **SAML SSO** - Enterprise kunder
