@@ -70,6 +70,23 @@ python -m pytest tests/ -k "login" -v
 - Brug "analyse" for resultater/rapporter
 - Interne variabelnavne må gerne være engelske
 
+### Oversættelser (i18n)
+- Oversættelser gemmes i **databasen** (translations table), IKKE kun i Python-koden
+- `translations.py` indeholder `INITIAL_TRANSLATIONS` dict med alle oversættelser
+- **VIGTIGT**: Når du tilføjer/ændrer oversættelser i `INITIAL_TRANSLATIONS`:
+  1. Opdater `translations.py` med de nye keys
+  2. Commit og push til GitHub
+  3. Efter deployment: Kald `POST /admin/seed-translations` for at opdatere databasen
+  4. Alternativt: Besøg `/admin/db-status` og klik "Seed Translations" knappen
+- `seed_translations()` kaldes automatisk ved app start, men oversættelser opdateres KUN hvis de ikke allerede eksisterer
+- For at tvinge opdatering: Kald endpoint manuelt efter deployment
+- **Husk**: Tilføj oversættelser til BÅDE 'da' og 'en' sprog
+
+```bash
+# Seed translations på Render (efter deployment)
+curl -X POST https://friktionskompas-eu.onrender.com/admin/seed-translations
+```
+
 ---
 
 ## KRITISK: Database Konfiguration
@@ -125,6 +142,22 @@ URL: `/admin/cleanup-empty` (kræver admin login)
 ### Problem: Kan ikke logge ind
 - **Årsag**: Bruger eksisterer ikke eller forkert password hash
 - **Løsning**: Opret midlertidig reset route (HUSK AT FJERNE!)
+
+### Problem: Render deployment fejler med "ModuleNotFoundError"
+- **Årsag**: Ny Python-fil oprettet lokalt men IKKE committed til git
+- **Løsning**:
+  1. Kør `git status` for at se untracked filer
+  2. `git add <filnavn>.py` og commit
+  3. Tjek også at dependencies er i `requirements.txt`
+- **VIGTIGT**: Når du opretter nye .py filer, ALTID commit dem med det samme!
+
+### Problem: Oversættelser viser [key.name] i stedet for tekst
+- **Årsag**: Oversættelser mangler i databasen (translations table)
+- **Løsning**:
+  1. Tilføj oversættelser til `INITIAL_TRANSLATIONS` i `translations.py`
+  2. Push til GitHub og vent på deployment
+  3. Kald `POST /admin/seed-translations` for at opdatere databasen
+- **Alternativ**: Besøg `/admin/db-status` og klik "Seed Translations"
 
 ## Worktrees
 - Main repo: `C:\_proj\Friktionskompasset`
