@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ t('login.title') }} - Friktionskompasset</title>
+    <title>{{ t('register.title', 'Opret konto') }} - Friktionskompasset</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -15,7 +15,7 @@
             justify-content: center;
             padding: 20px;
         }
-        .login-container {
+        .container {
             background: white;
             border-radius: 16px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
@@ -89,45 +89,18 @@
             background: #fee2e2;
             color: #991b1b;
         }
-        .links-section {
-            text-align: center;
-            margin-top: 20px;
-            font-size: 0.875rem;
-        }
-        .links-section a {
-            color: #475569;
-            text-decoration: none;
-        }
-        .links-section a:hover {
-            text-decoration: underline;
-        }
-        .register-section {
+        .links {
             text-align: center;
             margin-top: 30px;
             padding-top: 30px;
             border-top: 1px solid #e5e7eb;
-            color: #6b7280;
-            font-size: 0.875rem;
         }
-        .register-section a {
+        .links a {
             color: #475569;
-            font-weight: 600;
-            text-decoration: none;
-        }
-        .register-section a:hover {
-            text-decoration: underline;
-        }
-        .alt-login {
-            text-align: center;
-            margin-top: 15px;
-        }
-        .alt-login a {
-            color: #6b7280;
             text-decoration: none;
             font-size: 0.875rem;
         }
-        .alt-login a:hover {
-            color: #475569;
+        .links a:hover {
             text-decoration: underline;
         }
         /* OAuth Buttons */
@@ -156,42 +129,11 @@
             border-color: #9ca3af;
             background: #f9fafb;
         }
-        .oauth-btn.microsoft {
-            border-color: #00a4ef;
-            color: #00a4ef;
-        }
-        .oauth-btn.microsoft:hover {
-            background: #00a4ef;
-            color: white;
-        }
-        .oauth-btn.google {
-            border-color: #4285f4;
-            color: #4285f4;
-        }
-        .oauth-btn.google:hover {
-            background: #4285f4;
-            color: white;
-        }
-        .oauth-btn.apple {
-            border-color: #000000;
-            color: #000000;
-        }
-        .oauth-btn.apple:hover {
-            background: #000000;
-            color: white;
-        }
-        .oauth-btn.facebook {
-            border-color: #1877f2;
-            color: #1877f2;
-        }
-        .oauth-btn.facebook:hover {
-            background: #1877f2;
-            color: white;
-        }
-        .oauth-btn svg {
-            width: 20px;
-            height: 20px;
-        }
+        .oauth-btn.microsoft { border-color: #00a4ef; color: #00a4ef; }
+        .oauth-btn.microsoft:hover { background: #00a4ef; color: white; }
+        .oauth-btn.google { border-color: #4285f4; color: #4285f4; }
+        .oauth-btn.google:hover { background: #4285f4; color: white; }
+        .oauth-btn svg { width: 20px; height: 20px; }
         .divider {
             display: flex;
             align-items: center;
@@ -212,10 +154,10 @@
     </style>
 </head>
 <body>
-    <div class="login-container">
+    <div class="container">
         <div class="logo">
-            <h1>🏢 Friktionskompasset</h1>
-            <p>Log ind for at fortsætte</p>
+            <h1>Friktionskompasset</h1>
+            <p>{{ t('register.subtitle', 'Opret din gratis konto') }}</p>
         </div>
 
         {% with messages = get_flashed_messages(with_categories=true) %}
@@ -226,10 +168,8 @@
             {% endif %}
         {% endwith %}
 
-        {% if oauth_providers %}
-        <!-- OAuth Login Buttons -->
+        <!-- OAuth Registration -->
         <div class="oauth-buttons">
-            {% if 'microsoft' in oauth_providers %}
             <a href="/auth/microsoft" class="oauth-btn microsoft">
                 <svg viewBox="0 0 21 21" xmlns="http://www.w3.org/2000/svg">
                     <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
@@ -237,11 +177,8 @@
                     <rect x="1" y="11" width="9" height="9" fill="#00a4ef"/>
                     <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
                 </svg>
-                {{ t('login.microsoft', 'Log ind med Microsoft') }}
+                {{ t('register.with_microsoft', 'Fortsæt med Microsoft') }}
             </a>
-            {% endif %}
-
-            {% if 'google' in oauth_providers %}
             <a href="/auth/google" class="oauth-btn google">
                 <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -249,66 +186,31 @@
                     <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
                     <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
                 </svg>
-                {{ t('login.google', 'Log ind med Google') }}
+                {{ t('register.with_google', 'Fortsæt med Google') }}
             </a>
-            {% endif %}
-
-            {% if 'apple' in oauth_providers %}
-            <a href="/auth/apple" class="oauth-btn apple">
-                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path fill="currentColor" d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
-                </svg>
-                {{ t('login.apple', 'Log ind med Apple') }}
-            </a>
-            {% endif %}
-
-            {% if 'facebook' in oauth_providers %}
-            <a href="/auth/facebook" class="oauth-btn facebook">
-                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path fill="currentColor" d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                </svg>
-                {{ t('login.facebook', 'Log ind med Facebook') }}
-            </a>
-            {% endif %}
         </div>
 
-        {% if show_email_password %}
         <div class="divider">
             <span>{{ t('login.or', 'eller') }}</span>
         </div>
-        {% endif %}
-        {% endif %}
 
-        {% if show_email_password is not defined or show_email_password %}
         <form method="POST">
             <div class="form-group">
-                <label for="username">{{ t('login.username') }}</label>
-                <input type="text" id="username" name="username" required autofocus>
+                <label for="name">{{ t('register.name', 'Dit navn') }}</label>
+                <input type="text" id="name" name="name" required autofocus placeholder="{{ t('register.name_placeholder', 'Indtast dit navn') }}">
             </div>
 
             <div class="form-group">
-                <label for="password">{{ t('login.password') }}</label>
-                <input type="password" id="password" name="password" required>
+                <label for="email">{{ t('register.email', 'Email') }}</label>
+                <input type="email" id="email" name="email" required placeholder="{{ t('register.email_placeholder', 'din@email.dk') }}">
             </div>
 
-            <button type="submit" class="btn">{{ t('login.button') }}</button>
-
-            <div class="links-section">
-                <a href="{{ url_for('forgot_password') }}">{{ t('login.forgot_password', 'Glemt password?') }}</a>
-            </div>
+            <button type="submit" class="btn">{{ t('register.button', 'Opret konto') }}</button>
         </form>
 
-        <div class="alt-login">
-            <a href="{{ url_for('email_login') }}">{{ t('login.email_code', 'Log ind med email-kode i stedet') }}</a>
-        </div>
-
-        {% endif %}
-
-        <div class="register-section">
-            {{ t('login.no_account', 'Har du ikke en konto?') }}
-            <a href="{{ url_for('register') }}">{{ t('login.register_link', 'Opret konto') }}</a>
-            <br><br>
-            <a href="{{ url_for('help_page') }}" style="font-weight: normal;">{{ t('login.need_help', 'Brug for hjælp?') }}</a>
+        <div class="links">
+            {{ t('register.have_account', 'Har du allerede en konto?') }}
+            <a href="{{ url_for('login') }}">{{ t('register.login_link', 'Log ind her') }}</a>
         </div>
     </div>
 </body>

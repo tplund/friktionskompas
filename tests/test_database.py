@@ -27,7 +27,7 @@ def _create_test_schema(db_path):
             email TEXT UNIQUE NOT NULL,
             password_hash TEXT NOT NULL,
             name TEXT NOT NULL,
-            role TEXT NOT NULL CHECK(role IN ('admin', 'manager')),
+            role TEXT NOT NULL CHECK(role IN ('superadmin', 'admin', 'manager', 'user')),
             customer_id INTEGER,
             FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
         )

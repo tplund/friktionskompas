@@ -46,6 +46,7 @@ def init_multitenant_db():
         """)
 
         # Users tabel med authentication
+        # Roles: superadmin (global), admin (kunde-admin), manager (enheds-leder), user (B2C bruger)
         conn.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 id TEXT PRIMARY KEY,
@@ -53,7 +54,7 @@ def init_multitenant_db():
                 password_hash TEXT NOT NULL,
                 name TEXT NOT NULL,
                 email TEXT,
-                role TEXT NOT NULL CHECK(role IN ('admin', 'manager')),
+                role TEXT NOT NULL CHECK(role IN ('superadmin', 'admin', 'manager', 'user')),
                 customer_id TEXT,
                 is_active INTEGER DEFAULT 1,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -108,6 +109,66 @@ def init_multitenant_db():
             ON domains(domain)
         """)
 
+        # OAuth links tabel - linker users til OAuth providers
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS user_oauth_links (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                provider TEXT NOT NULL,
+                provider_user_id TEXT NOT NULL,
+                provider_email TEXT,
+                access_token TEXT,
+                refresh_token TEXT,
+                token_expires_at TIMESTAMP,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                UNIQUE(provider, provider_user_id)
+            )
+        """)
+
+        # Index for OAuth lookup
+        conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_oauth_provider_user
+            ON user_oauth_links(provider, provider_user_id)
+        """)
+
+        # Email verification codes tabel - for passwordless login og password reset
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS email_codes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                email TEXT NOT NULL,
+                code TEXT NOT NULL,
+                code_type TEXT NOT NULL CHECK(code_type IN ('login', 'register', 'reset')),
+                expires_at TIMESTAMP NOT NULL,
+                used INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        # Index for email code lookup
+        conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_email_codes_email
+            ON email_codes(email, code_type, used)
+        """)
+
+        # Tilføj auth_providers kolonne til customers hvis den ikke findes
+        customer_columns = conn.execute("PRAGMA table_info(customers)").fetchall()
+        customer_column_names = [col['name'] for col in customer_columns]
+
+        if 'auth_providers' not in customer_column_names:
+            conn.execute("""
+                ALTER TABLE customers ADD COLUMN auth_providers TEXT DEFAULT '{"email_password": true}'
+            """)
+
+        # Tilføj auth_providers kolonne til domains hvis den ikke findes
+        domain_columns = conn.execute("PRAGMA table_info(domains)").fetchall()
+        domain_column_names = [col['name'] for col in domain_columns]
+
+        if 'auth_providers' not in domain_column_names:
+            conn.execute("""
+                ALTER TABLE domains ADD COLUMN auth_providers TEXT
+            """)
+
         # Tilføj language kolonne til users hvis den ikke findes
         user_columns = conn.execute("PRAGMA table_info(users)").fetchall()
         user_column_names = [col['name'] for col in user_columns]
@@ -157,7 +218,52 @@ def init_multitenant_db():
                 ON organizational_units(customer_id)
             """)
 
-        # Opret default admin user hvis ingen users findes
+        # Migration: Opdater users tabel til at understøtte 'superadmin' rolle
+        # SQLite tillader ikke ændring af CHECK constraints, så vi skal migrere tabellen
+        try:
+            # Test om superadmin er tilladt ved at prøve en dummy INSERT
+            conn.execute("INSERT INTO users (id, username, password_hash, name, role) VALUES ('__test__', '__test__', '__test__', '__test__', 'superadmin')")
+            conn.execute("DELETE FROM users WHERE id = '__test__'")
+        except Exception as e:
+            if 'CHECK constraint failed' in str(e):
+                print("[Migration] Migrerer users tabel til at understøtte superadmin rolle...")
+                # Opret ny tabel med korrekt CHECK constraint
+                conn.execute("""
+                    CREATE TABLE IF NOT EXISTS users_new (
+                        id TEXT PRIMARY KEY,
+                        username TEXT UNIQUE NOT NULL,
+                        password_hash TEXT NOT NULL,
+                        name TEXT NOT NULL,
+                        email TEXT,
+                        role TEXT NOT NULL CHECK(role IN ('superadmin', 'admin', 'manager', 'user')),
+                        customer_id TEXT,
+                        is_active INTEGER DEFAULT 1,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        last_login TIMESTAMP,
+                        language TEXT DEFAULT 'da',
+                        FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+                    )
+                """)
+                # Kopier data fra gammel tabel
+                conn.execute("""
+                    INSERT INTO users_new (id, username, password_hash, name, email, role, customer_id, is_active, created_at, last_login)
+                    SELECT id, username, password_hash, name, email, role, customer_id, is_active, created_at, last_login
+                    FROM users
+                """)
+                # Drop gammel tabel og omdøb ny
+                conn.execute("DROP TABLE users")
+                conn.execute("ALTER TABLE users_new RENAME TO users")
+                # Genskab index
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)")
+                print("[Migration] Users tabel migreret!")
+
+        # Migration: Opdater eksisterende 'admin' brugere uden customer_id til 'superadmin'
+        conn.execute("""
+            UPDATE users SET role = 'superadmin'
+            WHERE role = 'admin' AND customer_id IS NULL
+        """)
+
+        # Opret default superadmin user hvis ingen users findes
         user_count = conn.execute("SELECT COUNT(*) as cnt FROM users").fetchone()['cnt']
 
         if user_count == 0:
@@ -168,9 +274,9 @@ def init_multitenant_db():
             conn.execute("""
                 INSERT INTO users (id, username, password_hash, name, email, role, customer_id)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (admin_id, "admin", password_hash, "System Administrator", "admin@friktionskompas.dk", "admin", None))
+            """, (admin_id, "admin", password_hash, "System Administrator", "admin@friktionskompas.dk", "superadmin", None))
 
-            print("Default admin user oprettet:")
+            print("Default superadmin user oprettet:")
             print("   Username: admin")
             print("   Password: admin123")
             print("   ADVARSEL: SKIFT PASSWORD I PRODUKTION!")
@@ -325,14 +431,24 @@ def create_user(username: str, password: str, name: str, email: str,
                 role: str, customer_id: Optional[str] = None) -> str:
     """
     Opret ny user
-    role: 'admin' eller 'manager'
-    customer_id: None for admin, påkrævet for manager
+
+    Roles:
+    - 'superadmin': Global admin, kan se alt (customer_id = None)
+    - 'admin': Kunde-admin, styrer én kunde (customer_id påkrævet)
+    - 'manager': Enheds-leder, kan se resultater (customer_id påkrævet)
+    - 'user': B2C bruger, kan tage tests (customer_id påkrævet)
     """
     if role == 'manager' and not customer_id:
         raise ValueError("Manager skal have en customer_id")
 
-    if role == 'admin' and customer_id:
-        raise ValueError("Admin kan ikke have en customer_id (kan se alle)")
+    if role == 'admin' and not customer_id:
+        raise ValueError("Admin skal have en customer_id (brug superadmin for global adgang)")
+
+    if role == 'superadmin' and customer_id:
+        raise ValueError("Superadmin kan ikke have en customer_id (har adgang til alt)")
+
+    if role == 'user' and not customer_id:
+        raise ValueError("User skal have en customer_id")
 
     user_id = f"user-{secrets.token_urlsafe(8)}"
     password_hash = hash_password(password)
@@ -447,19 +563,221 @@ def get_customer_filter(user_role: str, customer_id: Optional[str]) -> tuple:
     Returns:
         (where_clause, params)
 
+    Roles:
+        - superadmin: Kan se alt (customer_id = None)
+        - admin: Kun egen kunde (customer_id påkrævet)
+        - manager: Kun egen kunde (customer_id påkrævet)
+
     Eksempel:
         where, params = get_customer_filter('manager', 'cust-123')
-        # Returns: ("customer_id = ?", ['cust-123'])
+        # Returns: ("ou.customer_id = ?", ['cust-123'])
 
         sql = f"SELECT * FROM organizational_units WHERE {where}"
         conn.execute(sql, params)
     """
     if customer_id:
-        # Hvis customer_id er sat (manager ELLER admin der impersonates), filtrer på den
+        # Hvis customer_id er sat (admin/manager), filtrer på den
         return ("ou.customer_id = ?", [customer_id])
     else:
-        # Admin uden customer_id kan se alt
+        # Superadmin uden customer_id kan se alt
         return ("1=1", [])
+
+
+# ========================================
+# EMAIL CODE FUNCTIONS (Passwordless login)
+# ========================================
+
+def generate_email_code(email: str, code_type: str = 'login', expires_minutes: int = 15) -> str:
+    """
+    Generer 6-cifret kode til email-verifikation.
+
+    Args:
+        email: Brugerens email
+        code_type: 'login', 'register', eller 'reset'
+        expires_minutes: Koden udløber efter X minutter
+
+    Returns:
+        Den genererede kode
+    """
+    import random
+    from datetime import datetime, timedelta
+
+    # Generer 6-cifret kode
+    code = ''.join([str(random.randint(0, 9)) for _ in range(6)])
+    expires_at = datetime.now() + timedelta(minutes=expires_minutes)
+
+    with get_db() as conn:
+        # Invalider tidligere ubrugte koder for denne email og type
+        conn.execute("""
+            UPDATE email_codes
+            SET used = 1
+            WHERE email = ? AND code_type = ? AND used = 0
+        """, (email.lower(), code_type))
+
+        # Indsæt ny kode
+        conn.execute("""
+            INSERT INTO email_codes (email, code, code_type, expires_at)
+            VALUES (?, ?, ?, ?)
+        """, (email.lower(), code, code_type, expires_at))
+
+    return code
+
+
+def verify_email_code(email: str, code: str, code_type: str = 'login') -> bool:
+    """
+    Verificer email-kode.
+
+    Returns:
+        True hvis koden er gyldig og ikke udløbet
+    """
+    from datetime import datetime
+
+    with get_db() as conn:
+        row = conn.execute("""
+            SELECT id, expires_at FROM email_codes
+            WHERE email = ? AND code = ? AND code_type = ? AND used = 0
+            ORDER BY created_at DESC
+            LIMIT 1
+        """, (email.lower(), code, code_type)).fetchone()
+
+        if not row:
+            return False
+
+        # Check om koden er udløbet
+        expires_at = datetime.fromisoformat(row['expires_at'])
+        if datetime.now() > expires_at:
+            return False
+
+        # Marker koden som brugt
+        conn.execute("UPDATE email_codes SET used = 1 WHERE id = ?", (row['id'],))
+
+        return True
+
+
+def find_user_by_email(email: str) -> Optional[Dict]:
+    """Find bruger via email"""
+    with get_db() as conn:
+        row = conn.execute("""
+            SELECT u.*, c.name as customer_name
+            FROM users u
+            LEFT JOIN customers c ON u.customer_id = c.id
+            WHERE LOWER(u.email) = ? AND u.is_active = 1
+        """, (email.lower(),)).fetchone()
+
+        return dict(row) if row else None
+
+
+def create_b2c_user(email: str, name: str, customer_id: str) -> str:
+    """
+    Opret B2C bruger (user rolle) uden password.
+    Brugeren logger ind via email-kode eller OAuth.
+
+    Returns:
+        user_id
+    """
+    user_id = f"user-{secrets.token_urlsafe(8)}"
+    # OAuth/passwordless brugere får et random "password" de aldrig bruger
+    dummy_password_hash = f"b2c-{secrets.token_urlsafe(32)}"
+
+    with get_db() as conn:
+        conn.execute("""
+            INSERT INTO users (id, username, password_hash, name, email, role, customer_id)
+            VALUES (?, ?, ?, ?, ?, 'user', ?)
+        """, (user_id, email.lower(), dummy_password_hash, name, email.lower(), customer_id))
+
+    return user_id
+
+
+def get_or_create_b2c_customer() -> str:
+    """
+    Hent eller opret B2C kunden til selvregistrerede brugere.
+
+    Returns:
+        customer_id for B2C kunden
+    """
+    B2C_CUSTOMER_NAME = "B2C Brugere"
+
+    with get_db() as conn:
+        # Tjek om B2C kunde allerede eksisterer
+        row = conn.execute("""
+            SELECT id FROM customers WHERE name = ?
+        """, (B2C_CUSTOMER_NAME,)).fetchone()
+
+        if row:
+            return row['id']
+
+        # Opret B2C kunde
+        customer_id = f"cust-b2c-{secrets.token_urlsafe(4)}"
+        auth_providers = {
+            "email_password": False,  # Ingen password login
+            "email_code": True,  # Passwordless med email-kode
+            "microsoft": {"enabled": True},
+            "google": {"enabled": True}
+        }
+
+        conn.execute("""
+            INSERT INTO customers (id, name, contact_email, auth_providers)
+            VALUES (?, ?, ?, ?)
+        """, (customer_id, B2C_CUSTOMER_NAME, "b2c@friktionskompas.dk",
+              __import__('json').dumps(auth_providers)))
+
+        return customer_id
+
+
+def authenticate_by_email_code(email: str, code: str) -> Optional[Dict]:
+    """
+    Autentificer bruger via email-kode.
+
+    Returns:
+        User dict for session, eller None ved fejl
+    """
+    if not verify_email_code(email, code, 'login'):
+        return None
+
+    user = find_user_by_email(email)
+    if not user:
+        return None
+
+    # Opdater last_login
+    with get_db() as conn:
+        conn.execute("""
+            UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?
+        """, (user['id'],))
+
+    return {
+        'id': user['id'],
+        'username': user['username'],
+        'name': user['name'],
+        'email': user['email'],
+        'role': user['role'],
+        'customer_id': user['customer_id'],
+        'customer_name': user.get('customer_name')
+    }
+
+
+def reset_password_with_code(email: str, code: str, new_password: str) -> bool:
+    """
+    Nulstil password med email-kode.
+
+    Returns:
+        True ved succes
+    """
+    if not verify_email_code(email, code, 'reset'):
+        return False
+
+    user = find_user_by_email(email)
+    if not user:
+        return False
+
+    # Opdater password
+    password_hash = hash_password(new_password)
+
+    with get_db() as conn:
+        conn.execute("""
+            UPDATE users SET password_hash = ? WHERE id = ?
+        """, (password_hash, user['id']))
+
+    return True
 
 
 # Initialize database

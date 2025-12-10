@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ t('user_home.title', 'Min side') }} - Friktionskompasset</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            background: #f3f4f6;
+            min-height: 100vh;
+        }
+        .navbar {
+            background: linear-gradient(135deg, #475569 0%, #334155 100%);
+            color: white;
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .navbar h1 {
+            font-size: 1.25rem;
+        }
+        .navbar-user {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .navbar a {
+            color: white;
+            text-decoration: none;
+            opacity: 0.9;
+        }
+        .navbar a:hover {
+            opacity: 1;
+        }
+        .container {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+        .welcome-card {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        .welcome-card h2 {
+            color: #1f2937;
+            margin-bottom: 10px;
+            font-size: 1.75rem;
+        }
+        .welcome-card p {
+            color: #6b7280;
+            margin-bottom: 30px;
+        }
+        .tests-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .test-card {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .test-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+        }
+        .test-icon {
+            font-size: 3rem;
+            margin-bottom: 20px;
+        }
+        .test-card h3 {
+            color: #1f2937;
+            margin-bottom: 10px;
+        }
+        .test-card p {
+            color: #6b7280;
+            font-size: 0.95rem;
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+        .test-card .btn {
+            display: inline-block;
+            background: linear-gradient(135deg, #475569 0%, #334155 100%);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .test-card .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(71, 85, 105, 0.3);
+        }
+        .test-card .btn-secondary {
+            background: #e5e7eb;
+            color: #4b5563;
+        }
+        .test-card .btn-secondary:hover {
+            background: #d1d5db;
+            box-shadow: none;
+        }
+        .badge {
+            display: inline-block;
+            background: #dbeafe;
+            color: #1e40af;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+        .badge.screening {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        .badge.deep {
+            background: #d1fae5;
+            color: #065f46;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <h1>Friktionskompasset</h1>
+        <div class="navbar-user">
+            <span>{{ session.user.name }}</span>
+            <a href="{{ url_for('logout') }}">{{ t('nav.logout', 'Log ud') }}</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="welcome-card">
+            <h2>{{ t('user_home.welcome', 'Velkommen') }}, {{ session.user.name }}!</h2>
+            <p>{{ t('user_home.description', 'Her kan du tage vores friktionsprofil-tests for at forstå dine samarbejdsmønstre bedre.') }}</p>
+        </div>
+
+        <div class="tests-grid">
+            <div class="test-card">
+                <div class="test-icon">🎯</div>
+                <span class="badge screening">{{ t('user_home.quick', 'Hurtig') }}</span>
+                <h3>{{ t('user_home.screening_title', 'Friktionsprofil Screening') }}</h3>
+                <p>{{ t('user_home.screening_desc', 'En kort test (5-10 min) der giver dig et overblik over dine friktionsmønstre. Perfekt som start.') }}</p>
+                <a href="/profil/start?type=screening" class="btn">{{ t('user_home.start_test', 'Start test') }}</a>
+            </div>
+
+            <div class="test-card">
+                <div class="test-icon">📊</div>
+                <span class="badge deep">{{ t('user_home.thorough', 'Grundig') }}</span>
+                <h3>{{ t('user_home.deep_title', 'Friktionsprofil Deep Dive') }}</h3>
+                <p>{{ t('user_home.deep_desc', 'En dybdegående test (15-20 min) der giver dig detaljeret indsigt i dine samarbejdsmønstre og styrker.') }}</p>
+                <a href="/profil/start?type=deep" class="btn">{{ t('user_home.start_test', 'Start test') }}</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1440,6 +1440,137 @@ def test_mailjet_connection():
         return False
 
 
+# ========================================
+# LOGIN CODE EMAILS (Passwordless)
+# ========================================
+
+def send_login_code(to_email: str, code: str, code_type: str = 'login',
+                   language: str = 'da') -> bool:
+    """
+    Send login-kode til bruger (passwordless login).
+
+    Args:
+        to_email: Brugerens email
+        code: 6-cifret verifikationskode
+        code_type: 'login', 'register', eller 'reset'
+        language: 'da' eller 'en'
+
+    Returns:
+        True ved succes
+    """
+    # Email subjects og titler baseret på type
+    if language == 'en':
+        subjects = {
+            'login': 'Your login code',
+            'register': 'Complete your registration',
+            'reset': 'Reset your password'
+        }
+        titles = {
+            'login': 'Here is your login code',
+            'register': 'Complete your registration',
+            'reset': 'Reset your password'
+        }
+        descriptions = {
+            'login': 'Use this code to log in to Friktionskompasset.',
+            'register': 'Use this code to complete your registration.',
+            'reset': 'Use this code to reset your password.'
+        }
+        expires_text = 'The code expires in 15 minutes.'
+        ignore_text = "If you didn't request this code, you can safely ignore this email."
+    else:
+        subjects = {
+            'login': 'Din loginkode',
+            'register': 'Fuldfør din registrering',
+            'reset': 'Nulstil dit password'
+        }
+        titles = {
+            'login': 'Her er din loginkode',
+            'register': 'Fuldfør din registrering',
+            'reset': 'Nulstil dit password'
+        }
+        descriptions = {
+            'login': 'Brug denne kode til at logge ind på Friktionskompasset.',
+            'register': 'Brug denne kode til at færdiggøre din registrering.',
+            'reset': 'Brug denne kode til at nulstille dit password.'
+        }
+        expires_text = 'Koden udløber om 15 minutter.'
+        ignore_text = 'Hvis du ikke har anmodet om denne kode, kan du trygt ignorere denne email.'
+
+    subject = subjects.get(code_type, subjects['login'])
+    title = titles.get(code_type, titles['login'])
+    description = descriptions.get(code_type, descriptions['login'])
+
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #1f2937; }}
+            .container {{ max-width: 500px; margin: 40px auto; padding: 40px; background: #ffffff; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }}
+            .logo {{ text-align: center; margin-bottom: 30px; }}
+            .logo h1 {{ font-size: 1.5rem; color: #1f2937; margin: 0; }}
+            .code-box {{ background: linear-gradient(135deg, #475569 0%, #334155 100%); color: white; padding: 30px; text-align: center; border-radius: 12px; margin: 30px 0; }}
+            .code {{ font-size: 2.5rem; font-weight: bold; letter-spacing: 8px; font-family: monospace; }}
+            .description {{ color: #4b5563; margin-bottom: 20px; }}
+            .expires {{ color: #9ca3af; font-size: 0.875rem; text-align: center; }}
+            .footer {{ margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; color: #9ca3af; font-size: 0.75rem; text-align: center; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="logo">
+                <h1>🏢 Friktionskompasset</h1>
+            </div>
+
+            <h2>{title}</h2>
+            <p class="description">{description}</p>
+
+            <div class="code-box">
+                <div class="code">{code}</div>
+            </div>
+
+            <p class="expires">{expires_text}</p>
+
+            <div class="footer">
+                {ignore_text}
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+
+    text_content = f"{title}\n\n{description}\n\nDin kode: {code}\n\n{expires_text}\n\n{ignore_text}"
+
+    try:
+        data = {
+            'Messages': [
+                {
+                    'From': {'Email': FROM_EMAIL, 'Name': FROM_NAME},
+                    'To': [{'Email': to_email}],
+                    'Subject': subject,
+                    'HTMLPart': html_content,
+                    'TextPart': text_content
+                }
+            ]
+        }
+
+        result = mailjet.send.create(data=data)
+
+        if result.status_code == 200:
+            log_email(to_email, subject, f'{code_type}_code', 'sent')
+            return True
+        else:
+            log_email(to_email, subject, f'{code_type}_code', 'failed',
+                     error_message=str(result.json()))
+            print(f"Mailjet error: {result.status_code} - {result.json()}")
+            return False
+
+    except Exception as e:
+        log_email(to_email, subject, f'{code_type}_code', 'failed', error_message=str(e))
+        print(f"Error sending login code: {e}")
+        return False
+
+
 if __name__ == "__main__":
     # Test connection
     test_mailjet_connection()

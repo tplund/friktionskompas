@@ -36,7 +36,7 @@ def _init_test_db(db_path):
             email TEXT UNIQUE NOT NULL,
             password_hash TEXT NOT NULL,
             name TEXT NOT NULL,
-            role TEXT NOT NULL CHECK(role IN ('admin', 'manager')),
+            role TEXT NOT NULL CHECK(role IN ('superadmin', 'admin', 'manager', 'user')),
             customer_id INTEGER,
             is_active INTEGER DEFAULT 1,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

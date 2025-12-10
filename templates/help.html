@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="{{ get_user_language() }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ t('help.title', 'Hjælp') }} - Friktionskompasset</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            background: #f3f4f6;
+            min-height: 100vh;
+            line-height: 1.6;
+            color: #1f2937;
+        }
+        .navbar {
+            background: linear-gradient(135deg, #475569 0%, #334155 100%);
+            color: white;
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .navbar h1 {
+            font-size: 1.25rem;
+        }
+        .navbar a {
+            color: white;
+            text-decoration: none;
+            opacity: 0.9;
+        }
+        .navbar a:hover {
+            opacity: 1;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        .hero {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+        .hero h1 {
+            font-size: 2.5rem;
+            color: #1f2937;
+            margin-bottom: 15px;
+        }
+        .hero p {
+            font-size: 1.1rem;
+            color: #6b7280;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .toc {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 40px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+        .toc h2 {
+            font-size: 1.25rem;
+            margin-bottom: 20px;
+            color: #1f2937;
+        }
+        .toc ul {
+            list-style: none;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+        }
+        .toc a {
+            display: block;
+            padding: 12px 16px;
+            background: #f9fafb;
+            border-radius: 8px;
+            color: #475569;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+        .toc a:hover {
+            background: #475569;
+            color: white;
+        }
+        .section {
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+        .section h2 {
+            font-size: 1.5rem;
+            color: #1f2937;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        .section h3 {
+            font-size: 1.1rem;
+            color: #374151;
+            margin: 25px 0 15px 0;
+        }
+        .section p {
+            color: #4b5563;
+            margin-bottom: 15px;
+        }
+        .steps {
+            background: #f9fafb;
+            border-radius: 8px;
+            padding: 25px;
+            margin: 20px 0;
+        }
+        .steps ol {
+            margin-left: 20px;
+        }
+        .steps li {
+            margin-bottom: 12px;
+            color: #4b5563;
+        }
+        .steps li strong {
+            color: #1f2937;
+        }
+        .tip {
+            background: #dbeafe;
+            border-left: 4px solid #3b82f6;
+            padding: 15px 20px;
+            border-radius: 0 8px 8px 0;
+            margin: 20px 0;
+        }
+        .tip strong {
+            color: #1e40af;
+        }
+        .tip p {
+            color: #1e40af;
+            margin: 0;
+        }
+        .warning {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 15px 20px;
+            border-radius: 0 8px 8px 0;
+            margin: 20px 0;
+        }
+        .warning strong {
+            color: #92400e;
+        }
+        .warning p {
+            color: #92400e;
+            margin: 0;
+        }
+        .screenshot {
+            background: #f3f4f6;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            margin: 20px 0;
+            color: #9ca3af;
+            font-style: italic;
+        }
+        .btn-example {
+            display: inline-block;
+            background: linear-gradient(135deg, #475569 0%, #334155 100%);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            margin: 5px 0;
+        }
+        .code {
+            background: #1f2937;
+            color: #e5e7eb;
+            padding: 15px 20px;
+            border-radius: 8px;
+            font-family: monospace;
+            margin: 15px 0;
+            overflow-x: auto;
+        }
+        .faq-item {
+            border-bottom: 1px solid #e5e7eb;
+            padding: 20px 0;
+        }
+        .faq-item:last-child {
+            border-bottom: none;
+        }
+        .faq-item h4 {
+            color: #1f2937;
+            margin-bottom: 10px;
+            font-size: 1rem;
+        }
+        .faq-item p {
+            margin: 0;
+        }
+        .back-to-top {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: #475569;
+            color: white;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .back-to-top.visible {
+            opacity: 1;
+        }
+        .back-to-top:hover {
+            background: #334155;
+        }
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px 15px;
+            }
+            .section {
+                padding: 25px;
+            }
+            .hero h1 {
+                font-size: 1.75rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <h1>Friktionskompasset</h1>
+        <div>
+            <a href="{{ url_for('login') }}">{{ t('help.back_to_login', 'Tilbage til login') }}</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="hero">
+            <h1>{{ t('help.hero_title', 'Hjælp & Vejledning') }}</h1>
+            <p>{{ t('help.hero_description', 'Find svar på de mest almindelige spørgsmål om at bruge Friktionskompasset.') }}</p>
+        </div>
+
+        <!-- Indholdsfortegnelse -->
+        <div class="toc" id="top">
+            <h2>{{ t('help.toc', 'Indhold') }}</h2>
+            <ul>
+                <li><a href="#create-account">{{ t('help.toc_create', 'Opret konto') }}</a></li>
+                <li><a href="#login">{{ t('help.toc_login', 'Log ind') }}</a></li>
+                <li><a href="#email-code">{{ t('help.toc_email_code', 'Login med email-kode') }}</a></li>
+                <li><a href="#forgot-password">{{ t('help.toc_forgot', 'Glemt password') }}</a></li>
+                <li><a href="#social-login">{{ t('help.toc_social', 'Social login') }}</a></li>
+                <li><a href="#faq">{{ t('help.toc_faq', 'FAQ') }}</a></li>
+            </ul>
+        </div>
+
+        <!-- Opret konto -->
+        <div class="section" id="create-account">
+            <h2>{{ t('help.create_title', 'Opret en konto') }}</h2>
+            <p>{{ t('help.create_intro', 'Du kan oprette en gratis konto på få minutter. Der er to måder at gøre det på:') }}</p>
+
+            <h3>{{ t('help.create_social_title', 'Metode 1: Med Microsoft eller Google') }}</h3>
+            <p>{{ t('help.create_social_desc', 'Den hurtigste måde at oprette en konto er med din eksisterende Microsoft- eller Google-konto.') }}</p>
+            <div class="steps">
+                <ol>
+                    <li>{{ t('help.create_social_step1', 'Gå til login-siden og klik på "Opret konto"') }}</li>
+                    <li>{{ t('help.create_social_step2', 'Klik på "Fortsæt med Microsoft" eller "Fortsæt med Google"') }}</li>
+                    <li>{{ t('help.create_social_step3', 'Log ind med din eksisterende konto') }}</li>
+                    <li>{{ t('help.create_social_step4', 'Din konto oprettes automatisk - du er klar!') }}</li>
+                </ol>
+            </div>
+
+            <h3>{{ t('help.create_email_title', 'Metode 2: Med email') }}</h3>
+            <p>{{ t('help.create_email_desc', 'Du kan også oprette en konto med din email-adresse.') }}</p>
+            <div class="steps">
+                <ol>
+                    <li>{{ t('help.create_email_step1', 'Gå til login-siden og klik på "Opret konto"') }}</li>
+                    <li>{{ t('help.create_email_step2', 'Indtast dit navn og email-adresse') }}</li>
+                    <li>{{ t('help.create_email_step3', 'Klik på "Opret konto"') }}</li>
+                    <li>{{ t('help.create_email_step4', 'Tjek din email for en 6-cifret bekræftelseskode') }}</li>
+                    <li>{{ t('help.create_email_step5', 'Indtast koden på hjemmesiden') }}</li>
+                    <li>{{ t('help.create_email_step6', 'Din konto er nu oprettet!') }}</li>
+                </ol>
+            </div>
+
+            <div class="tip">
+                <strong>{{ t('help.tip', 'Tip:') }}</strong>
+                <p>{{ t('help.create_tip', 'Tjek din spam-mappe hvis du ikke kan finde bekræftelsesmailen.') }}</p>
+            </div>
+        </div>
+
+        <!-- Log ind -->
+        <div class="section" id="login">
+            <h2>{{ t('help.login_title', 'Log ind på din konto') }}</h2>
+            <p>{{ t('help.login_intro', 'Der er flere måder at logge ind på, afhængigt af hvordan du oprettede din konto.') }}</p>
+
+            <h3>{{ t('help.login_password_title', 'Med brugernavn og password') }}</h3>
+            <p>{{ t('help.login_password_desc', 'Hvis du har et password til din konto:') }}</p>
+            <div class="steps">
+                <ol>
+                    <li>{{ t('help.login_password_step1', 'Gå til login-siden') }}</li>
+                    <li>{{ t('help.login_password_step2', 'Indtast dit brugernavn (typisk din email)') }}</li>
+                    <li>{{ t('help.login_password_step3', 'Indtast dit password') }}</li>
+                    <li>{{ t('help.login_password_step4', 'Klik på "Log ind"') }}</li>
+                </ol>
+            </div>
+
+            <h3>{{ t('help.login_social_title', 'Med Microsoft eller Google') }}</h3>
+            <p>{{ t('help.login_social_desc', 'Hvis du oprettede din konto med Microsoft eller Google:') }}</p>
+            <div class="steps">
+                <ol>
+                    <li>{{ t('help.login_social_step1', 'Gå til login-siden') }}</li>
+                    <li>{{ t('help.login_social_step2', 'Klik på "Log ind med Microsoft" eller "Log ind med Google"') }}</li>
+                    <li>{{ t('help.login_social_step3', 'Du logges automatisk ind') }}</li>
+                </ol>
+            </div>
+        </div>
+
+        <!-- Login med email-kode -->
+        <div class="section" id="email-code">
+            <h2>{{ t('help.email_code_title', 'Login med email-kode (uden password)') }}</h2>
+            <p>{{ t('help.email_code_intro', 'Du kan logge ind uden password ved at få en engangskode sendt til din email. Dette er praktisk hvis du ikke kan huske dit password.') }}</p>
+
+            <div class="steps">
+                <ol>
+                    <li>{{ t('help.email_code_step1', 'Gå til login-siden') }}</li>
+                    <li>{{ t('help.email_code_step2', 'Klik på "Log ind med email-kode i stedet"') }}</li>
+                    <li>{{ t('help.email_code_step3', 'Indtast din email-adresse') }}</li>
+                    <li>{{ t('help.email_code_step4', 'Klik på "Send loginkode"') }}</li>
+                    <li>{{ t('help.email_code_step5', 'Tjek din email for en 6-cifret kode') }}</li>
+                    <li>{{ t('help.email_code_step6', 'Indtast koden på hjemmesiden') }}</li>
+                    <li>{{ t('help.email_code_step7', 'Du er nu logget ind!') }}</li>
+                </ol>
+            </div>
+
+            <div class="warning">
+                <strong>{{ t('help.warning', 'Bemærk:') }}</strong>
+                <p>{{ t('help.email_code_warning', 'Koden udløber efter 15 minutter. Hvis den er udløbet, kan du anmode om en ny.') }}</p>
+            </div>
+
+            <div class="tip">
+                <strong>{{ t('help.tip', 'Tip:') }}</strong>
+                <p>{{ t('help.email_code_tip', 'Hvis du ikke modtager koden, klik på "Send ny kode" for at få tilsendt en ny.') }}</p>
+            </div>
+        </div>
+
+        <!-- Glemt password -->
+        <div class="section" id="forgot-password">
+            <h2>{{ t('help.forgot_title', 'Glemt password') }}</h2>
+            <p>{{ t('help.forgot_intro', 'Hvis du har glemt dit password, kan du nemt nulstille det.') }}</p>
+
+            <div class="steps">
+                <ol>
+                    <li>{{ t('help.forgot_step1', 'Gå til login-siden') }}</li>
+                    <li>{{ t('help.forgot_step2', 'Klik på "Glemt password?"') }}</li>
+                    <li>{{ t('help.forgot_step3', 'Indtast din email-adresse') }}</li>
+                    <li>{{ t('help.forgot_step4', 'Klik på "Send nulstillingskode"') }}</li>
+                    <li>{{ t('help.forgot_step5', 'Tjek din email for en 6-cifret kode') }}</li>
+                    <li>{{ t('help.forgot_step6', 'Indtast koden og vælg et nyt password (mindst 8 tegn)') }}</li>
+                    <li>{{ t('help.forgot_step7', 'Klik på "Gem nyt password"') }}</li>
+                    <li>{{ t('help.forgot_step8', 'Log ind med dit nye password') }}</li>
+                </ol>
+            </div>
+
+            <div class="tip">
+                <strong>{{ t('help.tip', 'Tip:') }}</strong>
+                <p>{{ t('help.forgot_tip', 'Vælg et stærkt password med mindst 8 tegn, gerne med en blanding af bogstaver, tal og symboler.') }}</p>
+            </div>
+        </div>
+
+        <!-- Social login -->
+        <div class="section" id="social-login">
+            <h2>{{ t('help.social_title', 'Social login (Microsoft & Google)') }}</h2>
+            <p>{{ t('help.social_intro', 'Du kan bruge din eksisterende Microsoft- eller Google-konto til at logge ind. Dette er sikkert og nemt.') }}</p>
+
+            <h3>{{ t('help.social_benefits_title', 'Fordele ved social login') }}</h3>
+            <ul style="margin-left: 20px; margin-bottom: 20px;">
+                <li>{{ t('help.social_benefit1', 'Ingen nye passwords at huske') }}</li>
+                <li>{{ t('help.social_benefit2', 'Hurtigere login med ét klik') }}</li>
+                <li>{{ t('help.social_benefit3', 'Sikkerhed fra Microsoft/Google (inkl. 2-faktor)') }}</li>
+                <li>{{ t('help.social_benefit4', 'Dit password deles aldrig med os') }}</li>
+            </ul>
+
+            <h3>{{ t('help.social_link_title', 'Forbind din konto') }}</h3>
+            <p>{{ t('help.social_link_desc', 'Hvis du allerede har en konto med email/password, kan du tilføje Microsoft eller Google login:') }}</p>
+            <div class="steps">
+                <ol>
+                    <li>{{ t('help.social_link_step1', 'Log ind med dit normale brugernavn og password') }}</li>
+                    <li>{{ t('help.social_link_step2', 'Næste gang du logger ind, brug Microsoft eller Google med samme email') }}</li>
+                    <li>{{ t('help.social_link_step3', 'Kontoen forbindes automatisk') }}</li>
+                </ol>
+            </div>
+        </div>
+
+        <!-- FAQ -->
+        <div class="section" id="faq">
+            <h2>{{ t('help.faq_title', 'Ofte stillede spørgsmål') }}</h2>
+
+            <div class="faq-item">
+                <h4>{{ t('help.faq_q1', 'Jeg modtager ikke bekræftelsesmailen - hvad gør jeg?') }}</h4>
+                <p>{{ t('help.faq_a1', 'Tjek først din spam-mappe. Hvis mailen stadig ikke er der, prøv at klikke "Send ny kode". Kontakt support hvis problemet fortsætter.') }}</p>
+            </div>
+
+            <div class="faq-item">
+                <h4>{{ t('help.faq_q2', 'Min kode virker ikke - hvad er der galt?') }}</h4>
+                <p>{{ t('help.faq_a2', 'Koden udløber efter 15 minutter. Sørg for at indtaste koden hurtigt efter du modtager den. Brug "Send ny kode" for at få en frisk kode.') }}</p>
+            </div>
+
+            <div class="faq-item">
+                <h4>{{ t('help.faq_q3', 'Kan jeg bruge både password og social login?') }}</h4>
+                <p>{{ t('help.faq_a3', 'Ja! Hvis din email er den samme, forbindes dine login-metoder automatisk til den samme konto.') }}</p>
+            </div>
+
+            <div class="faq-item">
+                <h4>{{ t('help.faq_q4', 'Er mine data sikre?') }}</h4>
+                <p>{{ t('help.faq_a4', 'Ja. Alle passwords krypteres med industri-standard sikkerhed. Ved social login deler Microsoft/Google kun din email og dit navn med os - aldrig dit password.') }}</p>
+            </div>
+
+            <div class="faq-item">
+                <h4>{{ t('help.faq_q5', 'Hvem kan se mine testresultater?') }}</h4>
+                <p>{{ t('help.faq_a5', 'Dine individuelle resultater er kun synlige for dig. Når tests bruges i organisations-sammenhæng, anonymiseres data før de deles.') }}</p>
+            </div>
+
+            <div class="faq-item">
+                <h4>{{ t('help.faq_q6', 'Hvordan sletter jeg min konto?') }}</h4>
+                <p>{{ t('help.faq_a6', 'Kontakt os på support@friktionskompas.dk for at få slettet din konto og alle tilknyttede data.') }}</p>
+            </div>
+        </div>
+
+        <div style="text-align: center; margin-top: 40px; color: #6b7280;">
+            <p>{{ t('help.contact', 'Har du stadig spørgsmål? Kontakt os på') }} <a href="mailto:support@friktionskompas.dk" style="color: #475569;">support@friktionskompas.dk</a></p>
+        </div>
+    </div>
+
+    <a href="#top" class="back-to-top" id="backToTop">↑</a>
+
+    <script>
+        // Back to top button visibility
+        window.addEventListener('scroll', function() {
+            const btn = document.getElementById('backToTop');
+            if (window.scrollY > 300) {
+                btn.classList.add('visible');
+            } else {
+                btn.classList.remove('visible');
+            }
+        });
+
+        // Smooth scroll for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        });
+    </script>
+</body>
+</html>

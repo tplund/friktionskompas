@@ -32,6 +32,18 @@
   - Leder blokeret threshold (både team og leder < 3.5)
   - Farvecodning (grøn ≥ 70%, gul ≥ 50%, rød < 50%)
 
+- [ ] **Ved ALLE ændringer i brugerflows:** Opdater `/help` siden (`templates/help.html`)
+  - Login flows (password, email-kode, social)
+  - Registrering
+  - Glemt password
+  - FAQ sektion
+
+### Brugerrettet Dokumentation
+- [x] ~~**Hjælpeside oprettet** - `/help` med vejledning til oprettelse, login, glemt password~~
+- [ ] **Admin dokumentation** - Vejledning til admin-brugere (målinger, organisationer, analyser)
+- [ ] **Manager dokumentation** - Vejledning til managers (resultater, rapporter)
+- [ ] **Friktionsprofil dokumentation** - Forklaring af tests og resultater til slutbrugere
+
 ### Multi-tenant & Auth
 - [x] ~~Implementer kunde/tenant isolation i database~~
 - [x] ~~Tilføj auth system med Admin og Manager roller~~
@@ -39,8 +51,44 @@
 - [x] ~~Login page med session management~~
 - [x] ~~Bcrypt password hashing (sikker)~~
 - [x] ~~Secret key fra environment variable~~
+- [x] ~~**Superadmin rolle** - Global admin der kan se alle kunder/domæner~~
+- [x] ~~**Branding side** - Admin kan redigere branding for egne domæner~~
 - [ ] CSRF protection (deferred til produktion)
 - [ ] Rate limiting på login (deferred til produktion)
+
+### Social Login & SSO (i gang)
+- [x] ~~**Database struktur** - `auth_providers` JSON felt på customers/domains, `user_oauth_links` tabel~~
+- [x] ~~**OAuth modul** - `oauth.py` med Authlib integration~~
+- [x] ~~**Microsoft OAuth** (Azure AD) - routes og callback~~
+- [x] ~~**Google OAuth** - routes og callback~~
+- [x] ~~**Login-side opdateret** - Viser OAuth buttons baseret på domæne-config~~
+- [x] ~~**Admin UI til auth konfiguration** - Konfigurer providers per kunde/domæne (superadmin)~~
+- [ ] **Apple Sign-In** - B2C (iOS brugere)
+- [ ] **Facebook Login** - B2C
+- [ ] **SAML SSO** - Enterprise kunder
+- [ ] **OIDC SSO** - Enterprise kunder
+- Se detaljeret plan: `PLAN_social_login.md`
+
+### B2C Selvregistrering & Passwordless Login ✅ NY
+- [x] ~~**B2C kunde** - Auto-oprettet "B2C Brugere" kunde til selvregistrerede brugere~~
+- [x] ~~**User rolle** - Ny 'user' rolle for B2C brugere (kan tage tests, ikke admin adgang)~~
+- [x] ~~**Passwordless login** - Login med email-kode (som Canva) - 6-cifret kode, 15 min udløb~~
+- [x] ~~**Selvregistrering** - Opret konto med email-verifikation~~
+- [x] ~~**Glemt password** - Nulstil password med email-kode~~
+- [x] ~~**Email templates** - Flotte HTML emails til login/register/reset koder~~
+- [x] ~~**Login-side opdateret** - Links til registrering, glemt password, og email-kode login~~
+- [x] ~~**User hjemmeside** - Dedikeret side for B2C brugere med adgang til friktionsprofil tests~~
+
+#### Aktivering af OAuth (kræver miljøvariabler)
+```bash
+# Microsoft Azure AD
+MICROSOFT_CLIENT_ID=xxx
+MICROSOFT_CLIENT_SECRET=xxx
+
+# Google
+GOOGLE_CLIENT_ID=xxx
+GOOGLE_CLIENT_SECRET=xxx
+```
 
 ### UI Forbedringer
 - [x] ~~Vis organisationer som træ-struktur (ikke flat liste)~~
@@ -80,24 +128,18 @@
 
 ---
 
-## 🌐 Multi-Domain Setup (efter Frankfurt)
+## 🌐 Multi-Domain Setup ✅ FÆRDIG
 
-### Mål
-- Samme instans håndterer flere domæner
-- Domæne bestemmer: sprog, kunde-filter, branding
-- Alt konfigureres programmatisk via admin
-
-### Domæne-typer
-1. **Hoved-domæner**: friktionskompasset.dk (da), frictioncompass.com (en)
-2. **Kunde-subdomæner**: herning.friktionskompasset.dk → kun Herning data
-3. **Hvidelabel**: kunde-ejet-domæne.dk → kunde branding
-
-### Tasks
-- [ ] Database: `domains` tabel med mapping
-- [ ] Middleware: Detect domæne → sæt sprog/kunde/branding
-- [ ] Admin UI: CRUD for domæner
-- [ ] Render: Tilføj custom domains via API
-- [ ] DNS: Wildcard eller individuelle CNAME records
+### Implementeret
+- [x] Database: `domains` tabel med mapping (sprog, kunde, branding)
+- [x] Middleware: `before_request` detecter domæne → sætter sprog/kunde/branding
+- [x] Admin UI: `/admin/domains` CRUD interface
+- [x] Render: Custom domains via API (frictioncompass.com, herning.frictioncompass.com)
+- [x] DNS: Cloudflare konfigureret med SSL, HSTS, proxy
+- [x] Domæner live:
+  - `frictioncompass.com` (primær, engelsk)
+  - `herning.frictioncompass.com` (kunde-subdomain)
+  - `friktionskompasset.dk` (dansk)
 
 ---
 
@@ -110,7 +152,8 @@
 - [x] 6 screening-spørgsmål (hurtig vurdering)
 - [x] Database udvidet med question_type og state_text_da
 - [x] Profil vs Situations versioner (tekster klar)
-- [ ] **Admin interface til spørgsmålsredigering og versionering**
+- [ ] **Admin interface til spørgsmålsredigering og versionering** ⏸️ VENTER
+  - ⏸️ Afventer: Teorigrundlaget forventes at ændre sig
   - Liste alle spørgsmål med felt, lag, type
   - Rediger tekst (profil + situation), scoring, sequence
   - Tilføj/fjern spørgsmål
@@ -120,24 +163,25 @@
 ### Features
 - [x] ~~Drag-and-drop reorganisering af units~~ (Flyt-mode med visuel feedback)
 - [ ] Custom spørgsmål per organisation
-- [ ] Scheduled campaigns (send automatisk)
+- [x] ~~Scheduled campaigns (send automatisk)~~ (Planlæg målinger til fremtidigt tidspunkt, baggrunds-scheduler, admin UI)
 - [ ] API for integration med andre systemer
 
 ### Analytics
 - [x] ~~Trend analyse~~ (sammenlign kampagner over tid, Chart.js grafer, filter per enhed)
-- [ ] Benchmarking på tværs af brancher
-- [ ] AI-baseret indsigter fra fritekst kommentarer
+- [ ] Benchmarking på tværs af brancher (lav prioritet)
+- [ ] AI-baseret indsigter fra fritekst kommentarer (fremtidig overvejelse)
+  - ⚠️ **Note**: Nogle kunder kan være skeptiske over for AI-brug - overvej opt-in model
 
 ### Performance
-- [ ] Caching af aggregerede data
-- [ ] Pagination i lange lister
-- [ ] Database indexes optimering
+- [x] ~~Caching af aggregerede data~~ (cache.py modul med TTL, @cached decorator på analyse-funktioner)
+- [x] ~~Pagination helper~~ (Pagination klasse i cache.py, klar til brug)
+- [x] ~~Database indexes optimering~~ (nye indexes: campaigns_target_unit, campaigns_created_at, campaigns_status, responses_created_at)
 
 ---
 
-## 🎯 STOR OPGAVE: Validering af spørgsmål
+## 🎯 STOR OPGAVE: Validering af spørgsmål ⏸️ VENTER
 
-> ⚠️ **VIGTIGT**: Denne opgave starter EFTER Frankfurt-migrering er færdig og alt andet er på plads.
+> ⚠️ **VIGTIGT**: Denne opgave er sat på pause. Teorigrundlaget forventes at ændre sig.
 
 ### Mål
 Sikre at spørgsmålene præcist måler det teorien beskriver.
@@ -186,8 +230,8 @@ _Ingen kendte bugs pt._
 - [x] Render deployment
 - [x] Persistent disk konfigureret
 - [x] Email tracking og templates
-- [ ] **GDPR: Flyt Render service til EU (Frankfurt)**
-- [ ] **Køb domain (friktionskompas.dk)**
+- [x] **GDPR: Render service i EU (Frankfurt)** ✅
+- [x] **Domæner: frictioncompass.com + friktionskompasset.dk** ✅
 
 ---
 

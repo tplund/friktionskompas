@@ -59,6 +59,12 @@ python -m pytest tests/ -k "login" -v
 - Ved ændringer i analyselogik: Opdater `ANALYSELOGIK.md`
 - Hold `CLAUDE.md` opdateret med nye patterns og løsninger
 
+### Brugerdokumentation (VIGTIGT!)
+- **Ved ændringer i login/registrering/auth flows:** Opdater `/help` siden (`templates/help.html`)
+- Hjælpesiden skal altid afspejle de faktiske brugerflows
+- Hold FAQ sektionen opdateret med nye spørgsmål
+- Dokumentationen er brugerrettet - skriv til ikke-tekniske brugere
+
 ### Terminologi
 - Brug "måling" (ikke "kampagne") i brugersynlige tekster
 - Brug "analyse" for resultater/rapporter
