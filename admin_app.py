@@ -652,6 +652,8 @@ def admin_seed_domains():
     import secrets
 
     # Domæne konfigurationer
+    # Generiske domæner: Alle login-metoder (MS, Google, Email)
+    # Enterprise domæner: Kun Microsoft (f.eks. herning)
     domains_config = [
         {
             'domain': 'friktionskompasset.dk',
@@ -660,8 +662,8 @@ def admin_seed_domains():
                 'email_password': True,
                 'microsoft': {'enabled': True},
                 'google': {'enabled': True},
-                'apple': {'enabled': True},
-                'facebook': {'enabled': True}
+                'apple': {'enabled': False},
+                'facebook': {'enabled': False}
             }
         },
         {
@@ -669,8 +671,19 @@ def admin_seed_domains():
             'default_language': 'en',
             'auth_providers': {
                 'email_password': True,
-                'microsoft': {'enabled': False},
+                'microsoft': {'enabled': True},
                 'google': {'enabled': True},
+                'apple': {'enabled': False},
+                'facebook': {'enabled': False}
+            }
+        },
+        {
+            'domain': 'herning.friktionskompasset.dk',
+            'default_language': 'da',
+            'auth_providers': {
+                'email_password': False,
+                'microsoft': {'enabled': True},
+                'google': {'enabled': False},
                 'apple': {'enabled': False},
                 'facebook': {'enabled': False}
             }
