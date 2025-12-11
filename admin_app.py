@@ -1083,7 +1083,7 @@ def campaigns_overview():
 
     with get_db() as conn:
         # Hent alle campaigns med stats
-        if user['role'] == 'admin':
+        if user['role'] in ('admin', 'superadmin'):
             campaigns = conn.execute("""
                 SELECT
                     c.*,
@@ -1141,7 +1141,7 @@ def scheduled_campaigns():
 
     with get_db() as conn:
         # Hent scheduled campaigns
-        if user['role'] == 'admin':
+        if user['role'] in ('admin', 'superadmin'):
             campaigns = conn.execute("""
                 SELECT c.*, ou.name as target_name, ou.full_path
                 FROM campaigns c
@@ -1244,7 +1244,7 @@ def analyser():
 
     with get_db() as conn:
         # Get available campaigns for filtering
-        if user['role'] == 'admin':
+        if user['role'] in ('admin', 'superadmin'):
             campaigns = conn.execute("""
                 SELECT id, name, period
                 FROM campaigns
