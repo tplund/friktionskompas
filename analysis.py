@@ -4,6 +4,7 @@ Håndterer lagdeling (ydre/indre) og avancerede analyser
 """
 from typing import Dict, List, Optional
 from db_hierarchical import get_db
+from cache import cached
 
 
 # ============================================
@@ -42,6 +43,7 @@ SUBSTITUTION_ITEMS = {
 }
 
 
+@cached(ttl=300, prefix="stats")
 def get_unit_stats_with_layers(
     unit_id: str,
     campaign_id: str,
@@ -49,7 +51,7 @@ def get_unit_stats_with_layers(
     include_children: bool = True
 ) -> Dict:
     """
-    Hent statistik med lagdeling
+    Hent statistik med lagdeling (cached i 5 minutter)
 
     Returns:
         {
@@ -325,9 +327,10 @@ def check_anonymity_threshold(campaign_id: str, unit_id: str) -> Dict:
         }
 
 
+@cached(ttl=300, prefix="substitution")
 def calculate_substitution(unit_id: str, campaign_id: str, respondent_type: str = 'employee') -> Dict:
     """
-    Beregn substitution (tid) - stealth version V1.4
+    Beregn substitution (tid) - stealth version V1.4 (cached i 5 minutter)
 
     Returns:
         {
@@ -696,7 +699,7 @@ def get_kkc_recommendations(stats: Dict, comparison: Dict = None) -> List[Dict]:
 
 def get_start_here_recommendation(recommendations: List[Dict]) -> Optional[Dict]:
     """
-    Find den vigtigste anbefaling at starte med (højeste friktion)
+    Find den vigtigste anbefaling at starte med baseret på friktionshierarki.
 
     RETURNERER DICT MED:
     - single: True/False - om der er én klar prioritet eller flere ligeværdige
@@ -704,16 +707,23 @@ def get_start_here_recommendation(recommendations: List[Dict]) -> Optional[Dict]
     - recommendations: List af ligeværdige anbefalinger (hvis single=False)
     - reason: Forklaring på prioriteringen
 
-    Prioritering:
-    1. Højeste severity først
-    2. Hvis ALLE scores er meget tætte (< 0.4 range): Vis ALLE som ligeværdige
-    3. Hvis scores er tætte (< 0.3 forskel) inden for severity gruppe:
-       - Prioriter den med højest spredning (mest uensartet oplevelse)
-    4. Ellers laveste score
+    FRIKTIONSHIERARKI (vigtighed):
+    1. TRYGHED - Vigtigst! Uden tryghed hjælper intet andet
+    2. MENING - Næstvigtigst. Giver retning og motivation
+    3. KAN - Kompetencer og ressourcer
+    4. BESVÆR - Processer og systemer (ofte nemmest at fikse)
+
+    LOGIK:
+    - Hvis Tryghed eller Mening er lav → Start der (uanset andre scores)
+    - Hvis Tryghed/Mening er OK → Kan og Besvær kan tackles, Besvær er ofte nemmest
+    - Hvis alle scores er tætte (< 0.4 spænd) → Anbefal at starte med Besvær (nemmest)
 
     Returns:
         Dict med prioriteringsinfo, eller None hvis ingen problemer
     """
+    # Hierarki: Tryghed → Mening → Kan → Besvær
+    PRIORITY_ORDER = {'TRYGHED': 1, 'MENING': 2, 'KAN': 3, 'BESVÆR': 4}
+
     if not recommendations:
         return None
 
@@ -735,19 +745,46 @@ def get_start_here_recommendation(recommendations: List[Dict]) -> Optional[Dict]
     all_scores = [r['score'] for r in problems]
     total_range = max(all_scores) - min(all_scores)
 
+    # Hjælpefunktion til at finde felt-prioritet
+    def get_priority(field):
+        return PRIORITY_ORDER.get(field, 99)
+
     if total_range < 0.4:
-        # Alle scores er tætte - vis alle som ligeværdige
-        # Sorter efter severity først, derefter spredning
-        problems.sort(key=lambda x: (
-            0 if x['severity'] == 'høj' else 1,
-            0 if x.get('spread') == 'høj' else 1 if x.get('spread') == 'medium' else 2,
-            x['score']
-        ))
-        return {
-            'single': False,
-            'recommendations': problems,
-            'reason': f'Alle friktioner er næsten lige høje (spænd: {total_range:.1f} point). Tackle dem i den rækkefølge der giver mening for teamet.'
-        }
+        # Alle scores er tætte - brug hierarkiet til at prioritere
+        # Check om Tryghed eller Mening er blandt problemerne
+        tryghed_problem = next((p for p in problems if p['field'] == 'TRYGHED'), None)
+        mening_problem = next((p for p in problems if p['field'] == 'MENING'), None)
+
+        if tryghed_problem:
+            # Tryghed er lav - start der
+            return {
+                'single': True,
+                'primary': tryghed_problem,
+                'reason': f'Scores er tætte (spænd: {total_range:.1f}), men TRYGHED er fundamentet – start der.'
+            }
+        elif mening_problem:
+            # Mening er lav - start der
+            return {
+                'single': True,
+                'primary': mening_problem,
+                'reason': f'Scores er tætte (spænd: {total_range:.1f}), men MENING giver retning – start der.'
+            }
+        else:
+            # Kun Kan/Besvær er problemer - Besvær er ofte nemmest at fikse
+            besvaer_problem = next((p for p in problems if p['field'] == 'BESVÆR'), None)
+            if besvaer_problem:
+                return {
+                    'single': True,
+                    'primary': besvaer_problem,
+                    'reason': f'Scores er tætte (spænd: {total_range:.1f}). BESVÆR er ofte nemmest at fikse – start der for hurtige gevinster.'
+                }
+            else:
+                # Kun Kan tilbage
+                return {
+                    'single': True,
+                    'primary': problems[0],
+                    'reason': f'Scores er tætte (spænd: {total_range:.1f}). Start med KAN for at styrke kompetencer.'
+                }
 
     # Gruppér efter severity
     high = [r for r in problems if r['severity'] == 'høj']
@@ -763,32 +800,54 @@ def get_start_here_recommendation(recommendations: List[Dict]) -> Optional[Dict]
             'reason': f'Eneste {top_group[0]["severity"]} friktion (under {"50%" if top_group[0]["severity"] == "høj" else "70%"})'
         }
 
-    # Flere i samme gruppe - check om scores er tætte
-    scores = [r['score'] for r in top_group]
-    score_range = max(scores) - min(scores)
+    # Flere i samme gruppe - brug hierarkiet til at prioritere
+    # Tryghed → Mening → Kan → Besvær
+    tryghed = next((p for p in top_group if p['field'] == 'TRYGHED'), None)
+    mening = next((p for p in top_group if p['field'] == 'MENING'), None)
 
-    if score_range < 0.3:
-        # Scores er tætte inden for denne severity gruppe - prioriter efter spredning
-        top_group.sort(key=lambda x: (
-            0 if x.get('spread') == 'høj' else 1 if x.get('spread') == 'medium' else 2,
-            x['score']
-        ))
-        primary = top_group[0]
+    if tryghed:
         return {
             'single': True,
-            'primary': primary,
-            'reason': f'Scores er tætte ({score_range:.1f} point forskel), prioriteret pga. ' +
-                     (f'høj spredning (σ={primary.get("std_dev", 0):.2f})' if primary.get('spread') == 'høj'
-                      else 'laveste score')
+            'primary': tryghed,
+            'reason': f'TRYGHED er fundamentet – uden tryghed hjælper de andre tiltag ikke.'
+        }
+    elif mening:
+        return {
+            'single': True,
+            'primary': mening,
+            'reason': f'MENING giver retning og motivation – vigtigere end processuelle forbedringer.'
         }
     else:
-        # Scores er forskellige - prioriter laveste score
-        top_group.sort(key=lambda x: x['score'])
-        return {
-            'single': True,
-            'primary': top_group[0],
-            'reason': f'Laveste score ({top_group[0]["score"]}/5) i {top_group[0]["severity"]} kategori'
-        }
+        # Kun Kan/Besvær - Besvær er ofte nemmest, men hvis Kan er markant værre, tag den
+        kan = next((p for p in top_group if p['field'] == 'KAN'), None)
+        besvaer = next((p for p in top_group if p['field'] == 'BESVÆR'), None)
+
+        if kan and besvaer:
+            # Hvis Kan er markant værre (> 0.3 forskel), prioriter den
+            if besvaer['score'] - kan['score'] > 0.3:
+                return {
+                    'single': True,
+                    'primary': kan,
+                    'reason': f'KAN er markant lavere end BESVÆR – kompetencer først.'
+                }
+            else:
+                return {
+                    'single': True,
+                    'primary': besvaer,
+                    'reason': f'BESVÆR er ofte nemmest at fikse – start der for hurtige gevinster.'
+                }
+        elif kan:
+            return {
+                'single': True,
+                'primary': kan,
+                'reason': f'Start med KAN for at styrke kompetencer og ressourcer.'
+            }
+        else:
+            return {
+                'single': True,
+                'primary': besvaer,
+                'reason': f'BESVÆR handler om processer og systemer – ofte nemmest at fikse.'
+            }
 
 
 def get_alerts_and_findings(breakdown: Dict, comparison: Dict, substitution: Dict = None) -> List[Dict]:
