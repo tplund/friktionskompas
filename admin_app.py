@@ -1258,21 +1258,23 @@ def analyser():
     sort_order = request.args.get('order', 'asc')
 
     with get_db() as conn:
-        # Get available campaigns for filtering
-        if user['role'] in ('admin', 'superadmin'):
+        # Get available campaigns for filtering - respect customer filter for all roles
+        if where_clause == "1=1":
+            # No filter - show all campaigns
             campaigns = conn.execute("""
                 SELECT id, name, period
                 FROM campaigns
                 ORDER BY created_at DESC
             """).fetchall()
         else:
-            campaigns = conn.execute("""
+            # Filter by customer (via organizational_units)
+            campaigns = conn.execute(f"""
                 SELECT DISTINCT c.id, c.name, c.period
                 FROM campaigns c
                 JOIN organizational_units ou ON c.target_unit_id = ou.id
-                WHERE ou.customer_id = ?
+                WHERE {where_clause}
                 ORDER BY c.created_at DESC
-            """, [user['customer_id']]).fetchall()
+            """, params).fetchall()
 
         # Build query for unit friction scores with leader/employee comparison
         query = """
@@ -1347,9 +1349,10 @@ def analyser():
         conditions = []
         query_params = []
 
-        if user['role'] not in ('admin', 'superadmin'):
-            conditions.append("ou.customer_id = ?")
-            query_params.append(user['customer_id'])
+        # Always apply customer filter (works for all roles now)
+        if where_clause != "1=1":
+            conditions.append(where_clause)
+            query_params.extend(params)
 
         if campaign_id:
             conditions.append("c.id = ?")
