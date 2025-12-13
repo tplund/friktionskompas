@@ -125,6 +125,51 @@ curl -X POST https://friktionskompas-eu.onrender.com/admin/seed-translations
 
 ---
 
+## ⚠️ KENDTE PROBLEMER - TJEK FØR DEPLOY
+
+### Problem 1: Lokal database != Produktion database
+**Symptom:** Ændringer vises ikke på produktion efter push
+**Årsag:** Testdata/ændringer er kun i lokal SQLite, ikke på Render
+
+**Løsning:**
+1. Database er IKKE i git (med vilje for nu under udvikling)
+2. Efter seed/data-ændringer lokalt: HUSK at køre seed på produktion
+3. Brug `/admin/seed-testdata` til at køre scripts på produktion
+4. Eller brug `/admin/backup` til at uploade database
+
+**Tjek:** Hvis data ser anderledes ud lokalt vs. produktion:
+- Kør `curl https://friktionskompasset.dk/admin/db-status`
+- Sammenlign med lokal database stats
+
+### Problem 2: Render deployment trigger delay
+**Symptom:** Push til GitHub, men Render deployer ikke
+**Årsag:** Render tjekker kun hvert 5. minut for nye commits
+
+**Løsning:**
+- Vent 5-10 minutter
+- Tjek Render dashboard: https://dashboard.render.com
+- Tjek via MCP: `mcp__render__list_deploys`
+
+### Problem 3: Integration tests passer lokalt men fejler i produktion
+**Symptom:** Tests grønne lokalt, men data mangler på produktion
+**Årsag:** Tests kører mod lokal database med testdata
+
+**Løsning:**
+- Tests er for lokal udvikling
+- Produktion skal have data seeded separat
+- Herning Kommune er kanonisk test-kunde - brug `seed_herning_testdata.py`
+
+### Problem 4: Customer filter virker ikke
+**Symptom:** Superadmin med filter ser stadig alle kunders data
+**Årsag:** Endpoint bruger ikke `get_customer_filter()` korrekt
+
+**Tjek ved nye endpoints:**
+1. Kald `get_customer_filter()` tidligt i funktionen
+2. Brug returneret `(where_clause, params)` i SQL queries
+3. Test med superadmin + customer_filter sat
+
+---
+
 ## KRITISK: Database Konfiguration
 
 ### Render Persistent Disk
