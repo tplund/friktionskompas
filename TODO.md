@@ -156,6 +156,15 @@ GOOGLE_CLIENT_SECRET=xxx
 
 ## 🔮 Lav Prioritet / Future
 
+### B2C Freemium & Public Access ⏸️ AFVENTER BUSINESS ANALYSE
+- [ ] **Business analyse** - prissætning, freemium-struktur, målgruppe
+- [ ] **Betalingsintegration** - Stripe (eller MobilePay DK)
+- [ ] **Flere OAuth providers** - Apple Sign-In, Facebook Login
+- [ ] **Feature gating** - "Upgrade to unlock" UI
+- [ ] **Marketing tracking** - Facebook Pixel, GA4, LinkedIn Insight
+- [ ] **SoMe ads automation** - Guardrails, budget-styring, A/B test
+- Se detaljeret plan: `PLAN_freemium_b2c.md`
+
 ### Friktionsprofil V2 (i gang)
 - [x] Dokumentation opdateret (FRIKTIONSPROFIL_V2.md)
 - [x] 8 nye kapacitets-spørgsmål ("tage sig sammen"-mekanikken)
