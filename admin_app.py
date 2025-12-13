@@ -681,7 +681,7 @@ def admin_seed_domains():
             'domain': 'herning.friktionskompasset.dk',
             'default_language': 'da',
             'auth_providers': {
-                'email_password': False,
+                'email_password': True,
                 'microsoft': {'enabled': True},
                 'google': {'enabled': False},
                 'apple': {'enabled': False},
