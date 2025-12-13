@@ -3,7 +3,10 @@
 ## VIGTIGT: Projekt Regler
 
 ### Selvstændighed - Gør ting selv når muligt!
+- **ALTID** tjek CLAUDE.md for eksisterende API keys/credentials FØR du spørger brugeren
+- **ALTID** gem API keys og credentials i CLAUDE.md når brugeren giver dem
 - **ALTID** tjek om der findes API endpoints du kan kalde direkte i stedet for at bede brugeren gøre det
+- **ALTID** tjek hvilke MCP servers der er tilgængelige før du siger du ikke har adgang
 - Brug `curl` til at kalde endpoints på Render efter deployment
 - Seed endpoints accepterer GET requests så de kan kaldes via curl
 - **Tilgængelige seed endpoints på Render:**
@@ -11,6 +14,29 @@
   - `curl https://friktionskompasset.dk/admin/seed-translations` - Seed oversættelser
 - Render MCP kan bruges til at opdatere environment variables direkte
 - Tjek altid logs og status via MCP før du spørger brugeren
+
+### API Keys og Credentials (FORTROLIGT)
+Disse keys er til brug i Claude Code sessioner - spørg IKKE brugeren om dem igen!
+
+**Cloudflare:**
+- API Token (Bred access): `36M4rmOrLGb_q69d77RNwwRx77emyXdCM2oCv1lU`
+- Zone ID for frictioncompass.com: `78b1e32c9fcde984f5ca1d088da0db63`
+- Zone ID for friktionskompasset.dk: `8fae5ce31f4002c8e2e55935eceacc32`
+
+**Cloudflare DNS eksempler:**
+```bash
+# List DNS records
+curl -s "https://api.cloudflare.com/client/v4/zones/ZONE_ID/dns_records" \
+  -H "Authorization: Bearer 36M4rmOrLGb_q69d77RNwwRx77emyXdCM2oCv1lU"
+
+# Create CNAME record
+curl -s -X POST "https://api.cloudflare.com/client/v4/zones/ZONE_ID/dns_records" \
+  -H "Authorization: Bearer 36M4rmOrLGb_q69d77RNwwRx77emyXdCM2oCv1lU" \
+  -H "Content-Type: application/json" \
+  --data '{"type":"CNAME","name":"subdomain","content":"target.com","ttl":1,"proxied":false}'
+```
+
+**Render:** Konfigureret via MCP (mcp__render__*)
 
 ### TODO.md Vedligeholdelse
 - **ALTID** opdater `TODO.md` når nye opgaver identificeres
