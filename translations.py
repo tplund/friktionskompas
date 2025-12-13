@@ -154,6 +154,10 @@ INITIAL_TRANSLATIONS = {
     'nav.email_templates': {'da': 'Email Templates', 'en': 'Email Templates'},
     'nav.backup': {'da': 'Backup & Restore', 'en': 'Backup & Restore'},
     'nav.dev_tools': {'da': 'Dev Tools', 'en': 'Dev Tools'},
+    'nav.assessment_types': {'da': 'Målingstyper', 'en': 'Assessment Types'},
+
+    # Customer settings
+    'customers.assessment_types': {'da': 'Målinger', 'en': 'Assessments'},
 
     # Trend Analysis
     'trend.title': {'da': 'Trend Analyse', 'en': 'Trend Analysis'},

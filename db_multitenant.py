@@ -292,6 +292,88 @@ def init_multitenant_db():
             print("   Password: admin123")
             print("   ADVARSEL: SKIFT PASSWORD I PRODUKTION!")
 
+        # ========================================
+        # ASSESSMENT TYPES TABLES
+        # ========================================
+
+        # Assessment types - definerer hvilke målingstyper der findes
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS assessment_types (
+                id TEXT PRIMARY KEY,
+                name_da TEXT NOT NULL,
+                name_en TEXT NOT NULL,
+                description_da TEXT,
+                description_en TEXT,
+                question_count INTEGER,
+                duration_minutes INTEGER,
+                is_individual INTEGER DEFAULT 1,
+                is_active INTEGER DEFAULT 1,
+                sequence INTEGER DEFAULT 0,
+                icon TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        # Customer assessment types - hvilke typer er tilgængelige per kunde
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS customer_assessment_types (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                customer_id TEXT NOT NULL,
+                assessment_type_id TEXT NOT NULL,
+                is_enabled INTEGER DEFAULT 1,
+                custom_name_da TEXT,
+                custom_name_en TEXT,
+                FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE,
+                FOREIGN KEY (assessment_type_id) REFERENCES assessment_types(id) ON DELETE CASCADE,
+                UNIQUE(customer_id, assessment_type_id)
+            )
+        """)
+
+        # Domain assessment types - override per domæne
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS domain_assessment_types (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                domain_id TEXT NOT NULL,
+                assessment_type_id TEXT NOT NULL,
+                is_enabled INTEGER DEFAULT 1,
+                FOREIGN KEY (domain_id) REFERENCES domains(id) ON DELETE CASCADE,
+                FOREIGN KEY (assessment_type_id) REFERENCES assessment_types(id) ON DELETE CASCADE,
+                UNIQUE(domain_id, assessment_type_id)
+            )
+        """)
+
+        # Assessment presets - foruddefinerede kombinationer
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS assessment_presets (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                description TEXT,
+                is_default INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        # Preset assessment types - hvilke typer er i hvert preset
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS preset_assessment_types (
+                preset_id INTEGER NOT NULL,
+                assessment_type_id TEXT NOT NULL,
+                FOREIGN KEY (preset_id) REFERENCES assessment_presets(id) ON DELETE CASCADE,
+                FOREIGN KEY (assessment_type_id) REFERENCES assessment_types(id) ON DELETE CASCADE,
+                PRIMARY KEY(preset_id, assessment_type_id)
+            )
+        """)
+
+        # Indexes for assessment tables
+        conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_customer_assessment_types
+            ON customer_assessment_types(customer_id)
+        """)
+        conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_domain_assessment_types
+            ON domain_assessment_types(domain_id)
+        """)
+
 
 def hash_password(password: str) -> str:
     """Hash password med bcrypt (sikker og langsom)"""
@@ -843,8 +925,333 @@ def reset_password_with_code(email: str, code: str, new_password: str) -> bool:
     return True
 
 
+# ========================================
+# ASSESSMENT TYPES FUNCTIONS
+# ========================================
+
+# Initial assessment types data
+INITIAL_ASSESSMENT_TYPES = [
+    {
+        'id': 'screening',
+        'name_da': 'Hurtig Screening',
+        'name_en': 'Quick Screening',
+        'description_da': 'En hurtig screening med 6 spørgsmål for at få et overblik over friktionsniveauet.',
+        'description_en': 'A quick screening with 6 questions to get an overview of friction levels.',
+        'question_count': 6,
+        'duration_minutes': 2,
+        'is_individual': 1,
+        'sequence': 1,
+        'icon': '⚡'
+    },
+    {
+        'id': 'profil_fuld',
+        'name_da': 'Fuld Friktionsprofil',
+        'name_en': 'Full Friction Profile',
+        'description_da': 'En grundig individuel profil med 30+ spørgsmål der giver detaljeret indsigt.',
+        'description_en': 'A thorough individual profile with 30+ questions providing detailed insights.',
+        'question_count': 30,
+        'duration_minutes': 15,
+        'is_individual': 1,
+        'sequence': 2,
+        'icon': '🧠'
+    },
+    {
+        'id': 'profil_situation',
+        'name_da': 'Situations-profil',
+        'name_en': 'Situation Profile',
+        'description_da': 'Friktionsprofil i en specifik situation eller kontekst.',
+        'description_en': 'Friction profile in a specific situation or context.',
+        'question_count': 30,
+        'duration_minutes': 15,
+        'is_individual': 1,
+        'sequence': 3,
+        'icon': '🎯'
+    },
+    {
+        'id': 'gruppe_friktion',
+        'name_da': 'Gruppe-friktionsanalyse',
+        'name_en': 'Team Friction Analysis',
+        'description_da': 'Organisatorisk måling af friktion i teams og afdelinger.',
+        'description_en': 'Organizational measurement of friction in teams and departments.',
+        'question_count': 24,
+        'duration_minutes': 10,
+        'is_individual': 0,
+        'sequence': 4,
+        'icon': '👥'
+    },
+    {
+        'id': 'gruppe_leder',
+        'name_da': 'Leder-måling',
+        'name_en': 'Leader Assessment',
+        'description_da': 'Team-måling med ekstra fokus på ledelsesfriktion.',
+        'description_en': 'Team measurement with extra focus on leadership friction.',
+        'question_count': 28,
+        'duration_minutes': 12,
+        'is_individual': 0,
+        'sequence': 5,
+        'icon': '👔'
+    },
+    {
+        'id': 'kapacitet',
+        'name_da': 'Kapacitetsmåling',
+        'name_en': 'Capacity Assessment',
+        'description_da': 'Måler evnen til at "tage sig sammen" - den indre kapacitet.',
+        'description_en': 'Measures the ability to "pull yourself together" - inner capacity.',
+        'question_count': 8,
+        'duration_minutes': 4,
+        'is_individual': 1,
+        'sequence': 6,
+        'icon': '💪'
+    },
+    {
+        'id': 'baandbredde',
+        'name_da': 'Båndbredde-måling',
+        'name_en': 'Bandwidth Assessment',
+        'description_da': 'Måler evnen til at løfte pres opad i organisationen.',
+        'description_en': 'Measures the ability to push pressure upward in the organization.',
+        'question_count': 2,
+        'duration_minutes': 1,
+        'is_individual': 1,
+        'sequence': 7,
+        'icon': '📊'
+    }
+]
+
+# Initial presets data
+INITIAL_PRESETS = [
+    {
+        'name': 'B2C Individuel',
+        'description': 'Standard for selvregistrerede individuelle brugere',
+        'is_default': 1,
+        'types': ['screening', 'profil_fuld']
+    },
+    {
+        'name': 'B2B Standard',
+        'description': 'Standard for business kunder med team-målinger',
+        'is_default': 0,
+        'types': ['screening', 'profil_fuld', 'gruppe_friktion']
+    },
+    {
+        'name': 'Enterprise Full',
+        'description': 'Alle målingstyper aktiveret for enterprise kunder',
+        'is_default': 0,
+        'types': ['screening', 'profil_fuld', 'profil_situation', 'gruppe_friktion', 'gruppe_leder', 'kapacitet', 'baandbredde']
+    }
+]
+
+
+def seed_assessment_types():
+    """Seed assessment types og presets til database"""
+    with get_db() as conn:
+        # Seed assessment types
+        for at in INITIAL_ASSESSMENT_TYPES:
+            # Check if exists
+            existing = conn.execute(
+                "SELECT id FROM assessment_types WHERE id = ?", (at['id'],)
+            ).fetchone()
+
+            if not existing:
+                conn.execute("""
+                    INSERT INTO assessment_types
+                    (id, name_da, name_en, description_da, description_en,
+                     question_count, duration_minutes, is_individual, sequence, icon)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (at['id'], at['name_da'], at['name_en'], at['description_da'],
+                      at['description_en'], at['question_count'], at['duration_minutes'],
+                      at['is_individual'], at['sequence'], at['icon']))
+                print(f"  Tilføjet assessment type: {at['id']}")
+
+        # Seed presets
+        for preset in INITIAL_PRESETS:
+            # Check if preset exists
+            existing = conn.execute(
+                "SELECT id FROM assessment_presets WHERE name = ?", (preset['name'],)
+            ).fetchone()
+
+            if not existing:
+                conn.execute("""
+                    INSERT INTO assessment_presets (name, description, is_default)
+                    VALUES (?, ?, ?)
+                """, (preset['name'], preset['description'], preset['is_default']))
+
+                preset_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+
+                # Add types to preset
+                for type_id in preset['types']:
+                    conn.execute("""
+                        INSERT INTO preset_assessment_types (preset_id, assessment_type_id)
+                        VALUES (?, ?)
+                    """, (preset_id, type_id))
+
+                print(f"  Tilføjet preset: {preset['name']} med {len(preset['types'])} typer")
+
+    print("Assessment types og presets seedet!")
+
+
+def get_available_assessments(customer_id: str = None, domain_id: str = None, lang: str = 'da') -> list:
+    """
+    Hent tilgængelige målingstyper for en given kunde/domæne.
+
+    Prioritet:
+    1. Domain-specific config
+    2. Customer config
+    3. Default preset
+    4. All active types
+
+    Args:
+        customer_id: Kunde ID (optional)
+        domain_id: Domæne ID (optional)
+        lang: Sprog for navne ('da' eller 'en')
+
+    Returns:
+        List af assessment types med navn i det valgte sprog
+    """
+    name_col = 'name_da' if lang == 'da' else 'name_en'
+    desc_col = 'description_da' if lang == 'da' else 'description_en'
+
+    with get_db() as conn:
+        # Check domain first
+        if domain_id:
+            domain_types = conn.execute(f'''
+                SELECT at.id, at.{name_col} as name, at.{desc_col} as description,
+                       at.question_count, at.duration_minutes, at.is_individual,
+                       at.icon, at.sequence
+                FROM assessment_types at
+                JOIN domain_assessment_types dat ON at.id = dat.assessment_type_id
+                WHERE dat.domain_id = ? AND dat.is_enabled = 1 AND at.is_active = 1
+                ORDER BY at.sequence
+            ''', (domain_id,)).fetchall()
+            if domain_types:
+                return [dict(row) for row in domain_types]
+
+        # Check customer
+        if customer_id:
+            customer_types = conn.execute(f'''
+                SELECT at.id,
+                       COALESCE(cat.custom_name_da, at.{name_col}) as name,
+                       at.{desc_col} as description,
+                       at.question_count, at.duration_minutes, at.is_individual,
+                       at.icon, at.sequence
+                FROM assessment_types at
+                JOIN customer_assessment_types cat ON at.id = cat.assessment_type_id
+                WHERE cat.customer_id = ? AND cat.is_enabled = 1 AND at.is_active = 1
+                ORDER BY at.sequence
+            ''', (customer_id,)).fetchall()
+            if customer_types:
+                return [dict(row) for row in customer_types]
+
+        # Default preset
+        default_types = conn.execute(f'''
+            SELECT at.id, at.{name_col} as name, at.{desc_col} as description,
+                   at.question_count, at.duration_minutes, at.is_individual,
+                   at.icon, at.sequence
+            FROM assessment_types at
+            JOIN preset_assessment_types pat ON at.id = pat.assessment_type_id
+            JOIN assessment_presets ap ON pat.preset_id = ap.id
+            WHERE ap.is_default = 1 AND at.is_active = 1
+            ORDER BY at.sequence
+        ''').fetchall()
+        if default_types:
+            return [dict(row) for row in default_types]
+
+        # Fallback: all active types
+        all_types = conn.execute(f'''
+            SELECT id, {name_col} as name, {desc_col} as description,
+                   question_count, duration_minutes, is_individual, icon, sequence
+            FROM assessment_types WHERE is_active = 1
+            ORDER BY sequence
+        ''').fetchall()
+        return [dict(row) for row in all_types]
+
+
+def get_all_assessment_types(lang: str = 'da') -> list:
+    """Hent alle assessment types (til admin UI)"""
+    name_col = 'name_da' if lang == 'da' else 'name_en'
+    desc_col = 'description_da' if lang == 'da' else 'description_en'
+
+    with get_db() as conn:
+        rows = conn.execute(f'''
+            SELECT id, name_da, name_en, {name_col} as name,
+                   description_da, description_en, {desc_col} as description,
+                   question_count, duration_minutes, is_individual, is_active,
+                   icon, sequence
+            FROM assessment_types
+            ORDER BY sequence
+        ''').fetchall()
+        return [dict(row) for row in rows]
+
+
+def get_all_presets() -> list:
+    """Hent alle presets med deres tilknyttede typer"""
+    with get_db() as conn:
+        presets = conn.execute('''
+            SELECT id, name, description, is_default
+            FROM assessment_presets
+            ORDER BY is_default DESC, name
+        ''').fetchall()
+
+        result = []
+        for preset in presets:
+            preset_dict = dict(preset)
+            # Hent tilknyttede typer
+            types = conn.execute('''
+                SELECT at.id, at.name_da, at.icon
+                FROM assessment_types at
+                JOIN preset_assessment_types pat ON at.id = pat.assessment_type_id
+                WHERE pat.preset_id = ?
+                ORDER BY at.sequence
+            ''', (preset['id'],)).fetchall()
+            preset_dict['types'] = [dict(t) for t in types]
+            result.append(preset_dict)
+
+        return result
+
+
+def get_customer_assessment_config(customer_id: str) -> dict:
+    """Hent kundens assessment type konfiguration"""
+    with get_db() as conn:
+        # Hent alle typer med kundens enabled status
+        types = conn.execute('''
+            SELECT at.id, at.name_da, at.name_en, at.icon, at.is_individual,
+                   COALESCE(cat.is_enabled, 0) as is_enabled,
+                   cat.custom_name_da, cat.custom_name_en
+            FROM assessment_types at
+            LEFT JOIN customer_assessment_types cat
+                ON at.id = cat.assessment_type_id AND cat.customer_id = ?
+            WHERE at.is_active = 1
+            ORDER BY at.sequence
+        ''', (customer_id,)).fetchall()
+
+        return {
+            'customer_id': customer_id,
+            'types': [dict(t) for t in types],
+            'has_custom_config': any(t['is_enabled'] for t in types)
+        }
+
+
+def set_customer_assessment_types(customer_id: str, enabled_types: list) -> bool:
+    """Sæt hvilke assessment types der er aktiveret for en kunde"""
+    with get_db() as conn:
+        # Slet eksisterende config
+        conn.execute(
+            "DELETE FROM customer_assessment_types WHERE customer_id = ?",
+            (customer_id,)
+        )
+
+        # Indsæt nye
+        for type_id in enabled_types:
+            conn.execute("""
+                INSERT INTO customer_assessment_types (customer_id, assessment_type_id, is_enabled)
+                VALUES (?, ?, 1)
+            """, (customer_id, type_id))
+
+    return True
+
+
 # Initialize database
 if __name__ == "__main__":
     print("Initialiserer multi-tenant database...")
     init_multitenant_db()
+    print("Seeder assessment types...")
+    seed_assessment_types()
     print("Database klar!")

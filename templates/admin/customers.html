@@ -178,6 +178,7 @@
                 <td>
                     <a href="/admin/impersonate/{{ customer.id }}" class="view-as-btn">👁️ {{ t('customers.view_as_manager') }}</a>
                     <a href="{{ url_for('customer_email_settings', customer_id=customer.id) }}" class="view-as-btn" style="background: #6366f1; margin-left: 5px;">📧 {{ t('customers.email_settings', 'Email') }}</a>
+                    <a href="{{ url_for('customer_assessments', customer_id=customer.id) }}" class="view-as-btn" style="background: #8b5cf6; margin-left: 5px;">📋 {{ t('customers.assessment_types', 'Målinger') }}</a>
                 </td>
             </tr>
             {% endfor %}

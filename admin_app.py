@@ -26,7 +26,9 @@ from db_multitenant import (
     list_users, get_customer_filter, init_multitenant_db, get_customer, update_customer,
     get_domain_config, list_domains, create_domain, update_domain, delete_domain,
     generate_email_code, verify_email_code, find_user_by_email, create_b2c_user,
-    get_or_create_b2c_customer, authenticate_by_email_code, reset_password_with_code
+    get_or_create_b2c_customer, authenticate_by_email_code, reset_password_with_code,
+    seed_assessment_types, get_all_assessment_types, get_all_presets,
+    get_customer_assessment_config, set_customer_assessment_types, get_available_assessments
 )
 from csv_upload_hierarchical import (
     validate_csv_format, bulk_upload_from_csv, generate_csv_template
@@ -4514,6 +4516,122 @@ def update_domain_auth(domain_id):
     flash('Auth providers opdateret for domæne!', 'success')
 
     return redirect(url_for('auth_config'))
+
+
+# ========================================
+# ASSESSMENT TYPES ROUTES
+# ========================================
+
+@app.route('/admin/assessment-types')
+@superadmin_required
+def assessment_types():
+    """Administrer målingstyper - kun superadmin"""
+    types = get_all_assessment_types(get_user_language())
+    presets = get_all_presets()
+    return render_template('admin/assessment_types.html',
+                         assessment_types=types,
+                         presets=presets)
+
+
+@app.route('/admin/assessment-types/seed', methods=['GET', 'POST'])
+@superadmin_required
+def seed_assessment_types_route():
+    """Seed/re-seed assessment types"""
+    seed_assessment_types()
+    flash('Målingstyper og presets seedet!', 'success')
+    return redirect(url_for('assessment_types'))
+
+
+@app.route('/admin/assessment-type/<type_id>/toggle', methods=['POST'])
+@superadmin_required
+def toggle_assessment_type(type_id):
+    """Aktiver/deaktiver en målingstype"""
+    with get_db() as conn:
+        # Hent nuværende status
+        current = conn.execute(
+            "SELECT is_active FROM assessment_types WHERE id = ?", (type_id,)
+        ).fetchone()
+
+        if current:
+            new_status = 0 if current['is_active'] else 1
+            conn.execute(
+                "UPDATE assessment_types SET is_active = ? WHERE id = ?",
+                (new_status, type_id)
+            )
+            status_text = 'aktiveret' if new_status else 'deaktiveret'
+            flash(f'Målingstype {status_text}!', 'success')
+
+    return redirect(url_for('assessment_types'))
+
+
+@app.route('/admin/customer/<customer_id>/assessments')
+@admin_required
+def customer_assessments(customer_id):
+    """Konfigurer målingstyper for en kunde"""
+    customer = get_customer(customer_id)
+    if not customer:
+        flash('Kunde ikke fundet', 'error')
+        return redirect(url_for('manage_customers'))
+
+    config = get_customer_assessment_config(customer_id)
+    presets = get_all_presets()
+
+    return render_template('admin/customer_assessments.html',
+                         customer=customer,
+                         config=config,
+                         presets=presets)
+
+
+@app.route('/admin/customer/<customer_id>/assessments', methods=['POST'])
+@admin_required
+def update_customer_assessments(customer_id):
+    """Opdater målingstyper for en kunde"""
+    customer = get_customer(customer_id)
+    if not customer:
+        flash('Kunde ikke fundet', 'error')
+        return redirect(url_for('manage_customers'))
+
+    # Hent valgte typer fra form
+    enabled_types = request.form.getlist('assessment_types')
+
+    if enabled_types:
+        set_customer_assessment_types(customer_id, enabled_types)
+        flash('Målingstyper opdateret for kunde!', 'success')
+    else:
+        # Hvis ingen valgt, slet custom config (brug default preset)
+        with get_db() as conn:
+            conn.execute(
+                "DELETE FROM customer_assessment_types WHERE customer_id = ?",
+                (customer_id,)
+            )
+        flash('Kunde bruger nu standard preset!', 'success')
+
+    return redirect(url_for('customer_assessments', customer_id=customer_id))
+
+
+@app.route('/admin/customer/<customer_id>/assessments/preset/<int:preset_id>', methods=['POST'])
+@admin_required
+def apply_preset_to_customer(customer_id, preset_id):
+    """Anvend et preset til en kunde"""
+    customer = get_customer(customer_id)
+    if not customer:
+        flash('Kunde ikke fundet', 'error')
+        return redirect(url_for('manage_customers'))
+
+    with get_db() as conn:
+        # Hent typer fra preset
+        preset_types = conn.execute('''
+            SELECT assessment_type_id FROM preset_assessment_types
+            WHERE preset_id = ?
+        ''', (preset_id,)).fetchall()
+
+        type_ids = [t['assessment_type_id'] for t in preset_types]
+
+    if type_ids:
+        set_customer_assessment_types(customer_id, type_ids)
+        flash('Preset anvendt på kunde!', 'success')
+
+    return redirect(url_for('customer_assessments', customer_id=customer_id))
 
 
 if __name__ == '__main__':
