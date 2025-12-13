@@ -32,8 +32,120 @@ def get_db():
         conn.close()
 
 
+def migrate_campaign_to_assessment():
+    """Migrate from 'campaign' to 'assessment' terminology in database.
+    This runs automatically before init_db() and is safe to run multiple times."""
+    with get_db() as conn:
+        # Check if migration is needed by looking for old table names
+        tables = [r[0] for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        ).fetchall()]
+
+        if 'campaigns' in tables and 'assessments' not in tables:
+            print("Migrating database: campaign -> assessment...")
+
+            # 1. Rename campaigns table to assessments
+            conn.execute("ALTER TABLE campaigns RENAME TO assessments")
+            print("  Renamed campaigns -> assessments")
+
+            # 2. Check if campaign_modes exists and rename it
+            if 'campaign_modes' in tables:
+                conn.execute("ALTER TABLE campaign_modes RENAME TO assessment_modes")
+                print("  Renamed campaign_modes -> assessment_modes")
+
+            # 3. Rename campaign_id columns in related tables
+            # SQLite doesn't support ALTER COLUMN, so we need to recreate tables
+
+            # 3a. Tokens table
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS tokens_new (
+                    token TEXT PRIMARY KEY,
+                    assessment_id TEXT NOT NULL,
+                    unit_id TEXT NOT NULL,
+                    respondent_type TEXT DEFAULT 'employee',
+                    respondent_name TEXT,
+                    is_used INTEGER DEFAULT 0,
+                    used_at TIMESTAMP,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (assessment_id) REFERENCES assessments(id) ON DELETE CASCADE,
+                    FOREIGN KEY (unit_id) REFERENCES organizational_units(id) ON DELETE CASCADE
+                )
+            """)
+            conn.execute("""
+                INSERT INTO tokens_new (token, assessment_id, unit_id, respondent_type, respondent_name, is_used, used_at, created_at)
+                SELECT token, campaign_id, unit_id, respondent_type, respondent_name, is_used, used_at, created_at
+                FROM tokens
+            """)
+            conn.execute("DROP TABLE tokens")
+            conn.execute("ALTER TABLE tokens_new RENAME TO tokens")
+            print("  Migrated tokens.campaign_id -> assessment_id")
+
+            # 3b. Responses table
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS responses_new (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    assessment_id TEXT NOT NULL,
+                    unit_id TEXT NOT NULL,
+                    question_id INTEGER NOT NULL,
+                    score INTEGER NOT NULL CHECK(score BETWEEN 1 AND 5),
+                    comment TEXT,
+                    category_comment TEXT,
+                    respondent_type TEXT DEFAULT 'employee',
+                    respondent_name TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (assessment_id) REFERENCES assessments(id) ON DELETE CASCADE,
+                    FOREIGN KEY (unit_id) REFERENCES organizational_units(id) ON DELETE CASCADE,
+                    FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE
+                )
+            """)
+            conn.execute("""
+                INSERT INTO responses_new (id, assessment_id, unit_id, question_id, score, comment, category_comment, respondent_type, respondent_name, created_at)
+                SELECT id, campaign_id, unit_id, question_id, score, comment, category_comment, respondent_type, respondent_name, created_at
+                FROM responses
+            """)
+            conn.execute("DROP TABLE responses")
+            conn.execute("ALTER TABLE responses_new RENAME TO responses")
+            print("  Migrated responses.campaign_id -> assessment_id")
+
+            # 3c. Scheduled_assessments table (if exists)
+            if 'scheduled_campaigns' in tables:
+                conn.execute("ALTER TABLE scheduled_campaigns RENAME TO scheduled_assessments")
+                # Rename column
+                conn.execute("""
+                    CREATE TABLE IF NOT EXISTS scheduled_assessments_new (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        assessment_id TEXT NOT NULL,
+                        scheduled_date DATE NOT NULL,
+                        status TEXT DEFAULT 'pending',
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (assessment_id) REFERENCES assessments(id) ON DELETE CASCADE
+                    )
+                """)
+                conn.execute("""
+                    INSERT INTO scheduled_assessments_new (id, assessment_id, scheduled_date, status, created_at)
+                    SELECT id, campaign_id, scheduled_date, status, created_at
+                    FROM scheduled_assessments
+                """)
+                conn.execute("DROP TABLE scheduled_assessments")
+                conn.execute("ALTER TABLE scheduled_assessments_new RENAME TO scheduled_assessments")
+                print("  Migrated scheduled_campaigns -> scheduled_assessments")
+
+            # Recreate indexes
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_tokens_assessment_unit ON tokens(assessment_id, unit_id)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_responses_assessment ON responses(assessment_id)")
+
+            print("Migration complete!")
+        elif 'assessments' in tables:
+            print("Database already migrated to 'assessment' terminology")
+        else:
+            print("Fresh database - no migration needed")
+
+
 def init_db():
     """Initialize database with hierarchical structure"""
+    # Run migration first (safe to run multiple times)
+    migrate_campaign_to_assessment()
+
     with get_db() as conn:
         # Organizational Units - træstruktur for ALT
         conn.execute("""
