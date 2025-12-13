@@ -3472,6 +3472,17 @@ def api_save_profil_intro_texts():
     return jsonify({'success': success})
 
 
+@app.route('/admin/seed-herning', methods=['GET', 'POST'])
+def seed_herning_direct():
+    """Direkte endpoint til at seede Herning testdata (ingen auth for initial setup)"""
+    try:
+        import seed_herning_testdata
+        seed_herning_testdata.main()
+        return jsonify({'success': True, 'message': 'Herning testdata genereret!'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @app.route('/admin/seed-testdata', methods=['POST'])
 @login_required
 def seed_testdata():
