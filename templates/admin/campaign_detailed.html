@@ -577,7 +577,7 @@
                                     border-radius: 6px;
                                     margin-top: 10px;">
                             <strong style="color: {% if alert.severity == 'kritisk' %}#991b1b{% elif alert.severity == 'moderat' %}#92400e{% else %}#1e40af{% endif %}; font-size: 0.875rem;">
-                                💡 Anbefaling:
+                                Anbefaling:
                             </strong>
                             <p style="margin: 5px 0 0 0; color: {% if alert.severity == 'kritisk' %}#7f1d1d{% elif alert.severity == 'moderat' %}#78350f{% else %}#1e3a8a{% endif %}; font-size: 0.875rem; line-height: 1.5;">
                                 {{ alert.recommendation }}
@@ -620,7 +620,7 @@
                     <!-- SINGLE RECOMMENDATION -->
                     {% set rec = start_here.primary %}
                     <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 20px;">
-                        <h2 style="color: #667eea; margin: 0;">🎯 Start Her: {{ rec.field }}</h2>
+                        <h2 style="color: #667eea; margin: 0;">Start Her: {{ rec.field }}</h2>
                         <div style="display: flex; gap: 10px; flex-wrap: wrap;">
                             <span class="kkc-badge">KKC: {{ rec.kkc_element }}</span>
                             <span class="severity-badge {{ rec.severity }}">{{ rec.severity_emoji }} {{ rec.severity|title }} friktion · {{ rec.score }}/5</span>
@@ -632,19 +632,19 @@
 
                     <!-- Prioriteringsforklaring -->
                     <div style="background: #f0f9ff; border-left: 4px solid #3b82f6; padding: 12px 15px; margin-bottom: 20px; border-radius: 4px;">
-                        <strong style="color: #1e40af;">💡 Hvorfor denne prioritering?</strong>
+                        <strong style="color: #1e40af;">Hvorfor denne prioritering?</strong>
                         <p style="margin: 8px 0 0 0; color: #1e3a8a; font-size: 0.875rem;">
                             {{ start_here.reason }}
                         </p>
                     </div>
 
                     <div style="margin: 20px 0;">
-                        <h4 style="color: #4b5563; margin-bottom: 10px;">📊 Problemet</h4>
+                        <h4 style="color: #4b5563; margin-bottom: 10px;">Problemet</h4>
                         <p style="color: #6b7280; line-height: 1.6;">{{ rec.problem }}</p>
                     </div>
 
                     <div style="margin: 20px 0;">
-                        <h4 style="color: #4b5563; margin-bottom: 15px;">✅ Konkrete handlinger</h4>
+                        <h4 style="color: #4b5563; margin-bottom: 15px;">Konkrete handlinger</h4>
                         <ol style="margin: 0; padding-left: 20px; color: #374151;">
                             {% for action in rec.actions %}
                             <li style="margin-bottom: 10px; line-height: 1.6;">{{ action }}</li>
@@ -653,21 +653,21 @@
                     </div>
 
                     <div style="margin: 20px 0;">
-                        <h4 style="color: #4b5563; margin-bottom: 10px;">📅 Opfølgning</h4>
+                        <h4 style="color: #4b5563; margin-bottom: 10px;">Opfølgning</h4>
                         <p style="color: #6b7280; line-height: 1.6;">{{ rec.follow_up }}</p>
                     </div>
 
                     <div style="background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%); border-left: 4px solid #667eea; padding: 15px; border-radius: 6px; margin-top: 20px;">
-                        <p style="color: #4b5563; font-style: italic; margin: 0;">💡 {{ rec.kkc_reference }}</p>
+                        <p style="color: #4b5563; font-style: italic; margin: 0;">{{ rec.kkc_reference }}</p>
                     </div>
 
                 {% else %}
                     <!-- MULTIPLE RECOMMENDATIONS -->
-                    <h2 style="color: #667eea; margin: 0 0 20px 0;">🎯 Prioriterede Anbefalinger</h2>
+                    <h2 style="color: #667eea; margin: 0 0 20px 0;">Prioriterede Anbefalinger</h2>
 
                     <!-- Forklaring -->
                     <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px 15px; margin-bottom: 20px; border-radius: 4px;">
-                        <strong style="color: #92400e;">💡 Flere ligeværdige friktioner</strong>
+                        <strong style="color: #92400e;">Flere ligeværdige friktioner</strong>
                         <p style="margin: 8px 0 0 0; color: #92400e; font-size: 0.875rem;">
                             {{ start_here.reason }}
                         </p>
