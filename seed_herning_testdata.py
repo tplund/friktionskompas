@@ -160,8 +160,8 @@ def generate_trend_campaigns(conn, questions):
             campaign_name = f"{unit_name} - {period_name}"
 
             conn.execute("""
-                INSERT INTO campaigns (id, name, target_unit_id, status, created_at, period, include_leader_assessment)
-                VALUES (?, ?, ?, 'completed', ?, ?, 1)
+                INSERT INTO campaigns (id, name, target_unit_id, created_at, period, include_leader_assessment)
+                VALUES (?, ?, ?, ?, ?, 1)
             """, [campaign_id, campaign_name, unit_id, date_str, period_name])
 
             # Generer 25-35 responses per kampagne (medarbejdere + ledere)
@@ -214,8 +214,8 @@ def generate_borgere_data(conn, borgere_unit_ids, questions):
 
         # B2C kampagner: ingen leder-vurdering, individuel mode
         conn.execute("""
-            INSERT INTO campaigns (id, name, target_unit_id, status, created_at, period, include_leader_assessment, mode)
-            VALUES (?, ?, ?, 'completed', ?, 'December 2025', 0, 'anonymous')
+            INSERT INTO campaigns (id, name, target_unit_id, created_at, period, include_leader_assessment, mode)
+            VALUES (?, ?, ?, ?, 'December 2025', 0, 'anonymous')
         """, [campaign_id, campaign_name, unit_id, datetime.now().strftime('%Y-%m-%d')])
 
         # Generer 50-100 individuelle screenings
