@@ -29,7 +29,7 @@ def cached(ttl: int = DEFAULT_TTL, prefix: str = ""):
 
     Brug:
         @cached(ttl=300, prefix="stats")
-        def get_expensive_data(unit_id, campaign_id):
+        def get_expensive_data(unit_id, assessment_id):
             ...
     """
     def decorator(func: Callable) -> Callable:
@@ -130,7 +130,7 @@ def cleanup_expired() -> int:
 # CAMPAIGN/RESPONSE CACHE INVALIDATION
 # ============================================
 
-def invalidate_campaign_cache(campaign_id: str):
+def invalidate_assessment_cache(assessment_id: str):
     """Invalider al cache relateret til en kampagne"""
     invalidate_prefix(f"stats:")
     invalidate_prefix(f"analysis:")
@@ -157,24 +157,24 @@ def preload_dashboard_cache(customer_id: Optional[str] = None):
     with get_db() as conn:
         # Hent aktive kampagner
         if customer_id:
-            campaigns = conn.execute("""
+            assessments = conn.execute("""
                 SELECT c.id, c.unit_id
-                FROM campaigns c
+                FROM assessments c
                 JOIN organizational_units ou ON c.unit_id = ou.id
                 WHERE ou.customer_id = ?
                 ORDER BY c.created_at DESC
                 LIMIT 10
             """, (customer_id,)).fetchall()
         else:
-            campaigns = conn.execute("""
-                SELECT id, unit_id FROM campaigns
+            assessments = conn.execute("""
+                SELECT id, unit_id FROM assessments
                 ORDER BY created_at DESC
                 LIMIT 10
             """).fetchall()
 
     # Preload stats for de seneste kampagner
     # (Selve preloading sker når funktionerne kaldes med caching)
-    return len(campaigns)
+    return len(assessments)
 
 
 # ============================================

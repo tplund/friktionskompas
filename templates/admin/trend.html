@@ -77,28 +77,28 @@
         margin-bottom: 15px;
     }
 
-    .campaign-table {
+    .assessment-table {
         width: 100%;
         border-collapse: collapse;
         margin-top: 15px;
     }
-    .campaign-table th,
-    .campaign-table td {
+    .assessment-table th,
+    .assessment-table td {
         padding: 12px;
         text-align: left;
         border-bottom: 1px solid #e5e7eb;
     }
-    .campaign-table th {
+    .assessment-table th {
         background: #f9fafb;
         font-weight: 600;
         color: #374151;
         font-size: 0.85rem;
     }
-    .campaign-table td {
+    .assessment-table td {
         font-size: 0.9rem;
         color: #4b5563;
     }
-    .campaign-table tr:hover {
+    .assessment-table tr:hover {
         background: #f9fafb;
     }
 
@@ -144,11 +144,11 @@
         </select>
     </div>
 
-    {% if trend_data.campaigns %}
+    {% if trend_data.assessments %}
     <div class="summary-cards">
         <div class="summary-card">
-            <div class="label">{{ t('trend.total_campaigns') }}</div>
-            <div class="value">{{ trend_data.summary.total_campaigns }}</div>
+            <div class="label">{{ t('trend.total_assessments') }}</div>
+            <div class="value">{{ trend_data.summary.total_assessments }}</div>
         </div>
         <div class="summary-card">
             <div class="label">{{ t('trend.date_range') }}</div>
@@ -163,11 +163,11 @@
 
     <h2 style="margin-top: 30px;">{{ t('trend.details_title') }}</h2>
     <div style="overflow-x: auto;">
-        <table class="campaign-table">
+        <table class="assessment-table">
             <thead>
                 <tr>
                     <th>{{ t('trend.col_date') }}</th>
-                    <th>{{ t('trend.col_campaign') }}</th>
+                    <th>{{ t('trend.col_assessment') }}</th>
                     <th>{{ t('trend.col_unit') }}</th>
                     <th>{{ t('trend.col_responses') }}</th>
                     {% for field in trend_data.fields %}
@@ -176,7 +176,7 @@
                 </tr>
             </thead>
             <tbody>
-                {% for camp in trend_data.campaigns %}
+                {% for camp in trend_data.assessments %}
                 <tr>
                     <td>{{ camp.date }}</td>
                     <td>{{ camp.name }} {% if camp.period %}({{ camp.period }}){% endif %}</td>
@@ -206,7 +206,7 @@
     {% else %}
     <div class="no-data">
         <p>{{ t('trend.no_data') }}</p>
-        <a href="/admin" class="btn btn-primary">{{ t('trend.create_campaign') }}</a>
+        <a href="/admin" class="btn btn-primary">{{ t('trend.create_assessment') }}</a>
     </div>
     {% endif %}
 </div>
@@ -223,12 +223,12 @@ function filterByUnit(unitId) {
     }
 }
 
-{% if trend_data.campaigns %}
+{% if trend_data.assessments %}
 // Prepare chart data
-const campaigns = {{ trend_data.campaigns | tojson }};
+const assessments = {{ trend_data.assessments | tojson }};
 const fields = {{ trend_data.fields | tojson }};
 
-const labels = campaigns.map(c => c.date || c.name);
+const labels = assessments.map(c => c.date || c.name);
 
 const colors = {
     'MENING': { border: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.1)' },
@@ -239,7 +239,7 @@ const colors = {
 
 const datasets = fields.map(field => ({
     label: field,
-    data: campaigns.map(c => c.scores[field] || null),
+    data: assessments.map(c => c.scores[field] || null),
     borderColor: colors[field]?.border || '#6b7280',
     backgroundColor: colors[field]?.bg || 'rgba(107, 114, 128, 0.1)',
     borderWidth: 2,
@@ -286,7 +286,7 @@ new Chart(ctx, {
                 callbacks: {
                     title: function(context) {
                         const idx = context[0].dataIndex;
-                        const camp = campaigns[idx];
+                        const camp = assessments[idx];
                         return camp.name + (camp.period ? ' (' + camp.period + ')' : '');
                     }
                 }

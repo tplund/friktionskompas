@@ -190,43 +190,43 @@
 </div>
 
 <div class="card">
-    <h2>📣 {{ t('campaign.title') }} ({{ campaigns|length }})</h2>
+    <h2>📣 {{ t('assessment.title') }} ({{ assessments|length }})</h2>
 
     <div style="margin-bottom: 20px;">
-        <a href="/admin/campaign/new" class="btn">➕ {{ t('campaign.create') }}</a>
+        <a href="/admin/assessment/new" class="btn">➕ {{ t('assessment.create') }}</a>
     </div>
 
-    {% if campaigns %}
+    {% if assessments %}
     <table>
         <thead>
             <tr>
-                <th>{{ t('campaign.name') }}</th>
-                <th>{{ t('campaign.period') }}</th>
-                <th>{{ t('campaign.sent') }}</th>
-                <th>{{ t('campaign.response_rate') }}</th>
+                <th>{{ t('assessment.name') }}</th>
+                <th>{{ t('assessment.period') }}</th>
+                <th>{{ t('assessment.sent') }}</th>
+                <th>{{ t('assessment.response_rate') }}</th>
                 <th></th>
             </tr>
         </thead>
         <tbody>
-            {% for campaign in campaigns %}
+            {% for assessment in assessments %}
             <tr>
-                <td>{{ campaign.name }}</td>
-                <td>{{ campaign.period }}</td>
-                <td>{{ campaign.tokens_sent or 0 }}</td>
+                <td>{{ assessment.name }}</td>
+                <td>{{ assessment.period }}</td>
+                <td>{{ assessment.tokens_sent or 0 }}</td>
                 <td>
-                    {% if campaign.tokens_sent %}
-                    {{ "%.1f"|format((campaign.tokens_used or 0) * 100.0 / campaign.tokens_sent) }}%
+                    {% if assessment.tokens_sent %}
+                    {{ "%.1f"|format((assessment.tokens_used or 0) * 100.0 / assessment.tokens_sent) }}%
                     {% else %}
                     -
                     {% endif %}
                 </td>
-                <td><a href="/admin/campaign/{{ campaign.id }}">Se →</a></td>
+                <td><a href="/admin/assessment/{{ assessment.id }}">Se →</a></td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
     {% else %}
-    <div class="empty">{{ t('campaign.no_campaigns') }}</div>
+    <div class="empty">{{ t('assessment.no_assessments') }}</div>
     {% endif %}
 </div>
 {% endblock %}

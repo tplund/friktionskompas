@@ -180,9 +180,9 @@ class TestErrorHandling:
         response = authenticated_client.get('/admin/unit/nonexistent-unit-id')
         assert response.status_code in [404, 302]  # May redirect
 
-    def test_404_for_nonexistent_campaign(self, authenticated_client):
-        """Test 404 for non-existent campaign."""
-        response = authenticated_client.get('/admin/campaign/nonexistent-campaign-id')
+    def test_404_for_nonexistent_assessment(self, authenticated_client):
+        """Test 404 for non-existent assessment."""
+        response = authenticated_client.get('/admin/assessment/nonexistent-assessment-id')
         assert response.status_code in [404, 302]  # May redirect
 
 
@@ -336,8 +336,8 @@ class TestDeleteOperations:
         assert 'tables' in data
         assert 'backup_date' in data
 
-    def test_delete_campaign(self, authenticated_client, app):
-        """Test deleting a campaign."""
+    def test_delete_assessment(self, authenticated_client, app):
+        """Test deleting a assessment."""
         from db_multitenant import get_db
 
         with app.app_context():
@@ -354,24 +354,24 @@ class TestDeleteOperations:
                 if not unit:
                     pytest.skip("No units in test database")
 
-                # Create a test campaign
-                test_campaign_id = 'test-campaign-delete'
+                # Create a test assessment
+                test_assessment_id = 'test-assessment-delete'
                 conn.execute("""
-                    INSERT INTO campaigns (id, name, target_unit_id, period)
-                    VALUES (?, 'Test Campaign Delete', ?, 'Q1 2025')
-                """, (test_campaign_id, unit['id']))
+                    INSERT INTO assessments (id, name, target_unit_id, period)
+                    VALUES (?, 'Test Assessment Delete', ?, 'Q1 2025')
+                """, (test_assessment_id, unit['id']))
                 conn.commit()
 
-                # Verify campaign exists
-                campaign = conn.execute("SELECT * FROM campaigns WHERE id = ?", (test_campaign_id,)).fetchone()
-                assert campaign is not None
+                # Verify assessment exists
+                assessment = conn.execute("SELECT * FROM assessments WHERE id = ?", (test_assessment_id,)).fetchone()
+                assert assessment is not None
 
-        # Delete campaign
-        response = authenticated_client.post(f'/admin/campaign/{test_campaign_id}/delete', follow_redirects=False)
+        # Delete assessment
+        response = authenticated_client.post(f'/admin/assessment/{test_assessment_id}/delete', follow_redirects=False)
         assert response.status_code == 302
 
-        # Verify campaign is gone
+        # Verify assessment is gone
         with app.app_context():
             with get_db() as conn:
-                campaign = conn.execute("SELECT * FROM campaigns WHERE id = ?", (test_campaign_id,)).fetchone()
-                assert campaign is None, "Campaign should be deleted"
+                assessment = conn.execute("SELECT * FROM assessments WHERE id = ?", (test_assessment_id,)).fetchone()
+                assert assessment is None, "Assessment should be deleted"

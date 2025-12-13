@@ -68,7 +68,7 @@ def ensure_email_logs_table():
                 subject TEXT,
                 email_type TEXT DEFAULT 'invitation',
                 status TEXT DEFAULT 'sent',
-                campaign_id TEXT,
+                assessment_id TEXT,
                 token TEXT,
                 error_message TEXT,
                 delivered_at TIMESTAMP,
@@ -85,7 +85,7 @@ def ensure_email_logs_table():
 
 
 def log_email(to_email: str, subject: str, email_type: str, status: str,
-              message_id: str = None, campaign_id: str = None, token: str = None,
+              message_id: str = None, assessment_id: str = None, token: str = None,
               error_message: str = None) -> int:
     """Log email til database for tracking"""
     try:
@@ -93,9 +93,9 @@ def log_email(to_email: str, subject: str, email_type: str, status: str,
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.execute("""
             INSERT INTO email_logs (message_id, to_email, subject, email_type, status,
-                                   campaign_id, token, error_message)
+                                   assessment_id, token, error_message)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        """, (message_id, to_email, subject, email_type, status, campaign_id, token, error_message))
+        """, (message_id, to_email, subject, email_type, status, assessment_id, token, error_message))
         log_id = cursor.lastrowid
         conn.commit()
         conn.close()
@@ -124,13 +124,13 @@ def update_email_status(message_id: str, status: str, timestamp_field: str = Non
         print(f"Error updating email status: {e}")
 
 
-def get_email_stats(campaign_id: str = None) -> Dict:
+def get_email_stats(assessment_id: str = None) -> Dict:
     """Hent email statistik"""
     try:
         conn = sqlite3.connect(DB_PATH)
         conn.row_factory = sqlite3.Row
 
-        if campaign_id:
+        if assessment_id:
             stats = conn.execute("""
                 SELECT
                     COUNT(*) as total,
@@ -140,8 +140,8 @@ def get_email_stats(campaign_id: str = None) -> Dict:
                     SUM(CASE WHEN status = 'clicked' THEN 1 ELSE 0 END) as clicked,
                     SUM(CASE WHEN status = 'bounced' THEN 1 ELSE 0 END) as bounced,
                     SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END) as errors
-                FROM email_logs WHERE campaign_id = ?
-            """, (campaign_id,)).fetchone()
+                FROM email_logs WHERE assessment_id = ?
+            """, (assessment_id,)).fetchone()
         else:
             stats = conn.execute("""
                 SELECT
@@ -162,17 +162,17 @@ def get_email_stats(campaign_id: str = None) -> Dict:
         return {}
 
 
-def get_email_logs(campaign_id: str = None, limit: int = 100) -> List[Dict]:
+def get_email_logs(assessment_id: str = None, limit: int = 100) -> List[Dict]:
     """Hent email logs"""
     try:
         conn = sqlite3.connect(DB_PATH)
         conn.row_factory = sqlite3.Row
 
-        if campaign_id:
+        if assessment_id:
             logs = conn.execute("""
-                SELECT * FROM email_logs WHERE campaign_id = ?
+                SELECT * FROM email_logs WHERE assessment_id = ?
                 ORDER BY created_at DESC LIMIT ?
-            """, (campaign_id, limit)).fetchall()
+            """, (assessment_id, limit)).fetchall()
         else:
             logs = conn.execute("""
                 SELECT * FROM email_logs ORDER BY created_at DESC LIMIT ?
@@ -256,7 +256,7 @@ DEFAULT_TEMPLATES_DA = {
             {sender_name}</p>
 
             <div class="footer">
-                <p>Dette er en del af målingen: <strong>{campaign_name}</strong></p>
+                <p>Dette er en del af målingen: <strong>{assessment_name}</strong></p>
                 <p>Spørgsmål? Kontakt {contact_email}</p>
             </div>
         </div>
@@ -282,7 +282,7 @@ Mvh
 {sender_name}
 
 ---
-Måling: {campaign_name}
+Måling: {assessment_name}
 '''
     },
     'reminder': {
@@ -423,8 +423,8 @@ Mvh
 {sender_name}
 '''
     },
-    'campaign_completed': {
-        'subject': 'Måling afsluttet: {campaign_name} - Resultater klar',
+    'assessment_completed': {
+        'subject': 'Måling afsluttet: {assessment_name} - Resultater klar',
         'html': '''
 <!DOCTYPE html>
 <html>
@@ -453,7 +453,7 @@ Mvh
         <div class="content">
             <p>Hej {recipient_name}!</p>
 
-            <p>Friktionsmålingen <strong>{campaign_name}</strong> er nu afsluttet og resultaterne er klar til gennemgang.</p>
+            <p>Friktionsmålingen <strong>{assessment_name}</strong> er nu afsluttet og resultaterne er klar til gennemgang.</p>
 
             <div class="stats">
                 <strong>Statistik:</strong><br>
@@ -486,11 +486,11 @@ Mvh
 </html>
 ''',
         'text': '''
-Måling Afsluttet: {campaign_name}
+Måling Afsluttet: {assessment_name}
 
 Hej {recipient_name}!
 
-Friktionsmålingen "{campaign_name}" er nu afsluttet og resultaterne er klar.
+Friktionsmålingen "{assessment_name}" er nu afsluttet og resultaterne er klar.
 
 Statistik:
 - Besvarelser: {responses_count} af {tokens_sent}
@@ -558,7 +558,7 @@ DEFAULT_TEMPLATES_EN = {
             {sender_name}</p>
 
             <div class="footer">
-                <p>This is part of the survey: <strong>{campaign_name}</strong></p>
+                <p>This is part of the survey: <strong>{assessment_name}</strong></p>
                 <p>Questions? Contact {contact_email}</p>
             </div>
         </div>
@@ -584,7 +584,7 @@ Best regards,
 {sender_name}
 
 ---
-Survey: {campaign_name}
+Survey: {assessment_name}
 '''
     },
     'reminder': {
@@ -725,8 +725,8 @@ Best regards,
 {sender_name}
 '''
     },
-    'campaign_completed': {
-        'subject': 'Survey Complete: {campaign_name} - Results Ready',
+    'assessment_completed': {
+        'subject': 'Survey Complete: {assessment_name} - Results Ready',
         'html': '''
 <!DOCTYPE html>
 <html>
@@ -755,7 +755,7 @@ Best regards,
         <div class="content">
             <p>Hi {recipient_name}!</p>
 
-            <p>The friction survey <strong>{campaign_name}</strong> is now complete and results are ready for review.</p>
+            <p>The friction survey <strong>{assessment_name}</strong> is now complete and results are ready for review.</p>
 
             <div class="stats">
                 <strong>Statistics:</strong><br>
@@ -788,11 +788,11 @@ Best regards,
 </html>
 ''',
         'text': '''
-Survey Complete: {campaign_name}
+Survey Complete: {assessment_name}
 
 Hi {recipient_name}!
 
-The friction survey "{campaign_name}" is now complete and results are ready.
+The friction survey "{assessment_name}" is now complete and results are ready.
 
 Statistics:
 - Responses: {responses_count} of {tokens_sent}
@@ -924,7 +924,7 @@ def render_template(template: Dict, variables: Dict, language: str = 'da') -> Di
     }
 
 
-def send_email_invitation(to_email: str, token: str, campaign_name: str,
+def send_email_invitation(to_email: str, token: str, assessment_name: str,
                          sender_name: str = "HR", customer_id: str = None,
                          language: str = 'da') -> bool:
     """
@@ -933,7 +933,7 @@ def send_email_invitation(to_email: str, token: str, campaign_name: str,
     Args:
         to_email: Recipient email
         token: Survey token
-        campaign_name: Name of the campaign
+        assessment_name: Name of the assessment
         sender_name: Name of sender (default "HR")
         customer_id: Optional customer ID for custom templates and email sender
         language: Language code ('da' or 'en', default 'da')
@@ -947,7 +947,7 @@ def send_email_invitation(to_email: str, token: str, campaign_name: str,
     rendered = render_template(template, {
         'sender_name': sender_name,
         'survey_url': survey_url,
-        'campaign_name': campaign_name
+        'assessment_name': assessment_name
     }, language)
 
     # Get customer-specific email sender
@@ -991,7 +991,7 @@ def send_email_invitation(to_email: str, token: str, campaign_name: str,
         return False
 
 
-def send_sms_invitation(phone: str, token: str, campaign_name: str,
+def send_sms_invitation(phone: str, token: str, assessment_name: str,
                        sender_name: str = "HR") -> bool:
     """
     Send SMS invitation (kræver SMS-gateway integration)
@@ -1018,7 +1018,7 @@ Mvh {sender_name}"""
     return True  # Mock success
 
 
-def send_reminder_email(to_email: str, token: str, campaign_name: str,
+def send_reminder_email(to_email: str, token: str, assessment_name: str,
                        responses_so_far: int, sender_name: str = "HR",
                        customer_id: str = None, language: str = 'da') -> bool:
     """
@@ -1027,7 +1027,7 @@ def send_reminder_email(to_email: str, token: str, campaign_name: str,
     Args:
         to_email: Recipient email
         token: Survey token
-        campaign_name: Name of the campaign
+        assessment_name: Name of the assessment
         responses_so_far: Number of responses received
         sender_name: Name of sender (default "HR")
         customer_id: Optional customer ID for email sender
@@ -1085,8 +1085,8 @@ def send_reminder_email(to_email: str, token: str, campaign_name: str,
         return False
 
 
-def send_campaign_batch(contacts: List[Dict], tokens: List[str],
-                       campaign_name: str, sender_name: str = "HR",
+def send_assessment_batch(contacts: List[Dict], tokens: List[str],
+                       assessment_name: str, sender_name: str = "HR",
                        language: str = 'da') -> Dict:
     """
     Send måling til hele batch af kontakter
@@ -1111,7 +1111,7 @@ def send_campaign_batch(contacts: List[Dict], tokens: List[str],
             success = send_email_invitation(
                 contact['email'],
                 token,
-                campaign_name,
+                assessment_name,
                 sender_name,
                 language=language
             )
@@ -1125,7 +1125,7 @@ def send_campaign_batch(contacts: List[Dict], tokens: List[str],
             success = send_sms_invitation(
                 contact['phone'],
                 token,
-                campaign_name,
+                assessment_name,
                 sender_name
             )
             if success:
@@ -1268,11 +1268,11 @@ def send_profil_batch(invitations: List[Dict], sender_name: str = "HR",
 # CAMPAIGN COMPLETED NOTIFICATIONS
 # ========================================
 
-def send_campaign_completed_notification(
+def send_assessment_completed_notification(
     to_email: str,
     recipient_name: str,
-    campaign_id: str,
-    campaign_name: str,
+    assessment_id: str,
+    assessment_name: str,
     responses_count: int,
     tokens_sent: int,
     organization_name: str,
@@ -1280,29 +1280,29 @@ def send_campaign_completed_notification(
     language: str = 'da'
 ) -> bool:
     """
-    Send email notification when a campaign/survey is completed.
+    Send email notification when a assessment/survey is completed.
 
     Args:
         to_email: Recipient email (typically the manager/admin)
         recipient_name: Name of the recipient
-        campaign_id: Campaign ID for building the results URL
-        campaign_name: Name of the campaign
+        assessment_id: Assessment ID for building the results URL
+        assessment_name: Name of the assessment
         responses_count: Number of responses received
         tokens_sent: Total number of invitations sent
         organization_name: Name of the target organization
         customer_id: Optional customer ID for email sender
         language: Language code ('da' or 'en', default 'da')
     """
-    results_url = f"{BASE_URL}/admin/campaign/{campaign_id}/detailed"
+    results_url = f"{BASE_URL}/admin/assessment/{assessment_id}/detailed"
     response_rate = round((responses_count / tokens_sent * 100), 1) if tokens_sent > 0 else 0
 
     # Get template for the specified language
-    template = get_template('campaign_completed', language=language)
+    template = get_template('assessment_completed', language=language)
 
     # Render template with variables
     rendered = render_template(template, {
         'recipient_name': recipient_name,
-        'campaign_name': campaign_name,
+        'assessment_name': assessment_name,
         'responses_count': responses_count,
         'tokens_sent': tokens_sent,
         'response_rate': response_rate,
@@ -1338,32 +1338,32 @@ def send_campaign_completed_notification(
                 msg = response_data['Messages'][0]
                 if 'To' in msg and len(msg['To']) > 0:
                     message_id = str(msg['To'][0].get('MessageID', ''))
-            log_email(to_email, rendered['subject'], 'campaign_completed', 'sent',
-                     message_id, campaign_id=campaign_id)
+            log_email(to_email, rendered['subject'], 'assessment_completed', 'sent',
+                     message_id, assessment_id=assessment_id)
             return True
         else:
-            log_email(to_email, rendered['subject'], 'campaign_completed', 'error',
-                     error_message=f"Status {result.status_code}", campaign_id=campaign_id)
+            log_email(to_email, rendered['subject'], 'assessment_completed', 'error',
+                     error_message=f"Status {result.status_code}", assessment_id=assessment_id)
             return False
     except Exception as e:
-        print(f"Error sending campaign completed notification to {to_email}: {e}")
-        log_email(to_email, rendered['subject'], 'campaign_completed', 'error',
-                 error_message=str(e), campaign_id=campaign_id)
+        print(f"Error sending assessment completed notification to {to_email}: {e}")
+        log_email(to_email, rendered['subject'], 'assessment_completed', 'error',
+                 error_message=str(e), assessment_id=assessment_id)
         return False
 
 
-def check_and_notify_campaign_completed(campaign_id: str, threshold_percent: float = 100.0) -> bool:
+def check_and_notify_assessment_completed(assessment_id: str, threshold_percent: float = 100.0) -> bool:
     """
-    Check if a campaign has reached the completion threshold and send notification.
+    Check if a assessment has reached the completion threshold and send notification.
 
-    A campaign is considered "complete" when:
+    A assessment is considered "complete" when:
     - All tokens have been used (100% response rate), OR
-    - The campaign has reached a custom threshold (e.g., 80%)
+    - The assessment has reached a custom threshold (e.g., 80%)
 
     This function checks if notification has already been sent to avoid duplicates.
 
     Args:
-        campaign_id: Campaign ID to check
+        assessment_id: Assessment ID to check
         threshold_percent: Percentage of responses needed to trigger notification (default 100%)
 
     Returns:
@@ -1373,15 +1373,15 @@ def check_and_notify_campaign_completed(campaign_id: str, threshold_percent: flo
         conn = sqlite3.connect(DB_PATH)
         conn.row_factory = sqlite3.Row
 
-        # Get campaign info
-        campaign = conn.execute("""
+        # Get assessment info
+        assessment = conn.execute("""
             SELECT c.*, ou.name as org_name, ou.customer_id
-            FROM campaigns c
+            FROM assessments c
             JOIN organizational_units ou ON c.target_unit_id = ou.id
             WHERE c.id = ?
-        """, (campaign_id,)).fetchone()
+        """, (assessment_id,)).fetchone()
 
-        if not campaign:
+        if not assessment:
             conn.close()
             return False
 
@@ -1391,8 +1391,8 @@ def check_and_notify_campaign_completed(campaign_id: str, threshold_percent: flo
                 COUNT(*) as total,
                 SUM(CASE WHEN used = 1 THEN 1 ELSE 0 END) as used
             FROM tokens
-            WHERE campaign_id = ?
-        """, (campaign_id,)).fetchone()
+            WHERE assessment_id = ?
+        """, (assessment_id,)).fetchone()
 
         tokens_sent = stats['total'] or 0
         tokens_used = stats['used'] or 0
@@ -1411,8 +1411,8 @@ def check_and_notify_campaign_completed(campaign_id: str, threshold_percent: flo
         # Check if notification already sent
         existing = conn.execute("""
             SELECT id FROM email_logs
-            WHERE campaign_id = ? AND email_type = 'campaign_completed'
-        """, (campaign_id,)).fetchone()
+            WHERE assessment_id = ? AND email_type = 'assessment_completed'
+        """, (assessment_id,)).fetchone()
 
         if existing:
             conn.close()
@@ -1420,7 +1420,7 @@ def check_and_notify_campaign_completed(campaign_id: str, threshold_percent: flo
 
         # Get the manager/admin to notify
         # First try: get users associated with this customer
-        customer_id = campaign['customer_id']
+        customer_id = assessment['customer_id']
         users = conn.execute("""
             SELECT email, username FROM users
             WHERE customer_id = ? OR role = 'admin'
@@ -1433,14 +1433,14 @@ def check_and_notify_campaign_completed(campaign_id: str, threshold_percent: flo
         # Send notification to each relevant user
         sent_count = 0
         for user in users:
-            success = send_campaign_completed_notification(
+            success = send_assessment_completed_notification(
                 to_email=user['email'],
                 recipient_name=user['username'],
-                campaign_id=campaign_id,
-                campaign_name=campaign['name'],
+                assessment_id=assessment_id,
+                assessment_name=assessment['name'],
                 responses_count=tokens_used,
                 tokens_sent=tokens_sent,
-                organization_name=campaign['org_name']
+                organization_name=assessment['org_name']
             )
             if success:
                 sent_count += 1
@@ -1448,7 +1448,7 @@ def check_and_notify_campaign_completed(campaign_id: str, threshold_percent: flo
         return sent_count > 0
 
     except Exception as e:
-        print(f"Error checking campaign completion: {e}")
+        print(f"Error checking assessment completion: {e}")
         return False
 
 

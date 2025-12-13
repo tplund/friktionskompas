@@ -107,7 +107,7 @@ def create_borgere_sub_units(conn, borgere_id: str) -> list:
     return created
 
 
-def generate_trend_campaigns(conn, questions):
+def generate_trend_assessments(conn, questions):
     """Genererer kampagner over tid for trend-analyse (B2B med medarbejdere + ledere)"""
 
     # Hent eksisterende units (level 2 - de faktiske enheder, IKKE Borgere)
@@ -145,7 +145,7 @@ def generate_trend_campaigns(conn, questions):
         for i, (date_str, period_name) in enumerate(periods):
             # Tjek om kampagne allerede eksisterer
             existing = conn.execute("""
-                SELECT id FROM campaigns
+                SELECT id FROM assessments
                 WHERE target_unit_id = ? AND name LIKE ?
             """, [unit_id, f"%{period_name}%"]).fetchone()
 
@@ -156,13 +156,13 @@ def generate_trend_campaigns(conn, questions):
             # Skab gradvis forbedring over tid
             improvement = i * 0.15  # 0.15 point forbedring per kvartal
 
-            campaign_id = generate_id('camp')
-            campaign_name = f"{unit_name} - {period_name}"
+            assessment_id = generate_id('camp')
+            assessment_name = f"{unit_name} - {period_name}"
 
             conn.execute("""
-                INSERT INTO campaigns (id, name, target_unit_id, created_at, period, include_leader_assessment)
+                INSERT INTO assessments (id, name, target_unit_id, created_at, period, include_leader_assessment)
                 VALUES (?, ?, ?, ?, ?, 1)
-            """, [campaign_id, campaign_name, unit_id, date_str, period_name])
+            """, [assessment_id, assessment_name, unit_id, date_str, period_name])
 
             # Generer 25-35 responses per kampagne (medarbejdere + ledere)
             response_count = random.randint(25, 35)
@@ -184,9 +184,9 @@ def generate_trend_campaigns(conn, questions):
                     score = generate_score(base, variance=0.8)
 
                     conn.execute("""
-                        INSERT INTO responses (campaign_id, unit_id, question_id, score, created_at, respondent_type)
+                        INSERT INTO responses (assessment_id, unit_id, question_id, score, created_at, respondent_type)
                         VALUES (?, ?, ?, ?, ?, ?)
-                    """, [campaign_id, unit_id, q_id, score, response_time.isoformat(), respondent_type])
+                    """, [assessment_id, unit_id, q_id, score, response_time.isoformat(), respondent_type])
 
             print(f"    {period_name}: {response_count} responses ({leader_count} ledere)")
 
@@ -199,7 +199,7 @@ def generate_borgere_data(conn, borgere_unit_ids, questions):
 
         # Tjek om der allerede er kampagner
         existing = conn.execute("""
-            SELECT COUNT(*) FROM campaigns WHERE target_unit_id = ?
+            SELECT COUNT(*) FROM assessments WHERE target_unit_id = ?
         """, [unit_id]).fetchone()[0]
 
         if existing > 0:
@@ -209,14 +209,14 @@ def generate_borgere_data(conn, borgere_unit_ids, questions):
         print(f"  Genererer data for: {unit_name}")
 
         # Opret én kampagne per B2C afdeling
-        campaign_id = generate_id('camp')
-        campaign_name = f"B2C - {unit_name}"
+        assessment_id = generate_id('camp')
+        assessment_name = f"B2C - {unit_name}"
 
         # B2C kampagner: ingen leder-vurdering, individuel mode
         conn.execute("""
-            INSERT INTO campaigns (id, name, target_unit_id, created_at, period, include_leader_assessment, mode)
+            INSERT INTO assessments (id, name, target_unit_id, created_at, period, include_leader_assessment, mode)
             VALUES (?, ?, ?, ?, 'December 2025', 0, 'anonymous')
-        """, [campaign_id, campaign_name, unit_id, datetime.now().strftime('%Y-%m-%d')])
+        """, [assessment_id, assessment_name, unit_id, datetime.now().strftime('%Y-%m-%d')])
 
         # Generer 50-100 individuelle screenings
         response_count = random.randint(50, 100)
@@ -229,9 +229,9 @@ def generate_borgere_data(conn, borgere_unit_ids, questions):
                 score = generate_score(base, variance=1.0)
 
                 conn.execute("""
-                    INSERT INTO responses (campaign_id, unit_id, question_id, score, created_at, respondent_type)
+                    INSERT INTO responses (assessment_id, unit_id, question_id, score, created_at, respondent_type)
                     VALUES (?, ?, ?, ?, ?, 'employee')
-                """, [campaign_id, unit_id, q_id, score, datetime.now().isoformat()])
+                """, [assessment_id, unit_id, q_id, score, datetime.now().isoformat()])
 
         print(f"    Oprettet: {response_count} individuelle screenings")
 
@@ -258,7 +258,7 @@ def main():
         # 2. Generer trend-data
         print("\n2. TREND-DATA (kampagner over tid)")
         print("-" * 40)
-        generate_trend_campaigns(conn, questions)
+        generate_trend_assessments(conn, questions)
 
         # 3. Generer B2C data
         print("\n3. B2C DATA")
@@ -275,14 +275,14 @@ def main():
         stats = {
             'units': conn.execute("SELECT COUNT(*) FROM organizational_units WHERE customer_id = ?",
                                   [HERNING_CUSTOMER_ID]).fetchone()[0],
-            'campaigns': conn.execute("""
-                SELECT COUNT(*) FROM campaigns c
+            'assessments': conn.execute("""
+                SELECT COUNT(*) FROM assessments c
                 JOIN organizational_units ou ON c.target_unit_id = ou.id
                 WHERE ou.customer_id = ?
             """, [HERNING_CUSTOMER_ID]).fetchone()[0],
             'responses': conn.execute("""
                 SELECT COUNT(*) FROM responses r
-                JOIN campaigns c ON r.campaign_id = c.id
+                JOIN assessments c ON r.assessment_id = c.id
                 JOIN organizational_units ou ON c.target_unit_id = ou.id
                 WHERE ou.customer_id = ?
             """, [HERNING_CUSTOMER_ID]).fetchone()[0],
@@ -290,7 +290,7 @@ def main():
 
         print(f"Herning Kommune nu:")
         print(f"  Units: {stats['units']}")
-        print(f"  Kampagner: {stats['campaigns']}")
+        print(f"  Kampagner: {stats['assessments']}")
         print(f"  Responses: {stats['responses']}")
 
     finally:

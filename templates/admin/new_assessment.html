@@ -1,6 +1,6 @@
 {% extends "admin/layout.html" %}
 
-{% block title %}{{ t('campaign.new_analysis') }}{% endblock %}
+{% block title %}{{ t('assessment.new_analysis') }}{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -60,26 +60,26 @@
 
 {% block content %}
 <div class="page-header">
-    <h1>📊 {{ t('campaign.new_analysis') }}</h1>
+    <h1>📊 {{ t('assessment.new_analysis') }}</h1>
     <p><a href="/admin">← {{ t('unit.back_to_overview') }}</a></p>
 </div>
 
 <div class="card">
     <form method="POST" data-loading="Opretter analyse og sender invitationer...">
         <div class="form-group">
-            <label for="name">{{ t('campaign.analysis_name') }} *</label>
+            <label for="name">{{ t('assessment.analysis_name') }} *</label>
             <input type="text" id="name" name="name" required placeholder="November 2025 - Friktionsanalyse">
         </div>
 
         <div class="form-group">
-            <label for="period">{{ t('campaign.period') }} *</label>
+            <label for="period">{{ t('assessment.period') }} *</label>
             <input type="text" id="period" name="period" required placeholder="2025Q4">
         </div>
 
         <div class="form-group">
-            <label for="target_unit_id">{{ t('campaign.target_org') }} *</label>
+            <label for="target_unit_id">{{ t('assessment.target_org') }} *</label>
             <select id="target_unit_id" name="target_unit_id" required onchange="updatePreview()">
-                <option value="">-- {{ t('campaign.select_org') }} --</option>
+                <option value="">-- {{ t('assessment.select_org') }} --</option>
                 {% for unit in units %}
                 <option value="{{ unit.id }}" data-level="{{ unit.level }}" data-path="{{ unit.full_path }}" data-employees="{{ unit.employee_count }}">
                     {{ ('&nbsp;&nbsp;' * unit.level)|safe }}{{ unit.name }} ({{ unit.employee_count }} {{ t('org.employees') }})
@@ -87,7 +87,7 @@
                 {% endfor %}
             </select>
             <small style="color: #6b7280; margin-top: 5px; display: block;">
-                {{ t('campaign.target_hint') }}
+                {{ t('assessment.target_hint') }}
             </small>
 
             <div id="unit-preview" class="unit-preview">
@@ -97,12 +97,12 @@
         </div>
 
         <div class="info-box">
-            <strong>💡 {{ t('campaign.how_it_works') }}:</strong><br>
-            {{ t('campaign.target_hint') }}
+            <strong>💡 {{ t('assessment.how_it_works') }}:</strong><br>
+            {{ t('assessment.target_hint') }}
         </div>
 
         <div class="form-group">
-            <label for="sent_from">{{ t('campaign.send_from') }}</label>
+            <label for="sent_from">{{ t('assessment.send_from') }}</label>
             <select id="sent_from" name="sent_from">
                 <option value="admin">HR/Admin</option>
                 <option value="leader">{{ t('unit.leader') }}</option>
@@ -110,15 +110,44 @@
         </div>
 
         <div class="form-group">
-            <label for="sender_name">{{ t('campaign.sender_name') }}</label>
+            <label for="sender_name">{{ t('assessment.sender_name') }}</label>
             <input type="text" id="sender_name" name="sender_name" placeholder="HR, Virksomhed A">
         </div>
 
-        <div class="warning">
-            ⚠️ <strong>Obs:</strong> {{ t('campaign.warning') }}
+        <!-- Scheduled sending options -->
+        <div class="form-group">
+            <label>
+                <input type="checkbox" id="schedule_toggle" onchange="toggleSchedule()">
+                {{ t('assessment.schedule_for_later', 'Planlæg til senere tidspunkt') }}
+            </label>
         </div>
 
-        <button type="submit" class="btn">📤 {{ t('campaign.create_and_send') }}</button>
+        <div id="schedule_fields" style="display: none; background: #f0fdf4; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="scheduled_date">{{ t('assessment.scheduled_date', 'Dato') }}</label>
+                    <input type="date" id="scheduled_date" name="scheduled_date" min="{{ today }}">
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="scheduled_time">{{ t('assessment.scheduled_time', 'Tidspunkt') }}</label>
+                    <input type="time" id="scheduled_time" name="scheduled_time" value="08:00">
+                </div>
+            </div>
+            <small style="color: #6b7280; margin-top: 10px; display: block;">
+                {{ t('assessment.schedule_hint', 'Målingen sendes automatisk på det valgte tidspunkt') }}
+            </small>
+        </div>
+
+        <div class="warning">
+            ⚠️ <strong>Obs:</strong> {{ t('assessment.warning') }}
+        </div>
+
+        <div style="display: flex; gap: 15px;">
+            <button type="submit" class="btn" id="submit_btn">📤 {{ t('assessment.create_and_send') }}</button>
+            <a href="/admin/scheduled-assessments" class="btn" style="background: #6b7280; text-decoration: none;">
+                📅 {{ t('assessment.view_scheduled', 'Se planlagte') }}
+            </a>
+        </div>
     </form>
 </div>
 
@@ -146,5 +175,30 @@
 
         preview.classList.add('active');
     }
+
+    function toggleSchedule() {
+        const toggle = document.getElementById('schedule_toggle');
+        const fields = document.getElementById('schedule_fields');
+        const submitBtn = document.getElementById('submit_btn');
+        const dateInput = document.getElementById('scheduled_date');
+
+        if (toggle.checked) {
+            fields.style.display = 'block';
+            dateInput.required = true;
+            submitBtn.innerHTML = '📅 {{ t("assessment.schedule_send", "Planlæg måling") }}';
+        } else {
+            fields.style.display = 'none';
+            dateInput.required = false;
+            dateInput.value = '';
+            submitBtn.innerHTML = '📤 {{ t("assessment.create_and_send") }}';
+        }
+    }
+
+    // Set min date to today
+    document.addEventListener('DOMContentLoaded', function() {
+        const dateInput = document.getElementById('scheduled_date');
+        const today = new Date().toISOString().split('T')[0];
+        dateInput.min = today;
+    });
 </script>
 {% endblock %}

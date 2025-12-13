@@ -46,7 +46,7 @@ SUBSTITUTION_ITEMS = {
 @cached(ttl=300, prefix="stats")
 def get_unit_stats_with_layers(
     unit_id: str,
-    campaign_id: str,
+    assessment_id: str,
     respondent_type: str = 'employee',
     include_children: bool = True
 ) -> Dict:
@@ -85,11 +85,11 @@ def get_unit_stats_with_layers(
                 )
             """
             unit_filter = "r.unit_id IN (SELECT id FROM subtree)"
-            params = [unit_id, campaign_id, respondent_type]
+            params = [unit_id, assessment_id, respondent_type]
         else:
             subtree_cte = ""
             unit_filter = "r.unit_id = ?"
-            params = [unit_id, campaign_id, respondent_type]
+            params = [unit_id, assessment_id, respondent_type]
 
         # Query for aggregated question stats
         query = f"""
@@ -106,7 +106,7 @@ def get_unit_stats_with_layers(
             FROM questions q
             LEFT JOIN responses r ON q.id = r.question_id
                 AND {unit_filter}
-                AND r.campaign_id = ?
+                AND r.assessment_id = ?
                 AND r.respondent_type = ?
             WHERE q.is_default = 1
             GROUP BY q.id, q.field, q.sequence
@@ -127,7 +127,7 @@ def get_unit_stats_with_layers(
             FROM questions q
             JOIN responses r ON q.id = r.question_id
                 AND {unit_filter}
-                AND r.campaign_id = ?
+                AND r.assessment_id = ?
                 AND r.respondent_type = ?
             WHERE q.is_default = 1
         """
@@ -206,7 +206,7 @@ def get_unit_stats_with_layers(
 
 def get_comparison_by_respondent_type(
     unit_id: str,
-    campaign_id: str,
+    assessment_id: str,
     include_children: bool = True
 ) -> Dict:
     """
@@ -228,9 +228,9 @@ def get_comparison_by_respondent_type(
     results = {}
 
     # Hent for hver respondent type
-    employee_stats = get_unit_stats_with_layers(unit_id, campaign_id, 'employee', include_children)
-    leader_assess_stats = get_unit_stats_with_layers(unit_id, campaign_id, 'leader_assess', include_children)
-    leader_self_stats = get_unit_stats_with_layers(unit_id, campaign_id, 'leader_self', include_children)
+    employee_stats = get_unit_stats_with_layers(unit_id, assessment_id, 'employee', include_children)
+    leader_assess_stats = get_unit_stats_with_layers(unit_id, assessment_id, 'leader_assess', include_children)
+    leader_self_stats = get_unit_stats_with_layers(unit_id, assessment_id, 'leader_self', include_children)
 
     for field in ['MENING', 'TRYGHED', 'KAN', 'BESVÆR']:
         employee_score = employee_stats.get(field, {}).get('avg_score', 0)
@@ -261,7 +261,7 @@ def get_comparison_by_respondent_type(
 
 def get_detailed_breakdown(
     unit_id: str,
-    campaign_id: str,
+    assessment_id: str,
     include_children: bool = True
 ) -> Dict:
     """
@@ -270,14 +270,14 @@ def get_detailed_breakdown(
     Returns struktureret data klar til dashboard
     """
     return {
-        'employee': get_unit_stats_with_layers(unit_id, campaign_id, 'employee', include_children),
-        'leader_assess': get_unit_stats_with_layers(unit_id, campaign_id, 'leader_assess', include_children),
-        'leader_self': get_unit_stats_with_layers(unit_id, campaign_id, 'leader_self', include_children),
-        'comparison': get_comparison_by_respondent_type(unit_id, campaign_id, include_children)
+        'employee': get_unit_stats_with_layers(unit_id, assessment_id, 'employee', include_children),
+        'leader_assess': get_unit_stats_with_layers(unit_id, assessment_id, 'leader_assess', include_children),
+        'leader_self': get_unit_stats_with_layers(unit_id, assessment_id, 'leader_self', include_children),
+        'comparison': get_comparison_by_respondent_type(unit_id, assessment_id, include_children)
     }
 
 
-def check_anonymity_threshold(campaign_id: str, unit_id: str) -> Dict:
+def check_anonymity_threshold(assessment_id: str, unit_id: str) -> Dict:
     """
     Check om anonymitetstærskel er nået
 
@@ -290,15 +290,15 @@ def check_anonymity_threshold(campaign_id: str, unit_id: str) -> Dict:
         }
     """
     with get_db() as conn:
-        # Hent campaign - brug default værdier hvis kolonner mangler
+        # Hent assessment - brug default værdier hvis kolonner mangler
         try:
-            campaign = conn.execute("""
+            assessment = conn.execute("""
                 SELECT min_responses, mode
-                FROM campaigns
+                FROM assessments
                 WHERE id = ?
-            """, (campaign_id,)).fetchone()
-            min_required = campaign['min_responses'] if campaign else 5
-            mode = campaign['mode'] if campaign else 'anonymous'
+            """, (assessment_id,)).fetchone()
+            min_required = assessment['min_responses'] if assessment else 5
+            mode = assessment['mode'] if assessment else 'anonymous'
         except Exception:
             # Kolonner findes ikke - brug defaults
             min_required = 5
@@ -312,8 +312,8 @@ def check_anonymity_threshold(campaign_id: str, unit_id: str) -> Dict:
         response_count = conn.execute("""
             SELECT COUNT(DISTINCT id) as cnt
             FROM responses
-            WHERE campaign_id = ? AND unit_id = ? AND respondent_type = 'employee'
-        """, (campaign_id, unit_id)).fetchone()['cnt']
+            WHERE assessment_id = ? AND unit_id = ? AND respondent_type = 'employee'
+        """, (assessment_id, unit_id)).fetchone()['cnt']
 
         can_show = response_count >= min_required
         missing = max(0, min_required - response_count)
@@ -328,7 +328,7 @@ def check_anonymity_threshold(campaign_id: str, unit_id: str) -> Dict:
 
 
 @cached(ttl=300, prefix="substitution")
-def calculate_substitution(unit_id: str, campaign_id: str, respondent_type: str = 'employee') -> Dict:
+def calculate_substitution(unit_id: str, assessment_id: str, respondent_type: str = 'employee') -> Dict:
     """
     Beregn substitution (tid) - stealth version V1.4 (cached i 5 minutter)
 
@@ -346,7 +346,7 @@ def calculate_substitution(unit_id: str, campaign_id: str, respondent_type: str 
         }
     """
     with get_db() as conn:
-        # Hent alle responses for denne unit/campaign/type
+        # Hent alle responses for denne unit/assessment/type
         responses = conn.execute("""
             SELECT
                 r.respondent_name,
@@ -356,11 +356,11 @@ def calculate_substitution(unit_id: str, campaign_id: str, respondent_type: str 
             FROM responses r
             JOIN questions q ON r.question_id = q.id
             WHERE r.unit_id = ?
-              AND r.campaign_id = ?
+              AND r.assessment_id = ?
               AND r.respondent_type = ?
               AND q.sequence IN (5, 10, 14, 17, 18, 19, 20, 21, 22, 23)
             ORDER BY r.respondent_name, q.sequence
-        """, (unit_id, campaign_id, respondent_type)).fetchall()
+        """, (unit_id, assessment_id, respondent_type)).fetchall()
 
         if not responses:
             return {
@@ -470,9 +470,9 @@ def get_layer_interpretation(field: str, layer: str, score: float) -> str:
     return interpretations.get(key, f"{field} {layer} er {level}")
 
 
-def get_free_text_comments(unit_id: str, campaign_id: str, include_children: bool = True) -> List[Dict]:
+def get_free_text_comments(unit_id: str, assessment_id: str, include_children: bool = True) -> List[Dict]:
     """
-    Hent alle fritekst-kommentarer for en unit/campaign
+    Hent alle fritekst-kommentarer for en unit/assessment
 
     Returns:
         [
@@ -498,11 +498,11 @@ def get_free_text_comments(unit_id: str, campaign_id: str, include_children: boo
                 )
             """
             unit_filter = "r.unit_id IN (SELECT id FROM subtree)"
-            params = [unit_id, campaign_id]
+            params = [unit_id, assessment_id]
         else:
             subtree_cte = ""
             unit_filter = "r.unit_id = ?"
-            params = [unit_id, campaign_id]
+            params = [unit_id, assessment_id]
 
         query = f"""
             {subtree_cte}
@@ -512,7 +512,7 @@ def get_free_text_comments(unit_id: str, campaign_id: str, include_children: boo
                 r.comment
             FROM responses r
             WHERE {unit_filter}
-              AND r.campaign_id = ?
+              AND r.assessment_id = ?
               AND r.comment IS NOT NULL
               AND r.comment != ''
             ORDER BY r.respondent_type, r.respondent_name
@@ -986,15 +986,15 @@ def get_alerts_and_findings(breakdown: Dict, comparison: Dict, substitution: Dic
 # ============================================
 
 if __name__ == "__main__":
-    # Test med en campaign
-    test_campaign_id = "camp-kOh-b8KuRRM"
+    # Test med en assessment
+    test_assessment_id = "assess-kOh-b8KuRRM"
     test_unit_id = "unit-jDE1s_J-Ot8"
 
     print("="*60)
     print("TEST: LAGDELT ANALYSE")
     print("="*60)
 
-    breakdown = get_detailed_breakdown(test_unit_id, test_campaign_id)
+    breakdown = get_detailed_breakdown(test_unit_id, test_assessment_id)
 
     print("\n[EMPLOYEE PERSPECTIVE]")
     for field, data in breakdown['employee'].items():
@@ -1026,9 +1026,9 @@ def get_trend_data(unit_id: str = None, customer_id: str = None) -> Dict:
 
     Returns:
         {
-            'campaigns': [
+            'assessments': [
                 {
-                    'id': 'camp-xxx',
+                    'id': 'assess-xxx',
                     'name': 'Måling Q1',
                     'period': 'Q1 2025',
                     'date': '2025-01-15',
@@ -1045,7 +1045,7 @@ def get_trend_data(unit_id: str = None, customer_id: str = None) -> Dict:
             ],
             'fields': ['MENING', 'TRYGHED', 'KAN', 'BESVÆR'],
             'summary': {
-                'total_campaigns': 5,
+                'total_assessments': 5,
                 'date_range': '2024-06 til 2025-03'
             }
         }
@@ -1076,8 +1076,8 @@ def get_trend_data(unit_id: str = None, customer_id: str = None) -> Dict:
 
         where_clause = " AND ".join(filters) if filters else "1=1"
 
-        # Get campaigns with response counts
-        campaigns_query = f"""
+        # Get assessments with response counts
+        assessments_query = f"""
             SELECT
                 c.id,
                 c.name,
@@ -1087,27 +1087,27 @@ def get_trend_data(unit_id: str = None, customer_id: str = None) -> Dict:
                 ou.name as unit_name,
                 ou.full_path,
                 COUNT(DISTINCT r.id) as response_count
-            FROM campaigns c
+            FROM assessments c
             JOIN organizational_units ou ON c.target_unit_id = ou.id
-            LEFT JOIN responses r ON r.campaign_id = c.id
+            LEFT JOIN responses r ON r.assessment_id = c.id
             WHERE {where_clause}
             GROUP BY c.id
             HAVING response_count > 0
             ORDER BY c.created_at ASC
         """
 
-        campaigns_raw = conn.execute(campaigns_query, params).fetchall()
+        assessments_raw = conn.execute(assessments_query, params).fetchall()
 
-        if not campaigns_raw:
+        if not assessments_raw:
             return {
-                'campaigns': [],
+                'assessments': [],
                 'fields': ['MENING', 'TRYGHED', 'KAN', 'BESVÆR'],
-                'summary': {'total_campaigns': 0, 'date_range': '-'}
+                'summary': {'total_assessments': 0, 'date_range': '-'}
             }
 
-        campaigns = []
-        for camp in campaigns_raw:
-            # Get field averages for this campaign
+        assessments = []
+        for camp in assessments_raw:
+            # Get field averages for this assessment
             scores_query = """
                 SELECT
                     q.field,
@@ -1117,7 +1117,7 @@ def get_trend_data(unit_id: str = None, customer_id: str = None) -> Dict:
                     END) as avg_score
                 FROM responses r
                 JOIN questions q ON r.question_id = q.id
-                WHERE r.campaign_id = ?
+                WHERE r.assessment_id = ?
                 GROUP BY q.field
             """
             score_rows = conn.execute(scores_query, (camp['id'],)).fetchall()
@@ -1126,7 +1126,7 @@ def get_trend_data(unit_id: str = None, customer_id: str = None) -> Dict:
             for row in score_rows:
                 scores[row['field']] = round(row['avg_score'], 2)
 
-            campaigns.append({
+            assessments.append({
                 'id': camp['id'],
                 'name': camp['name'],
                 'period': camp['period'],
@@ -1139,14 +1139,14 @@ def get_trend_data(unit_id: str = None, customer_id: str = None) -> Dict:
             })
 
         # Calculate summary
-        dates = [c['date'] for c in campaigns if c['date']]
+        dates = [c['date'] for c in assessments if c['date']]
         date_range = f"{min(dates)} til {max(dates)}" if dates else "-"
 
         return {
-            'campaigns': campaigns,
+            'assessments': assessments,
             'fields': ['MENING', 'TRYGHED', 'KAN', 'BESVÆR'],
             'summary': {
-                'total_campaigns': len(campaigns),
+                'total_assessments': len(assessments),
                 'date_range': date_range
             }
         }
@@ -1159,7 +1159,7 @@ def get_unit_trend(unit_id: str) -> Dict:
     Returns:
         {
             'unit_name': 'Herning Kommune',
-            'campaigns': [...],  # Sorteret efter dato
+            'assessments': [...],  # Sorteret efter dato
             'trend': {
                 'MENING': {'first': 3.0, 'last': 3.5, 'change': +0.5, 'direction': 'up'},
                 ...
@@ -1168,19 +1168,19 @@ def get_unit_trend(unit_id: str) -> Dict:
     """
     data = get_trend_data(unit_id=unit_id)
 
-    if not data['campaigns']:
+    if not data['assessments']:
         return {
             'unit_name': 'Ukendt',
-            'campaigns': [],
+            'assessments': [],
             'trend': {}
         }
 
-    unit_name = data['campaigns'][0]['unit_name'] if data['campaigns'] else 'Ukendt'
+    unit_name = data['assessments'][0]['unit_name'] if data['assessments'] else 'Ukendt'
 
     # Calculate trend for each field
     trend = {}
     for field in data['fields']:
-        scores = [c['scores'].get(field) for c in data['campaigns'] if c['scores'].get(field)]
+        scores = [c['scores'].get(field) for c in data['assessments'] if c['scores'].get(field)]
         if len(scores) >= 2:
             first = scores[0]
             last = scores[-1]
@@ -1202,6 +1202,6 @@ def get_unit_trend(unit_id: str) -> Dict:
 
     return {
         'unit_name': unit_name,
-        'campaigns': data['campaigns'],
+        'assessments': data['assessments'],
         'trend': trend
     }

@@ -1,6 +1,6 @@
 {% extends "admin/layout.html" %}
 
-{% block title %}{{ campaign.name }}{% endblock %}
+{% block title %}{{ assessment.name }}{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -67,17 +67,17 @@
             → <a href="/admin/unit/{{ bc.id }}">{{ bc.name }}</a>
         {% endfor %}
     </div>
-    <h1>📨 {{ campaign.name }}</h1>
-    <p>{{ campaign.period }} · Target: {{ target_breadcrumbs[-1].name if target_breadcrumbs else 'Unknown' }}</p>
+    <h1>📨 {{ assessment.name }}</h1>
+    <p>{{ assessment.period }} · Target: {{ target_breadcrumbs[-1].name if target_breadcrumbs else 'Unknown' }}</p>
 </div>
 
 <!-- Link til detaljeret analyse og PDF -->
 <div style="margin-bottom: 20px; display: flex; gap: 15px; flex-wrap: wrap;">
-    <a href="/admin/campaign/{{ campaign.id }}/detailed"
+    <a href="/admin/assessment/{{ assessment.id }}/detailed"
        style="display: inline-block; padding: 12px 24px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; border-radius: 8px; font-weight: 600;">
         📊 Se Detaljeret Analyse med Lagdeling
     </a>
-    <a href="/admin/campaign/{{ campaign.id }}/pdf"
+    <a href="/admin/assessment/{{ assessment.id }}/pdf"
        style="display: inline-block; padding: 12px 24px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; text-decoration: none; border-radius: 8px; font-weight: 600;"
        data-loading="Genererer PDF...">
         📄 Download PDF Rapport

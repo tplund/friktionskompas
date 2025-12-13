@@ -60,9 +60,9 @@ def _init_test_db(db_path):
         )
     """)
 
-    # Campaigns table
+    # Assessments table
     conn.execute("""
-        CREATE TABLE IF NOT EXISTS campaigns (
+        CREATE TABLE IF NOT EXISTS assessments (
             id TEXT PRIMARY KEY,
             name TEXT NOT NULL,
             period TEXT,
@@ -78,13 +78,13 @@ def _init_test_db(db_path):
     conn.execute("""
         CREATE TABLE IF NOT EXISTS responses (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            campaign_id TEXT,
+            assessment_id TEXT,
             unit_id TEXT,
             respondent_type TEXT,
             field TEXT,
             score INTEGER,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE,
+            FOREIGN KEY (assessment_id) REFERENCES assessments(id) ON DELETE CASCADE,
             FOREIGN KEY (unit_id) REFERENCES organizational_units(id) ON DELETE CASCADE
         )
     """)

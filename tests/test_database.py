@@ -46,7 +46,7 @@ def _create_test_schema(db_path):
     """)
 
     conn.execute("""
-        CREATE TABLE IF NOT EXISTS campaigns (
+        CREATE TABLE IF NOT EXISTS assessments (
             id TEXT PRIMARY KEY,
             name TEXT NOT NULL,
             period TEXT,
@@ -60,13 +60,13 @@ def _create_test_schema(db_path):
     conn.execute("""
         CREATE TABLE IF NOT EXISTS responses (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            campaign_id TEXT,
+            assessment_id TEXT,
             unit_id TEXT,
             respondent_type TEXT,
             field TEXT,
             score INTEGER,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE
+            FOREIGN KEY (assessment_id) REFERENCES assessments(id) ON DELETE CASCADE
         )
     """)
 
@@ -220,49 +220,49 @@ class TestCRUDOperations:
         assert user['name'] == 'Test User'
         assert user['role'] == 'manager'
 
-    def test_create_campaign(self, test_db):
-        """Test creating a campaign."""
+    def test_create_assessment(self, test_db):
+        """Test creating a assessment."""
         # Create unit first
         test_db.execute("""
             INSERT INTO organizational_units (id, name, customer_id, level)
-            VALUES ('camp-unit', 'Campaign Unit', 1, 0)
+            VALUES ('assess-unit', 'Assessment Unit', 1, 0)
         """)
 
-        # Create campaign
+        # Create assessment
         test_db.execute("""
-            INSERT INTO campaigns (id, name, period, target_unit_id, customer_id, created_at)
-            VALUES ('camp-1', 'Test Campaign', '2024Q1', 'camp-unit', 1, datetime('now'))
+            INSERT INTO assessments (id, name, period, target_unit_id, customer_id, created_at)
+            VALUES ('assess-1', 'Test Assessment', '2024Q1', 'assess-unit', 1, datetime('now'))
         """)
         test_db.commit()
 
-        campaign = test_db.execute(
-            "SELECT * FROM campaigns WHERE id = 'camp-1'"
+        assessment = test_db.execute(
+            "SELECT * FROM assessments WHERE id = 'assess-1'"
         ).fetchone()
 
-        assert campaign is not None
-        assert campaign['name'] == 'Test Campaign'
+        assert assessment is not None
+        assert assessment['name'] == 'Test Assessment'
 
     def test_create_response(self, test_db):
         """Test creating a survey response."""
-        # Create unit and campaign first
+        # Create unit and assessment first
         test_db.execute("""
             INSERT INTO organizational_units (id, name, customer_id, level)
             VALUES ('resp-unit', 'Response Unit', 1, 0)
         """)
         test_db.execute("""
-            INSERT INTO campaigns (id, name, period, target_unit_id, customer_id, created_at)
-            VALUES ('resp-camp', 'Response Campaign', '2024Q1', 'resp-unit', 1, datetime('now'))
+            INSERT INTO assessments (id, name, period, target_unit_id, customer_id, created_at)
+            VALUES ('resp-camp', 'Response Assessment', '2024Q1', 'resp-unit', 1, datetime('now'))
         """)
 
         # Create response
         test_db.execute("""
-            INSERT INTO responses (campaign_id, unit_id, respondent_type, field, score, created_at)
+            INSERT INTO responses (assessment_id, unit_id, respondent_type, field, score, created_at)
             VALUES ('resp-camp', 'resp-unit', 'employee', 'MENING', 4, datetime('now'))
         """)
         test_db.commit()
 
         response = test_db.execute(
-            "SELECT * FROM responses WHERE campaign_id = 'resp-camp'"
+            "SELECT * FROM responses WHERE assessment_id = 'resp-camp'"
         ).fetchone()
 
         assert response is not None

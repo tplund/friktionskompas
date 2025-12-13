@@ -66,7 +66,7 @@
                         <p class="meta">
                             👥 {{ dept.employee_count }} medarbejdere
                             | 📞 {{ dept.contact_count }} kontakter
-                            | 📊 {{ dept.campaign_count }} målinger
+                            | 📊 {{ dept.assessment_count }} målinger
                             {% if dept.sick_leave_percent > 0 %}
                             | 🏥 {{ dept.sick_leave_percent }}% sygefravær
                             {% endif %}
@@ -82,12 +82,12 @@
 
         <div class="card">
             <h2>📨 Målinger</h2>
-            <a href="/admin/org/{{ org.id }}/campaign/new" class="btn">➕ Ny måling</a>
+            <a href="/admin/org/{{ org.id }}/assessment/new" class="btn">➕ Ny måling</a>
             <a href="/admin/org/{{ org.id }}/dashboard" class="btn" style="background: #10b981;">📊 Se dashboard</a>
             
             <div style="margin-top: 20px;">
-                {% if campaigns %}
-                    {% for camp in campaigns %}
+                {% if assessments %}
+                    {% for camp in assessments %}
                     <div class="item-card">
                         <h3>{{ camp.name }}</h3>
                         <p class="meta">
@@ -96,7 +96,7 @@
                             | ✉️ {{ camp.total_sent }} sendt
                             | ✅ {{ camp.total_used }} svar
                         </p>
-                        <a href="/admin/campaign/{{ camp.id }}">Se resultater →</a>
+                        <a href="/admin/assessment/{{ camp.id }}">Se resultater →</a>
                     </div>
                     {% endfor %}
                 {% else %}

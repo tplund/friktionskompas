@@ -32,14 +32,14 @@
         <div class="form-group">
             <label>Emne (Subject)</label>
             <input type="text" id="templateSubject" class="form-control" placeholder="Email emne...">
-            <small class="help-text">Variabler: {campaign_name}, {sender_name}, {responses_count}</small>
+            <small class="help-text">Variabler: {assessment_name}, {sender_name}, {responses_count}</small>
         </div>
 
         <div class="form-group">
             <label>HTML Indhold</label>
             <textarea id="templateHtml" class="form-control code-editor" rows="20"></textarea>
             <small class="help-text">
-                Variabler: {survey_url}, {sender_name}, {campaign_name}, {primary_color},
+                Variabler: {survey_url}, {sender_name}, {assessment_name}, {primary_color},
                 {header_text}, {anonymity_text}, {closing_text}, {contact_email}
             </small>
         </div>
@@ -270,7 +270,7 @@ function previewTemplate() {
     const html = document.getElementById('templateHtml').value
         .replace(/{survey_url}/g, 'https://example.com/survey/abc123')
         .replace(/{sender_name}/g, 'HR Afdelingen')
-        .replace(/{campaign_name}/g, 'Test Måling')
+        .replace(/{assessment_name}/g, 'Test Måling')
         .replace(/{primary_color}/g, '#3b82f6')
         .replace(/{header_text}/g, 'Hjælp os med at fjerne friktioner')
         .replace(/{anonymity_text}/g, '• Ingen kan se hvem der skrev hvad<br>• Resultater vises kun når mindst 5 har svaret<br>• Dit link virker kun én gang')

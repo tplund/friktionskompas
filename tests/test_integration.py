@@ -9,13 +9,13 @@ import json
 class TestSurveyWorkflow:
     """Test complete survey workflow from start to finish."""
 
-    def test_create_campaign_flow(self, authenticated_client, app):
-        """Test creating a new campaign/measurement."""
+    def test_create_assessment_flow(self, authenticated_client, app):
+        """Test creating a new assessment/measurement."""
         from db_multitenant import get_db
 
         with app.app_context():
             with get_db() as conn:
-                # Get a unit to create campaign for
+                # Get a unit to create assessment for
                 unit = conn.execute("""
                     SELECT ou.id, ou.name FROM organizational_units ou
                     JOIN customers c ON ou.customer_id = c.id
@@ -27,41 +27,41 @@ class TestSurveyWorkflow:
 
                 unit_id = unit['id']
 
-        # Access the new campaign page (GET)
-        response = authenticated_client.get('/admin/campaign/new')
+        # Access the new assessment page (GET)
+        response = authenticated_client.get('/admin/assessment/new')
         assert response.status_code == 200
 
-        # The actual campaign creation might require different form fields
+        # The actual assessment creation might require different form fields
         # Just verify we can access the form
         html = response.data.decode('utf-8')
         assert 'form' in html.lower()
 
     def test_generate_tokens_flow(self, authenticated_client, app):
-        """Test generating tokens for a campaign."""
+        """Test generating tokens for a assessment."""
         from db_multitenant import get_db
 
         with app.app_context():
             with get_db() as conn:
-                # Get an existing campaign
-                campaign = conn.execute("""
-                    SELECT c.id FROM campaigns c
+                # Get an existing assessment
+                assessment = conn.execute("""
+                    SELECT c.id FROM assessments c
                     LIMIT 1
                 """).fetchone()
 
-                if not campaign:
-                    pytest.skip("No campaigns in test database")
+                if not assessment:
+                    pytest.skip("No assessments in test database")
 
-                campaign_id = campaign['id']
+                assessment_id = assessment['id']
 
                 # Count existing tokens
                 tokens_before = conn.execute(
-                    "SELECT COUNT(*) as cnt FROM tokens WHERE campaign_id = ?",
-                    [campaign_id]
+                    "SELECT COUNT(*) as cnt FROM tokens WHERE assessment_id = ?",
+                    [assessment_id]
                 ).fetchone()['cnt']
 
-        # The token generation happens during campaign creation or manually
-        # Check that we can access the campaign page
-        response = authenticated_client.get(f'/admin/campaign/{campaign_id}')
+        # The token generation happens during assessment creation or manually
+        # Check that we can access the assessment page
+        response = authenticated_client.get(f'/admin/assessment/{assessment_id}')
         assert response.status_code == 200
 
     def test_survey_response_flow(self, client, app):
@@ -72,7 +72,7 @@ class TestSurveyWorkflow:
             with get_db() as conn:
                 # Get a token to use
                 token = conn.execute("""
-                    SELECT t.token, t.campaign_id, t.unit_id
+                    SELECT t.token, t.assessment_id, t.unit_id
                     FROM tokens t
                     WHERE t.is_used = 0
                     LIMIT 1
@@ -82,7 +82,7 @@ class TestSurveyWorkflow:
                     pytest.skip("No unused tokens in test database")
 
                 token_value = token['token']
-                campaign_id = token['campaign_id']
+                assessment_id = token['assessment_id']
 
         # Access survey with token
         response = client.get(f'/survey/{token_value}')
@@ -109,32 +109,32 @@ class TestSurveyWorkflow:
         # The exact endpoint depends on how survey submission is implemented
 
     def test_view_results_flow(self, authenticated_client, app):
-        """Test viewing campaign results after responses."""
+        """Test viewing assessment results after responses."""
         from db_multitenant import get_db
 
         with app.app_context():
             with get_db() as conn:
-                # Get a campaign with responses
-                campaign = conn.execute("""
+                # Get a assessment with responses
+                assessment = conn.execute("""
                     SELECT c.id, COUNT(r.id) as response_count
-                    FROM campaigns c
-                    LEFT JOIN responses r ON r.campaign_id = c.id
+                    FROM assessments c
+                    LEFT JOIN responses r ON r.assessment_id = c.id
                     GROUP BY c.id
                     HAVING response_count > 0
                     LIMIT 1
                 """).fetchone()
 
-                if not campaign:
-                    pytest.skip("No campaigns with responses in test database")
+                if not assessment:
+                    pytest.skip("No assessments with responses in test database")
 
-                campaign_id = campaign['id']
+                assessment_id = assessment['id']
 
-        # View campaign overview
-        response = authenticated_client.get(f'/admin/campaign/{campaign_id}')
+        # View assessment overview
+        response = authenticated_client.get(f'/admin/assessment/{assessment_id}')
         assert response.status_code == 200
 
         # View detailed analysis
-        response = authenticated_client.get(f'/admin/campaign/{campaign_id}/detailed')
+        response = authenticated_client.get(f'/admin/assessment/{assessment_id}/detailed')
         assert response.status_code == 200
 
         # Check that analysis content is present
@@ -303,26 +303,26 @@ class TestAnalysisWorkflow:
         assert 'stat-card' in html or 'value' in html
 
     def test_pdf_export(self, authenticated_client, app):
-        """Test PDF export of campaign results."""
+        """Test PDF export of assessment results."""
         from db_multitenant import get_db
 
         with app.app_context():
             with get_db() as conn:
-                campaign = conn.execute("""
-                    SELECT c.id FROM campaigns c
-                    JOIN responses r ON r.campaign_id = c.id
+                assessment = conn.execute("""
+                    SELECT c.id FROM assessments c
+                    JOIN responses r ON r.assessment_id = c.id
                     GROUP BY c.id
                     HAVING COUNT(r.id) > 0
                     LIMIT 1
                 """).fetchone()
 
-                if not campaign:
-                    pytest.skip("No campaigns with responses")
+                if not assessment:
+                    pytest.skip("No assessments with responses")
 
-                campaign_id = campaign['id']
+                assessment_id = assessment['id']
 
         # Try to access PDF export
-        response = authenticated_client.get(f'/admin/campaign/{campaign_id}/detailed/pdf')
+        response = authenticated_client.get(f'/admin/assessment/{assessment_id}/detailed/pdf')
         # Should either return PDF or redirect
         assert response.status_code in [200, 302, 404]
 

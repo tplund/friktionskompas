@@ -1,6 +1,6 @@
 {% extends "admin/layout.html" %}
 
-{% block title %}{{ t('campaign.scheduled_campaigns', 'Planlagte målinger') }}{% endblock %}
+{% block title %}{{ t('assessment.scheduled_assessments', 'Planlagte målinger') }}{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -26,7 +26,7 @@
         box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         margin-bottom: 20px;
     }
-    .campaign-item {
+    .assessment-item {
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -36,18 +36,18 @@
         margin-bottom: 15px;
         transition: box-shadow 0.2s;
     }
-    .campaign-item:hover {
+    .assessment-item:hover {
         box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
-    .campaign-info h3 {
+    .assessment-info h3 {
         margin: 0 0 5px 0;
         color: #1f2937;
     }
-    .campaign-meta {
+    .assessment-meta {
         color: #6b7280;
         font-size: 0.9rem;
     }
-    .campaign-meta span {
+    .assessment-meta span {
         margin-right: 15px;
     }
     .scheduled-time {
@@ -60,7 +60,7 @@
         align-items: center;
         gap: 8px;
     }
-    .campaign-actions {
+    .assessment-actions {
         display: flex;
         gap: 10px;
     }
@@ -122,36 +122,36 @@
 
 {% block content %}
 <div class="page-header">
-    <h1>📅 {{ t('campaign.scheduled_campaigns', 'Planlagte målinger') }}</h1>
-    <p><a href="/admin/campaign/new">+ {{ t('campaign.new_analysis') }}</a></p>
+    <h1>📅 {{ t('assessment.scheduled_assessments', 'Planlagte målinger') }}</h1>
+    <p><a href="/admin/assessment/new">+ {{ t('assessment.new_analysis') }}</a></p>
 </div>
 
 <div class="card">
-    {% if campaigns %}
-        {% for campaign in campaigns %}
-        <div class="campaign-item">
-            <div class="campaign-info">
-                <h3>{{ campaign.name }}</h3>
-                <div class="campaign-meta">
-                    <span>📍 {{ campaign.target_name }}</span>
-                    <span>📁 {{ campaign.period }}</span>
-                    <span>👤 {{ campaign.sender_name or 'HR' }}</span>
+    {% if assessments %}
+        {% for assessment in assessments %}
+        <div class="assessment-item">
+            <div class="assessment-info">
+                <h3>{{ assessment.name }}</h3>
+                <div class="assessment-meta">
+                    <span>📍 {{ assessment.target_name }}</span>
+                    <span>📁 {{ assessment.period }}</span>
+                    <span>👤 {{ assessment.sender_name or 'HR' }}</span>
                 </div>
             </div>
 
             <div style="display: flex; align-items: center; gap: 20px;">
                 <div class="scheduled-time">
-                    📅 {{ campaign.scheduled_at[:10] }} kl. {{ campaign.scheduled_at[11:16] }}
+                    📅 {{ assessment.scheduled_at[:10] }} kl. {{ assessment.scheduled_at[11:16] }}
                 </div>
 
-                <div class="campaign-actions">
-                    <button class="btn btn-secondary" onclick="toggleReschedule('{{ campaign.id }}')">
-                        ✏️ {{ t('campaign.reschedule', 'Flyt') }}
+                <div class="assessment-actions">
+                    <button class="btn btn-secondary" onclick="toggleReschedule('{{ assessment.id }}')">
+                        ✏️ {{ t('assessment.reschedule', 'Flyt') }}
                     </button>
-                    <form action="/admin/campaign/{{ campaign.id }}/cancel" method="POST" style="display: inline;"
-                          onsubmit="return confirm('{{ t('campaign.cancel_confirm', 'Er du sikker på at du vil annullere denne planlagte måling?') }}');">
+                    <form action="/admin/assessment/{{ assessment.id }}/cancel" method="POST" style="display: inline;"
+                          onsubmit="return confirm('{{ t('assessment.cancel_confirm', 'Er du sikker på at du vil annullere denne planlagte måling?') }}');">
                         <button type="submit" class="btn btn-danger">
-                            ❌ {{ t('campaign.cancel', 'Annuller') }}
+                            ❌ {{ t('assessment.cancel', 'Annuller') }}
                         </button>
                     </form>
                 </div>
@@ -159,20 +159,20 @@
         </div>
 
         <!-- Reschedule form (hidden by default) -->
-        <div id="reschedule-{{ campaign.id }}" class="reschedule-form">
-            <form action="/admin/campaign/{{ campaign.id }}/reschedule" method="POST">
+        <div id="reschedule-{{ assessment.id }}" class="reschedule-form">
+            <form action="/admin/assessment/{{ assessment.id }}/reschedule" method="POST">
                 <div class="reschedule-inputs">
                     <div>
-                        <label>{{ t('campaign.new_date', 'Ny dato') }}:</label>
-                        <input type="date" name="new_date" required min="{{ campaign.scheduled_at[:10] }}">
+                        <label>{{ t('assessment.new_date', 'Ny dato') }}:</label>
+                        <input type="date" name="new_date" required min="{{ assessment.scheduled_at[:10] }}">
                     </div>
                     <div>
-                        <label>{{ t('campaign.new_time', 'Nyt tidspunkt') }}:</label>
-                        <input type="time" name="new_time" value="{{ campaign.scheduled_at[11:16] }}">
+                        <label>{{ t('assessment.new_time', 'Nyt tidspunkt') }}:</label>
+                        <input type="time" name="new_time" value="{{ assessment.scheduled_at[11:16] }}">
                     </div>
-                    <button type="submit" class="btn btn-primary">{{ t('campaign.save', 'Gem') }}</button>
-                    <button type="button" class="btn btn-secondary" onclick="toggleReschedule('{{ campaign.id }}')">
-                        {{ t('campaign.cancel', 'Annuller') }}
+                    <button type="submit" class="btn btn-primary">{{ t('assessment.save', 'Gem') }}</button>
+                    <button type="button" class="btn btn-secondary" onclick="toggleReschedule('{{ assessment.id }}')">
+                        {{ t('assessment.cancel', 'Annuller') }}
                     </button>
                 </div>
             </form>
@@ -180,18 +180,18 @@
         {% endfor %}
     {% else %}
         <div class="empty-state">
-            <h2>📭 {{ t('campaign.no_scheduled', 'Ingen planlagte målinger') }}</h2>
-            <p>{{ t('campaign.no_scheduled_hint', 'Opret en ny måling og vælg "Planlæg til senere" for at schedule den.') }}</p>
-            <a href="/admin/campaign/new" class="btn btn-primary" style="margin-top: 20px;">
-                + {{ t('campaign.new_analysis') }}
+            <h2>📭 {{ t('assessment.no_scheduled', 'Ingen planlagte målinger') }}</h2>
+            <p>{{ t('assessment.no_scheduled_hint', 'Opret en ny måling og vælg "Planlæg til senere" for at schedule den.') }}</p>
+            <a href="/admin/assessment/new" class="btn btn-primary" style="margin-top: 20px;">
+                + {{ t('assessment.new_analysis') }}
             </a>
         </div>
     {% endif %}
 </div>
 
 <script>
-    function toggleReschedule(campaignId) {
-        const form = document.getElementById('reschedule-' + campaignId);
+    function toggleReschedule(assessmentId) {
+        const form = document.getElementById('reschedule-' + assessmentId);
         form.classList.toggle('active');
 
         // Set min date to today

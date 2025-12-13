@@ -1,5 +1,5 @@
 """
-Tests for scheduled campaigns functionality
+Tests for scheduled assessments functionality
 """
 import pytest
 import sqlite3
@@ -36,7 +36,7 @@ def test_db(tmp_path):
     """)
 
     conn.execute("""
-        CREATE TABLE IF NOT EXISTS campaigns (
+        CREATE TABLE IF NOT EXISTS assessments (
             id TEXT PRIMARY KEY,
             target_unit_id TEXT NOT NULL,
             name TEXT NOT NULL,
@@ -56,10 +56,10 @@ def test_db(tmp_path):
     conn.execute("""
         CREATE TABLE IF NOT EXISTS tokens (
             token TEXT PRIMARY KEY,
-            campaign_id TEXT NOT NULL,
+            assessment_id TEXT NOT NULL,
             unit_id TEXT NOT NULL,
             is_used INTEGER DEFAULT 0,
-            FOREIGN KEY (campaign_id) REFERENCES campaigns(id)
+            FOREIGN KEY (assessment_id) REFERENCES assessments(id)
         )
     """)
 
@@ -88,168 +88,168 @@ def test_db(tmp_path):
         os.remove(db_path)
 
 
-def test_create_scheduled_campaign(test_db):
-    """Test creating a scheduled campaign"""
+def test_create_scheduled_assessment(test_db):
+    """Test creating a scheduled assessment"""
     conn = sqlite3.connect(test_db)
     conn.row_factory = sqlite3.Row
 
-    # Create a scheduled campaign
+    # Create a scheduled assessment
     scheduled_time = (datetime.now() + timedelta(days=1)).isoformat()
 
     conn.execute("""
-        INSERT INTO campaigns (id, target_unit_id, name, period, scheduled_at, status, sender_name)
+        INSERT INTO assessments (id, target_unit_id, name, period, scheduled_at, status, sender_name)
         VALUES (?, ?, ?, ?, ?, ?, ?)
-    """, ('camp-test-1', 'unit-1', 'Test Scheduled', '2025Q1', scheduled_time, 'scheduled', 'Test HR'))
+    """, ('assess-test-1', 'unit-1', 'Test Scheduled', '2025Q1', scheduled_time, 'scheduled', 'Test HR'))
     conn.commit()
 
-    # Verify campaign was created
-    campaign = conn.execute(
-        "SELECT * FROM campaigns WHERE id = ?", ('camp-test-1',)
+    # Verify assessment was created
+    assessment = conn.execute(
+        "SELECT * FROM assessments WHERE id = ?", ('assess-test-1',)
     ).fetchone()
 
-    assert campaign is not None
-    assert campaign['status'] == 'scheduled'
-    assert campaign['scheduled_at'] is not None
-    assert campaign['sender_name'] == 'Test HR'
+    assert assessment is not None
+    assert assessment['status'] == 'scheduled'
+    assert assessment['scheduled_at'] is not None
+    assert assessment['sender_name'] == 'Test HR'
 
     conn.close()
 
 
-def test_get_pending_campaigns(test_db):
-    """Test retrieving pending scheduled campaigns"""
+def test_get_pending_assessments(test_db):
+    """Test retrieving pending scheduled assessments"""
     conn = sqlite3.connect(test_db)
     conn.row_factory = sqlite3.Row
 
-    # Create campaigns with different scheduled times
+    # Create assessments with different scheduled times
     past_time = (datetime.now() - timedelta(hours=1)).isoformat()
     future_time = (datetime.now() + timedelta(days=1)).isoformat()
 
     conn.execute("""
-        INSERT INTO campaigns (id, target_unit_id, name, period, scheduled_at, status)
+        INSERT INTO assessments (id, target_unit_id, name, period, scheduled_at, status)
         VALUES (?, ?, ?, ?, ?, ?)
-    """, ('camp-past', 'unit-1', 'Past Campaign', '2025Q1', past_time, 'scheduled'))
+    """, ('assess-past', 'unit-1', 'Past Assessment', '2025Q1', past_time, 'scheduled'))
 
     conn.execute("""
-        INSERT INTO campaigns (id, target_unit_id, name, period, scheduled_at, status)
+        INSERT INTO assessments (id, target_unit_id, name, period, scheduled_at, status)
         VALUES (?, ?, ?, ?, ?, ?)
-    """, ('camp-future', 'unit-1', 'Future Campaign', '2025Q1', future_time, 'scheduled'))
+    """, ('assess-future', 'unit-1', 'Future Assessment', '2025Q1', future_time, 'scheduled'))
 
     conn.execute("""
-        INSERT INTO campaigns (id, target_unit_id, name, period, status)
+        INSERT INTO assessments (id, target_unit_id, name, period, status)
         VALUES (?, ?, ?, ?, ?)
-    """, ('camp-sent', 'unit-1', 'Sent Campaign', '2025Q1', 'sent'))
+    """, ('assess-sent', 'unit-1', 'Sent Assessment', '2025Q1', 'sent'))
 
     conn.commit()
 
-    # Query for pending campaigns (scheduled_at <= now)
+    # Query for pending assessments (scheduled_at <= now)
     now = datetime.now().isoformat()
     pending = conn.execute("""
-        SELECT * FROM campaigns
+        SELECT * FROM assessments
         WHERE status = 'scheduled' AND scheduled_at <= ?
     """, (now,)).fetchall()
 
     assert len(pending) == 1
-    assert pending[0]['id'] == 'camp-past'
+    assert pending[0]['id'] == 'assess-past'
 
     conn.close()
 
 
-def test_cancel_campaign(test_db):
-    """Test cancelling a scheduled campaign"""
+def test_cancel_assessment(test_db):
+    """Test cancelling a scheduled assessment"""
     conn = sqlite3.connect(test_db)
     conn.row_factory = sqlite3.Row
 
-    # Create a scheduled campaign
+    # Create a scheduled assessment
     scheduled_time = (datetime.now() + timedelta(days=1)).isoformat()
     conn.execute("""
-        INSERT INTO campaigns (id, target_unit_id, name, period, scheduled_at, status)
+        INSERT INTO assessments (id, target_unit_id, name, period, scheduled_at, status)
         VALUES (?, ?, ?, ?, ?, ?)
-    """, ('camp-cancel', 'unit-1', 'To Cancel', '2025Q1', scheduled_time, 'scheduled'))
+    """, ('assess-cancel', 'unit-1', 'To Cancel', '2025Q1', scheduled_time, 'scheduled'))
     conn.commit()
 
-    # Cancel the campaign
+    # Cancel the assessment
     conn.execute("""
-        UPDATE campaigns SET status = 'cancelled'
+        UPDATE assessments SET status = 'cancelled'
         WHERE id = ? AND status = 'scheduled'
-    """, ('camp-cancel',))
+    """, ('assess-cancel',))
     conn.commit()
 
     # Verify cancellation
-    campaign = conn.execute(
-        "SELECT * FROM campaigns WHERE id = ?", ('camp-cancel',)
+    assessment = conn.execute(
+        "SELECT * FROM assessments WHERE id = ?", ('assess-cancel',)
     ).fetchone()
 
-    assert campaign['status'] == 'cancelled'
+    assert assessment['status'] == 'cancelled'
 
     conn.close()
 
 
-def test_reschedule_campaign(test_db):
-    """Test rescheduling a campaign"""
+def test_reschedule_assessment(test_db):
+    """Test rescheduling a assessment"""
     conn = sqlite3.connect(test_db)
     conn.row_factory = sqlite3.Row
 
-    # Create a scheduled campaign
+    # Create a scheduled assessment
     original_time = (datetime.now() + timedelta(days=1)).isoformat()
     conn.execute("""
-        INSERT INTO campaigns (id, target_unit_id, name, period, scheduled_at, status)
+        INSERT INTO assessments (id, target_unit_id, name, period, scheduled_at, status)
         VALUES (?, ?, ?, ?, ?, ?)
-    """, ('camp-reschedule', 'unit-1', 'To Reschedule', '2025Q1', original_time, 'scheduled'))
+    """, ('assess-reschedule', 'unit-1', 'To Reschedule', '2025Q1', original_time, 'scheduled'))
     conn.commit()
 
-    # Reschedule the campaign
+    # Reschedule the assessment
     new_time = (datetime.now() + timedelta(days=7)).isoformat()
     conn.execute("""
-        UPDATE campaigns SET scheduled_at = ?
+        UPDATE assessments SET scheduled_at = ?
         WHERE id = ? AND status = 'scheduled'
-    """, (new_time, 'camp-reschedule'))
+    """, (new_time, 'assess-reschedule'))
     conn.commit()
 
     # Verify rescheduling
-    campaign = conn.execute(
-        "SELECT * FROM campaigns WHERE id = ?", ('camp-reschedule',)
+    assessment = conn.execute(
+        "SELECT * FROM assessments WHERE id = ?", ('assess-reschedule',)
     ).fetchone()
 
-    assert campaign['scheduled_at'] == new_time
-    assert campaign['status'] == 'scheduled'
+    assert assessment['scheduled_at'] == new_time
+    assert assessment['status'] == 'scheduled'
 
     conn.close()
 
 
-def test_mark_campaign_sent(test_db):
-    """Test marking a campaign as sent"""
+def test_mark_assessment_sent(test_db):
+    """Test marking a assessment as sent"""
     conn = sqlite3.connect(test_db)
     conn.row_factory = sqlite3.Row
 
-    # Create a scheduled campaign
+    # Create a scheduled assessment
     scheduled_time = (datetime.now() - timedelta(hours=1)).isoformat()
     conn.execute("""
-        INSERT INTO campaigns (id, target_unit_id, name, period, scheduled_at, status)
+        INSERT INTO assessments (id, target_unit_id, name, period, scheduled_at, status)
         VALUES (?, ?, ?, ?, ?, ?)
-    """, ('camp-send', 'unit-1', 'To Send', '2025Q1', scheduled_time, 'scheduled'))
+    """, ('assess-send', 'unit-1', 'To Send', '2025Q1', scheduled_time, 'scheduled'))
     conn.commit()
 
     # Mark as sent
     sent_time = datetime.now().isoformat()
     conn.execute("""
-        UPDATE campaigns SET status = 'sent', sent_at = ?
+        UPDATE assessments SET status = 'sent', sent_at = ?
         WHERE id = ?
-    """, (sent_time, 'camp-send'))
+    """, (sent_time, 'assess-send'))
     conn.commit()
 
     # Verify sent status
-    campaign = conn.execute(
-        "SELECT * FROM campaigns WHERE id = ?", ('camp-send',)
+    assessment = conn.execute(
+        "SELECT * FROM assessments WHERE id = ?", ('assess-send',)
     ).fetchone()
 
-    assert campaign['status'] == 'sent'
-    assert campaign['sent_at'] is not None
+    assert assessment['status'] == 'sent'
+    assert assessment['sent_at'] is not None
 
     conn.close()
 
 
-def test_campaign_status_values(test_db):
-    """Test different campaign status values"""
+def test_assessment_status_values(test_db):
+    """Test different assessment status values"""
     conn = sqlite3.connect(test_db)
     conn.row_factory = sqlite3.Row
 
@@ -257,24 +257,24 @@ def test_campaign_status_values(test_db):
 
     for i, status in enumerate(statuses):
         conn.execute("""
-            INSERT INTO campaigns (id, target_unit_id, name, period, status)
+            INSERT INTO assessments (id, target_unit_id, name, period, status)
             VALUES (?, ?, ?, ?, ?)
-        """, (f'camp-status-{i}', 'unit-1', f'Status {status}', '2025Q1', status))
+        """, (f'assess-status-{i}', 'unit-1', f'Status {status}', '2025Q1', status))
 
     conn.commit()
 
     # Count each status
     for status in statuses:
         count = conn.execute(
-            "SELECT COUNT(*) FROM campaigns WHERE status = ?", (status,)
+            "SELECT COUNT(*) FROM assessments WHERE status = ?", (status,)
         ).fetchone()[0]
         assert count == 1
 
     conn.close()
 
 
-def test_scheduled_campaigns_with_customer_filter(test_db):
-    """Test filtering scheduled campaigns by customer"""
+def test_scheduled_assessments_with_customer_filter(test_db):
+    """Test filtering scheduled assessments by customer"""
     conn = sqlite3.connect(test_db)
     conn.row_factory = sqlite3.Row
 
@@ -284,39 +284,39 @@ def test_scheduled_campaigns_with_customer_filter(test_db):
         VALUES ('unit-cust-2', 'Customer 2 Unit', 'Customer 2 Unit', 0, 2)
     """)
 
-    # Create scheduled campaigns for different customers
+    # Create scheduled assessments for different customers
     scheduled_time = (datetime.now() + timedelta(days=1)).isoformat()
 
     conn.execute("""
-        INSERT INTO campaigns (id, target_unit_id, name, period, scheduled_at, status)
+        INSERT INTO assessments (id, target_unit_id, name, period, scheduled_at, status)
         VALUES (?, ?, ?, ?, ?, ?)
-    """, ('camp-cust-1', 'unit-1', 'Customer 1 Campaign', '2025Q1', scheduled_time, 'scheduled'))
+    """, ('assess-cust-1', 'unit-1', 'Customer 1 Assessment', '2025Q1', scheduled_time, 'scheduled'))
 
     conn.execute("""
-        INSERT INTO campaigns (id, target_unit_id, name, period, scheduled_at, status)
+        INSERT INTO assessments (id, target_unit_id, name, period, scheduled_at, status)
         VALUES (?, ?, ?, ?, ?, ?)
-    """, ('camp-cust-2', 'unit-cust-2', 'Customer 2 Campaign', '2025Q1', scheduled_time, 'scheduled'))
+    """, ('assess-cust-2', 'unit-cust-2', 'Customer 2 Assessment', '2025Q1', scheduled_time, 'scheduled'))
 
     conn.commit()
 
     # Filter by customer 1
-    campaigns_cust_1 = conn.execute("""
-        SELECT c.* FROM campaigns c
+    assessments_cust_1 = conn.execute("""
+        SELECT c.* FROM assessments c
         JOIN organizational_units ou ON c.target_unit_id = ou.id
         WHERE c.status = 'scheduled' AND ou.customer_id = 1
     """).fetchall()
 
-    assert len(campaigns_cust_1) == 1
-    assert campaigns_cust_1[0]['id'] == 'camp-cust-1'
+    assert len(assessments_cust_1) == 1
+    assert assessments_cust_1[0]['id'] == 'assess-cust-1'
 
     # Filter by customer 2
-    campaigns_cust_2 = conn.execute("""
-        SELECT c.* FROM campaigns c
+    assessments_cust_2 = conn.execute("""
+        SELECT c.* FROM assessments c
         JOIN organizational_units ou ON c.target_unit_id = ou.id
         WHERE c.status = 'scheduled' AND ou.customer_id = 2
     """).fetchall()
 
-    assert len(campaigns_cust_2) == 1
-    assert campaigns_cust_2[0]['id'] == 'camp-cust-2'
+    assert len(assessments_cust_2) == 1
+    assert assessments_cust_2[0]['id'] == 'assess-cust-2'
 
     conn.close()

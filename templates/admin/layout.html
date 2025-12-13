@@ -315,7 +315,7 @@
             <!-- Ledervisning submenu -->
             <ul class="submenu-links">
                 <li><a href="/admin/analyser" {% if 'analyser' in request.path %}class="active"{% endif %}>📊 Analyser</a></li>
-                <li><a href="/admin" {% if request.path == '/admin' and 'campaign' not in request.path %}class="active"{% endif %}>🏢 Organisationer</a></li>
+                <li><a href="/admin" {% if request.path == '/admin' and 'assessment' not in request.path %}class="active"{% endif %}>🏢 Organisationer</a></li>
             </ul>
 
             {% else %}
@@ -326,11 +326,11 @@
 
                 <!-- Målinger dropdown -->
                 <li class="submenu-dropdown">
-                    <a href="#" class="dropdown-toggle {% if 'campaigns' in request.path or 'scheduled' in request.path or 'analyser' in request.path or 'noegletal' in request.path or 'trend' in request.path %}active{% endif %}">📋 {{ t('nav.maalinger', 'Målinger') }} ▾</a>
+                    <a href="#" class="dropdown-toggle {% if 'assessments' in request.path or 'scheduled' in request.path or 'analyser' in request.path or 'noegletal' in request.path or 'trend' in request.path %}active{% endif %}">📋 {{ t('nav.maalinger', 'Målinger') }} ▾</a>
                     <ul class="dropdown-menu">
-                        <li><a href="/admin/campaigns-overview" {% if 'campaigns-overview' in request.path %}class="active"{% endif %}>📋 {{ t('nav.alle_maalinger') }}</a></li>
-                        <li><a href="/admin/scheduled-campaigns" {% if 'scheduled-campaigns' in request.path %}class="active"{% endif %}>📅 {{ t('nav.planlagte', 'Planlagte') }}</a></li>
-                        <li><a href="/admin/new-campaign" {% if 'new-campaign' in request.path %}class="active"{% endif %}>➕ {{ t('nav.ny_maaling', 'Ny måling') }}</a></li>
+                        <li><a href="/admin/assessments-overview" {% if 'assessments-overview' in request.path %}class="active"{% endif %}>📋 {{ t('nav.alle_maalinger') }}</a></li>
+                        <li><a href="/admin/scheduled-assessments" {% if 'scheduled-assessments' in request.path %}class="active"{% endif %}>📅 {{ t('nav.planlagte', 'Planlagte') }}</a></li>
+                        <li><a href="/admin/new-assessment" {% if 'new-assessment' in request.path %}class="active"{% endif %}>➕ {{ t('nav.ny_maaling', 'Ny måling') }}</a></li>
                         <li style="border-top: 1px solid rgba(255,255,255,0.1); margin: 5px 0;"></li>
                         <li><a href="/admin/analyser" {% if 'analyser' in request.path %}class="active"{% endif %}>📊 {{ t('nav.analyser') }}</a></li>
                         <li><a href="/admin/noegletal" {% if 'noegletal' in request.path %}class="active"{% endif %}>📈 {{ t('nav.noegletal') }}</a></li>

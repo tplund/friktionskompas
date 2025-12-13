@@ -29,15 +29,15 @@ def get_db_connection():
     return conn
 
 
-def get_pending_scheduled_campaigns() -> List[Dict]:
-    """Hent alle scheduled campaigns der er klar til at blive sendt"""
+def get_pending_scheduled_assessments() -> List[Dict]:
+    """Hent alle scheduled assessments der er klar til at blive sendt"""
     try:
         conn = get_db_connection()
         now = datetime.now().isoformat()
 
-        campaigns = conn.execute("""
+        assessments = conn.execute("""
             SELECT c.*, ou.name as unit_name
-            FROM campaigns c
+            FROM assessments c
             JOIN organizational_units ou ON c.target_unit_id = ou.id
             WHERE c.status = 'scheduled'
             AND c.scheduled_at <= ?
@@ -45,33 +45,33 @@ def get_pending_scheduled_campaigns() -> List[Dict]:
         """, (now,)).fetchall()
 
         conn.close()
-        return [dict(c) for c in campaigns]
+        return [dict(c) for c in assessments]
     except Exception as e:
-        print(f"[Scheduler] Error getting pending campaigns: {e}")
+        print(f"[Scheduler] Error getting pending assessments: {e}")
         return []
 
 
-def send_scheduled_campaign(campaign: Dict) -> bool:
-    """Send en scheduled campaign"""
+def send_scheduled_assessment(assessment: Dict) -> bool:
+    """Send en scheduled assessment"""
     from db_hierarchical import (
-        get_db, generate_tokens_for_campaign,
+        get_db, generate_tokens_for_assessment,
         get_unit_contacts
     )
-    from mailjet_integration import send_campaign_batch
+    from mailjet_integration import send_assessment_batch
 
-    campaign_id = campaign['id']
-    campaign_name = campaign['name']
-    sender_name = campaign.get('sender_name', 'HR')
+    assessment_id = assessment['id']
+    assessment_name = assessment['name']
+    sender_name = assessment.get('sender_name', 'HR')
 
-    print(f"[Scheduler] Sending scheduled campaign: {campaign_name} (ID: {campaign_id})")
+    print(f"[Scheduler] Sending scheduled assessment: {assessment_name} (ID: {assessment_id})")
 
     try:
         # Generer tokens
-        tokens_by_unit = generate_tokens_for_campaign(campaign_id)
+        tokens_by_unit = generate_tokens_for_assessment(assessment_id)
 
         if not tokens_by_unit:
-            print(f"[Scheduler] No tokens generated for campaign {campaign_id}")
-            mark_campaign_sent(campaign_id)
+            print(f"[Scheduler] No tokens generated for assessment {assessment_id}")
+            mark_assessment_sent(assessment_id)
             return True
 
         # Send til hver unit
@@ -84,49 +84,49 @@ def send_scheduled_campaign(campaign: Dict) -> bool:
                 continue
 
             # Match tokens med kontakter
-            results = send_campaign_batch(contacts, tokens, campaign_name, sender_name)
+            results = send_assessment_batch(contacts, tokens, assessment_name, sender_name)
             total_sent += results['emails_sent'] + results['sms_sent']
             total_errors += results['errors']
 
         # Marker som sendt
-        mark_campaign_sent(campaign_id)
+        mark_assessment_sent(assessment_id)
 
         total_tokens = sum(len(t) for t in tokens_by_unit.values())
-        print(f"[Scheduler] Campaign {campaign_id} sent: {total_tokens} tokens, {total_sent} emails, {total_errors} errors")
+        print(f"[Scheduler] Assessment {assessment_id} sent: {total_tokens} tokens, {total_sent} emails, {total_errors} errors")
 
         return True
 
     except Exception as e:
-        print(f"[Scheduler] Error sending campaign {campaign_id}: {e}")
-        mark_campaign_error(campaign_id, str(e))
+        print(f"[Scheduler] Error sending assessment {assessment_id}: {e}")
+        mark_assessment_error(assessment_id, str(e))
         return False
 
 
-def mark_campaign_sent(campaign_id: str):
-    """Marker en campaign som sendt"""
+def mark_assessment_sent(assessment_id: str):
+    """Marker en assessment som sendt"""
     try:
         conn = get_db_connection()
         conn.execute("""
-            UPDATE campaigns
+            UPDATE assessments
             SET status = 'sent', sent_at = ?
             WHERE id = ?
-        """, (datetime.now().isoformat(), campaign_id))
+        """, (datetime.now().isoformat(), assessment_id))
         conn.commit()
         conn.close()
     except Exception as e:
-        print(f"[Scheduler] Error marking campaign sent: {e}")
+        print(f"[Scheduler] Error marking assessment sent: {e}")
 
 
-def mark_campaign_error(campaign_id: str, error_message: str):
-    """Marker en campaign som fejlet"""
+def mark_assessment_error(assessment_id: str, error_message: str):
+    """Marker en assessment som fejlet"""
     try:
         conn = get_db_connection()
         # Gem error i en ny kolonne eller bare hold den som scheduled
         # For nu, lad den være scheduled så den kan prøves igen
-        print(f"[Scheduler] Campaign {campaign_id} failed: {error_message}")
+        print(f"[Scheduler] Assessment {assessment_id} failed: {error_message}")
         conn.close()
     except Exception as e:
-        print(f"[Scheduler] Error marking campaign error: {e}")
+        print(f"[Scheduler] Error marking assessment error: {e}")
 
 
 def scheduler_loop():
@@ -137,14 +137,14 @@ def scheduler_loop():
 
     while _scheduler_running:
         try:
-            # Hent pending campaigns
-            pending = get_pending_scheduled_campaigns()
+            # Hent pending assessments
+            pending = get_pending_scheduled_assessments()
 
             if pending:
-                print(f"[Scheduler] Found {len(pending)} scheduled campaigns to send")
+                print(f"[Scheduler] Found {len(pending)} scheduled assessments to send")
 
-                for campaign in pending:
-                    send_scheduled_campaign(campaign)
+                for assessment in pending:
+                    send_scheduled_assessment(assessment)
 
         except Exception as e:
             print(f"[Scheduler] Error in loop: {e}")
@@ -179,81 +179,81 @@ def stop_scheduler():
     print("[Scheduler] Stop requested")
 
 
-def get_scheduled_campaigns() -> List[Dict]:
-    """Hent alle scheduled (ikke endnu sendte) campaigns"""
+def get_scheduled_assessments() -> List[Dict]:
+    """Hent alle scheduled (ikke endnu sendte) assessments"""
     try:
         conn = get_db_connection()
 
-        campaigns = conn.execute("""
+        assessments = conn.execute("""
             SELECT c.*, ou.name as unit_name, ou.full_path
-            FROM campaigns c
+            FROM assessments c
             JOIN organizational_units ou ON c.target_unit_id = ou.id
             WHERE c.status = 'scheduled'
             ORDER BY c.scheduled_at ASC
         """).fetchall()
 
         conn.close()
-        return [dict(c) for c in campaigns]
+        return [dict(c) for c in assessments]
     except Exception as e:
-        print(f"[Scheduler] Error getting scheduled campaigns: {e}")
+        print(f"[Scheduler] Error getting scheduled assessments: {e}")
         return []
 
 
-def cancel_scheduled_campaign(campaign_id: str) -> bool:
-    """Annuller en scheduled campaign"""
+def cancel_scheduled_assessment(assessment_id: str) -> bool:
+    """Annuller en scheduled assessment"""
     try:
         conn = get_db_connection()
 
         # Tjek at den er scheduled (ikke allerede sendt)
-        campaign = conn.execute("""
-            SELECT status FROM campaigns WHERE id = ?
-        """, (campaign_id,)).fetchone()
+        assessment = conn.execute("""
+            SELECT status FROM assessments WHERE id = ?
+        """, (assessment_id,)).fetchone()
 
-        if not campaign or campaign['status'] != 'scheduled':
+        if not assessment or assessment['status'] != 'scheduled':
             conn.close()
             return False
 
         conn.execute("""
-            UPDATE campaigns SET status = 'cancelled'
+            UPDATE assessments SET status = 'cancelled'
             WHERE id = ? AND status = 'scheduled'
-        """, (campaign_id,))
+        """, (assessment_id,))
         conn.commit()
         conn.close()
 
-        print(f"[Scheduler] Campaign {campaign_id} cancelled")
+        print(f"[Scheduler] Assessment {assessment_id} cancelled")
         return True
 
     except Exception as e:
-        print(f"[Scheduler] Error cancelling campaign: {e}")
+        print(f"[Scheduler] Error cancelling assessment: {e}")
         return False
 
 
-def reschedule_campaign(campaign_id: str, new_scheduled_at: datetime) -> bool:
-    """Ændr tidspunkt for en scheduled campaign"""
+def reschedule_assessment(assessment_id: str, new_scheduled_at: datetime) -> bool:
+    """Ændr tidspunkt for en scheduled assessment"""
     try:
         conn = get_db_connection()
 
         # Tjek at den er scheduled
-        campaign = conn.execute("""
-            SELECT status FROM campaigns WHERE id = ?
-        """, (campaign_id,)).fetchone()
+        assessment = conn.execute("""
+            SELECT status FROM assessments WHERE id = ?
+        """, (assessment_id,)).fetchone()
 
-        if not campaign or campaign['status'] != 'scheduled':
+        if not assessment or assessment['status'] != 'scheduled':
             conn.close()
             return False
 
         conn.execute("""
-            UPDATE campaigns SET scheduled_at = ?
+            UPDATE assessments SET scheduled_at = ?
             WHERE id = ? AND status = 'scheduled'
-        """, (new_scheduled_at.isoformat(), campaign_id))
+        """, (new_scheduled_at.isoformat(), assessment_id))
         conn.commit()
         conn.close()
 
-        print(f"[Scheduler] Campaign {campaign_id} rescheduled to {new_scheduled_at}")
+        print(f"[Scheduler] Assessment {assessment_id} rescheduled to {new_scheduled_at}")
         return True
 
     except Exception as e:
-        print(f"[Scheduler] Error rescheduling campaign: {e}")
+        print(f"[Scheduler] Error rescheduling assessment: {e}")
         return False
 
 
@@ -261,10 +261,10 @@ if __name__ == "__main__":
     # Test scheduler
     print("Testing scheduler...")
 
-    pending = get_pending_scheduled_campaigns()
-    print(f"Pending campaigns: {len(pending)}")
+    pending = get_pending_scheduled_assessments()
+    print(f"Pending assessments: {len(pending)}")
 
-    scheduled = get_scheduled_campaigns()
-    print(f"Scheduled campaigns: {len(scheduled)}")
+    scheduled = get_scheduled_assessments()
+    print(f"Scheduled assessments: {len(scheduled)}")
     for c in scheduled:
         print(f"  - {c['name']} @ {c['scheduled_at']}")

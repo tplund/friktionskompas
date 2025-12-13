@@ -78,7 +78,7 @@ def index():
     # Hent respondent type og navn
     with get_db() as conn:
         token_info = conn.execute("""
-            SELECT respondent_type, respondent_name, campaign_id, unit_id
+            SELECT respondent_type, respondent_name, assessment_id, unit_id
             FROM tokens
             WHERE token = ?
         """, (token,)).fetchone()
@@ -131,7 +131,7 @@ def submit():
     # Hent token info
     with get_db() as conn:
         token_info = conn.execute("""
-            SELECT campaign_id, unit_id, respondent_type, respondent_name, is_used
+            SELECT assessment_id, unit_id, respondent_type, respondent_name, is_used
             FROM tokens
             WHERE token = ?
         """, (token,)).fetchone()
@@ -144,7 +144,7 @@ def submit():
             flash('Token allerede brugt', 'error')
             return redirect(url_for('index'))
 
-    campaign_id = token_info['campaign_id']
+    assessment_id = token_info['assessment_id']
     unit_id = token_info['unit_id']
     respondent_type = token_info['respondent_type']
     respondent_name = token_info['respondent_name']
@@ -180,9 +180,9 @@ def submit():
 
                 conn.execute("""
                     INSERT INTO responses
-                    (campaign_id, unit_id, question_id, score, respondent_type, respondent_name, comment)
+                    (assessment_id, unit_id, question_id, score, respondent_type, respondent_name, comment)
                     VALUES (?, ?, ?, ?, ?, ?, ?)
-                """, (campaign_id, unit_id, q_id, score, respondent_type, respondent_name, comment))
+                """, (assessment_id, unit_id, q_id, score, respondent_type, respondent_name, comment))
 
             saved_count += 1
 

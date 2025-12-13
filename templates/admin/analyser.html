@@ -320,7 +320,7 @@
 <div class="card">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
         <h2>📊 {{ t('analyser.title') }}</h2>
-        <a href="/admin/campaign/new" class="btn" style="background: #10b981; color: white; padding: 10px 20px; text-decoration: none; border-radius: 8px; font-weight: 500;">➕ {{ t('analyser.new_analysis') }}</a>
+        <a href="/admin/assessment/new" class="btn" style="background: #10b981; color: white; padding: 10px 20px; text-decoration: none; border-radius: 8px; font-weight: 500;">➕ {{ t('analyser.new_analysis') }}</a>
     </div>
 
     <!-- Data Table -->
@@ -365,7 +365,7 @@
             </thead>
             <tbody>
                 {% for unit in units %}
-                <tr onclick="window.location='/admin/campaign/{{ unit.campaign_id }}/detailed'">
+                <tr onclick="window.location='/admin/assessment/{{ unit.assessment_id }}/detailed'">
                     <td>
                         <div class="unit-name">
                             {% if unit.level == 0 %}🏢{% elif unit.level == 1 %}📁{% elif unit.level == 2 %}📂{% else %}📄{% endif %}

@@ -148,26 +148,26 @@ class TestOrganisationTree:
             logged_in_page.wait_for_url(f"{live_server}/admin/unit/*", timeout=5000)
 
 
-class TestCampaignOverview:
-    """Test campaign/analysis overview page."""
+class TestAssessmentOverview:
+    """Test assessment/analysis overview page."""
 
-    def test_campaigns_overview_loads(self, logged_in_page: Page, live_server):
-        """Test that campaigns overview page loads."""
-        logged_in_page.goto(f"{live_server}/admin/campaigns-overview")
-        # Should see either campaigns or empty state
+    def test_assessments_overview_loads(self, logged_in_page: Page, live_server):
+        """Test that assessments overview page loads."""
+        logged_in_page.goto(f"{live_server}/admin/assessments-overview")
+        # Should see either assessments or empty state
         page_content = logged_in_page.content()
-        assert 'campaign' in page_content.lower() or 'analyse' in page_content.lower()
+        assert 'assessment' in page_content.lower() or 'analyse' in page_content.lower()
 
-    def test_campaign_card_clickable(self, logged_in_page: Page, live_server):
-        """Test that campaign cards are clickable."""
-        logged_in_page.goto(f"{live_server}/admin/campaigns-overview")
+    def test_assessment_card_clickable(self, logged_in_page: Page, live_server):
+        """Test that assessment cards are clickable."""
+        logged_in_page.goto(f"{live_server}/admin/assessments-overview")
 
-        campaign_cards = logged_in_page.locator('.campaign-card')
-        if campaign_cards.count() > 0:
-            # Click first campaign
-            campaign_cards.first.click()
-            # Should navigate to campaign details
-            logged_in_page.wait_for_url(f"{live_server}/admin/campaign/*", timeout=5000)
+        assessment_cards = logged_in_page.locator('.assessment-card')
+        if assessment_cards.count() > 0:
+            # Click first assessment
+            assessment_cards.first.click()
+            # Should navigate to assessment details
+            logged_in_page.wait_for_url(f"{live_server}/admin/assessment/*", timeout=5000)
 
 
 class TestBackupPage:

@@ -66,7 +66,7 @@ def init_db():
         
         # Kampagner (sendes til en unit, rammer alle children)
         conn.execute("""
-            CREATE TABLE IF NOT EXISTS campaigns (
+            CREATE TABLE IF NOT EXISTS assessments (
                 id TEXT PRIMARY KEY,
                 target_unit_id TEXT NOT NULL,
                 name TEXT NOT NULL,
@@ -82,11 +82,11 @@ def init_db():
 
         # Tilføj kolonner hvis de mangler (migration)
         try:
-            conn.execute("ALTER TABLE campaigns ADD COLUMN min_responses INTEGER DEFAULT 5")
+            conn.execute("ALTER TABLE assessments ADD COLUMN min_responses INTEGER DEFAULT 5")
         except:
             pass
         try:
-            conn.execute("ALTER TABLE campaigns ADD COLUMN mode TEXT DEFAULT 'anonymous'")
+            conn.execute("ALTER TABLE assessments ADD COLUMN mode TEXT DEFAULT 'anonymous'")
         except:
             pass
         
@@ -94,22 +94,22 @@ def init_db():
         conn.execute("""
             CREATE TABLE IF NOT EXISTS tokens (
                 token TEXT PRIMARY KEY,
-                campaign_id TEXT NOT NULL,
+                assessment_id TEXT NOT NULL,
                 unit_id TEXT NOT NULL,
                 respondent_type TEXT DEFAULT 'employee',
                 respondent_name TEXT,
                 is_used INTEGER DEFAULT 0,
                 used_at TIMESTAMP,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE,
+                FOREIGN KEY (assessment_id) REFERENCES assessments(id) ON DELETE CASCADE,
                 FOREIGN KEY (unit_id) REFERENCES organizational_units(id) ON DELETE CASCADE
             )
         """)
         
         # Index for hurtig token validation
         conn.execute("""
-            CREATE INDEX IF NOT EXISTS idx_tokens_campaign_unit 
-            ON tokens(campaign_id, unit_id)
+            CREATE INDEX IF NOT EXISTS idx_tokens_assessment_unit 
+            ON tokens(assessment_id, unit_id)
         """)
         
         # Kontakter (kan være på alle unit-niveauer)
@@ -142,7 +142,7 @@ def init_db():
         conn.execute("""
             CREATE TABLE IF NOT EXISTS responses (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                campaign_id TEXT NOT NULL,
+                assessment_id TEXT NOT NULL,
                 unit_id TEXT NOT NULL,
                 question_id INTEGER NOT NULL,
                 score INTEGER NOT NULL CHECK(score BETWEEN 1 AND 5),
@@ -151,7 +151,7 @@ def init_db():
                 respondent_type TEXT DEFAULT 'employee',
                 respondent_name TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE,
+                FOREIGN KEY (assessment_id) REFERENCES assessments(id) ON DELETE CASCADE,
                 FOREIGN KEY (unit_id) REFERENCES organizational_units(id) ON DELETE CASCADE,
                 FOREIGN KEY (question_id) REFERENCES questions(id)
             )
@@ -159,8 +159,8 @@ def init_db():
         
         # Index for aggregering
         conn.execute("""
-            CREATE INDEX IF NOT EXISTS idx_responses_campaign_unit
-            ON responses(campaign_id, unit_id)
+            CREATE INDEX IF NOT EXISTS idx_responses_assessment_unit
+            ON responses(assessment_id, unit_id)
         """)
 
         # Email logs for delivery tracking
@@ -172,7 +172,7 @@ def init_db():
                 subject TEXT,
                 email_type TEXT DEFAULT 'invitation',
                 status TEXT DEFAULT 'sent',
-                campaign_id TEXT,
+                assessment_id TEXT,
                 token TEXT,
                 error_message TEXT,
                 delivered_at TIMESTAMP,
@@ -180,7 +180,7 @@ def init_db():
                 clicked_at TIMESTAMP,
                 bounced_at TIMESTAMP,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE SET NULL
+                FOREIGN KEY (assessment_id) REFERENCES assessments(id) ON DELETE SET NULL
             )
         """)
 
@@ -415,13 +415,13 @@ def get_unit_path(unit_id: str) -> List[Dict]:
 # CAMPAIGN FUNCTIONS
 # ========================================
 
-def create_campaign(target_unit_id: str, name: str, period: str, 
+def create_assessment(target_unit_id: str, name: str, period: str, 
                    sent_from: str = 'admin') -> str:
     """
     Opret kampagne rettet mod en unit
     Kampagnen rammer alle leaf units under target_unit_id
     """
-    campaign_id = f"camp-{secrets.token_urlsafe(8)}"
+    assessment_id = f"assess-{secrets.token_urlsafe(8)}"
     
     with get_db() as conn:
         # Valider at target unit eksisterer
@@ -435,29 +435,29 @@ def create_campaign(target_unit_id: str, name: str, period: str,
         
         # Opret kampagne
         conn.execute("""
-            INSERT INTO campaigns (id, target_unit_id, name, period, sent_from)
+            INSERT INTO assessments (id, target_unit_id, name, period, sent_from)
             VALUES (?, ?, ?, ?, ?)
-        """, (campaign_id, target_unit_id, name, period, sent_from))
+        """, (assessment_id, target_unit_id, name, period, sent_from))
     
-    return campaign_id
+    return assessment_id
 
 
-def generate_tokens_for_campaign(campaign_id: str) -> Dict[str, List[str]]:
+def generate_tokens_for_assessment(assessment_id: str) -> Dict[str, List[str]]:
     """
     Generer tokens for alle leaf units under kampagnens target
     Returnerer dict: {unit_id: [tokens]}
     """
     with get_db() as conn:
         # Find target unit
-        campaign = conn.execute(
-            "SELECT target_unit_id FROM campaigns WHERE id = ?",
-            (campaign_id,)
+        assessment = conn.execute(
+            "SELECT target_unit_id FROM assessments WHERE id = ?",
+            (assessment_id,)
         ).fetchone()
         
-        if not campaign:
-            raise ValueError(f"Campaign {campaign_id} ikke fundet")
+        if not assessment:
+            raise ValueError(f"Assessment {assessment_id} ikke fundet")
         
-        target_unit_id = campaign['target_unit_id']
+        target_unit_id = assessment['target_unit_id']
         
         # Find alle leaf units under target
         leaf_units = get_leaf_units(target_unit_id)
@@ -477,18 +477,18 @@ def generate_tokens_for_campaign(campaign_id: str) -> Dict[str, List[str]]:
                 tokens.append(token)
                 
                 conn.execute("""
-                    INSERT INTO tokens (token, campaign_id, unit_id)
+                    INSERT INTO tokens (token, assessment_id, unit_id)
                     VALUES (?, ?, ?)
-                """, (token, campaign_id, unit_id))
+                """, (token, assessment_id, unit_id))
             
             tokens_by_unit[unit_id] = tokens
         
         # Opdater sent_at
         conn.execute("""
-            UPDATE campaigns
+            UPDATE assessments
             SET sent_at = CURRENT_TIMESTAMP
             WHERE id = ?
-        """, (campaign_id,))
+        """, (assessment_id,))
     
     return tokens_by_unit
 
@@ -497,7 +497,7 @@ def validate_and_use_token(token: str) -> Optional[Dict[str, str]]:
     """Valider token og marker som brugt"""
     with get_db() as conn:
         row = conn.execute("""
-            SELECT token, campaign_id, unit_id, is_used
+            SELECT token, assessment_id, unit_id, is_used
             FROM tokens
             WHERE token = ?
         """, (token,)).fetchone()
@@ -516,7 +516,7 @@ def validate_and_use_token(token: str) -> Optional[Dict[str, str]]:
         """, (token,))
         
         return {
-            'campaign_id': row['campaign_id'],
+            'assessment_id': row['assessment_id'],
             'unit_id': row['unit_id']
         }
 
@@ -525,17 +525,17 @@ def validate_and_use_token(token: str) -> Optional[Dict[str, str]]:
 # RESPONSES
 # ========================================
 
-def save_response(campaign_id: str, unit_id: str, question_id: int, 
+def save_response(assessment_id: str, unit_id: str, question_id: int, 
                  score: int, comment: str = None, category_comment: str = None):
     """Gem svar"""
     with get_db() as conn:
         conn.execute("""
-            INSERT INTO responses (campaign_id, unit_id, question_id, score, comment, category_comment)
+            INSERT INTO responses (assessment_id, unit_id, question_id, score, comment, category_comment)
             VALUES (?, ?, ?, ?, ?, ?)
-        """, (campaign_id, unit_id, question_id, score, comment, category_comment))
+        """, (assessment_id, unit_id, question_id, score, comment, category_comment))
 
 
-def get_unit_stats(unit_id: str, campaign_id: str, include_children: bool = True) -> List[Dict]:
+def get_unit_stats(unit_id: str, assessment_id: str, include_children: bool = True) -> List[Dict]:
     """
     Hent statistik for en unit i en kampagne
     include_children: Aggreger data fra alle child units
@@ -560,10 +560,10 @@ def get_unit_stats(unit_id: str, campaign_id: str, include_children: bool = True
                 FROM questions q
                 LEFT JOIN responses r ON q.id = r.question_id 
                     AND r.unit_id IN (SELECT id FROM subtree)
-                    AND r.campaign_id = ?
+                    AND r.assessment_id = ?
                 WHERE q.is_default = 1
                 GROUP BY q.field
-            """, (unit_id, campaign_id)).fetchall()
+            """, (unit_id, assessment_id)).fetchall()
         else:
             # Kun denne unit
             rows = conn.execute("""
@@ -576,10 +576,10 @@ def get_unit_stats(unit_id: str, campaign_id: str, include_children: bool = True
                     COUNT(r.id) as response_count
                 FROM questions q
                 LEFT JOIN responses r ON q.id = r.question_id 
-                    AND r.unit_id = ? AND r.campaign_id = ?
+                    AND r.unit_id = ? AND r.assessment_id = ?
                 WHERE q.is_default = 1
                 GROUP BY q.field
-            """, (unit_id, campaign_id)).fetchall()
+            """, (unit_id, assessment_id)).fetchall()
         
         # Returner i fast rækkefølge
         field_order = ['MENING', 'TRYGHED', 'MULIGHED', 'BESVÆR']
@@ -595,20 +595,20 @@ def get_unit_stats(unit_id: str, campaign_id: str, include_children: bool = True
         ]
 
 
-def get_campaign_overview(campaign_id: str) -> List[Dict]:
+def get_assessment_overview(assessment_id: str) -> List[Dict]:
     """Hent overview for alle leaf units i en kampagne"""
     with get_db() as conn:
-        # Find target unit for campaign
-        campaign = conn.execute(
-            "SELECT target_unit_id FROM campaigns WHERE id = ?",
-            (campaign_id,)
+        # Find target unit for assessment
+        assessment = conn.execute(
+            "SELECT target_unit_id FROM assessments WHERE id = ?",
+            (assessment_id,)
         ).fetchone()
         
-        if not campaign:
+        if not assessment:
             return []
         
         # Find alle leaf units under target
-        leaf_units = get_leaf_units(campaign['target_unit_id'])
+        leaf_units = get_leaf_units(assessment['target_unit_id'])
         
         # Hent stats for hver
         overview = []
@@ -621,8 +621,8 @@ def get_campaign_overview(campaign_id: str) -> List[Dict]:
                     COUNT(*) as tokens_sent,
                     SUM(CASE WHEN is_used = 1 THEN 1 ELSE 0 END) as tokens_used
                 FROM tokens
-                WHERE campaign_id = ? AND unit_id = ?
-            """, (campaign_id, unit_id)).fetchone()
+                WHERE assessment_id = ? AND unit_id = ?
+            """, (assessment_id, unit_id)).fetchone()
             
             # Besvær score
             besvær = conn.execute("""
@@ -634,8 +634,8 @@ def get_campaign_overview(campaign_id: str) -> List[Dict]:
                     END), 1) as besvær_score
                 FROM responses r
                 JOIN questions q ON r.question_id = q.id
-                WHERE r.campaign_id = ? AND r.unit_id = ? AND q.field = 'BESVÆR'
-            """, (campaign_id, unit_id)).fetchone()
+                WHERE r.assessment_id = ? AND r.unit_id = ? AND q.field = 'BESVÆR'
+            """, (assessment_id, unit_id)).fetchone()
             
             overview.append({
                 'id': unit_id,
@@ -729,7 +729,7 @@ def get_all_leaf_units_under(parent_unit_id: str) -> List[Dict]:
 # CAMPAIGN V2 WITH MODES AND RESPONDENT TYPES
 # ========================================
 
-def create_campaign_with_modes(
+def create_assessment_with_modes(
     target_unit_id: str,
     name: str,
     period: str,
@@ -753,9 +753,9 @@ def create_campaign_with_modes(
         sent_from: Afsender
 
     Returns:
-        campaign_id
+        assessment_id
     """
-    campaign_id = f"camp-{secrets.token_urlsafe(8)}"
+    assessment_id = f"assess-{secrets.token_urlsafe(8)}"
 
     with get_db() as conn:
         # Valider at target unit eksisterer
@@ -773,29 +773,29 @@ def create_campaign_with_modes(
 
         # Opret kampagne
         conn.execute("""
-            INSERT INTO campaigns (
+            INSERT INTO assessments (
                 id, target_unit_id, name, period, sent_from,
                 mode, include_leader_assessment, include_leader_self, min_responses
             )
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
-            campaign_id, target_unit_id, name, period, sent_from,
+            assessment_id, target_unit_id, name, period, sent_from,
             mode, 1 if include_leader_assessment else 0,
             1 if include_leader_self else 0, min_responses
         ))
 
-    return campaign_id
+    return assessment_id
 
 
 def generate_tokens_with_respondent_types(
-    campaign_id: str,
+    assessment_id: str,
     respondent_names: Optional[Dict[str, List[str]]] = None
 ) -> Dict[str, Dict[str, List[str]]]:
     """
     Generer tokens med support for respondent types
 
     Args:
-        campaign_id: Campaign ID
+        assessment_id: Assessment ID
         respondent_names: For identified mode: {unit_id: [navne]}
 
     Returns:
@@ -808,18 +808,18 @@ def generate_tokens_with_respondent_types(
         }
     """
     with get_db() as conn:
-        # Hent campaign info
-        campaign = conn.execute("""
-            SELECT * FROM campaigns WHERE id = ?
-        """, (campaign_id,)).fetchone()
+        # Hent assessment info
+        assessment = conn.execute("""
+            SELECT * FROM assessments WHERE id = ?
+        """, (assessment_id,)).fetchone()
 
-        if not campaign:
-            raise ValueError(f"Campaign {campaign_id} ikke fundet")
+        if not assessment:
+            raise ValueError(f"Assessment {assessment_id} ikke fundet")
 
-        target_unit_id = campaign['target_unit_id']
-        mode = campaign['mode']
-        include_leader_assessment = campaign['include_leader_assessment']
-        include_leader_self = campaign['include_leader_self']
+        target_unit_id = assessment['target_unit_id']
+        mode = assessment['mode']
+        include_leader_assessment = assessment['include_leader_assessment']
+        include_leader_self = assessment['include_leader_self']
 
         # Find alle leaf units under target
         leaf_units = get_all_leaf_units_under(target_unit_id)
@@ -847,9 +847,9 @@ def generate_tokens_with_respondent_types(
                     employee_tokens.append((token, name))
 
                     conn.execute("""
-                        INSERT INTO tokens (token, campaign_id, unit_id, respondent_type, respondent_name)
+                        INSERT INTO tokens (token, assessment_id, unit_id, respondent_type, respondent_name)
                         VALUES (?, ?, ?, 'employee', ?)
-                    """, (token, campaign_id, unit_id, name))
+                    """, (token, assessment_id, unit_id, name))
 
                 unit_tokens['employee'] = employee_tokens
             else:
@@ -863,9 +863,9 @@ def generate_tokens_with_respondent_types(
                     employee_tokens.append(token)
 
                     conn.execute("""
-                        INSERT INTO tokens (token, campaign_id, unit_id, respondent_type)
+                        INSERT INTO tokens (token, assessment_id, unit_id, respondent_type)
                         VALUES (?, ?, ?, 'employee')
-                    """, (token, campaign_id, unit_id))
+                    """, (token, assessment_id, unit_id))
 
                 unit_tokens['employee'] = employee_tokens
 
@@ -873,9 +873,9 @@ def generate_tokens_with_respondent_types(
             if include_leader_assessment:
                 token = secrets.token_urlsafe(16)
                 conn.execute("""
-                    INSERT INTO tokens (token, campaign_id, unit_id, respondent_type, respondent_name)
+                    INSERT INTO tokens (token, assessment_id, unit_id, respondent_type, respondent_name)
                     VALUES (?, ?, ?, 'leader_assess', ?)
-                """, (token, campaign_id, unit_id, unit.get('leader_name')))
+                """, (token, assessment_id, unit_id, unit.get('leader_name')))
 
                 unit_tokens['leader_assess'] = [token]
 
@@ -883,9 +883,9 @@ def generate_tokens_with_respondent_types(
             if include_leader_self:
                 token = secrets.token_urlsafe(16)
                 conn.execute("""
-                    INSERT INTO tokens (token, campaign_id, unit_id, respondent_type, respondent_name)
+                    INSERT INTO tokens (token, assessment_id, unit_id, respondent_type, respondent_name)
                     VALUES (?, ?, ?, 'leader_self', ?)
-                """, (token, campaign_id, unit_id, unit.get('leader_name')))
+                """, (token, assessment_id, unit_id, unit.get('leader_name')))
 
                 unit_tokens['leader_self'] = [token]
 
@@ -893,10 +893,10 @@ def generate_tokens_with_respondent_types(
 
         # Opdater sent_at
         conn.execute("""
-            UPDATE campaigns
+            UPDATE assessments
             SET sent_at = CURRENT_TIMESTAMP
             WHERE id = ?
-        """, (campaign_id,))
+        """, (assessment_id,))
 
     return tokens_by_unit
 
@@ -905,12 +905,12 @@ def generate_tokens_with_respondent_types(
 # HELPER FUNCTIONS FOR RESPONDENT TYPES
 # ========================================
 
-def get_campaign_info(campaign_id: str) -> Optional[Dict]:
-    """Hent campaign info inkl. mode og flags"""
+def get_assessment_info(assessment_id: str) -> Optional[Dict]:
+    """Hent assessment info inkl. mode og flags"""
     with get_db() as conn:
         row = conn.execute("""
-            SELECT * FROM campaigns WHERE id = ?
-        """, (campaign_id,)).fetchone()
+            SELECT * FROM assessments WHERE id = ?
+        """, (assessment_id,)).fetchone()
 
         return dict(row) if row else None
 
@@ -925,11 +925,11 @@ def get_respondent_types() -> List[Dict]:
         return [dict(row) for row in rows]
 
 
-def get_campaign_modes() -> List[Dict]:
-    """Hent alle campaign modes"""
+def get_assessment_modes() -> List[Dict]:
+    """Hent alle assessment modes"""
     with get_db() as conn:
         rows = conn.execute("""
-            SELECT * FROM campaign_modes ORDER BY id
+            SELECT * FROM assessment_modes ORDER BY id
         """).fetchall()
 
         return [dict(row) for row in rows]

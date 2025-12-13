@@ -97,7 +97,7 @@
         color: #374151;
     }
 
-    /* Recent campaigns table */
+    /* Recent assessments table */
     .recent-table {
         width: 100%;
         border-collapse: collapse;
@@ -120,14 +120,14 @@
     .recent-table tr:hover {
         background: #f9fafb;
     }
-    .recent-table .campaign-name {
+    .recent-table .assessment-name {
         font-weight: 500;
     }
-    .recent-table .campaign-name a {
+    .recent-table .assessment-name a {
         color: #4f46e5;
         text-decoration: none;
     }
-    .recent-table .campaign-name a:hover {
+    .recent-table .assessment-name a:hover {
         text-decoration: underline;
     }
     .recent-table .meta {
@@ -206,7 +206,7 @@
     </div>
     <div class="stat-card">
         <div class="label">{{ t('nav.analyser') }}</div>
-        <div class="value">{{ total_campaigns }}</div>
+        <div class="value">{{ total_assessments }}</div>
     </div>
     <div class="stat-card highlight">
         <div class="label">{{ t('noegletal.besvarelser') }}</div>
@@ -251,22 +251,22 @@
         {% endif %}
     </div>
 
-    <!-- Recent campaigns -->
+    <!-- Recent assessments -->
     <div class="card">
         <h2>{{ t('noegletal.seneste_maalinger') }}</h2>
-        {% if recent_campaigns %}
+        {% if recent_assessments %}
         <table class="recent-table">
             <thead>
                 <tr>
-                    <th>{{ t('campaign.name') }}</th>
+                    <th>{{ t('assessment.name') }}</th>
                     <th>{{ t('noegletal.besvarelser') }}</th>
                 </tr>
             </thead>
             <tbody>
-                {% for c in recent_campaigns %}
+                {% for c in recent_assessments %}
                 <tr>
-                    <td class="campaign-name">
-                        <a href="/admin/campaign/{{ c.id }}">{{ c.name }}</a>
+                    <td class="assessment-name">
+                        <a href="/admin/assessment/{{ c.id }}">{{ c.name }}</a>
                         <div class="meta">{{ c.unit_name }}{% if show_customer_stats %} &middot; {{ c.customer_name }}{% endif %}</div>
                     </td>
                     <td>
@@ -299,7 +299,7 @@
                     <div class="lbl">{{ t('nav.organisationer') }}</div>
                 </div>
                 <div class="customer-stat">
-                    <div class="num">{{ cust.campaign_count }}</div>
+                    <div class="num">{{ cust.assessment_count }}</div>
                     <div class="lbl">{{ t('nav.analyser') }}</div>
                 </div>
                 <div class="customer-stat">

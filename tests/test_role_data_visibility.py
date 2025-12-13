@@ -13,11 +13,11 @@ URL reference:
 - /admin - Home/organization tree
 - /admin/dashboard - Dashboard with stats
 - /admin/analyser - Analysis page
-- /admin/campaigns-overview - Campaigns list
-- /admin/campaign/new - New campaign form
+- /admin/assessments-overview - Assessments list
+- /admin/assessment/new - New assessment form
 - /admin/unit/new - New unit form
 - /admin/unit/<id> - View unit details
-- /admin/campaign/<id> - View campaign
+- /admin/assessment/<id> - View assessment
 """
 import pytest
 import sqlite3
@@ -55,20 +55,20 @@ class TestSetupMultipleCustomers:
                 VALUES ('unit-herning-2', 'Herning Afdeling', 2, 'unit-herning-1', 1)
             """)
 
-            # Create campaign for second customer
+            # Create assessment for second customer
             conn.execute("""
-                INSERT INTO campaigns (id, name, period, target_unit_id, customer_id, created_at)
-                VALUES ('campaign-herning-1', 'Herning Q4 2024', 'Q4 2024', 'unit-herning-1', 2, datetime('now'))
+                INSERT INTO assessments (id, name, period, target_unit_id, customer_id, created_at)
+                VALUES ('assessment-herning-1', 'Herning Q4 2024', 'Q4 2024', 'unit-herning-1', 2, datetime('now'))
             """)
 
             conn.commit()
 
-        # Ensure first customer has a campaign too
-        existing_camp = conn.execute("SELECT id FROM campaigns WHERE customer_id = 1").fetchone()
+        # Ensure first customer has a assessment too
+        existing_camp = conn.execute("SELECT id FROM assessments WHERE customer_id = 1").fetchone()
         if not existing_camp:
             conn.execute("""
-                INSERT INTO campaigns (id, name, period, target_unit_id, customer_id, created_at)
-                VALUES ('campaign-test-1', 'Test Q4 2024', 'Q4 2024', 'unit-test-1', 1, datetime('now'))
+                INSERT INTO assessments (id, name, period, target_unit_id, customer_id, created_at)
+                VALUES ('assessment-test-1', 'Test Q4 2024', 'Q4 2024', 'unit-test-1', 1, datetime('now'))
             """)
             conn.commit()
 
@@ -79,18 +79,18 @@ class TestSetupMultipleCustomers:
 class TestSuperadminNoFilter(TestSetupMultipleCustomers):
     """Test superadmin WITHOUT customer filter - should see ALL data."""
 
-    def test_analyser_shows_all_campaigns(self, superadmin_client):
-        """Superadmin without filter should see campaigns from all customers."""
+    def test_analyser_shows_all_assessments(self, superadmin_client):
+        """Superadmin without filter should see assessments from all customers."""
         response = superadmin_client.get('/admin/analyser')
         assert response.status_code == 200
-        # Should see both customers' campaigns in the filter dropdown
+        # Should see both customers' assessments in the filter dropdown
         data = response.data.decode('utf-8')
-        # Both campaigns should be visible somewhere in the page
-        assert 'campaign' in data.lower() or 'måling' in data.lower()
+        # Both assessments should be visible somewhere in the page
+        assert 'assessment' in data.lower() or 'måling' in data.lower()
 
-    def test_campaigns_overview_shows_all(self, superadmin_client):
-        """Superadmin without filter should see all campaigns in overview."""
-        response = superadmin_client.get('/admin/campaigns-overview')
+    def test_assessments_overview_shows_all(self, superadmin_client):
+        """Superadmin without filter should see all assessments in overview."""
+        response = superadmin_client.get('/admin/assessments-overview')
         assert response.status_code == 200
 
     def test_admin_home_shows_all_units(self, superadmin_client):
@@ -132,9 +132,9 @@ class TestSuperadminWithFilter(TestSetupMultipleCustomers):
         assert response.status_code == 200
         # Page should load without errors
 
-    def test_campaigns_overview_with_filter(self, superadmin_with_customer_filter):
-        """Superadmin with filter should see only filtered customer's campaigns."""
-        response = superadmin_with_customer_filter.get('/admin/campaigns-overview')
+    def test_assessments_overview_with_filter(self, superadmin_with_customer_filter):
+        """Superadmin with filter should see only filtered customer's assessments."""
+        response = superadmin_with_customer_filter.get('/admin/assessments-overview')
         assert response.status_code == 200
 
     def test_admin_home_with_filter(self, superadmin_with_customer_filter):
@@ -142,9 +142,9 @@ class TestSuperadminWithFilter(TestSetupMultipleCustomers):
         response = superadmin_with_customer_filter.get('/admin')
         assert response.status_code == 200
 
-    def test_new_campaign_with_filter(self, superadmin_with_customer_filter):
-        """New campaign form should only show units from filtered customer."""
-        response = superadmin_with_customer_filter.get('/admin/campaign/new')
+    def test_new_assessment_with_filter(self, superadmin_with_customer_filter):
+        """New assessment form should only show units from filtered customer."""
+        response = superadmin_with_customer_filter.get('/admin/assessment/new')
         assert response.status_code == 200
 
     def test_new_unit_with_filter(self, superadmin_with_customer_filter):
@@ -156,9 +156,9 @@ class TestSuperadminWithFilter(TestSetupMultipleCustomers):
 class TestAdminDataAccess(TestSetupMultipleCustomers):
     """Test admin (non-superadmin) data access - should see all data."""
 
-    def test_admin_sees_all_campaigns(self, authenticated_client):
-        """Admin should see campaigns from all customers."""
-        response = authenticated_client.get('/admin/campaigns-overview')
+    def test_admin_sees_all_assessments(self, authenticated_client):
+        """Admin should see assessments from all customers."""
+        response = authenticated_client.get('/admin/assessments-overview')
         assert response.status_code == 200
 
     def test_admin_sees_all_units(self, authenticated_client):
@@ -175,9 +175,9 @@ class TestAdminDataAccess(TestSetupMultipleCustomers):
 class TestManagerDataIsolation(TestSetupMultipleCustomers):
     """Test manager data isolation - should ONLY see their own customer's data."""
 
-    def test_manager_sees_own_campaigns_only(self, manager_client):
-        """Manager should only see their own customer's campaigns."""
-        response = manager_client.get('/admin/campaigns-overview')
+    def test_manager_sees_own_assessments_only(self, manager_client):
+        """Manager should only see their own customer's assessments."""
+        response = manager_client.get('/admin/assessments-overview')
         assert response.status_code == 200
         data = response.data.decode('utf-8')
         # Should NOT see Herning data (customer_id=2)
@@ -192,9 +192,9 @@ class TestManagerDataIsolation(TestSetupMultipleCustomers):
         # Should NOT see Herning units
         assert 'Herning Hovedkontor' not in data
 
-    def test_manager_new_campaign_own_units_only(self, manager_client):
-        """Manager's new campaign form should only show own customer's units."""
-        response = manager_client.get('/admin/campaign/new')
+    def test_manager_new_assessment_own_units_only(self, manager_client):
+        """Manager's new assessment form should only show own customer's units."""
+        response = manager_client.get('/admin/assessment/new')
         assert response.status_code == 200
         data = response.data.decode('utf-8')
         # Should NOT see Herning units in dropdown
@@ -207,9 +207,9 @@ class TestManagerDataIsolation(TestSetupMultipleCustomers):
         # Should either 404, redirect, or show error
         assert response.status_code in [302, 404] or b'ikke fundet' in response.data or b'ingen adgang' in response.data
 
-    def test_manager_cannot_access_other_customer_campaign(self, manager_client, app):
-        """Manager should not be able to view another customer's campaign."""
-        response = manager_client.get('/admin/campaign/campaign-herning-1')
+    def test_manager_cannot_access_other_customer_assessment(self, manager_client, app):
+        """Manager should not be able to view another customer's assessment."""
+        response = manager_client.get('/admin/assessment/assessment-herning-1')
         # Should either 404, redirect, or show error
         assert response.status_code in [302, 404] or b'ikke fundet' in response.data or b'ingen adgang' in response.data
 
@@ -272,31 +272,31 @@ class TestViewUnitAccessControl(TestSetupMultipleCustomers):
         assert response.status_code == 200
 
 
-class TestViewCampaignAccessControl(TestSetupMultipleCustomers):
-    """Test view_campaign access control based on role and customer."""
+class TestViewAssessmentAccessControl(TestSetupMultipleCustomers):
+    """Test view_assessment access control based on role and customer."""
 
-    def test_superadmin_can_view_any_campaign(self, superadmin_client, app):
-        """Superadmin should be able to view any campaign."""
-        # First check if campaign exists
+    def test_superadmin_can_view_any_assessment(self, superadmin_client, app):
+        """Superadmin should be able to view any assessment."""
+        # First check if assessment exists
         db_path = app.config.get('DATABASE') or os.environ.get('DB_PATH')
         conn = sqlite3.connect(db_path)
-        camp = conn.execute("SELECT id FROM campaigns LIMIT 1").fetchone()
+        camp = conn.execute("SELECT id FROM assessments LIMIT 1").fetchone()
         conn.close()
 
         if camp:
-            response = superadmin_client.get(f'/admin/campaign/{camp[0]}')
+            response = superadmin_client.get(f'/admin/assessment/{camp[0]}')
             # Should load or redirect (not 500 error)
             assert response.status_code in [200, 302, 404]
 
-    def test_manager_views_own_campaign(self, manager_client, app):
-        """Manager should be able to view their own customer's campaign."""
+    def test_manager_views_own_assessment(self, manager_client, app):
+        """Manager should be able to view their own customer's assessment."""
         db_path = app.config.get('DATABASE') or os.environ.get('DB_PATH')
         conn = sqlite3.connect(db_path)
-        camp = conn.execute("SELECT id FROM campaigns WHERE customer_id = 1 LIMIT 1").fetchone()
+        camp = conn.execute("SELECT id FROM assessments WHERE customer_id = 1 LIMIT 1").fetchone()
         conn.close()
 
         if camp:
-            response = manager_client.get(f'/admin/campaign/{camp[0]}')
+            response = manager_client.get(f'/admin/assessment/{camp[0]}')
             assert response.status_code in [200, 302]
 
 
@@ -309,9 +309,9 @@ class TestDeleteAccessControl(TestSetupMultipleCustomers):
         # Should fail with redirect or error
         assert response.status_code in [302, 403, 404] or b'ingen adgang' in response.data
 
-    def test_manager_cannot_delete_other_customer_campaign(self, manager_client):
-        """Manager should not be able to delete another customer's campaign."""
-        response = manager_client.post('/admin/campaign/campaign-herning-1/delete')
+    def test_manager_cannot_delete_other_customer_assessment(self, manager_client):
+        """Manager should not be able to delete another customer's assessment."""
+        response = manager_client.post('/admin/assessment/assessment-herning-1/delete')
         # Should fail
         assert response.status_code in [302, 403, 404] or b'ingen adgang' in response.data
 
@@ -329,15 +329,15 @@ class TestNewResourceCustomerAssignment(TestSetupMultipleCustomers):
         assert 'form' in data.lower() or 'input' in data.lower()
 
 
-class TestScheduledCampaignsVisibility(TestSetupMultipleCustomers):
-    """Test scheduled campaigns visibility based on role."""
+class TestScheduledAssessmentsVisibility(TestSetupMultipleCustomers):
+    """Test scheduled assessments visibility based on role."""
 
-    def test_superadmin_sees_scheduled_campaigns(self, superadmin_client):
-        """Superadmin should see scheduled campaigns page."""
-        response = superadmin_client.get('/admin/scheduled-campaigns')
+    def test_superadmin_sees_scheduled_assessments(self, superadmin_client):
+        """Superadmin should see scheduled assessments page."""
+        response = superadmin_client.get('/admin/scheduled-assessments')
         assert response.status_code == 200
 
-    def test_manager_sees_own_scheduled_campaigns(self, manager_client):
-        """Manager should only see their own scheduled campaigns."""
-        response = manager_client.get('/admin/scheduled-campaigns')
+    def test_manager_sees_own_scheduled_assessments(self, manager_client):
+        """Manager should only see their own scheduled assessments."""
+        response = manager_client.get('/admin/scheduled-assessments')
         assert response.status_code == 200

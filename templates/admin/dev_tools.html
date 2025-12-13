@@ -141,7 +141,7 @@
             <div class="label">Enheder</div>
         </div>
         <div class="stat-item">
-            <div class="value">{{ stats.campaigns }}</div>
+            <div class="value">{{ stats.assessments }}</div>
             <div class="label">Målinger</div>
         </div>
         <div class="stat-item">
@@ -155,6 +155,35 @@
         <div class="stat-item">
             <div class="value">{{ stats.translations }}</div>
             <div class="label">Oversættelser</div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <h2>Cache Status</h2>
+    {% if cache_stats %}
+    <div class="stats-grid">
+        <div class="stat-item">
+            <div class="value">{{ cache_stats.total_entries }}</div>
+            <div class="label">Cache Entries</div>
+        </div>
+        <div class="stat-item">
+            <div class="value">{{ cache_stats.valid_entries }}</div>
+            <div class="label">Aktive</div>
+        </div>
+        <div class="stat-item">
+            <div class="value">{{ cache_stats.expired_entries }}</div>
+            <div class="label">Udløbet</div>
+        </div>
+    </div>
+    {% endif %}
+    <div class="tools-grid">
+        <div class="tool-card">
+            <h3>Ryd Cache</h3>
+            <p>Ryd alle cached aggregeringer og beregninger</p>
+            <form method="POST" action="/admin/clear-cache" style="display:inline;">
+                <button type="submit" class="btn-warning">Ryd Cache</button>
+            </form>
         </div>
     </div>
 </div>
@@ -209,7 +238,7 @@
         <div class="tool-card danger-zone">
             <h3>Slet Alt Data</h3>
             <p>Sletter ALLE data undtagen users og customers</p>
-            <form method="POST" action="/admin/delete-all-data" style="display:inline;" onsubmit="return confirm('ADVARSEL: Dette sletter ALLE responses, campaigns, tokens og units. Er du HELT sikker?')">
+            <form method="POST" action="/admin/delete-all-data" style="display:inline;" onsubmit="return confirm('ADVARSEL: Dette sletter ALLE responses, assessments, tokens og units. Er du HELT sikker?')">
                 <button type="submit" class="btn-danger">Slet Alt</button>
             </form>
         </div>

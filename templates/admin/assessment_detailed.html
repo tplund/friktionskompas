@@ -1,6 +1,6 @@
 {% extends "admin/layout.html" %}
 
-{% block title %}Friktionsmåling - {{ campaign.name }}{% endblock %}
+{% block title %}Friktionsmåling - {{ assessment.name }}{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
@@ -9,10 +9,10 @@
         <div class="col-12">
             <div style="display: flex; justify-content: space-between; align-items: start; flex-wrap: wrap; gap: 15px;">
                 <div>
-                    <h1 class="h2">📊 Friktionsmåling - {{ campaign.name }}</h1>
+                    <h1 class="h2">📊 Friktionsmåling - {{ assessment.name }}</h1>
                     <p class="text-muted">{% if last_response_date %}Sidste besvarelse: {{ last_response_date }}{% endif %}</p>
                 </div>
-                <a href="/admin/campaign/{{ campaign.id }}/pdf"
+                <a href="/admin/assessment/{{ assessment.id }}/pdf"
                    style="display: inline-block; padding: 10px 20px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 0.9rem;"
                    data-loading="Genererer PDF...">
                     📄 Download PDF
@@ -21,11 +21,14 @@
         </div>
     </div>
 
+    <!-- Tjek om der er leder-data -->
+    {% set has_leader_data = breakdown.leader_assess.MENING.response_count > 0 or breakdown.leader_self.MENING.response_count > 0 %}
+
     <!-- Kompakt Tabel Sammenligning -->
     <div class="row mb-4">
         <div class="col-12">
             <div class="field-card">
-                <h3 class="field-header">📊 Sammenligning</h3>
+                <h3 class="field-header">📊 {% if has_leader_data %}Sammenligning{% else %}Resultater{% endif %}</h3>
 
                 <table style="width: 100%; border-collapse: collapse;">
                     <thead>
@@ -33,8 +36,10 @@
                             <th style="padding: 12px; text-align: left; font-weight: 600; color: #374151;">Felt</th>
                             <th style="padding: 12px; text-align: center; font-weight: 600; color: #374151;">Medarbejdere</th>
                             <th style="padding: 12px; text-align: center; font-weight: 600; color: #374151;">Spredning (σ)</th>
+                            {% if has_leader_data %}
                             <th style="padding: 12px; text-align: center; font-weight: 600; color: #374151;">Leder vurderer</th>
                             <th style="padding: 12px; text-align: center; font-weight: 600; color: #374151;">Leder selv</th>
+                            {% endif %}
                             <th style="padding: 12px; text-align: center; font-weight: 600; color: #374151;">Advarsler</th>
                         </tr>
                     </thead>
@@ -66,6 +71,7 @@
                                     {% if has_high_spread_overall %}Høj{% elif avg_std_dev > 0.7 %}Medium{% else %}Lav{% endif %}
                                 </div>
                             </td>
+                            {% if has_leader_data %}
                             <td style="padding: 16px; text-align: center;">
                                 <span class="score-display {{ get_percent_class(leader_assess_overall) }}" style="font-size: 1.75rem; font-weight: 800;">
                                     {{ "%.0f"|format(to_percent(leader_assess_overall)) }}%
@@ -83,6 +89,7 @@
                                 </span>
                                 <div style="font-size: 0.75rem; color: #9ca3af; margin-top: 4px;">{{ "%.1f"|format(leader_self_overall) }}/5</div>
                             </td>
+                            {% endif %}
                             <td style="padding: 16px; text-align: center;">
                                 <div style="display: flex; gap: 6px; justify-content: center; flex-wrap: wrap;">
                                     {% if has_gap_overall %}
@@ -124,6 +131,7 @@
                                 </div>
                                 <div style="font-size: 0.75rem; color: #6b7280; margin-top: 4px;">{{ spread|title }}</div>
                             </td>
+                            {% if has_leader_data %}
                             <td style="padding: 16px; text-align: center;">
                                 <span class="score-display {{ get_percent_class(leader_assess_score) }}" style="font-size: 1.5rem; font-weight: 700;">
                                     {{ "%.0f"|format(to_percent(leader_assess_score)) }}%
@@ -141,6 +149,7 @@
                                 </span>
                                 <div style="font-size: 0.75rem; color: #9ca3af; margin-top: 4px;">{{ "%.1f"|format(leader_self_score) }}/5</div>
                             </td>
+                            {% endif %}
                             <td style="padding: 16px; text-align: center;">
                                 <div style="display: flex; gap: 6px; justify-content: center; flex-wrap: wrap;">
                                     {% if has_gap %}
@@ -169,7 +178,7 @@
             <div class="field-card">
                 <h3 class="field-header">🧭 Friktionskompas</h3>
 
-                <p style="font-size: 0.875rem; color: #6b7280; margin-bottom: 20px;">Blå polygon = medarbejdernes gennemsnit. Små prikker = individuelle medarbejdere. Orange stjerne = lederen selv.</p>
+                <p style="font-size: 0.875rem; color: #6b7280; margin-bottom: 20px;">Blå polygon = medarbejdernes gennemsnit. Små prikker = individuelle medarbejdere.{% if has_leader_data %} Orange stjerne = lederen selv.{% endif %}</p>
 
                 <div style="display: flex; justify-content: center; align-items: center; padding: 20px;">
                     {% set emp_values = [
@@ -290,18 +299,21 @@
                         </svg>
                         <span style="font-size: 0.875rem; color: #374151;">Individuelle ({{ individual_scores.employees|length }})</span>
                     </div>
+                    {% if has_leader_data %}
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <svg width="20" height="20" viewBox="0 0 20 20">
                             <path d="M 10,2 L 12,8 L 18,10 L 12,12 L 10,18 L 8,12 L 2,10 L 8,8 Z" fill="#f97316" stroke="#fff" stroke-width="1"/>
                         </svg>
                         <span style="font-size: 0.875rem; color: #374151;">Leder selv</span>
                     </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Forskel-analyse (Slope Chart) -->
+    <!-- Forskel-analyse (Slope Chart) - kun hvis der er lederdata -->
+    {% if has_leader_data %}
     <div class="row mb-4">
         <div class="col-12">
             <div class="field-card">
@@ -387,6 +399,7 @@
             </div>
         </div>
     </div>
+    {% endif %}
 
     <style>
         /* Score display colors */

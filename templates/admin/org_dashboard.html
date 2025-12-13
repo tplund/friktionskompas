@@ -133,7 +133,7 @@
         color: #1e40af;
     }
 
-    .org-card-badge.campaign {
+    .org-card-badge.assessment {
         background: #dcfce7;
         color: #166534;
     }
@@ -354,7 +354,7 @@
                     <h3 class="org-card-title">{{ item.name }}</h3>
                     <div class="org-card-subtitle">{{ item.unit_count }} {{ t('dashboard.units') }}</div>
                 </div>
-                <span class="org-card-badge drilldown">{{ item.campaign_count }} {{ t('dashboard.measurements') }}</span>
+                <span class="org-card-badge drilldown">{{ item.assessment_count }} {{ t('dashboard.measurements') }}</span>
             </div>
 
             <div class="score-circle {% if item.avg_score %}{% if item.avg_score > 3.5 %}high{% elif item.avg_score >= 2.5 %}medium{% else %}low{% endif %}{% else %}none{% endif %}">
@@ -422,8 +422,8 @@
         <div class="org-card {% if item.avg_score and item.avg_score < 3.0 %}has-problems{% endif %}"
              {% if item.child_count > 0 %}
              onclick="window.location='{{ url_for('org_dashboard', customer_id=customer_id, unit_id=item.id) }}'"
-             {% elif item.direct_campaign_id %}
-             onclick="window.location='{{ url_for('campaign_detailed_analysis', campaign_id=item.direct_campaign_id) }}'"
+             {% elif item.direct_assessment_id %}
+             onclick="window.location='{{ url_for('assessment_detailed_analysis', assessment_id=item.direct_assessment_id) }}'"
              {% endif %}>
 
             <div class="org-card-header">
@@ -481,7 +481,7 @@
             {% endif %}
 
             <div class="card-stats">
-                <div class="card-stat">{{ item.campaign_count }} {{ t('dashboard.measurements') }}</div>
+                <div class="card-stat">{{ item.assessment_count }} {{ t('dashboard.measurements') }}</div>
                 <div class="card-stat">{{ item.response_count }} {{ t('analyser.responses')|lower }}</div>
                 {% if item.profil_count and item.profil_count > 0 %}
                 <div class="card-stat" style="color: #8b5cf6;">{{ item.profil_count }} {{ t('dashboard.profiles') }}</div>
@@ -532,8 +532,8 @@
         <div class="empty-state-icon">📂</div>
         <h3>{{ t('dashboard.no_subunits') }}</h3>
         <p>{{ t('dashboard.no_subunits_desc') }}</p>
-        {% if parent_unit and parent_unit.direct_campaign_id %}
-        <a href="{{ url_for('campaign_detailed_analysis', campaign_id=parent_unit.direct_campaign_id) }}"
+        {% if parent_unit and parent_unit.direct_assessment_id %}
+        <a href="{{ url_for('assessment_detailed_analysis', assessment_id=parent_unit.direct_assessment_id) }}"
            class="btn" style="background: #6366f1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin-top: 20px; display: inline-block;">
             {{ t('dashboard.see_analysis') }}
         </a>

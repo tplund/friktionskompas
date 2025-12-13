@@ -139,22 +139,22 @@ class TestManagerDataIsolation(TestIntegrationFixtures):
         for herning_unit in HERNING_UNIT_NAMES:
             assert herning_unit not in data, f"Found Herning unit '{herning_unit}' in Esbjerg manager view"
 
-    def test_herning_manager_campaigns_no_esbjerg(self, herning_manager_client):
-        """Herning manager's campaigns should not include Esbjerg campaigns."""
-        response = herning_manager_client.get('/admin/campaigns-overview')
+    def test_herning_manager_assessments_no_esbjerg(self, herning_manager_client):
+        """Herning manager's assessments should not include Esbjerg assessments."""
+        response = herning_manager_client.get('/admin/assessments-overview')
         data = response.data.decode('utf-8')
 
         assert response.status_code == 200
         # Should not see Esbjerg-related content
         assert 'Esbjerg' not in data or ESBJERG_CUSTOMER_ID not in data
 
-    def test_esbjerg_manager_campaigns_no_herning(self, esbjerg_manager_client):
-        """Esbjerg manager's campaigns should not include Herning campaigns."""
-        response = esbjerg_manager_client.get('/admin/campaigns-overview')
+    def test_esbjerg_manager_assessments_no_herning(self, esbjerg_manager_client):
+        """Esbjerg manager's assessments should not include Herning assessments."""
+        response = esbjerg_manager_client.get('/admin/assessments-overview')
         data = response.data.decode('utf-8')
 
         assert response.status_code == 200
-        # Should not see Herning-specific campaign names
+        # Should not see Herning-specific assessment names
         assert 'Birk Skole' not in data
         assert 'Hammerum Skole' not in data
 
@@ -210,18 +210,18 @@ class TestSuperadminFilteredView(TestIntegrationFixtures):
         for herning_unit in HERNING_UNIT_NAMES:
             assert herning_unit not in data, f"ANALYSER BUG: Found Herning unit '{herning_unit}' when filtered to Esbjerg"
 
-    def test_superadmin_filter_herning_campaigns_no_esbjerg(self, superadmin_filter_herning):
-        """Superadmin filtered to Herning - campaigns should not show Esbjerg."""
-        response = superadmin_filter_herning.get('/admin/campaigns-overview')
+    def test_superadmin_filter_herning_assessments_no_esbjerg(self, superadmin_filter_herning):
+        """Superadmin filtered to Herning - assessments should not show Esbjerg."""
+        response = superadmin_filter_herning.get('/admin/assessments-overview')
         data = response.data.decode('utf-8')
 
         assert response.status_code == 200
         for esbjerg_unit in ESBJERG_UNIT_NAMES:
             assert esbjerg_unit not in data
 
-    def test_superadmin_filter_herning_new_campaign_no_esbjerg(self, superadmin_filter_herning):
-        """Superadmin filtered to Herning - new campaign form should not list Esbjerg units."""
-        response = superadmin_filter_herning.get('/admin/campaign/new')
+    def test_superadmin_filter_herning_new_assessment_no_esbjerg(self, superadmin_filter_herning):
+        """Superadmin filtered to Herning - new assessment form should not list Esbjerg units."""
+        response = superadmin_filter_herning.get('/admin/assessment/new')
         data = response.data.decode('utf-8')
 
         assert response.status_code == 200
@@ -240,7 +240,7 @@ class TestAnalyserPageSpecific(TestIntegrationFixtures):
         data = response.data.decode('utf-8')
 
         assert response.status_code == 200
-        # Page should load - we have Herning campaigns with data
+        # Page should load - we have Herning assessments with data
 
     def test_herning_manager_analyser_no_esbjerg(self, herning_manager_client):
         """Herning manager's analyser should NOT show Esbjerg data."""
@@ -251,15 +251,15 @@ class TestAnalyserPageSpecific(TestIntegrationFixtures):
         for esbjerg_unit in ESBJERG_UNIT_NAMES:
             assert esbjerg_unit not in data
 
-    def test_superadmin_filter_herning_analyser_campaign_dropdown(self, superadmin_filter_herning):
-        """Campaign dropdown should only show Herning campaigns when filtered."""
+    def test_superadmin_filter_herning_analyser_assessment_dropdown(self, superadmin_filter_herning):
+        """Assessment dropdown should only show Herning assessments when filtered."""
         response = superadmin_filter_herning.get('/admin/analyser')
         data = response.data.decode('utf-8')
 
         assert response.status_code == 200
         # Esbjerg unit names should not appear in the page content
         for esbjerg_unit in ESBJERG_UNIT_NAMES:
-            assert esbjerg_unit not in data, f"Found Esbjerg unit '{esbjerg_unit}' in campaign dropdown"
+            assert esbjerg_unit not in data, f"Found Esbjerg unit '{esbjerg_unit}' in assessment dropdown"
 
 
 class TestDirectAccessPrevention(TestIntegrationFixtures):
@@ -291,9 +291,9 @@ class TestSuperadminUnfilteredSeesAll(TestIntegrationFixtures):
         assert response.status_code == 200
         # Should be able to see the page (all data available)
 
-    def test_superadmin_no_filter_campaigns_all_customers(self, superadmin_no_filter):
-        """Superadmin without filter should see campaigns from all customers."""
-        response = superadmin_no_filter.get('/admin/campaigns-overview')
+    def test_superadmin_no_filter_assessments_all_customers(self, superadmin_no_filter):
+        """Superadmin without filter should see assessments from all customers."""
+        response = superadmin_no_filter.get('/admin/assessments-overview')
         assert response.status_code == 200
 
     def test_superadmin_no_filter_analyser_all_data(self, superadmin_no_filter):

@@ -251,14 +251,14 @@
             <!-- Ledervisning submenu -->
             <ul class="submenu-links">
                 <li><a href="/admin/analyser" {% if 'analyser' in request.path %}class="active"{% endif %}>📊 Analyser</a></li>
-                <li><a href="/admin" {% if request.path == '/admin' and 'campaign' not in request.path %}class="active"{% endif %}>🏢 Organisationer</a></li>
+                <li><a href="/admin" {% if request.path == '/admin' and 'assessment' not in request.path %}class="active"{% endif %}>🏢 Organisationer</a></li>
             </ul>
 
             {% else %}
             <!-- Adminvisning submenu -->
             <ul class="submenu-links">
                 <li><a href="/admin/analyser" {% if 'analyser' in request.path %}class="active"{% endif %}>📊 Analyser</a></li>
-                <li><a href="/admin" {% if request.path == '/admin' and 'campaign' not in request.path %}class="active"{% endif %}>🏢 Organisationer</a></li>
+                <li><a href="/admin" {% if request.path == '/admin' and 'assessment' not in request.path %}class="active"{% endif %}>🏢 Organisationer</a></li>
                 <li><a href="/admin/profiler" {% if 'profiler' in request.path %}class="active"{% endif %}>🔬 Friktionsprofiler</a></li>
                 <li><a href="/admin/customers" {% if 'customers' in request.path %}class="active"{% endif %}>👥 Kunder & Brugere</a></li>
                 <li class="submenu-dropdown">

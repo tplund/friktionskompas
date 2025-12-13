@@ -64,11 +64,11 @@
         font-size: 0.875rem;
     }
 
-    .campaign-list {
+    .assessment-list {
         list-style: none;
         padding: 0;
     }
-    .campaign-item {
+    .assessment-item {
         background: #f9fafb;
         padding: 15px;
         border-radius: 8px;
@@ -77,14 +77,14 @@
         justify-content: space-between;
         align-items: center;
     }
-    .campaign-item:hover {
+    .assessment-item:hover {
         background: #eff6ff;
     }
-    .campaign-name {
+    .assessment-name {
         font-weight: 600;
         color: #1f2937;
     }
-    .campaign-meta {
+    .assessment-meta {
         color: #6b7280;
         font-size: 0.875rem;
     }
@@ -122,7 +122,7 @@
         </div>
         <div class="stat-box" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
             <div class="label">Analyser</div>
-            <div class="value">{{ campaigns|length }}</div>
+            <div class="value">{{ assessments|length }}</div>
         </div>
     </div>
 </div>
@@ -154,17 +154,17 @@
 <div class="card">
     <h2>📈 Seneste Analyser</h2>
 
-    {% if campaigns %}
-    <ul class="campaign-list">
-        {% for campaign in campaigns %}
-        <li class="campaign-item">
+    {% if assessments %}
+    <ul class="assessment-list">
+        {% for assessment in assessments %}
+        <li class="assessment-item">
             <div>
-                <div class="campaign-name">{{ campaign.name }}</div>
-                <div class="campaign-meta">
-                    {{ campaign.unit_name }} • {{ campaign.period }}
+                <div class="assessment-name">{{ assessment.name }}</div>
+                <div class="assessment-meta">
+                    {{ assessment.unit_name }} • {{ assessment.period }}
                 </div>
             </div>
-            <a href="/admin/campaign/{{ campaign.id }}" class="btn-view">Se resultater</a>
+            <a href="/admin/assessment/{{ assessment.id }}" class="btn-view">Se resultater</a>
         </li>
         {% endfor %}
     </ul>

@@ -9,10 +9,10 @@ import os
 import secrets
 from functools import wraps
 from db_hierarchical import (
-    init_db, create_unit, create_unit_from_path, create_campaign,
-    generate_tokens_for_campaign, get_unit_children, get_unit_path,
+    init_db, create_unit, create_unit_from_path, create_assessment,
+    generate_tokens_for_assessment, get_unit_children, get_unit_path,
     get_leaf_units, validate_and_use_token, save_response, get_unit_stats,
-    get_campaign_overview, get_questions, get_db, add_contacts_bulk,
+    get_assessment_overview, get_questions, get_db, add_contacts_bulk,
     get_unit_contacts
 )
 from analysis import (
@@ -34,9 +34,9 @@ from csv_upload_hierarchical import (
     validate_csv_format, bulk_upload_from_csv, generate_csv_template
 )
 from mailjet_integration import (
-    send_campaign_batch, get_email_stats, get_email_logs, update_email_status,
+    send_assessment_batch, get_email_stats, get_email_logs, update_email_status,
     get_template, save_template, list_templates, DEFAULT_TEMPLATES,
-    check_and_notify_campaign_completed, send_login_code
+    check_and_notify_assessment_completed, send_login_code
 )
 from db_hierarchical import init_db
 from db_profil import (
@@ -44,13 +44,13 @@ from db_profil import (
     get_db as get_profil_db
 )
 from translations import t, get_user_language, set_language, SUPPORTED_LANGUAGES, seed_translations, clear_translation_cache
-from scheduler import start_scheduler, get_scheduled_campaigns, cancel_scheduled_campaign, reschedule_campaign
+from scheduler import start_scheduler, get_scheduled_assessments, cancel_scheduled_assessment, reschedule_assessment
 from oauth import (
     init_oauth, oauth, get_enabled_providers, get_provider_info,
     handle_oauth_callback, get_auth_providers_for_domain, save_auth_providers,
     DEFAULT_AUTH_PROVIDERS
 )
-from cache import get_cache_stats, invalidate_all, invalidate_campaign_cache, Pagination
+from cache import get_cache_stats, invalidate_all, invalidate_assessment_cache, Pagination
 
 # Copy seed database to persistent disk on first deploy (if not exists)
 def copy_seed_database():
@@ -80,7 +80,7 @@ init_db()  # Main hierarchical database
 init_profil_tables()  # Profil tables
 init_multitenant_db()  # Multi-tenant tables
 
-# Start scheduler for planned campaigns
+# Start scheduler for planned assessments
 start_scheduler()
 
 # Seed translations and clear cache on startup
@@ -740,7 +740,7 @@ def delete_all_data():
         # Slet i rigtig rækkefølge pga foreign keys
         conn.execute("DELETE FROM responses")
         conn.execute("DELETE FROM tokens")
-        conn.execute("DELETE FROM campaigns")
+        conn.execute("DELETE FROM assessments")
         conn.execute("DELETE FROM contacts")
         conn.execute("DELETE FROM organizational_units")
         conn.execute("DELETE FROM questions WHERE is_default = 0")  # Behold default spørgsmål
@@ -754,7 +754,7 @@ def delete_all_data():
 def generate_test_data():
     """Generer testdata - organisationer, kontakter, kampagner og svar"""
     import random
-    from db_hierarchical import create_campaign, get_questions, get_all_leaf_units_under
+    from db_hierarchical import create_assessment, get_questions, get_all_leaf_units_under
 
     user = get_current_user()
 
@@ -799,20 +799,20 @@ Niels;Olsen;niels@techcorp.dk;+4512345017;TechCorp//Sales//DACH"""
         # Hent alle spørgsmål
         questions = get_questions()
 
-        campaigns_created = 0
+        assessments_created = 0
         responses_created = 0
 
         # Opret kampagner for hver top-level organisation
         for unit in top_units:
             # Opret 2 kampagner per organisation (Q1 og Q2 2024)
             for quarter, period in [("Q1", "2024 Q1"), ("Q2", "2024 Q2")]:
-                campaign_id = create_campaign(
+                assessment_id = create_assessment(
                     target_unit_id=unit['id'],
                     name=f"{unit['name']} - {period}",
                     period=period,
                     sent_from='admin'
                 )
-                campaigns_created += 1
+                assessments_created += 1
 
                 # Find alle leaf units under denne organisation
                 leaf_units = get_all_leaf_units_under(unit['id'])
@@ -841,12 +841,12 @@ Niels;Olsen;niels@techcorp.dk;+4512345017;TechCorp//Sales//DACH"""
                                 score = random.choices([3, 4, 5], weights=[0.3, 0.4, 0.3])[0]
 
                             conn.execute("""
-                                INSERT INTO responses (campaign_id, unit_id, question_id, score)
+                                INSERT INTO responses (assessment_id, unit_id, question_id, score)
                                 VALUES (?, ?, ?, ?)
-                            """, (campaign_id, leaf_unit['id'], question['id'], score))
+                            """, (assessment_id, leaf_unit['id'], question['id'], score))
                             responses_created += 1
 
-    flash(f'Testdata genereret! {stats["units_created"]} organisationer, {stats["contacts_created"]} kontakter, {campaigns_created} målinger og {responses_created} svar oprettet.', 'success')
+    flash(f'Testdata genereret! {stats["units_created"]} organisationer, {stats["contacts_created"]} kontakter, {assessments_created} målinger og {responses_created} svar oprettet.', 'success')
     return redirect(url_for('admin_home'))
 
 
@@ -881,9 +881,9 @@ def admin_home():
                 ORDER BY ou.full_path
             """, [customer_filter]).fetchall()
 
-            campaign_count = conn.execute("""
+            assessment_count = conn.execute("""
                 SELECT COUNT(DISTINCT c.id) as cnt
-                FROM campaigns c
+                FROM assessments c
                 JOIN organizational_units ou ON c.target_unit_id = ou.id
                 WHERE ou.customer_id = ?
             """, [customer_filter]).fetchone()['cnt']
@@ -906,7 +906,7 @@ def admin_home():
                 ORDER BY ou.full_path
             """).fetchall()
 
-            campaign_count = conn.execute("SELECT COUNT(*) as cnt FROM campaigns").fetchone()['cnt']
+            assessment_count = conn.execute("SELECT COUNT(*) as cnt FROM assessments").fetchone()['cnt']
 
         # Hent customer info - altid
         customers = conn.execute("SELECT id, name FROM customers ORDER BY name").fetchall()
@@ -914,7 +914,7 @@ def admin_home():
 
     return render_template('admin/home.html',
                          units=[dict(u) for u in all_units],
-                         campaign_count=campaign_count,
+                         assessment_count=assessment_count,
                          show_all_customers=(user['role'] in ('admin', 'superadmin')),
                          customers_dict=customers_dict,
                          current_filter=session.get('customer_filter'),
@@ -948,21 +948,21 @@ def admin_noegletal():
                 "SELECT COUNT(*) as cnt FROM organizational_units WHERE customer_id = ?",
                 [cid]
             ).fetchone()['cnt']
-            total_campaigns = conn.execute("""
-                SELECT COUNT(*) as cnt FROM campaigns c
+            total_assessments = conn.execute("""
+                SELECT COUNT(*) as cnt FROM assessments c
                 JOIN organizational_units ou ON c.target_unit_id = ou.id
                 WHERE ou.customer_id = ?
             """, [cid]).fetchone()['cnt']
             total_responses = conn.execute("""
                 SELECT COUNT(*) as cnt FROM responses r
-                JOIN campaigns c ON r.campaign_id = c.id
+                JOIN assessments c ON r.assessment_id = c.id
                 JOIN organizational_units ou ON c.target_unit_id = ou.id
                 WHERE ou.customer_id = ?
             """, [cid]).fetchone()['cnt']
         else:
             total_customers = conn.execute("SELECT COUNT(*) as cnt FROM customers").fetchone()['cnt']
             total_units = conn.execute("SELECT COUNT(*) as cnt FROM organizational_units").fetchone()['cnt']
-            total_campaigns = conn.execute("SELECT COUNT(*) as cnt FROM campaigns").fetchone()['cnt']
+            total_assessments = conn.execute("SELECT COUNT(*) as cnt FROM assessments").fetchone()['cnt']
             total_responses = conn.execute("SELECT COUNT(*) as cnt FROM responses").fetchone()['cnt']
 
         # Gennemsnitlige scores per felt
@@ -973,7 +973,7 @@ def admin_noegletal():
                 COUNT(*) as response_count
             FROM responses r
             JOIN questions q ON r.question_id = q.id
-            JOIN campaigns c ON r.campaign_id = c.id
+            JOIN assessments c ON r.assessment_id = c.id
             JOIN organizational_units ou ON c.target_unit_id = ou.id
             {where}
             GROUP BY q.field
@@ -982,7 +982,7 @@ def admin_noegletal():
         field_scores = conn.execute(field_scores_query, customer_params).fetchall()
 
         # Seneste kampagner
-        recent_campaigns_query = """
+        recent_assessments_query = """
             SELECT
                 c.id,
                 c.name,
@@ -991,17 +991,17 @@ def admin_noegletal():
                 ou.name as unit_name,
                 cust.name as customer_name,
                 COUNT(DISTINCT r.id) as response_count,
-                (SELECT COUNT(*) FROM tokens t WHERE t.campaign_id = c.id) as token_count
-            FROM campaigns c
+                (SELECT COUNT(*) FROM tokens t WHERE t.assessment_id = c.id) as token_count
+            FROM assessments c
             JOIN organizational_units ou ON c.target_unit_id = ou.id
             JOIN customers cust ON ou.customer_id = cust.id
-            LEFT JOIN responses r ON r.campaign_id = c.id
+            LEFT JOIN responses r ON r.assessment_id = c.id
             {where}
             GROUP BY c.id
             ORDER BY c.created_at DESC
             LIMIT 5
         """.format(where=customer_where)
-        recent_campaigns = conn.execute(recent_campaigns_query, customer_params).fetchall()
+        recent_assessments = conn.execute(recent_assessments_query, customer_params).fetchall()
 
         # Per-kunde stats (kun for admin/superadmin uden filter)
         customer_stats = []
@@ -1011,12 +1011,12 @@ def admin_noegletal():
                     cust.id,
                     cust.name,
                     COUNT(DISTINCT ou.id) as unit_count,
-                    COUNT(DISTINCT c.id) as campaign_count,
+                    COUNT(DISTINCT c.id) as assessment_count,
                     COUNT(DISTINCT r.id) as response_count
                 FROM customers cust
                 LEFT JOIN organizational_units ou ON ou.customer_id = cust.id
-                LEFT JOIN campaigns c ON c.target_unit_id = ou.id
-                LEFT JOIN responses r ON r.campaign_id = c.id
+                LEFT JOIN assessments c ON c.target_unit_id = ou.id
+                LEFT JOIN responses r ON r.assessment_id = c.id
                 GROUP BY cust.id
                 ORDER BY response_count DESC
             """).fetchall()
@@ -1027,7 +1027,7 @@ def admin_noegletal():
                 COUNT(DISTINCT CASE WHEN t.is_used = 1 THEN t.token END) as used_tokens,
                 COUNT(DISTINCT t.token) as total_tokens
             FROM tokens t
-            JOIN campaigns c ON t.campaign_id = c.id
+            JOIN assessments c ON t.assessment_id = c.id
             JOIN organizational_units ou ON c.target_unit_id = ou.id
             {where}
         """.format(where=customer_where), customer_params).fetchone()
@@ -1040,11 +1040,11 @@ def admin_noegletal():
     return render_template('admin/noegletal.html',
                          total_customers=total_customers,
                          total_units=total_units,
-                         total_campaigns=total_campaigns,
+                         total_assessments=total_assessments,
                          total_responses=total_responses,
                          avg_response_rate=avg_response_rate,
                          field_scores=[dict(f) for f in field_scores],
-                         recent_campaigns=[dict(c) for c in recent_campaigns],
+                         recent_assessments=[dict(c) for c in recent_assessments],
                          customer_stats=[dict(c) for c in customer_stats],
                          show_customer_stats=(user['role'] in ('admin', 'superadmin') and not customer_filter))
 
@@ -1089,17 +1089,17 @@ def admin_trend():
                          selected_unit=unit_id)
 
 
-@app.route('/admin/campaigns-overview')
+@app.route('/admin/assessments-overview')
 @login_required
-def campaigns_overview():
+def assessments_overview():
     """Oversigt over alle analyser/kampagner"""
     user = get_current_user()
     where_clause, params = get_customer_filter(user['role'], user['customer_id'], session.get('customer_filter'))
 
     with get_db() as conn:
-        # Hent alle campaigns med stats
+        # Hent alle assessments med stats
         if user['role'] in ('admin', 'superadmin'):
-            campaigns = conn.execute("""
+            assessments = conn.execute("""
                 SELECT
                     c.*,
                     ou.name as target_name,
@@ -1111,17 +1111,17 @@ def campaigns_overview():
                         WHEN q.field = 'BESVÆR' THEN
                             CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END
                     END) as avg_besvaer
-                FROM campaigns c
+                FROM assessments c
                 JOIN organizational_units ou ON c.target_unit_id = ou.id
-                LEFT JOIN tokens t ON c.id = t.campaign_id
-                LEFT JOIN responses r ON c.id = r.campaign_id
+                LEFT JOIN tokens t ON c.id = t.assessment_id
+                LEFT JOIN responses r ON c.id = r.assessment_id
                 LEFT JOIN questions q ON r.question_id = q.id
                 GROUP BY c.id
                 ORDER BY c.created_at DESC
             """).fetchall()
         else:
             # Manager ser kun kampagner for sine units
-            campaigns = conn.execute("""
+            assessments = conn.execute("""
                 SELECT
                     c.*,
                     ou.name as target_name,
@@ -1133,82 +1133,82 @@ def campaigns_overview():
                         WHEN q.field = 'BESVÆR' THEN
                             CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END
                     END) as avg_besvaer
-                FROM campaigns c
+                FROM assessments c
                 JOIN organizational_units ou ON c.target_unit_id = ou.id
-                LEFT JOIN tokens t ON c.id = t.campaign_id
-                LEFT JOIN responses r ON c.id = r.campaign_id
+                LEFT JOIN tokens t ON c.id = t.assessment_id
+                LEFT JOIN responses r ON c.id = r.assessment_id
                 LEFT JOIN questions q ON r.question_id = q.id
                 WHERE ou.customer_id = ?
                 GROUP BY c.id
                 ORDER BY c.created_at DESC
             """, [user['customer_id']]).fetchall()
 
-    return render_template('admin/campaigns_overview.html',
-                         campaigns=[dict(c) for c in campaigns])
+    return render_template('admin/assessments_overview.html',
+                         assessments=[dict(c) for c in assessments])
 
 
-@app.route('/admin/scheduled-campaigns')
+@app.route('/admin/scheduled-assessments')
 @login_required
-def scheduled_campaigns():
+def scheduled_assessments():
     """Oversigt over planlagte målinger"""
     user = get_current_user()
     where_clause, params = get_customer_filter(user['role'], user['customer_id'], session.get('customer_filter'))
 
     with get_db() as conn:
-        # Hent scheduled campaigns
+        # Hent scheduled assessments
         if user['role'] in ('admin', 'superadmin'):
-            campaigns = conn.execute("""
+            assessments = conn.execute("""
                 SELECT c.*, ou.name as target_name, ou.full_path
-                FROM campaigns c
+                FROM assessments c
                 JOIN organizational_units ou ON c.target_unit_id = ou.id
                 WHERE c.status = 'scheduled'
                 ORDER BY c.scheduled_at ASC
             """).fetchall()
         else:
-            campaigns = conn.execute("""
+            assessments = conn.execute("""
                 SELECT c.*, ou.name as target_name, ou.full_path
-                FROM campaigns c
+                FROM assessments c
                 JOIN organizational_units ou ON c.target_unit_id = ou.id
                 WHERE c.status = 'scheduled' AND ou.customer_id = ?
                 ORDER BY c.scheduled_at ASC
             """, [user['customer_id']]).fetchall()
 
-    return render_template('admin/scheduled_campaigns.html',
-                         campaigns=[dict(c) for c in campaigns])
+    return render_template('admin/scheduled_assessments.html',
+                         assessments=[dict(c) for c in assessments])
 
 
-@app.route('/admin/campaign/<campaign_id>/cancel', methods=['POST'])
+@app.route('/admin/assessment/<assessment_id>/cancel', methods=['POST'])
 @login_required
-def cancel_campaign(campaign_id):
+def cancel_assessment(assessment_id):
     """Annuller en planlagt måling"""
     user = get_current_user()
 
     # Verificer at brugeren har adgang til kampagnen
     with get_db() as conn:
         where_clause, params = get_customer_filter(user['role'], user['customer_id'], session.get('customer_filter'))
-        campaign = conn.execute(f"""
-            SELECT c.* FROM campaigns c
+        assessment = conn.execute(f"""
+            SELECT c.* FROM assessments c
             JOIN organizational_units ou ON c.target_unit_id = ou.id
             WHERE c.id = ? AND c.status = 'scheduled' AND ({where_clause})
-        """, [campaign_id] + params).fetchone()
+        """, [assessment_id] + params).fetchone()
 
-        if not campaign:
+        if not assessment:
             flash('Måling ikke fundet eller kan ikke annulleres', 'error')
-            return redirect(url_for('scheduled_campaigns'))
+            return redirect(url_for('scheduled_assessments'))
 
     # Annuller kampagnen
-    success = cancel_scheduled_campaign(campaign_id)
+    success = cancel_scheduled_assessment(assessment_id)
     if success:
         flash('Planlagt måling annulleret', 'success')
     else:
         flash('Kunne ikke annullere målingen', 'error')
 
-    return redirect(url_for('scheduled_campaigns'))
+    return redirect(url_for('scheduled_assessments'))
 
 
-@app.route('/admin/campaign/<campaign_id>/reschedule', methods=['POST'])
+@app.route('/admin/assessment/<assessment_id>/reschedule', methods=['POST'])
 @login_required
-def reschedule_campaign_route(campaign_id):
+def reschedule_assessment_route(assessment_id):
     """Ændr tidspunkt for en planlagt måling"""
     user = get_current_user()
     from datetime import datetime
@@ -1216,15 +1216,15 @@ def reschedule_campaign_route(campaign_id):
     # Verificer at brugeren har adgang til kampagnen
     with get_db() as conn:
         where_clause, params = get_customer_filter(user['role'], user['customer_id'], session.get('customer_filter'))
-        campaign = conn.execute(f"""
-            SELECT c.* FROM campaigns c
+        assessment = conn.execute(f"""
+            SELECT c.* FROM assessments c
             JOIN organizational_units ou ON c.target_unit_id = ou.id
             WHERE c.id = ? AND c.status = 'scheduled' AND ({where_clause})
-        """, [campaign_id] + params).fetchone()
+        """, [assessment_id] + params).fetchone()
 
-        if not campaign:
+        if not assessment:
             flash('Måling ikke fundet eller kan ikke ændres', 'error')
-            return redirect(url_for('scheduled_campaigns'))
+            return redirect(url_for('scheduled_assessments'))
 
     # Hent nyt tidspunkt fra form
     new_date = request.form.get('new_date', '').strip()
@@ -1232,17 +1232,17 @@ def reschedule_campaign_route(campaign_id):
 
     if not new_date:
         flash('Vælg en ny dato', 'error')
-        return redirect(url_for('scheduled_campaigns'))
+        return redirect(url_for('scheduled_assessments'))
 
     new_scheduled_at = datetime.fromisoformat(f"{new_date}T{new_time}:00")
 
-    success = reschedule_campaign(campaign_id, new_scheduled_at)
+    success = reschedule_assessment(assessment_id, new_scheduled_at)
     if success:
         flash(f'Måling flyttet til {new_date} kl. {new_time}', 'success')
     else:
         flash('Kunne ikke ændre tidspunkt', 'error')
 
-    return redirect(url_for('scheduled_campaigns'))
+    return redirect(url_for('scheduled_assessments'))
 
 
 @app.route('/admin/analyser')
@@ -1253,24 +1253,24 @@ def analyser():
     where_clause, params = get_customer_filter(user['role'], user['customer_id'], session.get('customer_filter'))
 
     # Get filter parameters
-    campaign_id = request.args.get('campaign_id', type=int)
+    assessment_id = request.args.get('assessment_id', type=int)
     sort_by = request.args.get('sort', 'name')
     sort_order = request.args.get('order', 'asc')
 
     with get_db() as conn:
-        # Get available campaigns for filtering - respect customer filter for all roles
+        # Get available assessments for filtering - respect customer filter for all roles
         if where_clause == "1=1":
-            # No filter - show all campaigns
-            campaigns = conn.execute("""
+            # No filter - show all assessments
+            assessments = conn.execute("""
                 SELECT id, name, period
-                FROM campaigns
+                FROM assessments
                 ORDER BY created_at DESC
             """).fetchall()
         else:
             # Filter by customer (via organizational_units)
-            campaigns = conn.execute(f"""
+            assessments = conn.execute(f"""
                 SELECT DISTINCT c.id, c.name, c.period
-                FROM campaigns c
+                FROM assessments c
                 JOIN organizational_units ou ON c.target_unit_id = ou.id
                 WHERE {where_clause}
                 ORDER BY c.created_at DESC
@@ -1283,7 +1283,7 @@ def analyser():
                 ou.name,
                 ou.full_path,
                 ou.level,
-                c.id as campaign_id,
+                c.id as assessment_id,
                 COUNT(DISTINCT r.id) as total_responses,
                 COUNT(DISTINCT r.respondent_name) as unique_respondents,
 
@@ -1340,8 +1340,8 @@ def analyser():
                 END) as leader_besvaer
 
             FROM organizational_units ou
-            LEFT JOIN campaigns c ON c.target_unit_id = ou.id
-            LEFT JOIN responses r ON c.id = r.campaign_id
+            LEFT JOIN assessments c ON c.target_unit_id = ou.id
+            LEFT JOIN responses r ON c.id = r.assessment_id
             LEFT JOIN questions q ON r.question_id = q.id
         """
 
@@ -1354,9 +1354,9 @@ def analyser():
             conditions.append(where_clause)
             query_params.extend(params)
 
-        if campaign_id:
+        if assessment_id:
             conditions.append("c.id = ?")
-            query_params.append(campaign_id)
+            query_params.append(assessment_id)
 
         if conditions:
             query += " WHERE " + " AND ".join(conditions)
@@ -1390,7 +1390,7 @@ def analyser():
             unit_dict = dict(unit)
 
             # Beregn substitution
-            substitution = calculate_substitution(unit['id'], unit['campaign_id'], 'employee')
+            substitution = calculate_substitution(unit['id'], unit['assessment_id'], 'employee')
             unit_dict['has_substitution'] = substitution.get('flagged', False)
 
             # Beregn leader gap (forskel mellem leder vurdering og medarbejdere)
@@ -1427,8 +1427,8 @@ def analyser():
                     END) as leader_self_besvaer
                 FROM responses r
                 JOIN questions q ON r.question_id = q.id
-                WHERE r.unit_id = ? AND r.campaign_id = ?
-            """, (unit['id'], unit['campaign_id'])).fetchone()
+                WHERE r.unit_id = ? AND r.assessment_id = ?
+            """, (unit['id'], unit['assessment_id'])).fetchone()
 
             leader_blocked = False
             if leader_self_scores:
@@ -1445,8 +1445,8 @@ def analyser():
 
     return render_template('admin/analyser.html',
                          units=enriched_units,
-                         campaigns=[dict(c) for c in campaigns],
-                         current_campaign=campaign_id,
+                         assessments=[dict(c) for c in assessments],
+                         current_assessment=assessment_id,
                          sort_by=sort_by,
                          sort_order=sort_order)
 
@@ -1694,17 +1694,17 @@ def view_unit(unit_id):
     # Direct children
     children = get_unit_children(unit_id, recursive=False)
 
-    # Leaf units under dette (for campaigns)
+    # Leaf units under dette (for assessments)
     leaf_units = get_leaf_units(unit_id)
 
     # Kampagner rettet mod denne unit
     with get_db() as conn:
-        campaigns = conn.execute("""
+        assessments = conn.execute("""
             SELECT c.*,
                    COUNT(DISTINCT t.token) as tokens_sent,
                    SUM(CASE WHEN t.is_used = 1 THEN 1 ELSE 0 END) as tokens_used
-            FROM campaigns c
-            LEFT JOIN tokens t ON c.id = t.campaign_id
+            FROM assessments c
+            LEFT JOIN tokens t ON c.id = t.assessment_id
             WHERE c.target_unit_id = ?
             GROUP BY c.id
             ORDER BY c.created_at DESC
@@ -1715,7 +1715,7 @@ def view_unit(unit_id):
         breadcrumbs=breadcrumbs,
         children=children,
         leaf_units=leaf_units,
-        campaigns=[dict(c) for c in campaigns],
+        assessments=[dict(c) for c in assessments],
         contacts=[dict(c) for c in contacts])
 
 
@@ -1860,7 +1860,7 @@ def delete_customer(customer_id):
 
         # CASCADE DELETE vil automatisk slette:
         # - organizational_units (og deres children)
-        # - campaigns
+        # - assessments
         # - responses
         # - users tilknyttet kunden
         conn.execute("DELETE FROM customers WHERE id = ?", (customer_id,))
@@ -1935,9 +1935,9 @@ def api_move_unit(unit_id):
         return jsonify({'success': False, 'error': f'Fejl ved flytning: {str(e)}'}), 500
 
 
-@app.route('/admin/campaign/new', methods=['GET', 'POST'])
+@app.route('/admin/assessment/new', methods=['GET', 'POST'])
 @login_required
-def new_campaign():
+def new_assessment():
     """Opret og send ny kampagne (eller planlæg til senere)"""
     user = get_current_user()
 
@@ -1948,7 +1948,7 @@ def new_campaign():
         sent_from = request.form.get('sent_from', 'admin')
         sender_name = request.form.get('sender_name', 'HR')
 
-        # Tjek om det er en scheduled campaign
+        # Tjek om det er en scheduled assessment
         scheduled_date = request.form.get('scheduled_date', '').strip()
         scheduled_time = request.form.get('scheduled_time', '').strip()
 
@@ -1960,7 +1960,7 @@ def new_campaign():
             scheduled_at = f"{scheduled_date}T{scheduled_time}:00"
 
         # Opret kampagne
-        campaign_id = create_campaign(
+        assessment_id = create_assessment(
             target_unit_id=target_unit_id,
             name=name,
             period=period,
@@ -1970,12 +1970,12 @@ def new_campaign():
         )
 
         if scheduled_at:
-            # Scheduled campaign - send ikke nu
+            # Scheduled assessment - send ikke nu
             flash(f'📅 Måling planlagt til {scheduled_date} kl. {scheduled_time}', 'success')
-            return redirect(url_for('scheduled_campaigns'))
+            return redirect(url_for('scheduled_assessments'))
         else:
             # Send nu
-            tokens_by_unit = generate_tokens_for_campaign(campaign_id)
+            tokens_by_unit = generate_tokens_for_assessment(assessment_id)
 
             total_sent = 0
             for unit_id, tokens in tokens_by_unit.items():
@@ -1983,11 +1983,11 @@ def new_campaign():
                 if not contacts:
                     continue
 
-                results = send_campaign_batch(contacts, tokens, name, sender_name)
+                results = send_assessment_batch(contacts, tokens, name, sender_name)
                 total_sent += results['emails_sent'] + results['sms_sent']
 
             flash(f'Måling sendt! {sum(len(t) for t in tokens_by_unit.values())} tokens genereret, {total_sent} sendt.', 'success')
-            return redirect(url_for('view_campaign', campaign_id=campaign_id))
+            return redirect(url_for('view_assessment', assessment_id=assessment_id))
 
     # GET: Vis form - kun units fra samme customer
     where_clause, params = get_customer_filter(user['role'], user['customer_id'], session.get('customer_filter'))
@@ -2000,40 +2000,40 @@ def new_campaign():
             ORDER BY ou.full_path
         """, params).fetchall()
 
-    return render_template('admin/new_campaign.html',
+    return render_template('admin/new_assessment.html',
                          units=[dict(u) for u in units])
 
 
-@app.route('/admin/campaign/<campaign_id>')
+@app.route('/admin/assessment/<assessment_id>')
 @login_required
-def view_campaign(campaign_id):
+def view_assessment(assessment_id):
     """Se kampagne resultater"""
     user = get_current_user()
 
     with get_db() as conn:
-        # Hent campaign med customer filter
+        # Hent assessment med customer filter
         where_clause, params = get_customer_filter(user['role'], user['customer_id'], session.get('customer_filter'))
-        campaign = conn.execute(f"""
-            SELECT c.* FROM campaigns c
+        assessment = conn.execute(f"""
+            SELECT c.* FROM assessments c
             JOIN organizational_units ou ON c.target_unit_id = ou.id
             WHERE c.id = ? AND ({where_clause})
-        """, [campaign_id] + params).fetchone()
+        """, [assessment_id] + params).fetchone()
 
-        if not campaign:
+        if not assessment:
             flash("Måling ikke fundet eller ingen adgang", 'error')
             return redirect(url_for('admin_home'))
 
     # Target unit info
-    target_unit_id = campaign['target_unit_id']
+    target_unit_id = assessment['target_unit_id']
     breadcrumbs = get_unit_path(target_unit_id)
 
     # Overview af alle leaf units
-    overview = get_campaign_overview(campaign_id)
+    overview = get_assessment_overview(assessment_id)
 
     # Aggregeret stats for target unit (inkl. children)
     aggregate_stats = get_unit_stats(
         unit_id=target_unit_id,
-        campaign_id=campaign_id,
+        assessment_id=assessment_id,
         include_children=True
     )
 
@@ -2044,45 +2044,45 @@ def view_campaign(campaign_id):
                 COUNT(*) as tokens_sent,
                 SUM(CASE WHEN is_used = 1 THEN 1 ELSE 0 END) as tokens_used
             FROM tokens
-            WHERE campaign_id = ?
-        """, (campaign_id,)).fetchone()
+            WHERE assessment_id = ?
+        """, (assessment_id,)).fetchone()
 
-    return render_template('admin/view_campaign.html',
-        campaign=dict(campaign),
+    return render_template('admin/view_assessment.html',
+        assessment=dict(assessment),
         target_breadcrumbs=breadcrumbs,
         overview=overview,
         aggregate_stats=aggregate_stats,
         token_stats=dict(token_stats))
 
 
-@app.route('/admin/campaign/<campaign_id>/delete', methods=['POST'])
+@app.route('/admin/assessment/<assessment_id>/delete', methods=['POST'])
 @login_required
-def delete_campaign(campaign_id):
+def delete_assessment(assessment_id):
     """Slet en kampagne og alle tilhørende data"""
     user = get_current_user()
 
     with get_db() as conn:
-        # Hent campaign med customer filter for at verificere adgang
+        # Hent assessment med customer filter for at verificere adgang
         where_clause, params = get_customer_filter(user['role'], user['customer_id'], session.get('customer_filter'))
-        campaign = conn.execute(f"""
-            SELECT c.*, ou.name as unit_name FROM campaigns c
+        assessment = conn.execute(f"""
+            SELECT c.*, ou.name as unit_name FROM assessments c
             JOIN organizational_units ou ON c.target_unit_id = ou.id
             WHERE c.id = ? AND ({where_clause})
-        """, [campaign_id] + params).fetchone()
+        """, [assessment_id] + params).fetchone()
 
-        if not campaign:
+        if not assessment:
             flash("Måling ikke fundet eller ingen adgang", 'error')
-            return redirect(url_for('campaigns_overview'))
+            return redirect(url_for('assessments_overview'))
 
-        campaign_name = campaign['name']
+        assessment_name = assessment['name']
 
         # Slet kampagnen (CASCADE sletter responses og tokens automatisk)
-        conn.execute("DELETE FROM campaigns WHERE id = ?", [campaign_id])
+        conn.execute("DELETE FROM assessments WHERE id = ?", [assessment_id])
         conn.commit()
 
-        flash(f'Målingen "{campaign_name}" blev slettet', 'success')
+        flash(f'Målingen "{assessment_name}" blev slettet', 'success')
 
-    return redirect(url_for('campaigns_overview'))
+    return redirect(url_for('assessments_overview'))
 
 
 @app.route('/admin/customers')
@@ -2408,9 +2408,9 @@ def manager_dashboard():
         """, params).fetchall()
 
         # Hent kampagner
-        campaigns = conn.execute(f"""
+        assessments = conn.execute(f"""
             SELECT c.*, ou.name as unit_name
-            FROM campaigns c
+            FROM assessments c
             JOIN organizational_units ou ON c.target_unit_id = ou.id
             WHERE {where_clause}
             ORDER BY c.created_at DESC
@@ -2419,7 +2419,7 @@ def manager_dashboard():
 
     return render_template('manager_dashboard.html',
                          units=[dict(u) for u in units],
-                         campaigns=[dict(c) for c in campaigns])
+                         assessments=[dict(c) for c in assessments])
 
 
 @app.route('/admin/unit/<unit_id>/dashboard')
@@ -2441,14 +2441,14 @@ def unit_dashboard(unit_id):
             return redirect(url_for('admin_home'))
 
         # Find seneste kampagne for denne unit
-        latest_campaign = conn.execute("""
-            SELECT * FROM campaigns
+        latest_assessment = conn.execute("""
+            SELECT * FROM assessments
             WHERE target_unit_id = ?
             ORDER BY created_at DESC
             LIMIT 1
         """, (unit_id,)).fetchone()
 
-    if not latest_campaign:
+    if not latest_assessment:
         flash('❌ Ingen målinger endnu', 'error')
         return redirect(url_for('view_unit', unit_id=unit_id))
 
@@ -2456,16 +2456,16 @@ def unit_dashboard(unit_id):
     breadcrumbs = get_unit_path(unit_id)
 
     # Overview af leaf units
-    overview = get_campaign_overview(latest_campaign['id'])
+    overview = get_assessment_overview(latest_assessment['id'])
 
     return render_template('admin/unit_dashboard.html',
                          unit=dict(unit),
                          breadcrumbs=breadcrumbs,
-                         campaign=dict(latest_campaign),
+                         assessment=dict(latest_assessment),
                          units=overview)
 
 
-def get_individual_scores(target_unit_id, campaign_id):
+def get_individual_scores(target_unit_id, assessment_id):
     """
     Hent individuelle respondent-scores for radar chart visualization
 
@@ -2504,13 +2504,13 @@ def get_individual_scores(target_unit_id, campaign_id):
         FROM responses r
         JOIN questions q ON r.question_id = q.id
         JOIN subtree ON r.unit_id = subtree.id
-        WHERE r.campaign_id = ?
+        WHERE r.assessment_id = ?
           AND r.respondent_type = 'employee'
           AND q.field IN ('MENING', 'TRYGHED', 'KAN', 'BESVÆR')
         GROUP BY resp_key, q.field
         """
 
-        employee_rows = conn.execute(employee_query, [target_unit_id, campaign_id]).fetchall()
+        employee_rows = conn.execute(employee_query, [target_unit_id, assessment_id]).fetchall()
 
         # Group by resp_key
         employees = {}
@@ -2538,13 +2538,13 @@ def get_individual_scores(target_unit_id, campaign_id):
         FROM responses r
         JOIN questions q ON r.question_id = q.id
         JOIN subtree ON r.unit_id = subtree.id
-        WHERE r.campaign_id = ?
+        WHERE r.assessment_id = ?
           AND r.respondent_type = 'leader_self'
           AND q.field IN ('MENING', 'TRYGHED', 'KAN', 'BESVÆR')
         GROUP BY q.field
         """
 
-        leader_rows = conn.execute(leader_query, [target_unit_id, campaign_id]).fetchall()
+        leader_rows = conn.execute(leader_query, [target_unit_id, assessment_id]).fetchall()
 
         leader = {}
         for row in leader_rows:
@@ -2556,55 +2556,55 @@ def get_individual_scores(target_unit_id, campaign_id):
         }
 
 
-@app.route('/admin/campaign/<campaign_id>/detailed')
+@app.route('/admin/assessment/<assessment_id>/detailed')
 @login_required
-def campaign_detailed_analysis(campaign_id):
+def assessment_detailed_analysis(assessment_id):
     """Detaljeret analyse med lagdeling og respondent-sammenligning"""
     import traceback
     user = get_current_user()
 
     try:
         with get_db() as conn:
-            # Hent campaign - admin/superadmin ser alt
+            # Hent assessment - admin/superadmin ser alt
             if user['role'] in ('admin', 'superadmin'):
-                campaign = conn.execute("""
-                    SELECT c.*, ou.customer_id FROM campaigns c
+                assessment = conn.execute("""
+                    SELECT c.*, ou.customer_id FROM assessments c
                     JOIN organizational_units ou ON c.target_unit_id = ou.id
                     WHERE c.id = ?
-                """, [campaign_id]).fetchone()
+                """, [assessment_id]).fetchone()
             else:
-                campaign = conn.execute("""
-                    SELECT c.*, ou.customer_id FROM campaigns c
+                assessment = conn.execute("""
+                    SELECT c.*, ou.customer_id FROM assessments c
                     JOIN organizational_units ou ON c.target_unit_id = ou.id
                     WHERE c.id = ? AND ou.customer_id = ?
-                """, [campaign_id, user['customer_id']]).fetchone()
+                """, [assessment_id, user['customer_id']]).fetchone()
 
-            if not campaign:
+            if not assessment:
                 flash("Måling ikke fundet eller ingen adgang", 'error')
                 return redirect(url_for('admin_home'))
 
-        target_unit_id = campaign['target_unit_id']
-        campaign_customer_id = campaign['customer_id']
+        target_unit_id = assessment['target_unit_id']
+        assessment_customer_id = assessment['customer_id']
 
         # Check anonymity
-        anonymity = check_anonymity_threshold(campaign_id, target_unit_id)
+        anonymity = check_anonymity_threshold(assessment_id, target_unit_id)
 
         if not anonymity.get('can_show_results'):
             flash(f"Ikke nok svar endnu. {anonymity.get('response_count', 0)} af {anonymity.get('min_required', 5)} modtaget.", 'warning')
-            return redirect(url_for('view_campaign', campaign_id=campaign_id))
+            return redirect(url_for('view_assessment', assessment_id=assessment_id))
 
         # Get detailed breakdown
-        breakdown = get_detailed_breakdown(target_unit_id, campaign_id, include_children=True)
+        breakdown = get_detailed_breakdown(target_unit_id, assessment_id, include_children=True)
 
         # Calculate substitution (tid-bias)
-        substitution = calculate_substitution(target_unit_id, campaign_id, 'employee')
+        substitution = calculate_substitution(target_unit_id, assessment_id, 'employee')
 
         # Add has_substitution flag and count for template
         substitution['has_substitution'] = substitution.get('flagged', False) and substitution.get('flagged_count', 0) > 0
         substitution['count'] = substitution.get('flagged_count', 0)
 
         # Get free text comments
-        free_text_comments = get_free_text_comments(target_unit_id, campaign_id, include_children=True)
+        free_text_comments = get_free_text_comments(target_unit_id, assessment_id, include_children=True)
 
         # Get KKC recommendations
         employee_stats = breakdown.get('employee', {})
@@ -2617,7 +2617,7 @@ def campaign_detailed_analysis(campaign_id):
         alerts = get_alerts_and_findings(breakdown, comparison, substitution)
 
         # Get individual scores for radar chart
-        individual_scores = get_individual_scores(target_unit_id, campaign_id)
+        individual_scores = get_individual_scores(target_unit_id, assessment_id)
 
         # Breadcrumbs
         breadcrumbs = get_unit_path(target_unit_id)
@@ -2627,8 +2627,8 @@ def campaign_detailed_analysis(campaign_id):
             last_response = conn.execute("""
                 SELECT MAX(created_at) as last_date
                 FROM responses
-                WHERE campaign_id = ? AND created_at IS NOT NULL
-            """, [campaign_id]).fetchone()
+                WHERE assessment_id = ? AND created_at IS NOT NULL
+            """, [assessment_id]).fetchone()
 
             last_response_date = None
             if last_response and last_response['last_date']:
@@ -2636,8 +2636,8 @@ def campaign_detailed_analysis(campaign_id):
                 dt = datetime.fromisoformat(last_response['last_date'])
                 last_response_date = dt.strftime('%d-%m-%Y')
 
-        return render_template('admin/campaign_detailed.html',
-            campaign=dict(campaign),
+        return render_template('admin/assessment_detailed.html',
+            assessment=dict(assessment),
             target_breadcrumbs=breadcrumbs,
             breakdown=breakdown,
             anonymity=anonymity,
@@ -2647,18 +2647,107 @@ def campaign_detailed_analysis(campaign_id):
             start_here=start_here,
             alerts=alerts,
             last_response_date=last_response_date,
-            current_customer_id=campaign_customer_id,
+            current_customer_id=assessment_customer_id,
             individual_scores=individual_scores
         )
     except Exception as e:
         import traceback
         error_details = traceback.format_exc()
-        return f"<h1>Fejl i campaign_detailed_analysis</h1><pre>{error_details}</pre>", 500
+        return f"<h1>Fejl i assessment_detailed_analysis</h1><pre>{error_details}</pre>", 500
 
 
-@app.route('/admin/campaign/<campaign_id>/pdf')
+# DEVELOPMENT ONLY - TEST ENDPOINT (REMOVE BEFORE PRODUCTION!)
+@app.route('/test/assessment/<assessment_id>/detailed')
+def assessment_detailed_test(assessment_id):
+    """TEST ENDPOINT - Detaljeret analyse UDEN login krav.
+    VIGTIGT: Fjern denne endpoint før produktion!"""
+    import traceback
+
+    try:
+        with get_db() as conn:
+            # Hent assessment uden adgangskontrol
+            assessment = conn.execute("""
+                SELECT c.*, ou.customer_id FROM assessments c
+                JOIN organizational_units ou ON c.target_unit_id = ou.id
+                WHERE c.id = ?
+            """, [assessment_id]).fetchone()
+
+            if not assessment:
+                return f"<h1>Måling ikke fundet: {assessment_id}</h1>", 404
+
+        target_unit_id = assessment['target_unit_id']
+        assessment_customer_id = assessment['customer_id']
+
+        # Check anonymity
+        anonymity = check_anonymity_threshold(assessment_id, target_unit_id)
+
+        if not anonymity.get('can_show_results'):
+            return f"<h1>Ikke nok svar endnu</h1><p>{anonymity.get('response_count', 0)} af {anonymity.get('min_required', 5)} modtaget.</p>", 400
+
+        # Get detailed breakdown
+        breakdown = get_detailed_breakdown(target_unit_id, assessment_id, include_children=True)
+
+        # Calculate substitution (tid-bias)
+        substitution = calculate_substitution(target_unit_id, assessment_id, 'employee')
+        substitution['has_substitution'] = substitution.get('flagged', False) and substitution.get('flagged_count', 0) > 0
+        substitution['count'] = substitution.get('flagged_count', 0)
+
+        # Get free text comments
+        free_text_comments = get_free_text_comments(target_unit_id, assessment_id, include_children=True)
+
+        # Get KKC recommendations
+        employee_stats = breakdown.get('employee', {})
+        comparison = breakdown.get('comparison', {})
+        kkc_recommendations = get_kkc_recommendations(employee_stats, comparison)
+        start_here = get_start_here_recommendation(kkc_recommendations)
+
+        # Get alerts and findings
+        from analysis import get_alerts_and_findings
+        alerts = get_alerts_and_findings(breakdown, comparison, substitution)
+
+        # Get individual scores for radar chart
+        individual_scores = get_individual_scores(target_unit_id, assessment_id)
+
+        # Breadcrumbs
+        breadcrumbs = get_unit_path(target_unit_id)
+
+        # Get last response date
+        with get_db() as conn:
+            last_response = conn.execute("""
+                SELECT MAX(created_at) as last_date
+                FROM responses
+                WHERE assessment_id = ? AND created_at IS NOT NULL
+            """, [assessment_id]).fetchone()
+
+            last_response_date = None
+            if last_response and last_response['last_date']:
+                from datetime import datetime
+                dt = datetime.fromisoformat(last_response['last_date'])
+                last_response_date = dt.strftime('%d-%m-%Y')
+
+        return render_template('admin/assessment_detailed.html',
+            assessment=dict(assessment),
+            target_breadcrumbs=breadcrumbs,
+            breakdown=breakdown,
+            anonymity=anonymity,
+            substitution=substitution,
+            free_text_comments=free_text_comments,
+            kkc_recommendations=kkc_recommendations,
+            start_here=start_here,
+            alerts=alerts,
+            last_response_date=last_response_date,
+            current_customer_id=assessment_customer_id,
+            individual_scores=individual_scores
+        )
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        return f"<h1>Fejl i assessment_detailed_test</h1><pre>{error_details}</pre>", 500
+
+
+@app.route('/admin/assessment/<assessment_id>/pdf')
 @login_required
-def campaign_pdf_export(campaign_id):
+def assessment_pdf_export(assessment_id):
     """Eksporter måling til PDF"""
     from datetime import datetime
     from io import BytesIO
@@ -2667,36 +2756,36 @@ def campaign_pdf_export(campaign_id):
 
     try:
         with get_db() as conn:
-            # Hent campaign - admin/superadmin ser alt
+            # Hent assessment - admin/superadmin ser alt
             if user['role'] in ('admin', 'superadmin'):
-                campaign = conn.execute("""
-                    SELECT c.*, ou.customer_id FROM campaigns c
+                assessment = conn.execute("""
+                    SELECT c.*, ou.customer_id FROM assessments c
                     JOIN organizational_units ou ON c.target_unit_id = ou.id
                     WHERE c.id = ?
-                """, [campaign_id]).fetchone()
+                """, [assessment_id]).fetchone()
             else:
-                campaign = conn.execute("""
-                    SELECT c.*, ou.customer_id FROM campaigns c
+                assessment = conn.execute("""
+                    SELECT c.*, ou.customer_id FROM assessments c
                     JOIN organizational_units ou ON c.target_unit_id = ou.id
                     WHERE c.id = ? AND ou.customer_id = ?
-                """, [campaign_id, user['customer_id']]).fetchone()
+                """, [assessment_id, user['customer_id']]).fetchone()
 
-            if not campaign:
+            if not assessment:
                 flash("Måling ikke fundet eller ingen adgang", 'error')
                 return redirect(url_for('admin_home'))
 
-        target_unit_id = campaign['target_unit_id']
+        target_unit_id = assessment['target_unit_id']
 
         # Check anonymity
-        anonymity = check_anonymity_threshold(campaign_id, target_unit_id)
+        anonymity = check_anonymity_threshold(assessment_id, target_unit_id)
         if not anonymity.get('can_show_results'):
             flash("Ikke nok svar til at generere PDF", 'warning')
-            return redirect(url_for('view_campaign', campaign_id=campaign_id))
+            return redirect(url_for('view_assessment', assessment_id=assessment_id))
 
         # Get all data
-        breakdown = get_detailed_breakdown(target_unit_id, campaign_id, include_children=True)
-        substitution = calculate_substitution(target_unit_id, campaign_id, 'employee')
-        free_text_comments = get_free_text_comments(target_unit_id, campaign_id, include_children=True)
+        breakdown = get_detailed_breakdown(target_unit_id, assessment_id, include_children=True)
+        substitution = calculate_substitution(target_unit_id, assessment_id, 'employee')
+        free_text_comments = get_free_text_comments(target_unit_id, assessment_id, include_children=True)
 
         employee_stats = breakdown.get('employee', {})
         comparison = breakdown.get('comparison', {})
@@ -2713,8 +2802,8 @@ def campaign_pdf_export(campaign_id):
                     COUNT(*) as tokens_sent,
                     SUM(CASE WHEN is_used = 1 THEN 1 ELSE 0 END) as tokens_used
                 FROM tokens
-                WHERE campaign_id = ?
-            """, (campaign_id,)).fetchone()
+                WHERE assessment_id = ?
+            """, (assessment_id,)).fetchone()
 
         # Calculate overall score
         emp = breakdown.get('employee', {})
@@ -2729,8 +2818,8 @@ def campaign_pdf_export(campaign_id):
         response_rate = (token_stats['tokens_used'] / token_stats['tokens_sent'] * 100) if token_stats['tokens_sent'] > 0 else 0
 
         # Render HTML template
-        html = render_template('admin/campaign_pdf.html',
-            campaign=dict(campaign),
+        html = render_template('admin/assessment_pdf.html',
+            assessment=dict(assessment),
             breakdown=breakdown,
             alerts=alerts,
             start_here=start_here,
@@ -2750,12 +2839,12 @@ def campaign_pdf_export(campaign_id):
 
             if pisa_status.err:
                 flash("Fejl ved PDF generering", 'error')
-                return redirect(url_for('view_campaign', campaign_id=campaign_id))
+                return redirect(url_for('view_assessment', assessment_id=assessment_id))
 
             pdf_buffer.seek(0)
 
             # Create filename
-            safe_name = campaign['name'].replace(' ', '_').replace('/', '-')
+            safe_name = assessment['name'].replace(' ', '_').replace('/', '-')
             filename = f"Friktionsmaaling_{safe_name}_{datetime.now().strftime('%Y%m%d')}.pdf"
 
             return Response(
@@ -2765,13 +2854,13 @@ def campaign_pdf_export(campaign_id):
             )
         except ImportError:
             flash("PDF bibliotek ikke installeret. Kontakt administrator.", 'error')
-            return redirect(url_for('view_campaign', campaign_id=campaign_id))
+            return redirect(url_for('view_assessment', assessment_id=assessment_id))
 
     except Exception as e:
         import traceback
         print(f"PDF export error: {traceback.format_exc()}")
         flash(f"Fejl ved PDF eksport: {str(e)}", 'error')
-        return redirect(url_for('view_campaign', campaign_id=campaign_id))
+        return redirect(url_for('view_assessment', assessment_id=assessment_id))
 
 
 # ========================================
@@ -3015,9 +3104,9 @@ def survey(token):
     # Validate token (without marking as used yet)
     with get_db() as conn:
         token_info = conn.execute("""
-            SELECT t.*, c.name as campaign_name
+            SELECT t.*, c.name as assessment_name
             FROM tokens t
-            JOIN campaigns c ON t.campaign_id = c.id
+            JOIN assessments c ON t.assessment_id = c.id
             WHERE t.token = ?
         """, (token,)).fetchone()
 
@@ -3078,7 +3167,7 @@ def survey_submit(token):
     # Get token info
     with get_db() as conn:
         token_info = conn.execute("""
-            SELECT campaign_id, unit_id, respondent_type, respondent_name, is_used
+            SELECT assessment_id, unit_id, respondent_type, respondent_name, is_used
             FROM tokens
             WHERE token = ?
         """, (token,)).fetchone()
@@ -3091,7 +3180,7 @@ def survey_submit(token):
             return render_template('survey_error.html',
                 error="Dette link er allerede blevet brugt.")
 
-    campaign_id = token_info['campaign_id']
+    assessment_id = token_info['assessment_id']
     unit_id = token_info['unit_id']
     respondent_type = token_info['respondent_type']
     respondent_name = token_info['respondent_name']
@@ -3126,9 +3215,9 @@ def survey_submit(token):
 
                 conn.execute("""
                     INSERT INTO responses
-                    (campaign_id, unit_id, question_id, score, respondent_type, respondent_name, comment)
+                    (assessment_id, unit_id, question_id, score, respondent_type, respondent_name, comment)
                     VALUES (?, ?, ?, ?, ?, ?, ?)
-                """, (campaign_id, unit_id, q_id, score, respondent_type, respondent_name, comment))
+                """, (assessment_id, unit_id, q_id, score, respondent_type, respondent_name, comment))
 
             saved_count += 1
 
@@ -3140,10 +3229,10 @@ def survey_submit(token):
             WHERE token = ?
         """, (token,))
 
-    # Check if campaign is now complete and send notification
+    # Check if assessment is now complete and send notification
     # Default threshold is 100% (all tokens used)
     try:
-        check_and_notify_campaign_completed(campaign_id)
+        check_and_notify_assessment_completed(assessment_id)
     except Exception as e:
         # Don't fail the survey submission if notification fails
         print(f"Warning: Could not send completion notification: {e}")
@@ -3211,18 +3300,18 @@ def mailjet_verification():
 @login_required
 def email_stats():
     """Vis email statistik og logs"""
-    campaign_id = request.args.get('campaign_id')
-    stats = get_email_stats(campaign_id)
-    logs = get_email_logs(campaign_id, limit=100)
-    return render_template('admin/email_stats.html', stats=stats, logs=logs, campaign_id=campaign_id)
+    assessment_id = request.args.get('assessment_id')
+    stats = get_email_stats(assessment_id)
+    logs = get_email_logs(assessment_id, limit=100)
+    return render_template('admin/email_stats.html', stats=stats, logs=logs, assessment_id=assessment_id)
 
 
 @app.route('/api/email-stats')
 @login_required
 def api_email_stats():
     """API endpoint for email stats"""
-    campaign_id = request.args.get('campaign_id')
-    stats = get_email_stats(campaign_id)
+    assessment_id = request.args.get('assessment_id')
+    stats = get_email_stats(assessment_id)
     return jsonify(stats)
 
 
@@ -3499,7 +3588,7 @@ def seed_testdata():
             from import_local_data import import_local_data
             result = import_local_data()
             if result.get('success'):
-                flash(f"Importeret: {result['units_imported']} units, {result['campaigns_imported']} målinger, {result['responses_imported']} responses", 'success')
+                flash(f"Importeret: {result['units_imported']} units, {result['assessments_imported']} målinger, {result['responses_imported']} responses", 'success')
             else:
                 flash(f"Fejl: {result.get('error', 'Ukendt fejl')}", 'error')
         except Exception as e:
@@ -3540,7 +3629,7 @@ def seed_testdata_page():
             'customers': conn.execute("SELECT COUNT(*) FROM customers").fetchone()[0],
             'users': conn.execute("SELECT COUNT(*) FROM users").fetchone()[0],
             'units': conn.execute("SELECT COUNT(*) FROM organizational_units").fetchone()[0],
-            'campaigns': conn.execute("SELECT COUNT(*) FROM campaigns").fetchone()[0],
+            'assessments': conn.execute("SELECT COUNT(*) FROM assessments").fetchone()[0],
             'responses': conn.execute("SELECT COUNT(*) FROM responses").fetchone()[0],
         }
 
@@ -3567,7 +3656,7 @@ def seed_testdata_page():
             <p>Kunder: {stats['customers']}</p>
             <p>Brugere: {stats['users']}</p>
             <p>Organisationer: {stats['units']}</p>
-            <p>Målinger: {stats['campaigns']}</p>
+            <p>Målinger: {stats['assessments']}</p>
             <p>Responses: {stats['responses']}</p>
         </div>
 
@@ -3610,7 +3699,7 @@ def dev_tools():
             'customers': conn.execute("SELECT COUNT(*) FROM customers").fetchone()[0],
             'users': conn.execute("SELECT COUNT(*) FROM users").fetchone()[0],
             'units': conn.execute("SELECT COUNT(*) FROM organizational_units").fetchone()[0],
-            'campaigns': conn.execute("SELECT COUNT(*) FROM campaigns").fetchone()[0],
+            'assessments': conn.execute("SELECT COUNT(*) FROM assessments").fetchone()[0],
             'responses': conn.execute("SELECT COUNT(*) FROM responses").fetchone()[0],
             'tokens': conn.execute("SELECT COUNT(*) FROM tokens").fetchone()[0],
             'translations': conn.execute("SELECT COUNT(*) FROM translations").fetchone()[0],
@@ -3640,7 +3729,7 @@ def backup_page():
             'customers': conn.execute("SELECT COUNT(*) FROM customers").fetchone()[0],
             'users': conn.execute("SELECT COUNT(*) FROM users").fetchone()[0],
             'units': conn.execute("SELECT COUNT(*) FROM organizational_units").fetchone()[0],
-            'campaigns': conn.execute("SELECT COUNT(*) FROM campaigns").fetchone()[0],
+            'assessments': conn.execute("SELECT COUNT(*) FROM assessments").fetchone()[0],
             'responses': conn.execute("SELECT COUNT(*) FROM responses").fetchone()[0],
             'contacts': conn.execute("SELECT COUNT(*) FROM contacts").fetchone()[0],
             'tokens': conn.execute("SELECT COUNT(*) FROM tokens").fetchone()[0],
@@ -3668,7 +3757,7 @@ def backup_download():
             'users',
             'organizational_units',
             'contacts',
-            'campaigns',
+            'assessments',
             'tokens',
             'responses',
             'questions',
@@ -3732,7 +3821,7 @@ def backup_restore():
 
         if restore_mode == 'replace':
             # Slet eksisterende data først (i omvendt rækkefølge pga. foreign keys)
-            delete_order = ['responses', 'tokens', 'email_logs', 'contacts', 'campaigns',
+            delete_order = ['responses', 'tokens', 'email_logs', 'contacts', 'assessments',
                            'organizational_units', 'users', 'customers']
             for table in delete_order:
                 try:
@@ -3742,7 +3831,7 @@ def backup_restore():
 
         # Restore tabeller i rigtig rækkefølge (parents før children)
         restore_order = ['customers', 'users', 'organizational_units', 'contacts',
-                        'campaigns', 'tokens', 'responses', 'questions', 'translations']
+                        'assessments', 'tokens', 'responses', 'questions', 'translations']
 
         for table in restore_order:
             if table not in backup_data['tables']:
@@ -3796,8 +3885,8 @@ def db_status():
         # Alle customers
         customers = conn.execute("SELECT id, name FROM customers").fetchall()
 
-        # Campaigns
-        campaigns = conn.execute("SELECT id, name, target_unit_id FROM campaigns").fetchall()
+        # Assessments
+        assessments = conn.execute("SELECT id, name, target_unit_id FROM assessments").fetchall()
 
         # Response count and respondent_name check
         resp_count = conn.execute("SELECT COUNT(*) FROM responses").fetchone()[0]
@@ -3844,9 +3933,9 @@ def db_status():
     {''.join(f"<tr><td>{u['id'][:12]}...</td><td>{u['name']}</td><td>{(u['parent_id'] or '-')[:12]}</td><td>{u['full_path']}</td></tr>" for u in all_units)}
     </table>
 
-    <h2>Campaigns ({len(campaigns)})</h2>
+    <h2>Assessments ({len(assessments)})</h2>
     <table><tr><th>ID</th><th>Name</th><th>Target</th></tr>
-    {''.join(f"<tr><td>{c['id']}</td><td>{c['name']}</td><td>{c['target_unit_id'][:12]}...</td></tr>" for c in campaigns)}
+    {''.join(f"<tr><td>{c['id']}</td><td>{c['name']}</td><td>{c['target_unit_id'][:12]}...</td></tr>" for c in assessments)}
     </table>
 
     <p><b>Responses:</b> {resp_count}</p>
@@ -3912,7 +4001,7 @@ def full_reset():
             results.append(f"Før: {before_units} units, {before_customers} customers")
 
             # SLET ALT - ignorer fejl hvis tabeller ikke eksisterer
-            for table in ['responses', 'campaigns', 'organizational_units', 'customers', 'users']:
+            for table in ['responses', 'assessments', 'organizational_units', 'customers', 'users']:
                 try:
                     conn.execute(f"DELETE FROM {table}")
                 except Exception as e:
@@ -3954,27 +4043,27 @@ def full_reset():
                     results.append(f"Fejl unit {unit.get('name')}: {e}")
             results.append(f"Importeret {unit_count} units")
 
-            # Importer campaigns
+            # Importer assessments
             camp_count = 0
-            for camp in data.get('campaigns', []):
+            for camp in data.get('assessments', []):
                 try:
                     conn.execute('''
-                        INSERT INTO campaigns (id, name, target_unit_id, period, created_at)
+                        INSERT INTO assessments (id, name, target_unit_id, period, created_at)
                         VALUES (?, ?, ?, ?, ?)
                     ''', (camp['id'], camp['name'], camp['target_unit_id'], camp.get('period'), camp.get('created_at')))
                     camp_count += 1
                 except Exception as e:
-                    results.append(f"Fejl campaign {camp.get('name')}: {e}")
-            results.append(f"Importeret {camp_count} campaigns")
+                    results.append(f"Fejl assessment {camp.get('name')}: {e}")
+            results.append(f"Importeret {camp_count} assessments")
 
             # Importer responses
             resp_count = 0
             for resp in data.get('responses', []):
                 try:
                     conn.execute('''
-                        INSERT INTO responses (campaign_id, unit_id, question_id, score, respondent_type, respondent_name, created_at)
+                        INSERT INTO responses (assessment_id, unit_id, question_id, score, respondent_type, respondent_name, created_at)
                         VALUES (?, ?, ?, ?, ?, ?, ?)
-                    ''', (resp['campaign_id'], resp['unit_id'], resp['question_id'],
+                    ''', (resp['assessment_id'], resp['unit_id'], resp['question_id'],
                           resp['score'], resp.get('respondent_type'), resp.get('respondent_name'), resp.get('created_at')))
                     resp_count += 1
                 except Exception as e:
@@ -4074,7 +4163,7 @@ def cleanup_empty_units():
             # SLET ALT FØRST
             conn.execute("DELETE FROM responses")
             conn.execute("DELETE FROM tokens")
-            conn.execute("DELETE FROM campaigns")
+            conn.execute("DELETE FROM assessments")
             conn.execute("DELETE FROM contacts")
             conn.execute("DELETE FROM organizational_units")
 
@@ -4088,10 +4177,10 @@ def cleanup_empty_units():
                       unit.get('level', 0), unit.get('leader_name'), unit.get('leader_email'),
                       unit.get('employee_count', 0), unit.get('sick_leave_percent', 0), unit.get('customer_id')))
 
-            # Importer campaigns
-            for camp in data.get('campaigns', []):
+            # Importer assessments
+            for camp in data.get('assessments', []):
                 conn.execute('''
-                    INSERT INTO campaigns (id, name, target_unit_id, period, created_at, min_responses, mode)
+                    INSERT INTO assessments (id, name, target_unit_id, period, created_at, min_responses, mode)
                     VALUES (?, ?, ?, ?, ?, ?, ?)
                 ''', (camp['id'], camp['name'], camp['target_unit_id'], camp.get('period'),
                       camp.get('created_at'), camp.get('min_responses', 5), camp.get('mode', 'anonymous')))
@@ -4099,9 +4188,9 @@ def cleanup_empty_units():
             # Importer responses
             for resp in data.get('responses', []):
                 conn.execute('''
-                    INSERT INTO responses (campaign_id, unit_id, question_id, score, respondent_type, respondent_name, comment, category_comment, created_at)
+                    INSERT INTO responses (assessment_id, unit_id, question_id, score, respondent_type, respondent_name, comment, category_comment, created_at)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ''', (resp['campaign_id'], resp['unit_id'], resp['question_id'],
+                ''', (resp['assessment_id'], resp['unit_id'], resp['question_id'],
                       resp['score'], resp.get('respondent_type'), resp.get('respondent_name'),
                       resp.get('comment'), resp.get('category_comment'), resp.get('created_at')))
 
@@ -4109,14 +4198,14 @@ def cleanup_empty_units():
             conn.commit()
 
             units = conn.execute("SELECT COUNT(*) FROM organizational_units").fetchone()[0]
-            campaigns = conn.execute("SELECT COUNT(*) FROM campaigns").fetchone()[0]
+            assessments = conn.execute("SELECT COUNT(*) FROM assessments").fetchone()[0]
             responses = conn.execute("SELECT COUNT(*) FROM responses").fetchone()[0]
 
             # Vis toplevel names
             toplevel = conn.execute("SELECT name FROM organizational_units WHERE parent_id IS NULL").fetchall()
             names = [t[0] for t in toplevel]
 
-        flash(f'Database erstattet! Før: {before_units} units/{before_responses} responses, Nu: {units} units, {campaigns} målinger, {responses} responses. Toplevel: {names}', 'success')
+        flash(f'Database erstattet! Før: {before_units} units/{before_responses} responses, Nu: {units} units, {assessments} målinger, {responses} responses. Toplevel: {names}', 'success')
     except Exception as e:
         import traceback
         return f'FEJL: {str(e)}.<br><br>Traceback:<pre>{traceback.format_exc()}</pre><br>Debug: {debug}'
@@ -4158,7 +4247,7 @@ def org_dashboard(customer_id=None, unit_id=None):
                     c.id,
                     c.name,
                     COUNT(DISTINCT ou.id) as unit_count,
-                    COUNT(DISTINCT camp.id) as campaign_count,
+                    COUNT(DISTINCT camp.id) as assessment_count,
                     COUNT(DISTINCT r.id) as response_count,
                     AVG(CASE
                         WHEN r.respondent_type = 'employee' THEN
@@ -4166,8 +4255,8 @@ def org_dashboard(customer_id=None, unit_id=None):
                     END) as avg_score
                 FROM customers c
                 LEFT JOIN organizational_units ou ON ou.customer_id = c.id
-                LEFT JOIN campaigns camp ON camp.target_unit_id = ou.id
-                LEFT JOIN responses r ON r.campaign_id = camp.id
+                LEFT JOIN assessments camp ON camp.target_unit_id = ou.id
+                LEFT JOIN responses r ON r.assessment_id = camp.id
                 LEFT JOIN questions q ON r.question_id = q.id
                 GROUP BY c.id
                 ORDER BY c.name
@@ -4229,7 +4318,7 @@ def org_dashboard(customer_id=None, unit_id=None):
             child_units = conn.execute("""
                 SELECT id, name, level, leader_name,
                        (SELECT COUNT(*) FROM organizational_units WHERE parent_id = ou.id) as child_count,
-                       (SELECT camp.id FROM campaigns camp WHERE camp.target_unit_id = ou.id LIMIT 1) as direct_campaign_id
+                       (SELECT camp.id FROM assessments camp WHERE camp.target_unit_id = ou.id LIMIT 1) as direct_assessment_id
                 FROM organizational_units ou
                 WHERE ou.parent_id = ?
                 ORDER BY ou.name
@@ -4247,7 +4336,7 @@ def org_dashboard(customer_id=None, unit_id=None):
                         JOIN subtree st ON ou.parent_id = st.id
                     )
                     SELECT
-                        COUNT(DISTINCT camp.id) as campaign_count,
+                        COUNT(DISTINCT camp.id) as assessment_count,
                         COUNT(DISTINCT r.id) as response_count,
                         AVG(CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END) as avg_score,
                         AVG(CASE WHEN q.field = 'MENING' THEN CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as score_mening,
@@ -4255,8 +4344,8 @@ def org_dashboard(customer_id=None, unit_id=None):
                         AVG(CASE WHEN q.field = 'KAN' THEN CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as score_kan,
                         AVG(CASE WHEN q.field = 'BESVÆR' THEN CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as score_besvaer
                     FROM subtree st
-                    LEFT JOIN campaigns camp ON camp.target_unit_id = st.id
-                    LEFT JOIN responses r ON r.campaign_id = camp.id AND r.respondent_type = 'employee'
+                    LEFT JOIN assessments camp ON camp.target_unit_id = st.id
+                    LEFT JOIN responses r ON r.assessment_id = camp.id AND r.respondent_type = 'employee'
                     LEFT JOIN questions q ON r.question_id = q.id
                 """, [child['id']]).fetchone()
 
@@ -4266,8 +4355,8 @@ def org_dashboard(customer_id=None, unit_id=None):
                     'level': child['level'],
                     'leader_name': child['leader_name'],
                     'child_count': child['child_count'],
-                    'direct_campaign_id': child['direct_campaign_id'],
-                    'campaign_count': agg['campaign_count'] or 0,
+                    'direct_assessment_id': child['direct_assessment_id'],
+                    'assessment_count': agg['assessment_count'] or 0,
                     'response_count': agg['response_count'] or 0,
                     'avg_score': agg['avg_score'],
                     'score_mening': agg['score_mening'],
@@ -4303,7 +4392,7 @@ def org_dashboard(customer_id=None, unit_id=None):
             root_units = conn.execute("""
                 SELECT id, name, level, leader_name,
                        (SELECT COUNT(*) FROM organizational_units WHERE parent_id = ou.id) as child_count,
-                       (SELECT camp.id FROM campaigns camp WHERE camp.target_unit_id = ou.id LIMIT 1) as direct_campaign_id
+                       (SELECT camp.id FROM assessments camp WHERE camp.target_unit_id = ou.id LIMIT 1) as direct_assessment_id
                 FROM organizational_units ou
                 WHERE ou.customer_id = ? AND ou.parent_id IS NULL
                 ORDER BY ou.name
@@ -4321,7 +4410,7 @@ def org_dashboard(customer_id=None, unit_id=None):
                         JOIN subtree st ON ou.parent_id = st.id
                     )
                     SELECT
-                        COUNT(DISTINCT camp.id) as campaign_count,
+                        COUNT(DISTINCT camp.id) as assessment_count,
                         COUNT(DISTINCT r.id) as response_count,
                         AVG(CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END) as avg_score,
                         AVG(CASE WHEN q.field = 'MENING' THEN CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as score_mening,
@@ -4329,8 +4418,8 @@ def org_dashboard(customer_id=None, unit_id=None):
                         AVG(CASE WHEN q.field = 'KAN' THEN CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as score_kan,
                         AVG(CASE WHEN q.field = 'BESVÆR' THEN CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as score_besvaer
                     FROM subtree st
-                    LEFT JOIN campaigns camp ON camp.target_unit_id = st.id
-                    LEFT JOIN responses r ON r.campaign_id = camp.id AND r.respondent_type = 'employee'
+                    LEFT JOIN assessments camp ON camp.target_unit_id = st.id
+                    LEFT JOIN responses r ON r.assessment_id = camp.id AND r.respondent_type = 'employee'
                     LEFT JOIN questions q ON r.question_id = q.id
                 """, [root['id']]).fetchone()
 
@@ -4340,8 +4429,8 @@ def org_dashboard(customer_id=None, unit_id=None):
                     'level': root['level'],
                     'leader_name': root['leader_name'],
                     'child_count': root['child_count'],
-                    'direct_campaign_id': root['direct_campaign_id'],
-                    'campaign_count': agg['campaign_count'] or 0,
+                    'direct_assessment_id': root['direct_assessment_id'],
+                    'assessment_count': agg['assessment_count'] or 0,
                     'response_count': agg['response_count'] or 0,
                     'avg_score': agg['avg_score'],
                     'score_mening': agg['score_mening'],
@@ -4381,7 +4470,7 @@ def org_dashboard(customer_id=None, unit_id=None):
                     AVG(CASE WHEN q.field = 'BESVÆR' THEN CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as besvaer,
                     COUNT(DISTINCT r.id) as response_count
                 FROM responses r
-                JOIN campaigns camp ON r.campaign_id = camp.id
+                JOIN assessments camp ON r.assessment_id = camp.id
                 JOIN questions q ON r.question_id = q.id
                 JOIN subtree st ON camp.target_unit_id = st.id
                 WHERE r.respondent_type = 'employee'
@@ -4397,7 +4486,7 @@ def org_dashboard(customer_id=None, unit_id=None):
                     AVG(CASE WHEN q.field = 'BESVÆR' THEN CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as besvaer,
                     COUNT(DISTINCT r.id) as response_count
                 FROM responses r
-                JOIN campaigns camp ON r.campaign_id = camp.id
+                JOIN assessments camp ON r.assessment_id = camp.id
                 JOIN questions q ON r.question_id = q.id
                 JOIN organizational_units ou ON camp.target_unit_id = ou.id
                 WHERE ou.customer_id = ? AND r.respondent_type = 'employee'
