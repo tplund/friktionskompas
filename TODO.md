@@ -64,7 +64,7 @@
 - [x] ~~**Login-side opdateret** - Viser OAuth buttons baseret på domæne-config~~
 - [x] ~~**Admin UI til auth konfiguration** - Konfigurer providers per kunde/domæne (superadmin)~~
 - [x] ~~**Domæne-config** - friktionskompasset.dk (alle providers), frictioncompass.com (kun Google)~~
-- [ ] **Opsæt OAuth credentials på Render** - Opret apps hos Google/Microsoft, sæt env vars
+- [x] ~~**Opsæt OAuth credentials på Render** - Opret apps hos Google/Microsoft, sæt env vars~~
 - [ ] **Apple Sign-In** - B2C (iOS brugere)
 - [ ] **Facebook Login** - B2C
 - [ ] **SAML SSO** - Enterprise kunder
@@ -102,6 +102,11 @@ GOOGLE_CLIENT_SECRET=xxx
 - [x] ~~Terminologi: "kampagne" → "måling"~~
 - [x] ~~Favicon: Kompas-nål design~~
 - [x] ~~**Slet toplevel organisationer** - Mulighed for at slette kunder/toplevel fra organisationsoversigten~~
+- [ ] **Organiser navigation med undermenuer** - Der er for mange links i sidebar, grupper dem:
+  - Analyser (Analyser, Nøgletal, Trend)
+  - Målinger (Alle målinger, Planlagte, Ny måling)
+  - Organisation (Organisationer, Kunder/Brugere)
+  - Indstillinger (dropdown allerede implementeret)
 
 ### CSV Import
 - [x] ~~Semikolon separator (Excel standard)~~

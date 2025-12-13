@@ -913,7 +913,7 @@ def admin_home():
     return render_template('admin/home.html',
                          units=[dict(u) for u in all_units],
                          campaign_count=campaign_count,
-                         show_all_customers=(user['role'] == 'admin'),
+                         show_all_customers=(user['role'] in ('admin', 'superadmin')),
                          customers_dict=customers_dict,
                          current_filter=session.get('customer_filter'),
                          current_filter_name=session.get('customer_filter_name'))
@@ -1001,9 +1001,9 @@ def admin_noegletal():
         """.format(where=customer_where)
         recent_campaigns = conn.execute(recent_campaigns_query, customer_params).fetchall()
 
-        # Per-kunde stats (kun for admin uden filter)
+        # Per-kunde stats (kun for admin/superadmin uden filter)
         customer_stats = []
-        if user['role'] == 'admin' and not customer_filter:
+        if user['role'] in ('admin', 'superadmin') and not customer_filter:
             customer_stats = conn.execute("""
                 SELECT
                     cust.id,
@@ -1044,7 +1044,7 @@ def admin_noegletal():
                          field_scores=[dict(f) for f in field_scores],
                          recent_campaigns=[dict(c) for c in recent_campaigns],
                          customer_stats=[dict(c) for c in customer_stats],
-                         show_customer_stats=(user['role'] == 'admin' and not customer_filter))
+                         show_customer_stats=(user['role'] in ('admin', 'superadmin') and not customer_filter))
 
 
 @app.route('/admin/trend')
@@ -2560,8 +2560,8 @@ def campaign_detailed_analysis(campaign_id):
 
     try:
         with get_db() as conn:
-            # Hent campaign - admin ser alt
-            if user['role'] == 'admin':
+            # Hent campaign - admin/superadmin ser alt
+            if user['role'] in ('admin', 'superadmin'):
                 campaign = conn.execute("""
                     SELECT c.*, ou.customer_id FROM campaigns c
                     JOIN organizational_units ou ON c.target_unit_id = ou.id
@@ -2662,8 +2662,8 @@ def campaign_pdf_export(campaign_id):
 
     try:
         with get_db() as conn:
-            # Hent campaign
-            if user['role'] == 'admin':
+            # Hent campaign - admin/superadmin ser alt
+            if user['role'] in ('admin', 'superadmin'):
                 campaign = conn.execute("""
                     SELECT c.*, ou.customer_id FROM campaigns c
                     JOIN organizational_units ou ON c.target_unit_id = ou.id
@@ -3254,7 +3254,7 @@ def email_templates():
     """Email template editor"""
     user = get_current_user()
     with get_db() as conn:
-        if user['role'] == 'admin':
+        if user['role'] in ('admin', 'superadmin'):
             customers = conn.execute("SELECT id, name FROM customers ORDER BY name").fetchall()
         else:
             customers = conn.execute(
@@ -4117,8 +4117,8 @@ def org_dashboard(customer_id=None, unit_id=None):
         customer_id = user['customer_id']
 
     with get_db() as conn:
-        # Niveau 1: Vis alle kunder (kun admin uden customer_id)
-        if not customer_id and user['role'] == 'admin':
+        # Niveau 1: Vis alle kunder (kun admin/superadmin uden customer_id)
+        if not customer_id and user['role'] in ('admin', 'superadmin'):
             customers = conn.execute("""
                 SELECT
                     c.id,
