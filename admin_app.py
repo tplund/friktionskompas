@@ -3965,12 +3965,97 @@ def db_status():
             Seed Translations (Genindlæs oversættelser)
         </button>
     </form>
+    <form action="/admin/recreate-assessments" method="POST" style="display: inline; margin-left: 10px;">
+        <button type="submit" style="padding: 10px 20px; background: #10b981; color: white; border: none; border-radius: 5px; cursor: pointer;">
+            Genskab Assessments (fra responses)
+        </button>
+    </form>
     <br><br>
     <p><a href="/admin/full-reset">FULD RESET - Slet alt og genimporter</a></p>
     <p><a href="/admin/upload-database">Upload database fil</a></p>
     </body></html>
     """
     return html
+
+
+@app.route('/admin/recreate-assessments', methods=['POST'])
+def recreate_assessments():
+    """Genskab manglende assessments baseret på eksisterende responses"""
+    from datetime import datetime
+
+    with get_db() as conn:
+        # Find alle unikke assessment_id'er fra responses der IKKE findes i assessments
+        orphan_assessment_ids = conn.execute("""
+            SELECT DISTINCT r.assessment_id
+            FROM responses r
+            LEFT JOIN assessments a ON r.assessment_id = a.id
+            WHERE a.id IS NULL
+        """).fetchall()
+
+        if not orphan_assessment_ids:
+            flash('Ingen manglende assessments fundet - alle responses har tilknyttede assessments', 'info')
+            return redirect(url_for('db_status'))
+
+        created = 0
+        errors = []
+
+        for row in orphan_assessment_ids:
+            assessment_id = row['assessment_id']
+
+            # Find unit_id fra responses for denne assessment
+            unit_info = conn.execute("""
+                SELECT DISTINCT r.unit_id, ou.name as unit_name, ou.id as unit_exists
+                FROM responses r
+                LEFT JOIN organizational_units ou ON r.unit_id = ou.id
+                WHERE r.assessment_id = ?
+                LIMIT 1
+            """, [assessment_id]).fetchone()
+
+            if not unit_info or not unit_info['unit_exists']:
+                errors.append(f"Assessment {assessment_id}: Unit ikke fundet")
+                continue
+
+            unit_id = unit_info['unit_id']
+            unit_name = unit_info['unit_name'] or 'Ukendt'
+
+            # Find dato fra responses
+            date_info = conn.execute("""
+                SELECT MIN(created_at) as first_response
+                FROM responses WHERE assessment_id = ?
+            """, [assessment_id]).fetchone()
+
+            created_at = date_info['first_response'] if date_info else datetime.now().isoformat()
+
+            # Tjek om der er leader responses
+            leader_count = conn.execute("""
+                SELECT COUNT(*) as cnt FROM responses
+                WHERE assessment_id = ? AND respondent_type IN ('leader_assess', 'leader_self')
+            """, [assessment_id]).fetchone()['cnt']
+
+            include_leader = 1 if leader_count > 0 else 0
+
+            # Opret assessment med genskabt data
+            assessment_name = f"Genskabt: {unit_name}"
+            try:
+                conn.execute("""
+                    INSERT INTO assessments (id, target_unit_id, name, period, created_at,
+                                           include_leader_assessment, include_leader_self, status)
+                    VALUES (?, ?, ?, 'Genskabt', ?, ?, ?, 'sent')
+                """, [assessment_id, unit_id, assessment_name, created_at, include_leader, include_leader])
+                created += 1
+            except Exception as e:
+                errors.append(f"Assessment {assessment_id}: {str(e)}")
+
+        conn.commit()
+
+    if created > 0:
+        flash(f'Genskabt {created} assessments!', 'success')
+    if errors:
+        flash(f'Fejl: {len(errors)} assessments kunne ikke genskabes. Se logs.', 'warning')
+        for err in errors[:5]:  # Vis max 5 fejl
+            flash(err, 'error')
+
+    return redirect(url_for('db_status'))
 
 
 @app.route('/admin/full-reset')
