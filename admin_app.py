@@ -4225,44 +4225,56 @@ def org_dashboard(customer_id=None, unit_id=None):
 
         # Hent units på dette niveau med aggregerede scores
         if parent_id_filter:
-            # Simplere query - henter direkte data for hver unit
-            units_query = """
-                SELECT
-                    ou.id,
-                    ou.name,
-                    ou.level,
-                    ou.leader_name,
-                    (SELECT COUNT(*) FROM organizational_units WHERE parent_id = ou.id) as child_count,
-                    (SELECT COUNT(DISTINCT camp.id) FROM campaigns camp WHERE camp.target_unit_id = ou.id) as campaign_count,
-                    (SELECT COUNT(DISTINCT r.id) FROM responses r
-                     JOIN campaigns camp ON r.campaign_id = camp.id WHERE camp.target_unit_id = ou.id) as response_count,
-                    (SELECT AVG(CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END)
-                     FROM responses r
-                     JOIN campaigns camp ON r.campaign_id = camp.id
-                     JOIN questions q ON r.question_id = q.id
-                     WHERE camp.target_unit_id = ou.id AND r.respondent_type = 'employee') as avg_score,
-                    (SELECT AVG(CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END)
-                     FROM responses r JOIN campaigns camp ON r.campaign_id = camp.id
-                     JOIN questions q ON r.question_id = q.id
-                     WHERE camp.target_unit_id = ou.id AND r.respondent_type = 'employee' AND q.field = 'MENING') as score_mening,
-                    (SELECT AVG(CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END)
-                     FROM responses r JOIN campaigns camp ON r.campaign_id = camp.id
-                     JOIN questions q ON r.question_id = q.id
-                     WHERE camp.target_unit_id = ou.id AND r.respondent_type = 'employee' AND q.field = 'TRYGHED') as score_tryghed,
-                    (SELECT AVG(CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END)
-                     FROM responses r JOIN campaigns camp ON r.campaign_id = camp.id
-                     JOIN questions q ON r.question_id = q.id
-                     WHERE camp.target_unit_id = ou.id AND r.respondent_type = 'employee' AND q.field = 'KAN') as score_kan,
-                    (SELECT AVG(CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END)
-                     FROM responses r JOIN campaigns camp ON r.campaign_id = camp.id
-                     JOIN questions q ON r.question_id = q.id
-                     WHERE camp.target_unit_id = ou.id AND r.respondent_type = 'employee' AND q.field = 'BESVÆR') as score_besvaer,
-                    (SELECT camp.id FROM campaigns camp WHERE camp.target_unit_id = ou.id LIMIT 1) as direct_campaign_id
+            # Hent child units med rekursiv aggregering fra underenheder
+            child_units = conn.execute("""
+                SELECT id, name, level, leader_name,
+                       (SELECT COUNT(*) FROM organizational_units WHERE parent_id = ou.id) as child_count,
+                       (SELECT camp.id FROM campaigns camp WHERE camp.target_unit_id = ou.id LIMIT 1) as direct_campaign_id
                 FROM organizational_units ou
                 WHERE ou.parent_id = ?
                 ORDER BY ou.name
-            """
-            units = conn.execute(units_query, [parent_id_filter]).fetchall()
+            """, [parent_id_filter]).fetchall()
+
+            # Beregn aggregerede scores for hver unit inkl. alle underenheder
+            units = []
+            for child in child_units:
+                # Rekursiv query der aggregerer fra hele subtræet
+                agg = conn.execute("""
+                    WITH RECURSIVE subtree AS (
+                        SELECT id FROM organizational_units WHERE id = ?
+                        UNION ALL
+                        SELECT ou.id FROM organizational_units ou
+                        JOIN subtree st ON ou.parent_id = st.id
+                    )
+                    SELECT
+                        COUNT(DISTINCT camp.id) as campaign_count,
+                        COUNT(DISTINCT r.id) as response_count,
+                        AVG(CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END) as avg_score,
+                        AVG(CASE WHEN q.field = 'MENING' THEN CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as score_mening,
+                        AVG(CASE WHEN q.field = 'TRYGHED' THEN CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as score_tryghed,
+                        AVG(CASE WHEN q.field = 'KAN' THEN CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as score_kan,
+                        AVG(CASE WHEN q.field = 'BESVÆR' THEN CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as score_besvaer
+                    FROM subtree st
+                    LEFT JOIN campaigns camp ON camp.target_unit_id = st.id
+                    LEFT JOIN responses r ON r.campaign_id = camp.id AND r.respondent_type = 'employee'
+                    LEFT JOIN questions q ON r.question_id = q.id
+                """, [child['id']]).fetchone()
+
+                units.append({
+                    'id': child['id'],
+                    'name': child['name'],
+                    'level': child['level'],
+                    'leader_name': child['leader_name'],
+                    'child_count': child['child_count'],
+                    'direct_campaign_id': child['direct_campaign_id'],
+                    'campaign_count': agg['campaign_count'] or 0,
+                    'response_count': agg['response_count'] or 0,
+                    'avg_score': agg['avg_score'],
+                    'score_mening': agg['score_mening'],
+                    'score_tryghed': agg['score_tryghed'],
+                    'score_kan': agg['score_kan'],
+                    'score_besvaer': agg['score_besvaer']
+                })
 
             # Hent friktionsprofiler for denne unit (hvis leaf node) - with fallback
             try:
@@ -4276,7 +4288,6 @@ def org_dashboard(customer_id=None, unit_id=None):
                 profiler = []
 
             # Add profil_count to units
-            units = [dict(u) for u in units]
             for u in units:
                 try:
                     count = conn.execute("""
@@ -4287,47 +4298,59 @@ def org_dashboard(customer_id=None, unit_id=None):
                 except Exception:
                     u['profil_count'] = 0
         else:
-            # Root units for kunde - simplere query
-            units_query = """
-                SELECT
-                    ou.id,
-                    ou.name,
-                    ou.level,
-                    ou.leader_name,
-                    (SELECT COUNT(*) FROM organizational_units WHERE parent_id = ou.id) as child_count,
-                    (SELECT COUNT(DISTINCT camp.id) FROM campaigns camp WHERE camp.target_unit_id = ou.id) as campaign_count,
-                    (SELECT COUNT(DISTINCT r.id) FROM responses r
-                     JOIN campaigns camp ON r.campaign_id = camp.id WHERE camp.target_unit_id = ou.id) as response_count,
-                    (SELECT AVG(CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END)
-                     FROM responses r
-                     JOIN campaigns camp ON r.campaign_id = camp.id
-                     JOIN questions q ON r.question_id = q.id
-                     WHERE camp.target_unit_id = ou.id AND r.respondent_type = 'employee') as avg_score,
-                    (SELECT AVG(CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END)
-                     FROM responses r JOIN campaigns camp ON r.campaign_id = camp.id
-                     JOIN questions q ON r.question_id = q.id
-                     WHERE camp.target_unit_id = ou.id AND r.respondent_type = 'employee' AND q.field = 'MENING') as score_mening,
-                    (SELECT AVG(CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END)
-                     FROM responses r JOIN campaigns camp ON r.campaign_id = camp.id
-                     JOIN questions q ON r.question_id = q.id
-                     WHERE camp.target_unit_id = ou.id AND r.respondent_type = 'employee' AND q.field = 'TRYGHED') as score_tryghed,
-                    (SELECT AVG(CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END)
-                     FROM responses r JOIN campaigns camp ON r.campaign_id = camp.id
-                     JOIN questions q ON r.question_id = q.id
-                     WHERE camp.target_unit_id = ou.id AND r.respondent_type = 'employee' AND q.field = 'KAN') as score_kan,
-                    (SELECT AVG(CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END)
-                     FROM responses r JOIN campaigns camp ON r.campaign_id = camp.id
-                     JOIN questions q ON r.question_id = q.id
-                     WHERE camp.target_unit_id = ou.id AND r.respondent_type = 'employee' AND q.field = 'BESVÆR') as score_besvaer,
-                    (SELECT camp.id FROM campaigns camp WHERE camp.target_unit_id = ou.id LIMIT 1) as direct_campaign_id
+            # Root units for kunde - med rekursiv aggregering fra underenheder
+            # Først hent root units
+            root_units = conn.execute("""
+                SELECT id, name, level, leader_name,
+                       (SELECT COUNT(*) FROM organizational_units WHERE parent_id = ou.id) as child_count,
+                       (SELECT camp.id FROM campaigns camp WHERE camp.target_unit_id = ou.id LIMIT 1) as direct_campaign_id
                 FROM organizational_units ou
                 WHERE ou.customer_id = ? AND ou.parent_id IS NULL
                 ORDER BY ou.name
-            """
-            units = conn.execute(units_query, [customer_id]).fetchall()
+            """, [customer_id]).fetchall()
 
-            # Add profil_count to units
-            units = [dict(u) for u in units]
+            # Beregn aggregerede scores for hver root unit inkl. alle underenheder
+            units = []
+            for root in root_units:
+                # Rekursiv query der aggregerer fra hele subtræet
+                agg = conn.execute("""
+                    WITH RECURSIVE subtree AS (
+                        SELECT id FROM organizational_units WHERE id = ?
+                        UNION ALL
+                        SELECT ou.id FROM organizational_units ou
+                        JOIN subtree st ON ou.parent_id = st.id
+                    )
+                    SELECT
+                        COUNT(DISTINCT camp.id) as campaign_count,
+                        COUNT(DISTINCT r.id) as response_count,
+                        AVG(CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END) as avg_score,
+                        AVG(CASE WHEN q.field = 'MENING' THEN CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as score_mening,
+                        AVG(CASE WHEN q.field = 'TRYGHED' THEN CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as score_tryghed,
+                        AVG(CASE WHEN q.field = 'KAN' THEN CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as score_kan,
+                        AVG(CASE WHEN q.field = 'BESVÆR' THEN CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as score_besvaer
+                    FROM subtree st
+                    LEFT JOIN campaigns camp ON camp.target_unit_id = st.id
+                    LEFT JOIN responses r ON r.campaign_id = camp.id AND r.respondent_type = 'employee'
+                    LEFT JOIN questions q ON r.question_id = q.id
+                """, [root['id']]).fetchone()
+
+                units.append({
+                    'id': root['id'],
+                    'name': root['name'],
+                    'level': root['level'],
+                    'leader_name': root['leader_name'],
+                    'child_count': root['child_count'],
+                    'direct_campaign_id': root['direct_campaign_id'],
+                    'campaign_count': agg['campaign_count'] or 0,
+                    'response_count': agg['response_count'] or 0,
+                    'avg_score': agg['avg_score'],
+                    'score_mening': agg['score_mening'],
+                    'score_tryghed': agg['score_tryghed'],
+                    'score_kan': agg['score_kan'],
+                    'score_besvaer': agg['score_besvaer']
+                })
+
+            # Add profil_count to units (units er allerede dicts)
             for u in units:
                 try:
                     count = conn.execute("""
