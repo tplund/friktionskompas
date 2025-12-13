@@ -3494,6 +3494,15 @@ def seed_testdata():
         except Exception as e:
             flash(f'Fejl ved import: {str(e)}', 'error')
 
+    elif action == 'seed_herning':
+        # Generer Herning testdata (kanonisk test-kunde)
+        try:
+            import seed_herning_testdata
+            seed_herning_testdata.main()
+            flash('Herning testdata genereret! (Borgere, trend-data, B2C)', 'success')
+        except Exception as e:
+            flash(f'Fejl ved Herning seed: {str(e)}', 'error')
+
     else:
         # Kør standard seed
         try:
@@ -3558,9 +3567,15 @@ def seed_testdata_page():
         <h3>Vælg handling:</h3>
 
         <form method="POST" style="margin-bottom: 15px;">
+            <input type="hidden" name="action" value="seed_herning">
+            <button type="submit" class="btn" style="background: #10b981;">Seed Herning Testdata (anbefalet)</button>
+            <p style="font-size: 0.9em; color: #666; margin-top: 5px;">Genererer komplet testdata for Herning Kommune: Borgere (B2C), trend-data (Q1-Q4), medarbejdere + ledere</p>
+        </form>
+
+        <form method="POST" style="margin-bottom: 15px;">
             <input type="hidden" name="action" value="import_local">
-            <button type="submit" class="btn" style="background: #10b981;">Importer Kommune-data (anbefalet)</button>
-            <p style="font-size: 0.9em; color: #666; margin-top: 5px;">Importerer 25 units, 11 målinger og 2376 responses fra lokal database</p>
+            <button type="submit" class="btn" style="background: #6366f1;">Importer Kommune-data</button>
+            <p style="font-size: 0.9em; color: #666; margin-top: 5px;">Importerer fra lokal database (kun hvis tilgængelig)</p>
         </form>
 
         <form method="POST">

@@ -11,14 +11,17 @@ Brug: python seed_herning_testdata.py
 
 import sqlite3
 import random
+import os
 from datetime import datetime, timedelta
 from secrets import token_urlsafe
 
 # Herning Kommune ID
 HERNING_CUSTOMER_ID = 'cust-0nlG8ldxSYU'
 
-# Database path
-DB_PATH = 'friktionskompas_v3.db'
+# Database path - use Render path if available, otherwise local
+DB_PATH = os.environ.get('DATABASE_PATH', '/var/data/friktionskompas_v3.db')
+if not os.path.exists(DB_PATH):
+    DB_PATH = 'friktionskompas_v3.db'
 
 # Friktionsfelter
 FRICTION_FIELDS = ['MENING', 'TRYGHED', 'MULIGHED', 'KAN', 'BESVÆR']
