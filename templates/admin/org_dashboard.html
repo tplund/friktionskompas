@@ -423,7 +423,7 @@
              {% if item.child_count > 0 %}
              onclick="window.location='{{ url_for('org_dashboard', customer_id=customer_id, unit_id=item.id) }}'"
              {% elif item.direct_campaign_id %}
-             onclick="window.location='{{ url_for('campaign_detailed', campaign_id=item.direct_campaign_id) }}'"
+             onclick="window.location='{{ url_for('campaign_detailed_analysis', campaign_id=item.direct_campaign_id) }}'"
              {% endif %}>
 
             <div class="org-card-header">
@@ -535,7 +535,7 @@
         <h3>{{ t('dashboard.no_subunits') }}</h3>
         <p>{{ t('dashboard.no_subunits_desc') }}</p>
         {% if parent_unit and parent_unit.direct_campaign_id %}
-        <a href="{{ url_for('campaign_detailed', campaign_id=parent_unit.direct_campaign_id) }}"
+        <a href="{{ url_for('campaign_detailed_analysis', campaign_id=parent_unit.direct_campaign_id) }}"
            class="btn" style="background: #6366f1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin-top: 20px; display: inline-block;">
             {{ t('dashboard.see_analysis') }}
         </a>
