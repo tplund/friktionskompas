@@ -22,7 +22,8 @@
 - [x] ~~**Sikkerhedstest** - SQL injection, XSS, auth bypass, session hijacking (12 tests)~~
 - [x] ~~**UI/UX test** - Playwright tests af brugerflows~~ (19 tests: login, dropdown navigation, organisation tree, campaigns, backup, responsive)
 - [x] ~~**Integration test** - End-to-end test af survey flow~~ (22 tests inkl. superadmin access tests)
-- [x] ~~**CI/CD** - GitHub Actions workflow kører tests automatisk ved push~~ (106 tests total)
+- [x] ~~**Data isolation tests** - Verificerer at Herning/Esbjerg data er isoleret korrekt~~ (17 tests - tjekker faktisk HTML content, ikke bare status 200)
+- [x] ~~**CI/CD** - GitHub Actions workflow kører tests automatisk ved push~~ (123 tests total)
 
 ### ⚠️ VIGTIGT - Dokumentation
 - [ ] **Ved ALLE ændringer i analyselogik:** Opdater `ANALYSELOGIK.md`
