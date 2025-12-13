@@ -20,9 +20,9 @@
 - [x] ~~**Auth test** - Login, logout, authorization (8 tests)~~
 - [x] ~~**Route test** - Alle endpoints, navigation, 404 håndtering (21 tests)~~
 - [x] ~~**Sikkerhedstest** - SQL injection, XSS, auth bypass, session hijacking (12 tests)~~
-- [x] ~~**UI/UX test** - Playwright tests af brugerflows~~ (16 tests: login, navigation, organisation tree, campaigns, backup, responsive)
-- [x] ~~**Integration test** - End-to-end test af survey flow~~ (14 tests: survey workflow, organisation CRUD, backup cycle, email, analysis, multi-tenant)
-- [x] ~~**CI/CD** - GitHub Actions workflow kører tests automatisk ved push~~ (72 unit/integration tests + 16 UI tests = 88 total)
+- [x] ~~**UI/UX test** - Playwright tests af brugerflows~~ (19 tests: login, dropdown navigation, organisation tree, campaigns, backup, responsive)
+- [x] ~~**Integration test** - End-to-end test af survey flow~~ (22 tests inkl. superadmin access tests)
+- [x] ~~**CI/CD** - GitHub Actions workflow kører tests automatisk ved push~~ (106 tests total)
 
 ### ⚠️ VIGTIGT - Dokumentation
 - [ ] **Ved ALLE ændringer i analyselogik:** Opdater `ANALYSELOGIK.md`
