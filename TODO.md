@@ -102,11 +102,15 @@ GOOGLE_CLIENT_SECRET=xxx
 - [x] ~~Terminologi: "kampagne" → "måling"~~
 - [x] ~~Favicon: Kompas-nål design~~
 - [x] ~~**Slet toplevel organisationer** - Mulighed for at slette kunder/toplevel fra organisationsoversigten~~
-- [ ] **Organiser navigation med undermenuer** - Der er for mange links i sidebar, grupper dem:
-  - Analyser (Analyser, Nøgletal, Trend)
-  - Målinger (Alle målinger, Planlagte, Ny måling)
-  - Organisation (Organisationer, Kunder/Brugere)
-  - Indstillinger (dropdown allerede implementeret)
+- [x] ~~**Organiser navigation med undermenuer** - Dashboard først, dropdown-menuer for Målinger, Friktionsprofil, Organisation, Indstillinger~~
+
+### Målingstype-konfiguration ✅ NY
+- [x] ~~**Database tabeller** - assessment_types, customer_assessment_types, domain_assessment_types, presets~~
+- [x] ~~**7 målingstyper** - screening, profil_fuld, profil_situation, gruppe_friktion, gruppe_leder, kapacitet, baandbredde~~
+- [x] ~~**3 presets** - B2C Individuel (default), B2B Standard, Enterprise Full~~
+- [x] ~~**Helper funktion** - get_available_assessments() med fallback: domain → customer → preset → alle~~
+- [x] ~~**Admin UI** - /admin/assessment-types (superadmin) + per-kunde konfiguration~~
+- Se detaljeret plan: `PLAN_maalingstyper.md`
 
 ### CSV Import
 - [x] ~~Semikolon separator (Excel standard)~~
