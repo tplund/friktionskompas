@@ -25,6 +25,13 @@ HERNING_UNIT_NAMES = [
     'Hammerum Skole',
 ]
 
+# Herning B2C units (Borgere afdeling)
+HERNING_B2C_UNIT_NAMES = [
+    'Individuel Screening',
+    'Par-profiler',
+    'Karrierevejledning',
+]
+
 # Known Esbjerg units (from actual data)
 ESBJERG_UNIT_NAMES = [
     'Sundhedscentret',
@@ -293,3 +300,59 @@ class TestSuperadminUnfilteredSeesAll(TestIntegrationFixtures):
         """Superadmin without filter should see all data on analyser."""
         response = superadmin_no_filter.get('/admin/analyser')
         assert response.status_code == 200
+
+
+class TestTrendAnalysis(TestIntegrationFixtures):
+    """Tests for trend analysis page with time-series data."""
+
+    def test_herning_manager_trend_page_loads(self, herning_manager_client):
+        """Herning manager should be able to access trend page."""
+        response = herning_manager_client.get('/admin/trend')
+        assert response.status_code == 200
+
+    def test_herning_manager_trend_shows_herning_units(self, herning_manager_client):
+        """Herning manager's trend page should show Herning units in dropdown."""
+        response = herning_manager_client.get('/admin/trend')
+        data = response.data.decode('utf-8')
+
+        assert response.status_code == 200
+        # Should see Herning units in filter dropdown
+        assert 'Birk Skole' in data or 'Aktivitetscentret Midt' in data
+
+    def test_herning_manager_trend_no_esbjerg(self, herning_manager_client):
+        """Herning manager's trend page should NOT show Esbjerg units."""
+        response = herning_manager_client.get('/admin/trend')
+        data = response.data.decode('utf-8')
+
+        assert response.status_code == 200
+        for esbjerg_unit in ESBJERG_UNIT_NAMES:
+            assert esbjerg_unit not in data
+
+    def test_superadmin_filter_herning_trend_no_esbjerg(self, superadmin_filter_herning):
+        """Superadmin filtered to Herning - trend should NOT show Esbjerg."""
+        response = superadmin_filter_herning.get('/admin/trend')
+        data = response.data.decode('utf-8')
+
+        assert response.status_code == 200
+        for esbjerg_unit in ESBJERG_UNIT_NAMES:
+            assert esbjerg_unit not in data
+
+
+class TestNoegletalDashboard(TestIntegrationFixtures):
+    """Tests for nøgletal (key metrics) dashboard."""
+
+    def test_herning_manager_noegletal_loads(self, herning_manager_client):
+        """Herning manager should be able to access nøgletal dashboard."""
+        response = herning_manager_client.get('/admin/noegletal')
+        assert response.status_code == 200
+
+    def test_superadmin_filter_herning_noegletal_no_esbjerg(self, superadmin_filter_herning):
+        """Superadmin filtered to Herning - nøgletal should NOT show Esbjerg units in data."""
+        response = superadmin_filter_herning.get('/admin/noegletal')
+        data = response.data.decode('utf-8')
+
+        assert response.status_code == 200
+        # Should not see Esbjerg units in the data content
+        # Note: Esbjerg Kommune may appear in customer dropdown (expected)
+        for esbjerg_unit in ESBJERG_UNIT_NAMES:
+            assert esbjerg_unit not in data, f"Found Esbjerg unit '{esbjerg_unit}' in nøgletal when filtered to Herning"
