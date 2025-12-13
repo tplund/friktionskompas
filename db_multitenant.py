@@ -701,7 +701,7 @@ def change_password(user_id: str, new_password: str):
 # CUSTOMER ISOLATION HELPERS
 # ========================================
 
-def get_customer_filter(user_role: str, customer_id: Optional[str]) -> tuple:
+def get_customer_filter(user_role: str, customer_id: Optional[str], session_filter: Optional[int] = None) -> tuple:
     """
     Returner SQL WHERE clause og params for customer filtering
 
@@ -709,23 +709,36 @@ def get_customer_filter(user_role: str, customer_id: Optional[str]) -> tuple:
         (where_clause, params)
 
     Roles:
-        - superadmin: Kan se alt (customer_id = None)
-        - admin: Kun egen kunde (customer_id påkrævet)
+        - superadmin: Kan se alt, eller filtreret hvis session_filter er sat
+        - admin: Kan se alt, eller filtreret hvis session_filter er sat
         - manager: Kun egen kunde (customer_id påkrævet)
+
+    Args:
+        user_role: Brugerens rolle
+        customer_id: Brugerens faste customer_id (for managers)
+        session_filter: Optional customer_filter fra session (for admin/superadmin)
 
     Eksempel:
         where, params = get_customer_filter('manager', 'cust-123')
         # Returns: ("ou.customer_id = ?", ['cust-123'])
 
+        # For superadmin med valgt kunde:
+        where, params = get_customer_filter('superadmin', None, session.get('customer_filter'))
+        # Returns: ("ou.customer_id = ?", [123]) hvis filter sat
+
         sql = f"SELECT * FROM organizational_units WHERE {where}"
         conn.execute(sql, params)
     """
+    # For managers, always use their customer_id
     if customer_id:
-        # Hvis customer_id er sat (admin/manager), filtrer på den
         return ("ou.customer_id = ?", [customer_id])
-    else:
-        # Superadmin uden customer_id kan se alt
-        return ("1=1", [])
+
+    # For admin/superadmin, check session filter
+    if session_filter:
+        return ("ou.customer_id = ?", [session_filter])
+
+    # Admin/superadmin without filter can see all
+    return ("1=1", [])
 
 
 # ========================================

@@ -199,6 +199,31 @@ GOOGLE_CLIENT_SECRET=xxx
 
 ---
 
+## 🔧 Små Forbedringer (Nice-to-have)
+
+### UX/UI
+- [ ] **Mobile responsiveness** - Test og forbedring af mobilvisning
+- [ ] **Bedre fejlbeskeder** - Mere informative fejlbeskeder ved validation errors
+- [ ] **Loading states** - Tydeligere loading-indikatorer på lange operationer
+- [ ] **Keyboard navigation** - Tab-navigation og Enter-submit på forms
+
+### Dokumentation
+- [ ] **Admin dokumentation** - Vejledning til admin-brugere (målinger, organisationer, analyser)
+- [ ] **Manager dokumentation** - Vejledning til managers (resultater, rapporter)
+- [ ] **Friktionsprofil dokumentation** - Forklaring af tests og resultater til slutbrugere
+
+### Teknisk
+- [ ] **Session timeout** - Auto-logout efter inaktivitet
+- [ ] **Audit log** - Logning af vigtige handlinger (sletninger, ændringer)
+- [ ] **Database vacuum** - Automatisk cleanup af slettet data
+
+### B2C Forberedelse
+- [ ] **Landing page** - Public info-side om Friktionskompasset
+- [ ] **Prøveresultat** - Teaser-visning af resultater før betaling
+- [ ] **Email capture** - Nyhedsbrev signup på landing page
+
+---
+
 ## 🎯 STOR OPGAVE: Validering af spørgsmål ⏸️ VENTER
 
 > ⚠️ **VIGTIGT**: Denne opgave er sat på pause. Teorigrundlaget forventes at ændre sig.

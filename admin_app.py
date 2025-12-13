@@ -789,7 +789,7 @@ Niels;Olsen;niels@techcorp.dk;+4512345017;TechCorp//Sales//DACH"""
 
     # Find top-level organisationer
     with get_db() as conn:
-        where_clause, params = get_customer_filter(user['role'], user['customer_id'])
+        where_clause, params = get_customer_filter(user['role'], user['customer_id'], session.get('customer_filter'))
         top_units = conn.execute(f"""
             SELECT id, name, full_path
             FROM organizational_units
@@ -1094,7 +1094,7 @@ def admin_trend():
 def campaigns_overview():
     """Oversigt over alle analyser/kampagner"""
     user = get_current_user()
-    where_clause, params = get_customer_filter(user['role'], user['customer_id'])
+    where_clause, params = get_customer_filter(user['role'], user['customer_id'], session.get('customer_filter'))
 
     with get_db() as conn:
         # Hent alle campaigns med stats
@@ -1152,7 +1152,7 @@ def campaigns_overview():
 def scheduled_campaigns():
     """Oversigt over planlagte målinger"""
     user = get_current_user()
-    where_clause, params = get_customer_filter(user['role'], user['customer_id'])
+    where_clause, params = get_customer_filter(user['role'], user['customer_id'], session.get('customer_filter'))
 
     with get_db() as conn:
         # Hent scheduled campaigns
@@ -1185,7 +1185,7 @@ def cancel_campaign(campaign_id):
 
     # Verificer at brugeren har adgang til kampagnen
     with get_db() as conn:
-        where_clause, params = get_customer_filter(user['role'], user['customer_id'])
+        where_clause, params = get_customer_filter(user['role'], user['customer_id'], session.get('customer_filter'))
         campaign = conn.execute(f"""
             SELECT c.* FROM campaigns c
             JOIN organizational_units ou ON c.target_unit_id = ou.id
@@ -1215,7 +1215,7 @@ def reschedule_campaign_route(campaign_id):
 
     # Verificer at brugeren har adgang til kampagnen
     with get_db() as conn:
-        where_clause, params = get_customer_filter(user['role'], user['customer_id'])
+        where_clause, params = get_customer_filter(user['role'], user['customer_id'], session.get('customer_filter'))
         campaign = conn.execute(f"""
             SELECT c.* FROM campaigns c
             JOIN organizational_units ou ON c.target_unit_id = ou.id
@@ -1250,7 +1250,7 @@ def reschedule_campaign_route(campaign_id):
 def analyser():
     """Analyser: Aggregeret friktionsdata på tværs af organisationen"""
     user = get_current_user()
-    where_clause, params = get_customer_filter(user['role'], user['customer_id'])
+    where_clause, params = get_customer_filter(user['role'], user['customer_id'], session.get('customer_filter'))
 
     # Get filter parameters
     campaign_id = request.args.get('campaign_id', type=int)
@@ -1669,7 +1669,7 @@ def view_unit(unit_id):
 
     with get_db() as conn:
         # Hent unit med customer filter
-        where_clause, params = get_customer_filter(user['role'], user['customer_id'])
+        where_clause, params = get_customer_filter(user['role'], user['customer_id'], session.get('customer_filter'))
         unit = conn.execute(
             f"SELECT * FROM organizational_units ou WHERE ou.id = ? AND ({where_clause})",
             [unit_id] + params
@@ -1748,14 +1748,14 @@ def new_unit():
     # Check if parent_id is provided in query parameter
     default_parent_id = request.args.get('parent')
 
-    where_clause, params = get_customer_filter(user['role'], user['customer_id'])
+    where_clause, params = get_customer_filter(user['role'], user['customer_id'], session.get('customer_filter'))
     with get_db() as conn:
         # Alle units til parent dropdown (filtreret efter customer)
         all_units = conn.execute(f"""
-            SELECT id, name, full_path, level
-            FROM organizational_units
+            SELECT ou.id, ou.name, ou.full_path, ou.level
+            FROM organizational_units ou
             WHERE {where_clause}
-            ORDER BY full_path
+            ORDER BY ou.full_path
         """, params).fetchall()
 
     return render_template('admin/new_unit.html',
@@ -1818,7 +1818,7 @@ def delete_unit(unit_id):
 
     with get_db() as conn:
         # Check access rights
-        where_clause, params = get_customer_filter(user['role'], user['customer_id'])
+        where_clause, params = get_customer_filter(user['role'], user['customer_id'], session.get('customer_filter'))
         unit = conn.execute(
             f"SELECT * FROM organizational_units ou WHERE ou.id = ? AND ({where_clause})",
             [unit_id] + params
@@ -1987,7 +1987,7 @@ def new_campaign():
             return redirect(url_for('view_campaign', campaign_id=campaign_id))
 
     # GET: Vis form - kun units fra samme customer
-    where_clause, params = get_customer_filter(user['role'], user['customer_id'])
+    where_clause, params = get_customer_filter(user['role'], user['customer_id'], session.get('customer_filter'))
     with get_db() as conn:
         # Alle units til dropdown (filtreret efter customer)
         units = conn.execute(f"""
@@ -2009,7 +2009,7 @@ def view_campaign(campaign_id):
 
     with get_db() as conn:
         # Hent campaign med customer filter
-        where_clause, params = get_customer_filter(user['role'], user['customer_id'])
+        where_clause, params = get_customer_filter(user['role'], user['customer_id'], session.get('customer_filter'))
         campaign = conn.execute(f"""
             SELECT c.* FROM campaigns c
             JOIN organizational_units ou ON c.target_unit_id = ou.id
@@ -2060,7 +2060,7 @@ def delete_campaign(campaign_id):
 
     with get_db() as conn:
         # Hent campaign med customer filter for at verificere adgang
-        where_clause, params = get_customer_filter(user['role'], user['customer_id'])
+        where_clause, params = get_customer_filter(user['role'], user['customer_id'], session.get('customer_filter'))
         campaign = conn.execute(f"""
             SELECT c.*, ou.name as unit_name FROM campaigns c
             JOIN organizational_units ou ON c.target_unit_id = ou.id
@@ -2389,7 +2389,7 @@ def manager_dashboard():
     user = get_current_user()
 
     # Hent alle top-level units (for admin) eller kun customer units (for manager)
-    where_clause, params = get_customer_filter(user['role'], user['customer_id'])
+    where_clause, params = get_customer_filter(user['role'], user['customer_id'], session.get('customer_filter'))
 
     with get_db() as conn:
         # Hent organisationer
@@ -2427,7 +2427,7 @@ def unit_dashboard(unit_id):
 
     with get_db() as conn:
         # Hent unit med customer filter
-        where_clause, params = get_customer_filter(user['role'], user['customer_id'])
+        where_clause, params = get_customer_filter(user['role'], user['customer_id'], session.get('customer_filter'))
         unit = conn.execute(
             f"SELECT * FROM organizational_units ou WHERE ou.id = ? AND ({where_clause})",
             [unit_id] + params
