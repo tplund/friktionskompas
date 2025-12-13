@@ -438,8 +438,6 @@
                 </div>
                 {% if item.child_count > 0 %}
                 <span class="org-card-badge drilldown">{{ item.child_count }} {{ t('dashboard.subunits') }}</span>
-                {% elif item.direct_campaign_id %}
-                <span class="org-card-badge campaign">{{ t('dashboard.see_analysis') }}</span>
                 {% endif %}
             </div>
 
