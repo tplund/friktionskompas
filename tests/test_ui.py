@@ -77,27 +77,42 @@ class TestLoginFlow:
 
 
 class TestAdminNavigation:
-    """Test admin interface navigation."""
+    """Test admin interface navigation with dropdown menus."""
 
     def test_navigation_menu_visible(self, logged_in_page: Page):
         """Test that navigation menu is visible after login."""
         expect(logged_in_page.locator('nav').first).to_be_visible()
 
     def test_navigate_to_noegletal(self, logged_in_page: Page, live_server):
-        """Test navigation to nøgletal dashboard."""
-        logged_in_page.click('a:has-text("Nøgletal")')
+        """Test navigation to nøgletal dashboard via dropdown."""
+        # First hover on Målinger dropdown to reveal submenu
+        logged_in_page.hover('.submenu-dropdown:has(.dropdown-toggle:has-text("Målinger"))')
+        logged_in_page.wait_for_timeout(300)  # Wait for dropdown to open
+        logged_in_page.click('.dropdown-menu a:has-text("Nøgletal")')
         logged_in_page.wait_for_load_state('networkidle', timeout=5000)
         expect(logged_in_page.locator('.stat-card').first).to_be_visible()
 
     def test_navigate_to_organisationer(self, logged_in_page: Page, live_server):
-        """Test navigation to organisations page."""
-        logged_in_page.click('a:has-text("Organisationer")')
+        """Test navigation to organisations page via dropdown."""
+        # First hover on Organisation dropdown to reveal submenu
+        logged_in_page.hover('.submenu-dropdown:has(.dropdown-toggle:has-text("Organisation"))')
+        logged_in_page.wait_for_timeout(300)  # Wait for dropdown to open
+        logged_in_page.click('.dropdown-menu a:has-text("Organisationer")')
         logged_in_page.wait_for_load_state('networkidle', timeout=5000)
 
     def test_navigate_to_analyser(self, logged_in_page: Page, live_server):
-        """Test navigation to analyser page."""
-        logged_in_page.click('a:has-text("Analyser")')
+        """Test navigation to analyser page via dropdown."""
+        # First hover on Målinger dropdown to reveal submenu
+        logged_in_page.hover('.submenu-dropdown:has(.dropdown-toggle:has-text("Målinger"))')
+        logged_in_page.wait_for_timeout(300)  # Wait for dropdown to open
+        logged_in_page.click('.dropdown-menu a:has-text("Analyser")')
         logged_in_page.wait_for_load_state('networkidle', timeout=5000)
+
+    def test_dashboard_link_visible(self, logged_in_page: Page):
+        """Test that Dashboard link is directly visible (first item in submenu)."""
+        # Dashboard link is in submenu, uses href="/admin/dashboard"
+        dashboard_link = logged_in_page.locator('.submenu a[href="/admin/dashboard"]')
+        expect(dashboard_link).to_be_visible()
 
 
 class TestOrganisationTree:

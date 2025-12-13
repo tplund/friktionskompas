@@ -239,3 +239,34 @@ def manager_client(client):
             'customer_name': 'Test Kunde'
         }
     return client
+
+
+@pytest.fixture
+def superadmin_client(client):
+    """Create an authenticated test client (as superadmin)."""
+    with client.session_transaction() as sess:
+        sess['user'] = {
+            'id': 3,
+            'email': 'superadmin@test.com',
+            'name': 'Test Superadmin',
+            'role': 'superadmin',
+            'customer_id': None,
+            'customer_name': None
+        }
+    return client
+
+
+@pytest.fixture
+def superadmin_with_customer_filter(client):
+    """Create superadmin client with customer filter set (simulating customer selection)."""
+    with client.session_transaction() as sess:
+        sess['user'] = {
+            'id': 3,
+            'email': 'superadmin@test.com',
+            'name': 'Test Superadmin',
+            'role': 'superadmin',
+            'customer_id': None,
+            'customer_name': None
+        }
+        sess['customer_filter'] = 1  # Set customer filter to Test Kunde
+    return client

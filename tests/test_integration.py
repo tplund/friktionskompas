@@ -353,3 +353,57 @@ class TestMultiTenantIsolation:
         # Admin should be able to access customer filter
         response = authenticated_client.get('/admin/customers')
         assert response.status_code == 200
+
+
+class TestSuperadminAccess:
+    """Test that superadmin can access all admin functions with customer filter."""
+
+    def test_superadmin_can_access_noegletal(self, superadmin_client):
+        """Test superadmin can access nøgletal page."""
+        response = superadmin_client.get('/admin/noegletal')
+        assert response.status_code == 200
+
+    def test_superadmin_can_access_analyser(self, superadmin_client):
+        """Test superadmin can access analyser page."""
+        response = superadmin_client.get('/admin/analyser')
+        assert response.status_code == 200
+
+    def test_superadmin_can_access_trend(self, superadmin_client):
+        """Test superadmin can access trend page."""
+        response = superadmin_client.get('/admin/trend')
+        assert response.status_code == 200
+
+    def test_superadmin_can_access_org_dashboard(self, superadmin_client):
+        """Test superadmin can access org dashboard."""
+        response = superadmin_client.get('/admin/dashboard')
+        assert response.status_code == 200
+
+    def test_superadmin_with_customer_filter_sees_customer_data(self, superadmin_with_customer_filter, app):
+        """Test that superadmin with customer filter sees that customer's data."""
+        # Access nøgletal - should see customer-filtered data
+        response = superadmin_with_customer_filter.get('/admin/noegletal')
+        assert response.status_code == 200
+
+        # Access analyser - should see customer-filtered data
+        response = superadmin_with_customer_filter.get('/admin/analyser')
+        assert response.status_code == 200
+
+        # Access trend - should see customer-filtered data
+        response = superadmin_with_customer_filter.get('/admin/trend')
+        assert response.status_code == 200
+
+    def test_superadmin_can_impersonate_customer(self, superadmin_client, app):
+        """Test superadmin can impersonate a customer."""
+        # Impersonate customer 1
+        response = superadmin_client.get('/admin/impersonate/1', follow_redirects=False)
+        assert response.status_code == 302  # Should redirect
+
+    def test_superadmin_can_access_profil_questions(self, superadmin_client):
+        """Test superadmin can access profil questions admin."""
+        response = superadmin_client.get('/admin/profil-questions')
+        assert response.status_code == 200
+
+    def test_superadmin_can_access_seed_testdata(self, superadmin_client):
+        """Test superadmin can access seed testdata page."""
+        response = superadmin_client.get('/admin/seed-testdata')
+        assert response.status_code == 200

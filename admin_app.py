@@ -115,9 +115,9 @@ def detect_domain():
         # Auto-set language based on domain if not already set by user
         if 'language' not in session:
             session['language'] = domain_config.get('default_language', 'da')
-        # Auto-set customer filter based on domain if user is admin and no filter set
+        # Auto-set customer filter based on domain if user is admin/superadmin and no filter set
         if domain_config.get('customer_id') and 'user' in session:
-            if session['user']['role'] == 'admin' and 'customer_filter' not in session:
+            if session['user']['role'] in ('admin', 'superadmin') and 'customer_filter' not in session:
                 session['customer_filter'] = domain_config['customer_id']
     else:
         g.domain_config = None
@@ -933,7 +933,7 @@ def admin_noegletal():
         if customer_filter:
             customer_where = "WHERE ou.customer_id = ?"
             customer_params = [customer_filter]
-        elif user['role'] != 'admin':
+        elif user['role'] not in ('admin', 'superadmin'):
             customer_where = "WHERE ou.customer_id = ?"
             customer_params = [user['customer_id']]
         else:
@@ -941,7 +941,7 @@ def admin_noegletal():
             customer_params = []
 
         # Totale stats
-        if customer_filter or user['role'] != 'admin':
+        if customer_filter or user['role'] not in ('admin', 'superadmin'):
             cid = customer_filter or user['customer_id']
             total_customers = 1
             total_units = conn.execute(
@@ -1060,7 +1060,7 @@ def admin_trend():
     unit_id = request.args.get('unit_id')
 
     # Get trend data
-    if customer_filter or user['role'] != 'admin':
+    if customer_filter or user['role'] not in ('admin', 'superadmin'):
         cid = customer_filter or user['customer_id']
         trend_data = get_trend_data(unit_id=unit_id, customer_id=cid)
     else:
@@ -1068,7 +1068,7 @@ def admin_trend():
 
     # Get available units for filter dropdown
     with get_db() as conn:
-        if customer_filter or user['role'] != 'admin':
+        if customer_filter or user['role'] not in ('admin', 'superadmin'):
             cid = customer_filter or user['customer_id']
             units = conn.execute("""
                 SELECT id, name, full_path, level
@@ -1347,7 +1347,7 @@ def analyser():
         conditions = []
         query_params = []
 
-        if user['role'] != 'admin':
+        if user['role'] not in ('admin', 'superadmin'):
             conditions.append("ou.customer_id = ?")
             query_params.append(user['customer_id'])
 
@@ -1872,7 +1872,7 @@ def bulk_delete_units():
     """Slet flere organisationer på én gang"""
     user = get_current_user()
 
-    if user['role'] != 'admin':
+    if user['role'] not in ('admin', 'superadmin'):
         flash('Kun administratorer kan bulk-slette', 'error')
         return redirect(url_for('admin_home'))
 
@@ -1913,7 +1913,7 @@ def api_move_unit(unit_id):
     from db_hierarchical import move_unit
 
     user = get_current_user()
-    if user['role'] != 'admin':
+    if user['role'] not in ('admin', 'superadmin'):
         return jsonify({'success': False, 'error': 'Kun administratorer kan flytte organisationer'}), 403
 
     data = request.get_json()
@@ -2899,9 +2899,9 @@ def profil_admin_list():
     """Liste alle profiler"""
     user = session['user']
 
-    # Filter på customer hvis ikke admin
+    # Filter på customer hvis ikke admin/superadmin
     customer_id = None
-    if user['role'] != 'admin':
+    if user['role'] not in ('admin', 'superadmin'):
         customer_id = user.get('customer_id')
 
     sessions = list_profil_sessions(customer_id=customer_id, include_incomplete=True)
@@ -3309,7 +3309,7 @@ def api_save_template():
 @login_required
 def profil_questions_admin():
     """Admin interface for profil-spørgsmål"""
-    if session['user']['role'] != 'admin':
+    if session['user']['role'] not in ('admin', 'superadmin'):
         flash('Kun administratorer har adgang til denne side', 'error')
         return redirect('/admin')
 
@@ -3370,7 +3370,7 @@ def save_profil_intro_texts(texts: dict):
 @login_required
 def api_create_profil_question():
     """API: Opret nyt profil-spørgsmål"""
-    if session['user']['role'] != 'admin':
+    if session['user']['role'] not in ('admin', 'superadmin'):
         return jsonify({'success': False, 'error': 'Ikke autoriseret'}), 403
 
     data = request.get_json()
@@ -3405,7 +3405,7 @@ def api_create_profil_question():
 @login_required
 def api_update_profil_question(question_id):
     """API: Opdater profil-spørgsmål"""
-    if session['user']['role'] != 'admin':
+    if session['user']['role'] not in ('admin', 'superadmin'):
         return jsonify({'success': False, 'error': 'Ikke autoriseret'}), 403
 
     data = request.get_json()
@@ -3443,7 +3443,7 @@ def api_update_profil_question(question_id):
 @login_required
 def api_delete_profil_question(question_id):
     """API: Slet profil-spørgsmål"""
-    if session['user']['role'] != 'admin':
+    if session['user']['role'] not in ('admin', 'superadmin'):
         return jsonify({'success': False, 'error': 'Ikke autoriseret'}), 403
 
     try:
@@ -3458,7 +3458,7 @@ def api_delete_profil_question(question_id):
 @login_required
 def api_save_profil_intro_texts():
     """API: Gem intro/outro tekster"""
-    if session['user']['role'] != 'admin':
+    if session['user']['role'] not in ('admin', 'superadmin'):
         return jsonify({'success': False, 'error': 'Ikke autoriseret'}), 403
 
     data = request.get_json()
@@ -3473,7 +3473,7 @@ def api_save_profil_intro_texts():
 @login_required
 def seed_testdata():
     """Kør seed script for at generere testdata"""
-    if session['user']['role'] != 'admin':
+    if session['user']['role'] not in ('admin', 'superadmin'):
         flash('Kun administratorer kan køre seed', 'error')
         return redirect('/admin')
 
@@ -3507,7 +3507,7 @@ def seed_testdata():
 @login_required
 def seed_testdata_page():
     """Vis seed-side"""
-    if session['user']['role'] != 'admin':
+    if session['user']['role'] not in ('admin', 'superadmin'):
         flash('Kun administratorer har adgang', 'error')
         return redirect('/admin')
 
@@ -3977,7 +3977,7 @@ def full_reset():
 @login_required
 def upload_database():
     """Upload en database fil direkte"""
-    if session['user']['role'] != 'admin':
+    if session['user']['role'] not in ('admin', 'superadmin'):
         return "Ikke tilladt", 403
 
     from db_hierarchical import DB_PATH
@@ -4015,7 +4015,7 @@ def upload_database():
 @login_required
 def cleanup_empty_units():
     """SLET ALT og importer ren lokal database"""
-    if session['user']['role'] != 'admin':
+    if session['user']['role'] not in ('admin', 'superadmin'):
         return "Ikke tilladt", 403
 
     import json
@@ -4114,9 +4114,12 @@ def org_dashboard(customer_id=None, unit_id=None):
     """
     user = get_current_user()
 
-    # Hvis ikke admin, tving til egen kunde
-    if user['role'] != 'admin':
+    # Hvis ikke admin/superadmin, tving til egen kunde
+    if user['role'] not in ('admin', 'superadmin'):
         customer_id = user['customer_id']
+    # For admin/superadmin: brug customer_filter fra session hvis sat
+    elif not customer_id and session.get('customer_filter'):
+        customer_id = session.get('customer_filter')
 
     with get_db() as conn:
         # Niveau 1: Vis alle kunder (kun admin/superadmin uden customer_id)
