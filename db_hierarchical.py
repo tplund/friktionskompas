@@ -272,6 +272,26 @@ def init_db():
             conn.execute("ALTER TABLE assessments ADD COLUMN mode TEXT DEFAULT 'anonymous'")
         except:
             pass
+        try:
+            conn.execute("ALTER TABLE assessments ADD COLUMN include_leader_assessment INTEGER DEFAULT 0")
+        except:
+            pass
+        try:
+            conn.execute("ALTER TABLE assessments ADD COLUMN include_leader_self INTEGER DEFAULT 0")
+        except:
+            pass
+        try:
+            conn.execute("ALTER TABLE assessments ADD COLUMN scheduled_at TIMESTAMP")
+        except:
+            pass
+        try:
+            conn.execute("ALTER TABLE assessments ADD COLUMN status TEXT DEFAULT 'sent'")
+        except:
+            pass
+        try:
+            conn.execute("ALTER TABLE assessments ADD COLUMN sender_name TEXT DEFAULT 'HR'")
+        except:
+            pass
         
         # Tokens (genereres per leaf-unit)
         conn.execute("""
