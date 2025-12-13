@@ -41,6 +41,14 @@ def migrate_campaign_to_assessment():
             "SELECT name FROM sqlite_master WHERE type='table'"
         ).fetchall()]
 
+        # Check if tokens table has campaign_id column (need to migrate)
+        needs_column_migration = False
+        if 'tokens' in tables:
+            columns = [r[1] for r in conn.execute("PRAGMA table_info(tokens)").fetchall()]
+            if 'campaign_id' in columns:
+                needs_column_migration = True
+                print("Found tokens.campaign_id - need to migrate columns")
+
         if 'campaigns' in tables and 'assessments' not in tables:
             print("Migrating database: campaign -> assessment...")
 
@@ -135,6 +143,66 @@ def migrate_campaign_to_assessment():
             conn.execute("CREATE INDEX IF NOT EXISTS idx_responses_assessment ON responses(assessment_id)")
 
             print("Migration complete!")
+        elif needs_column_migration:
+            # Table was renamed but columns weren't migrated (partial migration)
+            print("Completing partial migration: migrating columns...")
+
+            # Migrate tokens table
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS tokens_new (
+                    token TEXT PRIMARY KEY,
+                    assessment_id TEXT NOT NULL,
+                    unit_id TEXT NOT NULL,
+                    respondent_type TEXT DEFAULT 'employee',
+                    respondent_name TEXT,
+                    is_used INTEGER DEFAULT 0,
+                    used_at TIMESTAMP,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (assessment_id) REFERENCES assessments(id) ON DELETE CASCADE,
+                    FOREIGN KEY (unit_id) REFERENCES organizational_units(id) ON DELETE CASCADE
+                )
+            """)
+            conn.execute("""
+                INSERT INTO tokens_new (token, assessment_id, unit_id, respondent_type, respondent_name, is_used, used_at, created_at)
+                SELECT token, campaign_id, unit_id, respondent_type, respondent_name, is_used, used_at, created_at
+                FROM tokens
+            """)
+            conn.execute("DROP TABLE tokens")
+            conn.execute("ALTER TABLE tokens_new RENAME TO tokens")
+            print("  Migrated tokens.campaign_id -> assessment_id")
+
+            # Migrate responses table
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS responses_new (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    assessment_id TEXT NOT NULL,
+                    unit_id TEXT NOT NULL,
+                    question_id INTEGER NOT NULL,
+                    score INTEGER NOT NULL CHECK(score BETWEEN 1 AND 5),
+                    comment TEXT,
+                    category_comment TEXT,
+                    respondent_type TEXT DEFAULT 'employee',
+                    respondent_name TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (assessment_id) REFERENCES assessments(id) ON DELETE CASCADE,
+                    FOREIGN KEY (unit_id) REFERENCES organizational_units(id) ON DELETE CASCADE,
+                    FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE
+                )
+            """)
+            conn.execute("""
+                INSERT INTO responses_new (id, assessment_id, unit_id, question_id, score, comment, category_comment, respondent_type, respondent_name, created_at)
+                SELECT id, campaign_id, unit_id, question_id, score, comment, category_comment, respondent_type, respondent_name, created_at
+                FROM responses
+            """)
+            conn.execute("DROP TABLE responses")
+            conn.execute("ALTER TABLE responses_new RENAME TO responses")
+            print("  Migrated responses.campaign_id -> assessment_id")
+
+            # Recreate indexes
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_tokens_assessment_unit ON tokens(assessment_id, unit_id)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_responses_assessment ON responses(assessment_id)")
+
+            print("Partial migration complete!")
         elif 'assessments' in tables:
             print("Database already migrated to 'assessment' terminology")
         else:
