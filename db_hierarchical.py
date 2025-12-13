@@ -36,6 +36,9 @@ def migrate_campaign_to_assessment():
     """Migrate from 'campaign' to 'assessment' terminology in database.
     This runs automatically before init_db() and is safe to run multiple times."""
     with get_db() as conn:
+        # Disable foreign keys during migration to avoid constraint errors
+        conn.execute("PRAGMA foreign_keys=OFF")
+
         # Check if migration is needed by looking for old table names
         tables = [r[0] for r in conn.execute(
             "SELECT name FROM sqlite_master WHERE type='table'"
