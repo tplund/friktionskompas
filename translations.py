@@ -126,7 +126,7 @@ def get_question_translation(question_id, lang=None):
 
 # Initial translations for seeding
 INITIAL_TRANSLATIONS = {
-    # Navigation
+    # Navigation - Main menu items
     'nav.noegletal': {'da': 'Nøgletal', 'en': 'Key Metrics'},
     'nav.dashboard': {'da': 'Dashboard', 'en': 'Dashboard'},
     'nav.analyser': {'da': 'Analyser', 'en': 'Analyses'},
@@ -137,6 +137,23 @@ INITIAL_TRANSLATIONS = {
     'nav.indstillinger': {'da': 'Indstillinger', 'en': 'Settings'},
     'nav.logout': {'da': 'Log ud', 'en': 'Log out'},
     'nav.trend': {'da': 'Trend', 'en': 'Trend'},
+
+    # Navigation - Dropdown groups
+    'nav.maalinger': {'da': 'Målinger', 'en': 'Measurements'},
+    'nav.planlagte': {'da': 'Planlagte', 'en': 'Scheduled'},
+    'nav.ny_maaling': {'da': 'Ny måling', 'en': 'New measurement'},
+    'nav.friktionsprofil': {'da': 'Friktionsprofil', 'en': 'Friction Profile'},
+    'nav.alle_profiler': {'da': 'Alle profiler', 'en': 'All profiles'},
+    'nav.tag_test': {'da': 'Tag profil-test', 'en': 'Take profile test'},
+    'nav.organisation': {'da': 'Organisation', 'en': 'Organization'},
+    'nav.domaener': {'da': 'Domæner', 'en': 'Domains'},
+    'nav.branding': {'da': 'Min Branding', 'en': 'My Branding'},
+    'nav.auth_config': {'da': 'Auth Konfiguration', 'en': 'Auth Configuration'},
+    'nav.profil_spoergsmaal': {'da': 'Profil-spørgsmål', 'en': 'Profile questions'},
+    'nav.email_status': {'da': 'Email Status', 'en': 'Email Status'},
+    'nav.email_templates': {'da': 'Email Templates', 'en': 'Email Templates'},
+    'nav.backup': {'da': 'Backup & Restore', 'en': 'Backup & Restore'},
+    'nav.dev_tools': {'da': 'Dev Tools', 'en': 'Dev Tools'},
 
     # Trend Analysis
     'trend.title': {'da': 'Trend Analyse', 'en': 'Trend Analysis'},

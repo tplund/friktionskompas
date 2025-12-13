@@ -319,31 +319,61 @@
             </ul>
 
             {% else %}
-            <!-- Adminvisning submenu -->
+            <!-- Adminvisning submenu - reorganiseret med dropdowns -->
             <ul class="submenu-links">
-                <li><a href="/admin/noegletal" {% if 'noegletal' in request.path %}class="active"{% endif %}>📊 {{ t('nav.noegletal') }}</a></li>
-                <li><a href="/admin/trend" {% if 'trend' in request.path %}class="active"{% endif %}>📈 {{ t('nav.trend') }}</a></li>
-                <li><a href="/admin/dashboard" {% if 'dashboard' in request.path and 'noegletal' not in request.path and 'trend' not in request.path %}class="active"{% endif %}>🏠 {{ t('nav.dashboard') }}</a></li>
-                <li><a href="/admin/analyser" {% if 'analyser' in request.path and 'dashboard' not in request.path %}class="active"{% endif %}>📋 {{ t('nav.analyser') }}</a></li>
-                <li><a href="/admin" {% if request.path == '/admin' and 'campaign' not in request.path and 'dashboard' not in request.path and 'analyser' not in request.path %}class="active"{% endif %}>🏢 {{ t('nav.organisationer') }}</a></li>
-                <li><a href="/admin/profiler" {% if 'profiler' in request.path and 'friktionsprofil' not in request.path %}class="active"{% endif %}>🔬 {{ t('nav.friktionsprofiler') }}</a></li>
-                <li><a href="/friktionsprofil/" {% if 'friktionsprofil' in request.path %}class="active"{% endif %} target="_blank">🧠 Individuel Profil ↗</a></li>
-                <li><a href="/admin/customers" {% if 'customers' in request.path %}class="active"{% endif %}>👥 {{ t('nav.kunder_brugere') }}</a></li>
-                <li><a href="/admin/domains" {% if 'domains' in request.path %}class="active"{% endif %}>🌐 Domæner</a></li>
-                <li><a href="/admin/campaigns-overview" {% if 'campaigns-overview' in request.path %}class="active"{% endif %}>📋 {{ t('nav.alle_maalinger') }}</a></li>
-                <li><a href="/admin/scheduled-campaigns" {% if 'scheduled-campaigns' in request.path %}class="active"{% endif %}>📅 {{ t('nav.planlagte', 'Planlagte') }}</a></li>
+                <!-- Dashboard - det vigtigste først -->
+                <li><a href="/admin/dashboard" {% if 'dashboard' in request.path and 'noegletal' not in request.path %}class="active"{% endif %}>🏠 {{ t('nav.dashboard') }}</a></li>
+
+                <!-- Målinger dropdown -->
+                <li class="submenu-dropdown">
+                    <a href="#" class="dropdown-toggle {% if 'campaigns' in request.path or 'scheduled' in request.path or 'analyser' in request.path or 'noegletal' in request.path or 'trend' in request.path %}active{% endif %}">📋 {{ t('nav.maalinger', 'Målinger') }} ▾</a>
+                    <ul class="dropdown-menu">
+                        <li><a href="/admin/campaigns-overview" {% if 'campaigns-overview' in request.path %}class="active"{% endif %}>📋 {{ t('nav.alle_maalinger') }}</a></li>
+                        <li><a href="/admin/scheduled-campaigns" {% if 'scheduled-campaigns' in request.path %}class="active"{% endif %}>📅 {{ t('nav.planlagte', 'Planlagte') }}</a></li>
+                        <li><a href="/admin/new-campaign" {% if 'new-campaign' in request.path %}class="active"{% endif %}>➕ {{ t('nav.ny_maaling', 'Ny måling') }}</a></li>
+                        <li style="border-top: 1px solid rgba(255,255,255,0.1); margin: 5px 0;"></li>
+                        <li><a href="/admin/analyser" {% if 'analyser' in request.path %}class="active"{% endif %}>📊 {{ t('nav.analyser') }}</a></li>
+                        <li><a href="/admin/noegletal" {% if 'noegletal' in request.path %}class="active"{% endif %}>📈 {{ t('nav.noegletal') }}</a></li>
+                        <li><a href="/admin/trend" {% if 'trend' in request.path %}class="active"{% endif %}>📉 {{ t('nav.trend') }}</a></li>
+                    </ul>
+                </li>
+
+                <!-- Friktionsprofil dropdown -->
+                <li class="submenu-dropdown">
+                    <a href="#" class="dropdown-toggle {% if 'profil' in request.path and 'profil-questions' not in request.path %}active{% endif %}">🧠 {{ t('nav.friktionsprofil', 'Friktionsprofil') }} ▾</a>
+                    <ul class="dropdown-menu">
+                        <li><a href="/admin/profiler" {% if request.path == '/admin/profiler' %}class="active"{% endif %}>📋 {{ t('nav.alle_profiler', 'Alle profiler') }}</a></li>
+                        <li><a href="/friktionsprofil/" target="_blank">🧪 {{ t('nav.tag_test', 'Tag profil-test') }} ↗</a></li>
+                    </ul>
+                </li>
+
+                <!-- Organisation dropdown -->
+                <li class="submenu-dropdown">
+                    <a href="#" class="dropdown-toggle {% if request.path == '/admin' or 'customers' in request.path or 'domains' in request.path %}active{% endif %}">🏢 {{ t('nav.organisation', 'Organisation') }} ▾</a>
+                    <ul class="dropdown-menu">
+                        <li><a href="/admin" {% if request.path == '/admin' %}class="active"{% endif %}>🌳 {{ t('nav.organisationer') }}</a></li>
+                        <li><a href="/admin/customers" {% if 'customers' in request.path %}class="active"{% endif %}>👥 {{ t('nav.kunder_brugere') }}</a></li>
+                        {% if session.user.role in ['admin', 'superadmin'] %}
+                        <li><a href="/admin/domains" {% if 'domains' in request.path %}class="active"{% endif %}>🌐 {{ t('nav.domaener', 'Domæner') }}</a></li>
+                        {% endif %}
+                    </ul>
+                </li>
+
+                <!-- Indstillinger dropdown -->
                 <li class="submenu-dropdown">
                     <a href="#" class="dropdown-toggle {% if 'email' in request.path or 'profil-questions' in request.path or 'backup' in request.path or 'dev-tools' in request.path or 'my-branding' in request.path or 'auth-config' in request.path %}active{% endif %}">⚙️ {{ t('nav.indstillinger') }} ▾</a>
                     <ul class="dropdown-menu">
-                        <li><a href="/admin/my-branding" {% if 'my-branding' in request.path %}class="active"{% endif %}>🎨 Min Branding</a></li>
+                        <li><a href="/admin/my-branding" {% if 'my-branding' in request.path %}class="active"{% endif %}>🎨 {{ t('nav.branding', 'Min Branding') }}</a></li>
                         {% if session.user.role == 'superadmin' %}
-                        <li><a href="/admin/auth-config" {% if 'auth-config' in request.path %}class="active"{% endif %}>🔐 Auth Konfiguration</a></li>
+                        <li><a href="/admin/auth-config" {% if 'auth-config' in request.path %}class="active"{% endif %}>🔐 {{ t('nav.auth_config', 'Auth Konfiguration') }}</a></li>
                         {% endif %}
-                        <li><a href="/admin/profil-questions" {% if 'profil-questions' in request.path %}class="active"{% endif %}>📝 Profil-spørgsmål</a></li>
-                        <li><a href="/admin/email-stats" {% if 'email-stats' in request.path %}class="active"{% endif %}>📧 Email Status</a></li>
-                        <li><a href="/admin/email-templates" {% if 'email-templates' in request.path %}class="active"{% endif %}>✉️ Email Templates</a></li>
-                        <li><a href="/admin/backup" {% if 'backup' in request.path %}class="active"{% endif %}>💾 Backup & Restore</a></li>
-                        <li><a href="/admin/dev-tools" {% if 'dev-tools' in request.path %}class="active"{% endif %}>🔧 Dev Tools</a></li>
+                        <li style="border-top: 1px solid rgba(255,255,255,0.1); margin: 5px 0;"></li>
+                        <li><a href="/admin/profil-questions" {% if 'profil-questions' in request.path %}class="active"{% endif %}>📝 {{ t('nav.profil_spoergsmaal', 'Profil-spørgsmål') }}</a></li>
+                        <li><a href="/admin/email-stats" {% if 'email-stats' in request.path %}class="active"{% endif %}>📧 {{ t('nav.email_status', 'Email Status') }}</a></li>
+                        <li><a href="/admin/email-templates" {% if 'email-templates' in request.path %}class="active"{% endif %}>✉️ {{ t('nav.email_templates', 'Email Templates') }}</a></li>
+                        <li style="border-top: 1px solid rgba(255,255,255,0.1); margin: 5px 0;"></li>
+                        <li><a href="/admin/backup" {% if 'backup' in request.path %}class="active"{% endif %}>💾 {{ t('nav.backup', 'Backup & Restore') }}</a></li>
+                        <li><a href="/admin/dev-tools" {% if 'dev-tools' in request.path %}class="active"{% endif %}>🔧 {{ t('nav.dev_tools', 'Dev Tools') }}</a></li>
                     </ul>
                 </li>
             </ul>
