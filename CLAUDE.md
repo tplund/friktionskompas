@@ -2,6 +2,16 @@
 
 ## VIGTIGT: Projekt Regler
 
+### Selvstændighed - Gør ting selv når muligt!
+- **ALTID** tjek om der findes API endpoints du kan kalde direkte i stedet for at bede brugeren gøre det
+- Brug `curl` til at kalde endpoints på Render efter deployment
+- Seed endpoints accepterer GET requests så de kan kaldes via curl
+- **Tilgængelige seed endpoints på Render:**
+  - `curl https://friktionskompasset.dk/admin/seed-domains` - Seed/opdater domæner
+  - `curl https://friktionskompasset.dk/admin/seed-translations` - Seed oversættelser
+- Render MCP kan bruges til at opdatere environment variables direkte
+- Tjek altid logs og status via MCP før du spørger brugeren
+
 ### TODO.md Vedligeholdelse
 - **ALTID** opdater `TODO.md` når nye opgaver identificeres
 - **ALTID** marker opgaver som færdige når de er implementeret
@@ -158,6 +168,29 @@ URL: `/admin/cleanup-empty` (kræver admin login)
   2. Push til GitHub og vent på deployment
   3. Kald `POST /admin/seed-translations` for at opdatere databasen
 - **Alternativ**: Besøg `/admin/db-status` og klik "Seed Translations"
+
+## Domæner og OAuth
+
+### Domæne-konfiguration
+Domæner konfigureres i `admin_seed_domains()` i `admin_app.py`:
+
+| Domæne | Sprog | Microsoft | Google | Email/Password | Formål |
+|--------|-------|-----------|--------|----------------|--------|
+| friktionskompasset.dk | da | ✅ | ✅ | ✅ | Generisk DK |
+| frictioncompass.com | en | ✅ | ✅ | ✅ | Generisk EN |
+| herning.friktionskompasset.dk | da | ✅ | ❌ | ❌ | Enterprise |
+
+### OAuth Credentials
+- Gemmes som environment variables på Render
+- Microsoft: `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET`, `MICROSOFT_TENANT_ID`
+- Google: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
+- Opdater via Render MCP: `mcp__render__update_environment_variables`
+
+### Tilføj nyt enterprise-domæne
+1. Tilføj domænet til `domains_config` i `admin_app.py`
+2. Push til GitHub
+3. Kald `curl https://friktionskompasset.dk/admin/seed-domains`
+4. Tilføj redirect URI i Azure/Google Console hvis OAuth skal bruges
 
 ## Worktrees
 - Main repo: `C:\_proj\Friktionskompasset`

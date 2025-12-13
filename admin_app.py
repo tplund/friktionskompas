@@ -645,9 +645,9 @@ def admin_seed_translations():
     return redirect(request.referrer or url_for('admin_home'))
 
 
-@app.route('/admin/seed-domains', methods=['POST'])
+@app.route('/admin/seed-domains', methods=['GET', 'POST'])
 def admin_seed_domains():
-    """Seed standard domæner til database"""
+    """Seed standard domæner til database - GET for API/curl, POST for form"""
     import json
     import secrets
 
