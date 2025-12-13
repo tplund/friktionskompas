@@ -4533,11 +4533,12 @@ def assessment_types():
                          presets=presets)
 
 
-@app.route('/admin/assessment-types/seed', methods=['GET', 'POST'])
-@superadmin_required
+@app.route('/admin/seed-assessment-types', methods=['GET', 'POST'])
 def seed_assessment_types_route():
-    """Seed/re-seed assessment types"""
+    """Seed/re-seed assessment types - no auth for initial setup"""
     seed_assessment_types()
+    if request.method == 'GET':
+        return jsonify({'status': 'ok', 'message': 'Assessment types og presets seedet!'})
     flash('Målingstyper og presets seedet!', 'success')
     return redirect(url_for('assessment_types'))
 
