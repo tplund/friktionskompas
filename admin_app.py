@@ -947,17 +947,33 @@ def admin_home():
                 ORDER BY full_path
             """).fetchall()
 
-        # === Unit scores (for drill-down table) ===
+        # === Unit scores (for drill-down table) - kun SENESTE måling per enhed ===
+        # Først find seneste assessment per unit
         unit_scores_query = """
+            WITH latest_assessments AS (
+                SELECT
+                    c.target_unit_id,
+                    c.id as assessment_id,
+                    c.name as assessment_name,
+                    c.period,
+                    c.created_at,
+                    ROW_NUMBER() OVER (PARTITION BY c.target_unit_id ORDER BY c.created_at DESC) as rn
+                FROM assessments c
+                JOIN organizational_units ou ON c.target_unit_id = ou.id
+                {where}
+            )
             SELECT
                 ou.id,
                 ou.name,
                 ou.full_path,
                 ou.level,
-                c.id as assessment_id,
-                c.name as assessment_name,
-                c.period,
+                la.assessment_id,
+                la.assessment_name,
+                la.period,
                 COUNT(DISTINCT r.id) as total_responses,
+
+                -- Tæl antal målinger for denne enhed
+                (SELECT COUNT(*) FROM assessments WHERE target_unit_id = ou.id) as assessment_count,
 
                 AVG(CASE
                     WHEN r.respondent_type = 'employee' AND q.field = 'MENING' THEN
@@ -985,13 +1001,12 @@ def admin_home():
                 END) as leader_overall
 
             FROM organizational_units ou
-            LEFT JOIN assessments c ON c.target_unit_id = ou.id
-            LEFT JOIN responses r ON c.id = r.assessment_id
+            JOIN latest_assessments la ON la.target_unit_id = ou.id AND la.rn = 1
+            LEFT JOIN responses r ON la.assessment_id = r.assessment_id
             LEFT JOIN questions q ON r.question_id = q.id
-            {where}
-            GROUP BY ou.id, c.id
+            GROUP BY ou.id
             HAVING total_responses > 0
-            ORDER BY c.created_at DESC
+            ORDER BY ou.full_path
         """.format(where=customer_where)
         unit_scores_raw = conn.execute(unit_scores_query, customer_params).fetchall()
 
