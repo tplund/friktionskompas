@@ -3970,6 +3970,11 @@ def db_status():
             Genskab Assessments (fra responses)
         </button>
     </form>
+    <form action="/admin/seed-assessments" method="POST" style="display: inline; margin-left: 10px;">
+        <button type="submit" style="padding: 10px 20px; background: #f59e0b; color: white; border: none; border-radius: 5px; cursor: pointer;">
+            Seed Assessments (fra JSON)
+        </button>
+    </form>
     <br><br>
     <p><a href="/admin/full-reset">FULD RESET - Slet alt og genimporter</a></p>
     <p><a href="/admin/upload-database">Upload database fil</a></p>
@@ -4054,6 +4059,63 @@ def recreate_assessments():
         flash(f'Fejl: {len(errors)} assessments kunne ikke genskabes. Se logs.', 'warning')
         for err in errors[:5]:  # Vis max 5 fejl
             flash(err, 'error')
+
+    return redirect(url_for('db_status'))
+
+
+@app.route('/admin/seed-assessments', methods=['POST'])
+def seed_assessments():
+    """Seed assessments fra seed_assessments.json fil"""
+    import json
+    import os
+
+    json_path = os.path.join(os.path.dirname(__file__), 'seed_assessments.json')
+    if not os.path.exists(json_path):
+        flash('seed_assessments.json ikke fundet!', 'error')
+        return redirect(url_for('db_status'))
+
+    with open(json_path, 'r', encoding='utf-8') as f:
+        assessments = json.load(f)
+
+    inserted = 0
+    skipped = 0
+    errors = []
+
+    with get_db() as conn:
+        for a in assessments:
+            # Tjek om assessment allerede eksisterer
+            existing = conn.execute("SELECT id FROM assessments WHERE id = ?", [a['id']]).fetchone()
+            if existing:
+                skipped += 1
+                continue
+
+            # Tjek om target_unit eksisterer
+            unit_exists = conn.execute("SELECT id FROM organizational_units WHERE id = ?",
+                                       [a['target_unit_id']]).fetchone()
+            if not unit_exists:
+                errors.append(f"{a['id']}: Unit {a['target_unit_id']} findes ikke")
+                continue
+
+            try:
+                conn.execute("""
+                    INSERT INTO assessments (id, target_unit_id, name, period, sent_from, sent_at,
+                                           created_at, mode, include_leader_assessment, include_leader_self,
+                                           min_responses, scheduled_at, status, sender_name)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, [a['id'], a['target_unit_id'], a['name'], a['period'], a.get('sent_from', 'admin'),
+                      a.get('sent_at'), a.get('created_at'), a.get('mode', 'anonymous'),
+                      a.get('include_leader_assessment', 0), a.get('include_leader_self', 0),
+                      a.get('min_responses', 5), a.get('scheduled_at'), a.get('status', 'sent'),
+                      a.get('sender_name', 'HR')])
+                inserted += 1
+            except Exception as e:
+                errors.append(f"{a['id']}: {str(e)}")
+
+        conn.commit()
+
+    flash(f'Seedet {inserted} assessments, {skipped} sprunget over (eksisterer allerede)', 'success')
+    if errors:
+        flash(f'{len(errors)} fejl - check at units eksisterer', 'warning')
 
     return redirect(url_for('db_status'))
 
