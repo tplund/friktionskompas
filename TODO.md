@@ -2,6 +2,31 @@
 
 ## 🔥 Høj Prioritet
 
+### Central Beregningsmotor (friction_engine) 🆕
+- [ ] **Opret `friction_engine.py`** - Samlet motor til alle friktionsberegninger
+  - `calculate_field_scores(responses)` → {MENING: 3.5, TRYGHED: 2.8, ...}
+  - `calculate_spread(responses)` → {MENING: 0.8, ...} (std_dev)
+  - `calculate_gap(employee_scores, leader_scores)` → {...}
+  - `get_warnings(scores, spread, gap)` → [Warning(...), ...]
+  - `get_profile_type(scores)` → "travlt_team" | "siloed" | ...
+- [ ] **Migrér beregninger fra `analysis.py`** til motoren
+- [ ] **Migrér beregninger fra `admin_app.py`** til motoren
+- [ ] **Unit tests** for alle beregningsfunktioner
+- [ ] **Dokumentér mekanik** i `ANALYSELOGIK.md`
+
+**Formål:** Ét sted at opdatere når mekanikken ændres, lettere at teste, konsistens på tværs af alle visninger.
+
+### Privacy by Design - B2C Local Storage 🆕
+- [ ] **Analyse af data flow** - Hvad skal gemmes hvor (server vs. local)
+- [ ] **LocalStorage implementation** - Gem B2C profiler krypteret i browser
+- [ ] **Stateless API** - Server serverer spørgsmål + beregner resultater, gemmer intet
+- [ ] **Eksport/import** - Bruger kan downloade/uploade sin profil som JSON
+- [ ] **Opt-in server storage** - Valgfrit for brugere der vil have backup
+- [ ] **Cookie consent** - Opdater privacy notice for localStorage brug
+- [ ] **B2B uændret** - Enterprise kunder gemmer stadig centralt
+
+**Formål:** GDPR compliance, lavere omkostninger, skalerbarhed, brugertillid. B2C data fylder ikke på serveren, ingen privacy-problemer.
+
 ### Flersproget Support (Oversættelser)
 - [x] ~~**Database ændringer** - `language` på users, `translations` tabel~~
 - [x] ~~**Translation modul** - `translations.py` med `t()` funktion~~
