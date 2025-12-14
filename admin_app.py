@@ -4065,31 +4065,33 @@ def recreate_assessments():
 
 @app.route('/admin/seed-assessments', methods=['POST'])
 def seed_assessments():
-    """Seed assessments fra seed_assessments.json fil"""
+    """Seed assessments og responses fra JSON filer"""
     import json
     import os
 
-    json_path = os.path.join(os.path.dirname(__file__), 'seed_assessments.json')
-    if not os.path.exists(json_path):
+    base_path = os.path.dirname(__file__)
+    assessments_path = os.path.join(base_path, 'seed_assessments.json')
+    responses_path = os.path.join(base_path, 'seed_responses.json')
+
+    if not os.path.exists(assessments_path):
         flash('seed_assessments.json ikke fundet!', 'error')
         return redirect(url_for('db_status'))
 
-    with open(json_path, 'r', encoding='utf-8') as f:
+    with open(assessments_path, 'r', encoding='utf-8') as f:
         assessments = json.load(f)
 
-    inserted = 0
-    skipped = 0
+    inserted_assessments = 0
+    skipped_assessments = 0
     errors = []
 
     with get_db() as conn:
+        # Seed assessments
         for a in assessments:
-            # Tjek om assessment allerede eksisterer
             existing = conn.execute("SELECT id FROM assessments WHERE id = ?", [a['id']]).fetchone()
             if existing:
-                skipped += 1
+                skipped_assessments += 1
                 continue
 
-            # Tjek om target_unit eksisterer
             unit_exists = conn.execute("SELECT id FROM organizational_units WHERE id = ?",
                                        [a['target_unit_id']]).fetchone()
             if not unit_exists:
@@ -4107,13 +4109,49 @@ def seed_assessments():
                       a.get('include_leader_assessment', 0), a.get('include_leader_self', 0),
                       a.get('min_responses', 5), a.get('scheduled_at'), a.get('status', 'sent'),
                       a.get('sender_name', 'HR')])
-                inserted += 1
+                inserted_assessments += 1
             except Exception as e:
                 errors.append(f"{a['id']}: {str(e)}")
 
         conn.commit()
 
-    flash(f'Seedet {inserted} assessments, {skipped} sprunget over (eksisterer allerede)', 'success')
+        # Seed responses hvis filen findes
+        inserted_responses = 0
+        skipped_responses = 0
+        if os.path.exists(responses_path):
+            with open(responses_path, 'r', encoding='utf-8') as f:
+                responses = json.load(f)
+
+            # Hent eksisterende response IDs for hurtig lookup
+            existing_ids = set(r[0] for r in conn.execute("SELECT id FROM responses").fetchall())
+
+            for r in responses:
+                if r.get('id') in existing_ids:
+                    skipped_responses += 1
+                    continue
+
+                # Tjek at assessment eksisterer
+                assessment_exists = conn.execute("SELECT id FROM assessments WHERE id = ?",
+                                                 [r['assessment_id']]).fetchone()
+                if not assessment_exists:
+                    continue  # Skip silently - assessment mangler
+
+                try:
+                    conn.execute("""
+                        INSERT INTO responses (id, assessment_id, unit_id, question_id, score,
+                                             created_at, respondent_type, respondent_name)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """, [r.get('id'), r['assessment_id'], r.get('unit_id'), r['question_id'],
+                          r['score'], r.get('created_at'), r.get('respondent_type', 'employee'),
+                          r.get('respondent_name')])
+                    inserted_responses += 1
+                except Exception as e:
+                    pass  # Skip errors silently for responses
+
+            conn.commit()
+            flash(f'Seedet {inserted_responses} responses, {skipped_responses} sprunget over', 'info')
+
+    flash(f'Seedet {inserted_assessments} assessments, {skipped_assessments} sprunget over', 'success')
     if errors:
         flash(f'{len(errors)} fejl - check at units eksisterer', 'warning')
 

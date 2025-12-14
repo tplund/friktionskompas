@@ -356,3 +356,163 @@ class TestNoegletalDashboard(TestIntegrationFixtures):
         # Note: Esbjerg Kommune may appear in customer dropdown (expected)
         for esbjerg_unit in ESBJERG_UNIT_NAMES:
             assert esbjerg_unit not in data, f"Found Esbjerg unit '{esbjerg_unit}' in nøgletal when filtered to Herning"
+
+
+class TestTestdataQuality:
+    """
+    Tests for testdata quality - ensures test data is realistic and varied.
+
+    These tests verify that Herning Kommune's test data has the expected
+    characteristics for realistic friction profiles.
+    """
+
+    @pytest.fixture
+    def db_connection(self, app):
+        """Get database connection from app context."""
+        import sqlite3
+        from db_hierarchical import DB_PATH
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        yield conn
+        conn.close()
+
+    def test_herning_has_assessments(self, db_connection):
+        """Herning Kommune should have test assessments."""
+        count = db_connection.execute("""
+            SELECT COUNT(*) FROM assessments a
+            JOIN organizational_units ou ON a.target_unit_id = ou.id
+            WHERE ou.customer_id = ?
+        """, [HERNING_CUSTOMER_ID]).fetchone()[0]
+
+        assert count >= 10, f"Expected at least 10 assessments for Herning, got {count}"
+
+    def test_herning_has_responses(self, db_connection):
+        """Herning Kommune should have response data."""
+        count = db_connection.execute("""
+            SELECT COUNT(*) FROM responses r
+            JOIN assessments a ON r.assessment_id = a.id
+            JOIN organizational_units ou ON a.target_unit_id = ou.id
+            WHERE ou.customer_id = ?
+        """, [HERNING_CUSTOMER_ID]).fetchone()[0]
+
+        assert count >= 1000, f"Expected at least 1000 responses for Herning, got {count}"
+
+    def test_herning_has_all_friction_fields(self, db_connection):
+        """Herning responses should cover all 4 friction fields."""
+        fields = db_connection.execute("""
+            SELECT DISTINCT q.field
+            FROM responses r
+            JOIN assessments a ON r.assessment_id = a.id
+            JOIN organizational_units ou ON a.target_unit_id = ou.id
+            JOIN questions q ON r.question_id = q.id
+            WHERE ou.customer_id = ? AND q.field IS NOT NULL
+        """, [HERNING_CUSTOMER_ID]).fetchall()
+
+        field_names = {f['field'] for f in fields}
+        expected_fields = {'MENING', 'TRYGHED', 'KAN', 'BESVÆR'}
+
+        missing = expected_fields - field_names
+        assert not missing, f"Missing friction fields: {missing}"
+
+    def test_profiles_have_variation_between_fields(self, db_connection):
+        """
+        Friction profiles should have variation BETWEEN fields.
+
+        Realistic teams don't score the same on all dimensions.
+        At least some assessments should have > 0.5 point difference between fields.
+        """
+        # Get average scores per assessment per field
+        profiles = db_connection.execute("""
+            SELECT
+                a.id,
+                a.name,
+                q.field,
+                AVG(r.score) as avg_score
+            FROM responses r
+            JOIN assessments a ON r.assessment_id = a.id
+            JOIN organizational_units ou ON a.target_unit_id = ou.id
+            JOIN questions q ON r.question_id = q.id
+            WHERE ou.customer_id = ?
+              AND q.field IS NOT NULL
+              AND r.respondent_type = 'employee'
+            GROUP BY a.id, q.field
+        """, [HERNING_CUSTOMER_ID]).fetchall()
+
+        # Group by assessment
+        assessments = {}
+        for row in profiles:
+            name = row['name']
+            if name not in assessments:
+                assessments[name] = {}
+            assessments[name][row['field']] = row['avg_score']
+
+        # Count assessments with good variation (> 0.5 point range)
+        varied_count = 0
+        for name, scores in assessments.items():
+            if len(scores) >= 3:
+                score_values = list(scores.values())
+                range_val = max(score_values) - min(score_values)
+                if range_val > 0.5:
+                    varied_count += 1
+
+        # At least 30% of assessments should have varied profiles
+        total = len(assessments)
+        if total > 0:
+            variation_pct = varied_count / total
+            assert variation_pct >= 0.3, f"Only {variation_pct:.0%} of assessments have varied profiles (need >= 30%)"
+
+    def test_edge_cases_exist(self, db_connection):
+        """Edge case test scenarios should exist."""
+        edge_cases = db_connection.execute("""
+            SELECT a.name FROM assessments a
+            JOIN organizational_units ou ON a.target_unit_id = ou.id
+            WHERE ou.customer_id = ? AND a.name LIKE '%Test%'
+        """, [HERNING_CUSTOMER_ID]).fetchall()
+
+        edge_case_names = [e['name'] for e in edge_cases]
+
+        # Check for expected edge cases
+        expected_patterns = ['Krise', 'Succes', 'Gap', 'Tryghed']
+        found = []
+        for pattern in expected_patterns:
+            for name in edge_case_names:
+                if pattern in name:
+                    found.append(pattern)
+                    break
+
+        assert len(found) >= 3, f"Expected at least 3 edge case types, found: {found}"
+
+    def test_b2c_assessments_no_leader_data(self, db_connection):
+        """B2C assessments should not have leader assessment data."""
+        b2c_with_leaders = db_connection.execute("""
+            SELECT a.name, COUNT(*) as leader_count
+            FROM responses r
+            JOIN assessments a ON r.assessment_id = a.id
+            WHERE a.name LIKE '%B2C%'
+              AND r.respondent_type IN ('leader_assess', 'leader_self')
+            GROUP BY a.id
+        """).fetchall()
+
+        for row in b2c_with_leaders:
+            assert row['leader_count'] == 0, f"B2C assessment '{row['name']}' has leader responses"
+
+    def test_b2b_assessments_have_leader_data(self, db_connection):
+        """B2B trend assessments should have leader assessment data."""
+        # Check quarterly assessments (Q1-Q4) which should be B2B
+        b2b_assessments = db_connection.execute("""
+            SELECT a.id, a.name,
+                   SUM(CASE WHEN r.respondent_type = 'leader_assess' THEN 1 ELSE 0 END) as leader_count
+            FROM assessments a
+            JOIN organizational_units ou ON a.target_unit_id = ou.id
+            LEFT JOIN responses r ON r.assessment_id = a.id
+            WHERE ou.customer_id = ?
+              AND a.name LIKE '%Q_ 2025%'
+              AND a.include_leader_assessment = 1
+            GROUP BY a.id
+        """, [HERNING_CUSTOMER_ID]).fetchall()
+
+        assessments_with_leaders = sum(1 for a in b2b_assessments if a['leader_count'] > 0)
+
+        # At least some B2B assessments should have leader data
+        if len(b2b_assessments) > 0:
+            assert assessments_with_leaders >= 1, "No B2B assessments have leader data"

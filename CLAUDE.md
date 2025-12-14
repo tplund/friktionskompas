@@ -274,6 +274,53 @@ Domæner konfigureres i `admin_seed_domains()` i `admin_app.py`:
 - Features: Rate limiting, audit logging, SQL validation
 - Config: `.mcp.json`
 
+## Testdata: Herning Kommune (Kanonisk Test-Kunde)
+
+### Hvorfor Herning Kommune?
+Herning Kommune (`cust-0nlG8ldxSYU`) er den kanoniske test-kunde med komplet testdata for alle scenarier.
+Al ny testdata skal tilføjes til Herning Kommune for at sikre konsistens.
+
+### Testdata Scenarier
+| Scenarie | Unit | Formål |
+|----------|------|--------|
+| **Normal B2B** | Birk Skole, Aktivitetscentret Midt | Trend-data (Q1-Q4 2025) |
+| **B2C** | Individuel Screening, Par-profiler, Karrierevejledning | Uden leder-vurdering |
+| **Edge Cases** | Se nedenfor | Test af advarsels-scenarier |
+
+### Edge Case Tests (under "Edge Case Tests" unit)
+| Test | Formål | Karakteristik |
+|------|--------|---------------|
+| Gap Test - Kritisk Forskel | Stort gap mellem medarbejder og leder | Medarbejdere ~2.5, Ledere ~4.0 |
+| Krise Test - Alt er Galt | Alle scores kritisk lave | Alle felter < 2.0 |
+| Succes Test - Høj Trivsel | Alle scores høje | Alle felter > 4.0 |
+| Spredning Test - Stor Uenighed | Høj varians i svar | Std.dev > 1.2 |
+| Tryghed Test - Kun Psykologisk Sikkerhed | Ét felt markant lavere | TRYGHED ~2.0, andre ~4.0 |
+
+### Realistiske Profil-Arketyper
+| Arketype | MENING | TRYGHED | KAN | BESVÆR | Beskrivelse |
+|----------|--------|---------|-----|--------|-------------|
+| Travlt Team | 3.8 | 3.2 | 4.2 | 2.0 | Høj kapacitet, lav besvær |
+| Demotiveret Team | 2.2 | 3.5 | 3.0 | 3.2 | Lav mening, OK tryghed |
+| Siloed Team | 3.5 | 2.0 | 4.0 | 3.5 | Lav tryghed, høj kunnen |
+| Overbelastet Team | 3.0 | 2.8 | 2.3 | 1.5 | Lav kapacitet og besvær |
+| Balanceret Team | 3.5 | 3.5 | 3.5 | 3.5 | Jævn profil |
+
+### Seed Scripts
+```bash
+# Lokalt: Regenerer al testdata
+python seed_herning_testdata.py
+python seed_edge_cases.py
+
+# Render: Seed assessments fra JSON
+curl https://friktionskompasset.dk/admin/seed-assessments
+```
+
+### Data Flow (under udvikling)
+1. **Lokal udvikling** → Data i `seed_*.py` scripts
+2. **Eksporter** → `python -c "..."` (se nedenfor)
+3. **Git** → `seed_assessments.json` + responses
+4. **Render** → `/admin/seed-assessments` endpoint
+
 ## Deploy Checklist
 1. ~~Test lokalt først~~ (CI klarer det nu, medmindre store ændringer)
 2. Commit og push til GitHub

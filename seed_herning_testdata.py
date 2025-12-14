@@ -107,6 +107,44 @@ def create_borgere_sub_units(conn, borgere_id: str) -> list:
     return created
 
 
+"""
+Realistiske team-arketyper med VARIERET profil.
+Hver arketype har en unik friktionsprofil der afspejler typiske team-dynamikker.
+"""
+TEAM_ARCHETYPES = {
+    'travlt_team': {
+        'description': 'Travlt Team - Høj kapacitet, men stresset',
+        'employee_scores': {'MENING': 3.8, 'TRYGHED': 3.2, 'KAN': 4.2, 'BESVÆR': 2.0},
+        'leader_scores': {'MENING': 4.0, 'TRYGHED': 3.8, 'KAN': 4.5, 'BESVÆR': 2.8},
+    },
+    'demotiveret_team': {
+        'description': 'Demotiveret Team - Mangler mening og motivation',
+        'employee_scores': {'MENING': 2.2, 'TRYGHED': 3.5, 'KAN': 3.0, 'BESVÆR': 3.2},
+        'leader_scores': {'MENING': 3.0, 'TRYGHED': 3.8, 'KAN': 3.5, 'BESVÆR': 3.5},
+    },
+    'siloed_team': {
+        'description': 'Siloed Team - Lav psykologisk sikkerhed',
+        'employee_scores': {'MENING': 3.5, 'TRYGHED': 2.0, 'KAN': 4.0, 'BESVÆR': 3.5},
+        'leader_scores': {'MENING': 3.8, 'TRYGHED': 3.5, 'KAN': 4.2, 'BESVÆR': 3.8},
+    },
+    'overbelastet_team': {
+        'description': 'Overbelastet Team - Mangler ressourcer og energi',
+        'employee_scores': {'MENING': 3.0, 'TRYGHED': 2.8, 'KAN': 2.3, 'BESVÆR': 1.5},
+        'leader_scores': {'MENING': 3.5, 'TRYGHED': 3.2, 'KAN': 2.8, 'BESVÆR': 2.0},
+    },
+    'balanceret_team': {
+        'description': 'Balanceret Team - Jævn men ikke exceptionel',
+        'employee_scores': {'MENING': 3.5, 'TRYGHED': 3.5, 'KAN': 3.5, 'BESVÆR': 3.5},
+        'leader_scores': {'MENING': 3.7, 'TRYGHED': 3.8, 'KAN': 3.6, 'BESVÆR': 3.8},
+    },
+    'nyt_team': {
+        'description': 'Nyt Team - Høj motivation, lav rutine',
+        'employee_scores': {'MENING': 4.2, 'TRYGHED': 2.5, 'KAN': 2.8, 'BESVÆR': 3.0},
+        'leader_scores': {'MENING': 4.5, 'TRYGHED': 3.0, 'KAN': 3.2, 'BESVÆR': 3.5},
+    },
+}
+
+
 def generate_trend_assessments(conn, questions):
     """Genererer kampagner over tid for trend-analyse (B2B med medarbejdere + ledere)"""
 
@@ -115,7 +153,7 @@ def generate_trend_assessments(conn, questions):
         SELECT id, name FROM organizational_units
         WHERE customer_id = ? AND level = 2 AND name NOT LIKE '%Screening%' AND name NOT LIKE '%Par-%' AND name NOT LIKE '%Karriere%'
         ORDER BY name
-        LIMIT 4
+        LIMIT 6
     """, [HERNING_CUSTOMER_ID]).fetchall()
 
     if not units:
@@ -130,17 +168,14 @@ def generate_trend_assessments(conn, questions):
         ('2025-10-15', 'Q4 2025'),
     ]
 
-    for unit_id, unit_name in units[:2]:  # Kun de 2 første for at holde datasættet håndterbart
-        print(f"  Genererer trend-data for: {unit_name}")
+    # Tildel arketyper til units for variation
+    archetype_keys = list(TEAM_ARCHETYPES.keys())
 
-        # Base scores der ændrer sig over tid (simulerer forbedring)
-        base_scores = {
-            'MENING': 3.0,
-            'TRYGHED': 2.5,
-            'MULIGHED': 3.2,
-            'KAN': 2.8,
-            'BESVÆR': 2.3,
-        }
+    for idx, (unit_id, unit_name) in enumerate(units[:4]):  # Op til 4 units
+        archetype_key = archetype_keys[idx % len(archetype_keys)]
+        archetype = TEAM_ARCHETYPES[archetype_key]
+
+        print(f"  Genererer trend-data for: {unit_name} ({archetype['description']})")
 
         for i, (date_str, period_name) in enumerate(periods):
             # Tjek om kampagne allerede eksisterer
@@ -153,8 +188,8 @@ def generate_trend_assessments(conn, questions):
                 print(f"    {period_name} eksisterer allerede")
                 continue
 
-            # Skab gradvis forbedring over tid
-            improvement = i * 0.15  # 0.15 point forbedring per kvartal
+            # Skab gradvis forbedring over tid (men behold profil-formen)
+            improvement = i * 0.12  # 0.12 point forbedring per kvartal
 
             assessment_id = generate_id('camp')
             assessment_name = f"{unit_name} - {period_name}"
@@ -170,18 +205,22 @@ def generate_trend_assessments(conn, questions):
 
             for r in range(response_count):
                 response_time = datetime.strptime(date_str, '%Y-%m-%d') + timedelta(days=random.randint(0, 14))
-                respondent_type = 'leader' if r < leader_count else 'employee'
+
+                # Bestem respondent type og tilhørende scores
+                if r < leader_count:
+                    respondent_type = 'leader_assess'
+                    base_scores = archetype['leader_scores']
+                else:
+                    respondent_type = 'employee'
+                    base_scores = archetype['employee_scores']
 
                 for q in questions:
                     q_id, field, is_reverse = q
 
                     # Beregn score med forbedring over tid
-                    # Ledere har tendens til at score lidt højere
                     base = base_scores.get(field, 3.0) + improvement
-                    if respondent_type == 'leader':
-                        base += 0.3  # Ledere ser ofte tingene lidt mere positivt
-
-                    score = generate_score(base, variance=0.8)
+                    # Tilføj individuel variation
+                    score = generate_score(base, variance=0.6)
 
                     conn.execute("""
                         INSERT INTO responses (assessment_id, unit_id, question_id, score, created_at, respondent_type)
