@@ -947,93 +947,78 @@ def admin_home():
                 ORDER BY full_path
             """).fetchall()
 
-        # === Unit scores (for drill-down table) - kun SENESTE måling per enhed ===
-        # Først find seneste assessment per unit
+        # === Unit scores - hierarkisk med aggregerede scores ===
+        # Hent alle units med deres aggregerede scores (inkl. børn)
         unit_scores_query = """
-            WITH latest_assessments AS (
-                SELECT
-                    c.target_unit_id,
-                    c.id as assessment_id,
-                    c.name as assessment_name,
-                    c.period,
-                    c.created_at,
-                    ROW_NUMBER() OVER (PARTITION BY c.target_unit_id ORDER BY c.created_at DESC) as rn
-                FROM assessments c
-                JOIN organizational_units ou ON c.target_unit_id = ou.id
-                {where}
-            )
             SELECT
                 ou.id,
                 ou.name,
                 ou.full_path,
                 ou.level,
-                la.assessment_id,
-                la.assessment_name,
-                la.period,
+                ou.parent_id,
+
+                -- Tæl antal målinger for denne enhed OG børn
+                (SELECT COUNT(*) FROM assessments a
+                 JOIN organizational_units ou2 ON a.target_unit_id = ou2.id
+                 WHERE ou2.full_path LIKE ou.full_path || '%') as assessment_count,
+
+                -- Total responses for denne enhed OG børn
                 COUNT(DISTINCT r.id) as total_responses,
 
-                -- Tæl antal målinger for denne enhed
-                (SELECT COUNT(*) FROM assessments WHERE target_unit_id = ou.id) as assessment_count,
-
                 AVG(CASE
-                    WHEN r.respondent_type = 'employee' AND q.field = 'MENING' THEN
+                    WHEN q.field = 'MENING' THEN
                         CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END
                 END) as employee_mening,
 
                 AVG(CASE
-                    WHEN r.respondent_type = 'employee' AND q.field = 'TRYGHED' THEN
+                    WHEN q.field = 'TRYGHED' THEN
                         CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END
                 END) as employee_tryghed,
 
                 AVG(CASE
-                    WHEN r.respondent_type = 'employee' AND q.field = 'KAN' THEN
+                    WHEN q.field = 'KAN' THEN
                         CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END
                 END) as employee_kan,
 
                 AVG(CASE
-                    WHEN r.respondent_type = 'employee' AND q.field = 'BESVÆR' THEN
+                    WHEN q.field = 'BESVÆR' THEN
                         CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END
-                END) as employee_besvaer,
-
-                AVG(CASE
-                    WHEN r.respondent_type = 'leader_assess' THEN
-                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END
-                END) as leader_overall
+                END) as employee_besvaer
 
             FROM organizational_units ou
-            JOIN latest_assessments la ON la.target_unit_id = ou.id AND la.rn = 1
-            LEFT JOIN responses r ON la.assessment_id = r.assessment_id
+            -- Join med alle børne-units for at aggregere
+            LEFT JOIN organizational_units children ON children.full_path LIKE ou.full_path || '%'
+            LEFT JOIN assessments c ON c.target_unit_id = children.id
+            LEFT JOIN responses r ON c.id = r.assessment_id AND r.respondent_type = 'employee'
             LEFT JOIN questions q ON r.question_id = q.id
+            {where}
             GROUP BY ou.id
             HAVING total_responses > 0
-            ORDER BY ou.full_path
+            ORDER BY ou.level, ou.full_path
         """.format(where=customer_where)
         unit_scores_raw = conn.execute(unit_scores_query, customer_params).fetchall()
 
-        # Enrich with indicators
+        # Enrich and build hierarchy
         unit_scores = []
+        unit_by_id = {}
         for unit in unit_scores_raw:
             unit_dict = dict(unit)
-            unit_dict['has_leader_gap'] = False
-            unit_dict['has_substitution'] = False
-
-            # Check for leader gap
-            if unit['leader_overall']:
-                for field in ['employee_mening', 'employee_tryghed', 'employee_kan', 'employee_besvaer']:
-                    if unit[field] and abs(unit[field] - unit['leader_overall']) > 1.0:
-                        unit_dict['has_leader_gap'] = True
-                        break
-
-            # Check for substitution (simple heuristic: very high KAN + low TRYGHED)
-            if unit['employee_kan'] and unit['employee_tryghed']:
-                if unit['employee_kan'] > 4.0 and unit['employee_tryghed'] < 2.5:
-                    unit_dict['has_substitution'] = True
-
+            unit_dict['children'] = []
+            unit_dict['has_children'] = False
+            unit_by_id[unit['id']] = unit_dict
             unit_scores.append(unit_dict)
+
+        # Mark units that have children with data
+        for unit in unit_scores:
+            if unit['parent_id'] and unit['parent_id'] in unit_by_id:
+                unit_by_id[unit['parent_id']]['has_children'] = True
 
         # === Alerts ===
         alerts = []
         for unit in unit_scores:
+            # Only show alerts for leaf units (not aggregated)
+            if unit.get('has_children'):
+                continue
             # Low scores
             for field, label in [('employee_tryghed', 'TRYGHED'), ('employee_besvaer', 'BESVÆR'),
                                  ('employee_mening', 'MENING'), ('employee_kan', 'KAN')]:
@@ -1041,15 +1026,8 @@ def admin_home():
                     alerts.append({
                         'icon': '⚠️',
                         'text': f"{unit['name']}: {label} kritisk lav ({unit[field]:.2f})",
-                        'assessment_id': unit['assessment_id']
+                        'unit_id': unit['id']
                     })
-            # Leader gap
-            if unit.get('has_leader_gap'):
-                alerts.append({
-                    'icon': '📊',
-                    'text': f"{unit['name']}: Stort gap mellem leder og medarbejdere",
-                    'assessment_id': unit['assessment_id']
-                })
 
     # Get trend data
     if cid:

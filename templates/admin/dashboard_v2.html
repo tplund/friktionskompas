@@ -25,9 +25,7 @@
         gap: 20px;
     }
     @media (max-width: 800px) {
-        .friction-bars {
-            grid-template-columns: repeat(2, 1fr);
-        }
+        .friction-bars { grid-template-columns: repeat(2, 1fr); }
     }
     .friction-item {
         cursor: pointer;
@@ -76,13 +74,11 @@
     /* Main layout */
     .main-layout {
         display: grid;
-        grid-template-columns: 1fr 380px;
+        grid-template-columns: 1fr 350px;
         gap: 20px;
     }
     @media (max-width: 1100px) {
-        .main-layout {
-            grid-template-columns: 1fr;
-        }
+        .main-layout { grid-template-columns: 1fr; }
     }
 
     .card {
@@ -108,72 +104,81 @@
         color: #6366f1;
         text-decoration: none;
     }
-    .card h2 a:hover {
-        text-decoration: underline;
-    }
 
-    /* Unit drill-down table */
-    .unit-table {
-        width: 100%;
-        border-collapse: collapse;
+    /* Hierarchical unit tree */
+    .unit-tree {
+        margin: 0;
+        padding: 0;
+        list-style: none;
     }
-    .unit-table th {
-        text-align: left;
-        padding: 10px 12px;
-        border-bottom: 2px solid #e5e7eb;
-        color: #6b7280;
-        font-size: 0.75rem;
-        font-weight: 600;
-        text-transform: uppercase;
-    }
-    .unit-table td {
-        padding: 12px;
+    .unit-row {
+        display: flex;
+        align-items: center;
+        padding: 12px 15px;
         border-bottom: 1px solid #f3f4f6;
-        font-size: 0.9rem;
-        color: #374151;
-    }
-    .unit-table tr {
         cursor: pointer;
         transition: background 0.15s;
     }
-    .unit-table tbody tr:hover {
+    .unit-row:hover {
         background: #f9fafb;
     }
-    .unit-table .unit-name {
-        font-weight: 500;
-    }
-    .unit-table .assessment-info {
+    .unit-row.level-0 { font-weight: 600; background: #fafafa; }
+    .unit-row.level-1 { padding-left: 35px; }
+    .unit-row.level-2 { padding-left: 55px; }
+    .unit-row.level-3 { padding-left: 75px; }
+    .unit-row.collapsed { display: none; }
+
+    .unit-toggle {
+        width: 20px;
+        color: #9ca3af;
         font-size: 0.75rem;
+        cursor: pointer;
+        flex-shrink: 0;
+    }
+    .unit-toggle:hover { color: #374151; }
+
+    .unit-info {
+        flex: 1;
+        min-width: 0;
+    }
+    .unit-name {
+        font-size: 0.9rem;
+        color: #374151;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .unit-meta {
+        font-size: 0.7rem;
         color: #9ca3af;
         margin-top: 2px;
     }
-    .score-cell {
-        text-align: center;
+    .unit-scores {
+        display: flex;
+        gap: 8px;
+        flex-shrink: 0;
     }
     .score-badge {
         display: inline-block;
-        padding: 4px 8px;
+        padding: 3px 7px;
         border-radius: 4px;
-        font-size: 0.8rem;
-        font-weight: 500;
-        min-width: 36px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        min-width: 32px;
+        text-align: center;
     }
     .score-badge.high { background: #dcfce7; color: #166534; }
     .score-badge.medium { background: #fef3c7; color: #92400e; }
     .score-badge.low { background: #fee2e2; color: #991b1b; }
+    .score-badge.na { background: #f3f4f6; color: #9ca3af; }
 
-    .indicator {
-        display: inline-flex;
-        align-items: center;
-        padding: 2px 6px;
-        border-radius: 3px;
-        font-size: 0.65rem;
-        font-weight: 600;
-        margin-left: 6px;
-        vertical-align: middle;
+    .unit-responses {
+        width: 50px;
+        text-align: right;
+        font-size: 0.8rem;
+        color: #6b7280;
+        flex-shrink: 0;
     }
-    .indicator.gap { background: #fef3c7; color: #92400e; }
-    .indicator.substitution { background: #dbeafe; color: #1e40af; }
 
     /* Sidebar */
     .sidebar-card {
@@ -223,6 +228,37 @@
         margin-top: 2px;
     }
 
+    /* Trend chart */
+    .chart-container {
+        position: relative;
+        height: 200px;
+    }
+    .filter-select {
+        padding: 5px 8px;
+        border: 1px solid #d1d5db;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        background: white;
+    }
+    .trend-legend {
+        display: flex;
+        gap: 12px;
+        margin-top: 10px;
+        flex-wrap: wrap;
+    }
+    .trend-legend-item {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 0.7rem;
+        color: #6b7280;
+    }
+    .trend-legend-item .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+    }
+
     /* Recent list */
     .recent-list {
         display: flex;
@@ -240,9 +276,7 @@
         color: inherit;
         transition: all 0.15s;
     }
-    .recent-item:hover {
-        background: #eef2ff;
-    }
+    .recent-item:hover { background: #eef2ff; }
     .recent-item .name {
         font-weight: 500;
         color: #374151;
@@ -259,23 +293,8 @@
         font-size: 0.9rem;
     }
 
-    /* Trend chart */
-    .chart-container {
-        position: relative;
-        height: 180px;
-    }
-    .filter-select {
-        padding: 5px 8px;
-        border: 1px solid #d1d5db;
-        border-radius: 4px;
-        font-size: 0.75rem;
-        background: white;
-    }
-
     /* Alerts */
-    .alerts-section {
-        margin-top: 20px;
-    }
+    .alerts-section { margin-top: 20px; }
     .alert-item {
         display: flex;
         align-items: center;
@@ -289,9 +308,7 @@
         transition: all 0.15s;
         font-size: 0.85rem;
     }
-    .alert-item:hover {
-        background: #fee2e2;
-    }
+    .alert-item:hover { background: #fee2e2; }
     .alert-item .icon { font-size: 1rem; }
     .alert-item .text { flex: 1; color: #991b1b; }
     .alert-item .action { color: #dc2626; font-size: 0.75rem; font-weight: 500; }
@@ -303,7 +320,6 @@
         font-style: italic;
         font-size: 0.9rem;
     }
-
     .see-all-link {
         display: block;
         text-align: center;
@@ -313,14 +329,34 @@
         font-size: 0.8rem;
         font-weight: 500;
     }
-    .see-all-link:hover {
-        text-decoration: underline;
+    .see-all-link:hover { text-decoration: underline; }
+
+    /* Score headers */
+    .score-headers {
+        display: flex;
+        gap: 8px;
+        padding: 8px 15px;
+        background: #f9fafb;
+        border-bottom: 2px solid #e5e7eb;
+        font-size: 0.7rem;
+        font-weight: 600;
+        color: #6b7280;
+        text-transform: uppercase;
+    }
+    .score-headers .spacer { flex: 1; }
+    .score-headers .header-item {
+        width: 32px;
+        text-align: center;
+    }
+    .score-headers .responses-header {
+        width: 50px;
+        text-align: right;
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<!-- Friktionsoversigt - det vigtigste først -->
+<!-- Friktionsoversigt -->
 <div class="friction-hero">
     <h2>Friktionsoversigt</h2>
     {% if field_scores %}
@@ -343,59 +379,53 @@
     {% endif %}
 </div>
 
-<!-- Main layout: Analyse tabel + Sidebar -->
+<!-- Main layout -->
 <div class="main-layout">
-    <!-- Hovedindhold: Analyse per enhed -->
+    <!-- Hierarkisk analyse -->
     <div class="card">
         <h2>
             Analyse per enhed
-            <a href="/admin/analyser">Se alle &rarr;</a>
+            <a href="/admin/analyser">Se detaljeret &rarr;</a>
         </h2>
         {% if unit_scores %}
-        <div style="overflow-x: auto;">
-            <table class="unit-table">
-                <thead>
-                    <tr>
-                        <th>Enhed</th>
-                        <th>Svar</th>
-                        <th class="score-cell">MENING</th>
-                        <th class="score-cell">TRYGHED</th>
-                        <th class="score-cell">KAN</th>
-                        <th class="score-cell">BESVÆR</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for unit in unit_scores[:12] %}
-                    <tr onclick="location.href='/admin/assessment/{{ unit.assessment_id }}/detailed'">
-                        <td>
-                            <div class="unit-name">
-                                {{ unit.name }}
-                                {% if unit.assessment_count > 1 %}<span class="indicator" style="background: #e0e7ff; color: #4338ca;" title="{{ unit.assessment_count }} målinger">{{ unit.assessment_count }}x</span>{% endif %}
-                                {% if unit.has_leader_gap %}<span class="indicator gap" title="Stort gap">GAP</span>{% endif %}
-                                {% if unit.has_substitution %}<span class="indicator substitution" title="Substitution">SUB</span>{% endif %}
-                            </div>
-                            <div class="assessment-info">Seneste: {{ unit.period or unit.assessment_name }}</div>
-                        </td>
-                        <td>{{ unit.total_responses }}</td>
-                        {% for field in ['employee_mening', 'employee_tryghed', 'employee_kan', 'employee_besvaer'] %}
-                        <td class="score-cell">
-                            {% if unit[field] %}
-                                {% set score = unit[field] %}
-                                {% set score_class = 'low' if score < 2.5 else ('medium' if score < 3.5 else 'high') %}
-                                <span class="score-badge {{ score_class }}">{{ "%.1f"|format(score) }}</span>
-                            {% else %}
-                                -
-                            {% endif %}
-                        </td>
-                        {% endfor %}
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <div class="score-headers">
+            <span style="width: 20px;"></span>
+            <span class="spacer">Enhed</span>
+            <span class="header-item">M</span>
+            <span class="header-item">T</span>
+            <span class="header-item">K</span>
+            <span class="header-item">B</span>
+            <span class="responses-header">Svar</span>
         </div>
-        {% if unit_scores|length > 12 %}
-        <a href="/admin/analyser" class="see-all-link">Se alle {{ unit_scores|length }} enheder &rarr;</a>
-        {% endif %}
+        <div class="unit-tree">
+            {% for unit in unit_scores %}
+            <div class="unit-row level-{{ unit.level }}"
+                 data-unit-id="{{ unit.id }}"
+                 data-parent-id="{{ unit.parent_id or '' }}"
+                 data-level="{{ unit.level }}"
+                 onclick="{% if unit.has_children %}toggleUnit('{{ unit.id }}'){% else %}location.href='/admin/analyser?unit_id={{ unit.id }}'{% endif %}">
+                <span class="unit-toggle">
+                    {% if unit.has_children %}▼{% endif %}
+                </span>
+                <div class="unit-info">
+                    <div class="unit-name">{{ unit.name }}</div>
+                    <div class="unit-meta">{{ unit.assessment_count }} måling{{ 'er' if unit.assessment_count != 1 else '' }}</div>
+                </div>
+                <div class="unit-scores">
+                    {% for field in ['employee_mening', 'employee_tryghed', 'employee_kan', 'employee_besvaer'] %}
+                    {% if unit[field] %}
+                        {% set score = unit[field] %}
+                        {% set score_class = 'low' if score < 2.5 else ('medium' if score < 3.5 else 'high') %}
+                        <span class="score-badge {{ score_class }}">{{ "%.1f"|format(score) }}</span>
+                    {% else %}
+                        <span class="score-badge na">-</span>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+                <div class="unit-responses">{{ unit.total_responses }}</div>
+            </div>
+            {% endfor %}
+        </div>
         {% else %}
         <div class="empty-state">Ingen data endnu</div>
         {% endif %}
@@ -403,7 +433,7 @@
 
     <!-- Sidebar -->
     <div class="sidebar">
-        <!-- Mini stats -->
+        <!-- Stats -->
         <div class="sidebar-card">
             <div class="mini-stats">
                 <div class="mini-stat">
@@ -425,11 +455,11 @@
         <!-- Trend -->
         <div class="sidebar-card">
             <h3>
-                Trend
+                Trend over tid
                 <select class="filter-select" id="unitFilter" onchange="filterByUnit(this.value)">
                     <option value="">Alle</option>
                     {% for unit in units[:20] %}
-                    <option value="{{ unit.id }}" {% if selected_unit == unit.id %}selected{% endif %}>
+                    <option value="{{ unit.id }}" {% if selected_unit == unit.id|string %}selected{% endif %}>
                         {{ unit.name|truncate(25) }}
                     </option>
                     {% endfor %}
@@ -439,8 +469,14 @@
             <div class="chart-container">
                 <canvas id="trendChart"></canvas>
             </div>
+            <div class="trend-legend">
+                <span class="trend-legend-item"><span class="dot" style="background: #8b5cf6;"></span> MENING</span>
+                <span class="trend-legend-item"><span class="dot" style="background: #22c55e;"></span> TRYGHED</span>
+                <span class="trend-legend-item"><span class="dot" style="background: #3b82f6;"></span> KAN</span>
+                <span class="trend-legend-item"><span class="dot" style="background: #ef4444;"></span> BESVÆR</span>
+            </div>
             {% else %}
-            <div class="empty-state">Ingen trenddata</div>
+            <div class="empty-state">Vælg en enhed for at se trend</div>
             {% endif %}
         </div>
 
@@ -455,7 +491,7 @@
                 {% for c in recent_assessments[:5] %}
                 <a href="/admin/assessment/{{ c.id }}/detailed" class="recent-item">
                     <div>
-                        <div class="name">{{ c.name|truncate(30) }}</div>
+                        <div class="name">{{ c.name|truncate(28) }}</div>
                         <div class="meta">{{ c.unit_name }}</div>
                     </div>
                     <span class="count">{{ c.response_count }}</span>
@@ -469,23 +505,18 @@
     </div>
 </div>
 
-<!-- Advarsler (kun hvis der er nogen) -->
+<!-- Advarsler -->
 {% if alerts %}
 <div class="alerts-section">
     <div class="card" style="padding: 20px;">
-        <h2 style="margin-bottom: 15px;">
-            <span>Advarsler ({{ alerts|length }})</span>
-        </h2>
+        <h2 style="margin-bottom: 15px;">Advarsler ({{ alerts|length }})</h2>
         {% for alert in alerts[:5] %}
-        <div class="alert-item" onclick="location.href='/admin/assessment/{{ alert.assessment_id }}/detailed'">
+        <div class="alert-item" onclick="location.href='/admin/analyser?unit_id={{ alert.unit_id }}'">
             <span class="icon">{{ alert.icon }}</span>
             <span class="text">{{ alert.text }}</span>
             <span class="action">Se &rarr;</span>
         </div>
         {% endfor %}
-        {% if alerts|length > 5 %}
-        <a href="/admin/analyser" class="see-all-link">Se alle {{ alerts|length }} advarsler</a>
-        {% endif %}
     </div>
 </div>
 {% endif %}
@@ -494,6 +525,33 @@
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+// Toggle hierarki
+function toggleUnit(unitId) {
+    const rows = document.querySelectorAll('.unit-row');
+    const clickedRow = document.querySelector(`[data-unit-id="${unitId}"]`);
+    const toggle = clickedRow.querySelector('.unit-toggle');
+    const isCollapsing = toggle.textContent === '▼';
+
+    toggle.textContent = isCollapsing ? '▶' : '▼';
+
+    // Find alle børn (rekursivt)
+    function toggleChildren(parentId, hide) {
+        rows.forEach(row => {
+            if (row.dataset.parentId === parentId) {
+                if (hide) {
+                    row.classList.add('collapsed');
+                    // Collapse children's children too
+                    toggleChildren(row.dataset.unitId, true);
+                } else {
+                    row.classList.remove('collapsed');
+                }
+            }
+        });
+    }
+
+    toggleChildren(unitId, isCollapsing);
+}
+
 function filterByUnit(unitId) {
     if (unitId) {
         window.location.href = '/admin?unit_id=' + unitId;
@@ -505,7 +563,11 @@ function filterByUnit(unitId) {
 {% if trend_data and trend_data.assessments %}
 const assessments = {{ trend_data.assessments | tojson }};
 const fields = {{ trend_data.fields | tojson }};
-const labels = assessments.map(c => c.date || c.name.substring(0, 10));
+const labels = assessments.map(c => {
+    // Vis periode hvis den findes, ellers dato
+    if (c.period) return c.period;
+    return c.date ? c.date.substring(5) : c.name.substring(0, 8);
+});
 
 const colors = {
     'MENING': '#8b5cf6',
@@ -533,11 +595,25 @@ new Chart(document.getElementById('trendChart'), {
         maintainAspectRatio: false,
         interaction: { mode: 'index', intersect: false },
         scales: {
-            y: { min: 1, max: 5, ticks: { stepSize: 1, font: { size: 10 } } },
-            x: { ticks: { font: { size: 9 }, maxRotation: 0 } }
+            y: {
+                min: 1,
+                max: 5,
+                ticks: { stepSize: 1, font: { size: 10 } }
+            },
+            x: {
+                ticks: { font: { size: 9 }, maxRotation: 45 }
+            }
         },
         plugins: {
-            legend: { display: false }
+            legend: { display: false },
+            tooltip: {
+                callbacks: {
+                    title: function(context) {
+                        const idx = context[0].dataIndex;
+                        return assessments[idx].name;
+                    }
+                }
+            }
         }
     }
 });
