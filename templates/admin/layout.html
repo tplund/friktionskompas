@@ -321,20 +321,18 @@
             {% else %}
             <!-- Adminvisning submenu - reorganiseret med dropdowns -->
             <ul class="submenu-links">
-                <!-- Dashboard - det vigtigste først -->
-                <li><a href="/admin/dashboard" {% if 'dashboard' in request.path and 'noegletal' not in request.path %}class="active"{% endif %}>🏠 {{ t('nav.dashboard') }}</a></li>
+                <!-- Dashboard - kombineret oversigt (KPIs + Trend + Analyser) -->
+                <li><a href="/admin" {% if request.path == '/admin' %}class="active"{% endif %}>🏠 {{ t('nav.dashboard') }}</a></li>
 
                 <!-- Målinger dropdown -->
                 <li class="submenu-dropdown">
-                    <a href="#" class="dropdown-toggle {% if 'assessments' in request.path or 'scheduled' in request.path or 'analyser' in request.path or 'noegletal' in request.path or 'trend' in request.path %}active{% endif %}">📋 {{ t('nav.maalinger', 'Målinger') }} ▾</a>
+                    <a href="#" class="dropdown-toggle {% if 'assessments' in request.path or 'scheduled' in request.path or 'analyser' in request.path %}active{% endif %}">📋 {{ t('nav.maalinger', 'Målinger') }} ▾</a>
                     <ul class="dropdown-menu">
                         <li><a href="/admin/assessments-overview" {% if 'assessments-overview' in request.path %}class="active"{% endif %}>📋 {{ t('nav.alle_maalinger') }}</a></li>
                         <li><a href="/admin/scheduled-assessments" {% if 'scheduled-assessments' in request.path %}class="active"{% endif %}>📅 {{ t('nav.planlagte', 'Planlagte') }}</a></li>
                         <li><a href="/admin/new-assessment" {% if 'new-assessment' in request.path %}class="active"{% endif %}>➕ {{ t('nav.ny_maaling', 'Ny måling') }}</a></li>
                         <li style="border-top: 1px solid rgba(255,255,255,0.1); margin: 5px 0;"></li>
                         <li><a href="/admin/analyser" {% if 'analyser' in request.path %}class="active"{% endif %}>📊 {{ t('nav.analyser') }}</a></li>
-                        <li><a href="/admin/noegletal" {% if 'noegletal' in request.path %}class="active"{% endif %}>📈 {{ t('nav.noegletal') }}</a></li>
-                        <li><a href="/admin/trend" {% if 'trend' in request.path %}class="active"{% endif %}>📉 {{ t('nav.trend') }}</a></li>
                     </ul>
                 </li>
 
@@ -349,9 +347,9 @@
 
                 <!-- Organisation dropdown -->
                 <li class="submenu-dropdown">
-                    <a href="#" class="dropdown-toggle {% if request.path == '/admin' or 'customers' in request.path or 'domains' in request.path %}active{% endif %}">🏢 {{ t('nav.organisation', 'Organisation') }} ▾</a>
+                    <a href="#" class="dropdown-toggle {% if 'units' in request.path or 'customers' in request.path or 'domains' in request.path %}active{% endif %}">🏢 {{ t('nav.organisation', 'Organisation') }} ▾</a>
                     <ul class="dropdown-menu">
-                        <li><a href="/admin" {% if request.path == '/admin' %}class="active"{% endif %}>🌳 {{ t('nav.organisationer') }}</a></li>
+                        <li><a href="/admin/units" {% if 'units' in request.path %}class="active"{% endif %}>🌳 {{ t('nav.organisationer') }}</a></li>
                         <li><a href="/admin/customers" {% if 'customers' in request.path %}class="active"{% endif %}>👥 {{ t('nav.kunder_brugere') }}</a></li>
                         {% if session.user.role in ['admin', 'superadmin'] %}
                         <li><a href="/admin/domains" {% if 'domains' in request.path %}class="active"{% endif %}>🌐 {{ t('nav.domaener', 'Domæner') }}</a></li>

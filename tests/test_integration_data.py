@@ -376,6 +376,45 @@ class TestTestdataQuality:
         yield conn
         conn.close()
 
+    def test_no_duplicate_assessment_names(self, db_connection):
+        """Each assessment should have a unique name within its customer."""
+        duplicates = db_connection.execute("""
+            SELECT a.name, ou.customer_id, COUNT(*) as count
+            FROM assessments a
+            JOIN organizational_units ou ON a.target_unit_id = ou.id
+            GROUP BY a.name, ou.customer_id
+            HAVING COUNT(*) > 1
+        """).fetchall()
+
+        if duplicates:
+            dup_names = [f"{d['name']} ({d['count']}x)" for d in duplicates]
+            assert False, f"Duplicate assessment names found: {dup_names}"
+
+    def test_assessments_show_period_or_date(self, db_connection):
+        """Assessments should have distinguishable names (include period or date)."""
+        # Get assessments grouped by unit
+        assessments_by_unit = db_connection.execute("""
+            SELECT ou.name as unit_name, COUNT(*) as assessment_count
+            FROM assessments a
+            JOIN organizational_units ou ON a.target_unit_id = ou.id
+            WHERE ou.customer_id = ?
+            GROUP BY ou.id
+            HAVING COUNT(*) > 1
+        """, [HERNING_CUSTOMER_ID]).fetchall()
+
+        for row in assessments_by_unit:
+            # Units with multiple assessments should have distinguishable assessment names
+            assessments = db_connection.execute("""
+                SELECT a.name FROM assessments a
+                JOIN organizational_units ou ON a.target_unit_id = ou.id
+                WHERE ou.name = ? AND ou.customer_id = ?
+            """, [row['unit_name'], HERNING_CUSTOMER_ID]).fetchall()
+
+            names = [a['name'] for a in assessments]
+            # Check that names are unique (not just "Friktionsmåling X" repeated)
+            assert len(names) == len(set(names)), \
+                f"Unit '{row['unit_name']}' has duplicate assessment names: {names}"
+
     def test_herning_has_assessments(self, db_connection):
         """Herning Kommune should have test assessments."""
         count = db_connection.execute("""

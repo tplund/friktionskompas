@@ -853,7 +853,220 @@ Niels;Olsen;niels@techcorp.dk;+4512345017;TechCorp//Sales//DACH"""
 @app.route('/admin')
 @login_required
 def admin_home():
-    """Admin forside - vis organisationstræ"""
+    """Dashboard v2 - kombineret oversigt med KPIs, trend, og analyser"""
+    user = get_current_user()
+    customer_filter = session.get('customer_filter') or user.get('customer_id')
+    unit_id = request.args.get('unit_id')  # For trend filter
+
+    with get_db() as conn:
+        # Base filter for queries
+        if customer_filter:
+            customer_where = "WHERE ou.customer_id = ?"
+            customer_params = [customer_filter]
+            cid = customer_filter
+        elif user['role'] not in ('admin', 'superadmin'):
+            customer_where = "WHERE ou.customer_id = ?"
+            customer_params = [user['customer_id']]
+            cid = user['customer_id']
+        else:
+            customer_where = ""
+            customer_params = []
+            cid = None
+
+        # === KPI Stats ===
+        if cid:
+            total_customers = 1
+            total_units = conn.execute(
+                "SELECT COUNT(*) as cnt FROM organizational_units WHERE customer_id = ?",
+                [cid]
+            ).fetchone()['cnt']
+            total_assessments = conn.execute("""
+                SELECT COUNT(*) as cnt FROM assessments c
+                JOIN organizational_units ou ON c.target_unit_id = ou.id
+                WHERE ou.customer_id = ?
+            """, [cid]).fetchone()['cnt']
+            total_responses = conn.execute("""
+                SELECT COUNT(*) as cnt FROM responses r
+                JOIN assessments c ON r.assessment_id = c.id
+                JOIN organizational_units ou ON c.target_unit_id = ou.id
+                WHERE ou.customer_id = ?
+            """, [cid]).fetchone()['cnt']
+        else:
+            total_customers = conn.execute("SELECT COUNT(*) as cnt FROM customers").fetchone()['cnt']
+            total_units = conn.execute("SELECT COUNT(*) as cnt FROM organizational_units").fetchone()['cnt']
+            total_assessments = conn.execute("SELECT COUNT(*) as cnt FROM assessments").fetchone()['cnt']
+            total_responses = conn.execute("SELECT COUNT(*) as cnt FROM responses").fetchone()['cnt']
+
+        # === Field Scores (aggregeret) ===
+        field_scores_query = """
+            SELECT
+                q.field,
+                AVG(CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END) as avg_score,
+                COUNT(*) as response_count
+            FROM responses r
+            JOIN questions q ON r.question_id = q.id
+            JOIN assessments c ON r.assessment_id = c.id
+            JOIN organizational_units ou ON c.target_unit_id = ou.id
+            {where}
+            GROUP BY q.field
+            ORDER BY avg_score ASC
+        """.format(where=customer_where)
+        field_scores = conn.execute(field_scores_query, customer_params).fetchall()
+
+        # === Seneste målinger ===
+        recent_assessments_query = """
+            SELECT
+                c.id,
+                c.name,
+                c.period,
+                c.created_at,
+                ou.name as unit_name,
+                COUNT(DISTINCT r.id) as response_count
+            FROM assessments c
+            JOIN organizational_units ou ON c.target_unit_id = ou.id
+            LEFT JOIN responses r ON r.assessment_id = c.id
+            {where}
+            GROUP BY c.id
+            ORDER BY c.created_at DESC
+            LIMIT 5
+        """.format(where=customer_where)
+        recent_assessments = conn.execute(recent_assessments_query, customer_params).fetchall()
+
+        # === Units for dropdown ===
+        if cid:
+            units = conn.execute("""
+                SELECT id, name, full_path, level
+                FROM organizational_units
+                WHERE customer_id = ?
+                ORDER BY full_path
+            """, [cid]).fetchall()
+        else:
+            units = conn.execute("""
+                SELECT id, name, full_path, level
+                FROM organizational_units
+                ORDER BY full_path
+            """).fetchall()
+
+        # === Unit scores (for drill-down table) ===
+        unit_scores_query = """
+            SELECT
+                ou.id,
+                ou.name,
+                ou.full_path,
+                ou.level,
+                c.id as assessment_id,
+                c.name as assessment_name,
+                c.period,
+                COUNT(DISTINCT r.id) as total_responses,
+
+                AVG(CASE
+                    WHEN r.respondent_type = 'employee' AND q.field = 'MENING' THEN
+                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END
+                END) as employee_mening,
+
+                AVG(CASE
+                    WHEN r.respondent_type = 'employee' AND q.field = 'TRYGHED' THEN
+                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END
+                END) as employee_tryghed,
+
+                AVG(CASE
+                    WHEN r.respondent_type = 'employee' AND q.field = 'KAN' THEN
+                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END
+                END) as employee_kan,
+
+                AVG(CASE
+                    WHEN r.respondent_type = 'employee' AND q.field = 'BESVÆR' THEN
+                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END
+                END) as employee_besvaer,
+
+                AVG(CASE
+                    WHEN r.respondent_type = 'leader_assess' THEN
+                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END
+                END) as leader_overall
+
+            FROM organizational_units ou
+            LEFT JOIN assessments c ON c.target_unit_id = ou.id
+            LEFT JOIN responses r ON c.id = r.assessment_id
+            LEFT JOIN questions q ON r.question_id = q.id
+            {where}
+            GROUP BY ou.id, c.id
+            HAVING total_responses > 0
+            ORDER BY c.created_at DESC
+        """.format(where=customer_where)
+        unit_scores_raw = conn.execute(unit_scores_query, customer_params).fetchall()
+
+        # Enrich with indicators
+        unit_scores = []
+        for unit in unit_scores_raw:
+            unit_dict = dict(unit)
+            unit_dict['has_leader_gap'] = False
+            unit_dict['has_substitution'] = False
+
+            # Check for leader gap
+            if unit['leader_overall']:
+                for field in ['employee_mening', 'employee_tryghed', 'employee_kan', 'employee_besvaer']:
+                    if unit[field] and abs(unit[field] - unit['leader_overall']) > 1.0:
+                        unit_dict['has_leader_gap'] = True
+                        break
+
+            # Check for substitution (simple heuristic: very high KAN + low TRYGHED)
+            if unit['employee_kan'] and unit['employee_tryghed']:
+                if unit['employee_kan'] > 4.0 and unit['employee_tryghed'] < 2.5:
+                    unit_dict['has_substitution'] = True
+
+            unit_scores.append(unit_dict)
+
+        # === Alerts ===
+        alerts = []
+        for unit in unit_scores:
+            # Low scores
+            for field, label in [('employee_tryghed', 'TRYGHED'), ('employee_besvaer', 'BESVÆR'),
+                                 ('employee_mening', 'MENING'), ('employee_kan', 'KAN')]:
+                if unit.get(field) and unit[field] < 2.5:
+                    alerts.append({
+                        'icon': '⚠️',
+                        'text': f"{unit['name']}: {label} kritisk lav ({unit[field]:.2f})",
+                        'assessment_id': unit['assessment_id']
+                    })
+            # Leader gap
+            if unit.get('has_leader_gap'):
+                alerts.append({
+                    'icon': '📊',
+                    'text': f"{unit['name']}: Stort gap mellem leder og medarbejdere",
+                    'assessment_id': unit['assessment_id']
+                })
+
+    # Get trend data
+    if cid:
+        trend_data = get_trend_data(unit_id=unit_id, customer_id=cid)
+    else:
+        trend_data = get_trend_data(unit_id=unit_id)
+
+    return render_template('admin/dashboard_v2.html',
+                         # KPIs
+                         total_customers=total_customers,
+                         total_units=total_units,
+                         total_assessments=total_assessments,
+                         total_responses=total_responses,
+                         show_customer_stats=(user['role'] in ('admin', 'superadmin') and not customer_filter),
+                         # Field scores
+                         field_scores=[dict(f) for f in field_scores],
+                         # Recent
+                         recent_assessments=[dict(c) for c in recent_assessments],
+                         # Trend
+                         trend_data=trend_data,
+                         units=[dict(u) for u in units],
+                         selected_unit=unit_id,
+                         # Unit drill-down
+                         unit_scores=unit_scores,
+                         # Alerts
+                         alerts=alerts[:10])
+
+
+@app.route('/admin/units')
+@login_required
+def admin_units():
+    """Organisationstræ - vis og rediger organisationsstrukturen"""
     user = get_current_user()
 
     # Check for customer filter (admin filtering by customer)
