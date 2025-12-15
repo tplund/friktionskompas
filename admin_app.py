@@ -4469,6 +4469,108 @@ def vary_testdata():
     return redirect(url_for('dev_tools'))
 
 
+@app.route('/admin/fix-missing-leader-data', methods=['POST'])
+@admin_required
+def fix_missing_leader_data():
+    """Tilføj manglende leader_assess og leader_self data til gruppe_friktion assessments"""
+    import random
+    import uuid
+
+    random.seed(42)
+    added_count = 0
+
+    with get_db() as conn:
+        # Find alle gruppe_friktion assessments
+        assessments = conn.execute("""
+            SELECT a.id, a.name, a.target_unit_id, ou.name as unit_name
+            FROM assessments a
+            JOIN organizational_units ou ON a.target_unit_id = ou.id
+            WHERE a.assessment_type_id = 'gruppe_friktion'
+              AND a.name NOT LIKE 'B2C%'
+        """).fetchall()
+
+        # Hent alle spørgsmål
+        questions = conn.execute("""
+            SELECT id, field, reverse_scored FROM questions WHERE is_default = 1
+        """).fetchall()
+
+        for assessment in assessments:
+            # Tjek om der allerede er leader_assess data
+            has_leader_assess = conn.execute("""
+                SELECT COUNT(*) FROM responses
+                WHERE assessment_id = ? AND respondent_type = 'leader_assess'
+            """, (assessment['id'],)).fetchone()[0] > 0
+
+            has_leader_self = conn.execute("""
+                SELECT COUNT(*) FROM responses
+                WHERE assessment_id = ? AND respondent_type = 'leader_self'
+            """, (assessment['id'],)).fetchone()[0] > 0
+
+            if has_leader_assess and has_leader_self:
+                continue  # Allerede OK
+
+            # Hent employee responses for at finde unit_id
+            sample_response = conn.execute("""
+                SELECT unit_id FROM responses
+                WHERE assessment_id = ? AND respondent_type = 'employee'
+                LIMIT 1
+            """, (assessment['id'],)).fetchone()
+
+            if not sample_response:
+                continue
+
+            unit_id = sample_response['unit_id']
+
+            # Generer leader_assess data (lidt højere end employee)
+            if not has_leader_assess:
+                respondent_name = f"Leder vurdering - {assessment['unit_name']}"
+                for q in questions:
+                    # Ledere vurderer typisk lidt højere (bias)
+                    base_score = random.choice([3, 3, 4, 4, 4, 5])
+                    if q['reverse_scored'] == 1:
+                        score = 6 - base_score
+                    else:
+                        score = base_score
+
+                    conn.execute("""
+                        INSERT INTO responses (assessment_id, question_id, unit_id,
+                                              respondent_type, respondent_name, score)
+                        VALUES (?, ?, ?, 'leader_assess', ?, ?)
+                    """, (assessment['id'], q['id'], unit_id, respondent_name, score))
+                    added_count += 1
+
+            # Generer leader_self data (varierer mere)
+            if not has_leader_self:
+                respondent_name = f"Leder selv - {assessment['unit_name']}"
+                for q in questions:
+                    # Ledere vurderer sig selv mere varieret
+                    base_score = random.choice([2, 3, 3, 4, 4, 4, 5])
+                    if q['reverse_scored'] == 1:
+                        score = 6 - base_score
+                    else:
+                        score = base_score
+
+                    conn.execute("""
+                        INSERT INTO responses (assessment_id, question_id, unit_id,
+                                              respondent_type, respondent_name, score)
+                        VALUES (?, ?, ?, 'leader_self', ?, ?)
+                    """, (assessment['id'], q['id'], unit_id, respondent_name, score))
+                    added_count += 1
+
+            # Opdater assessment til at inkludere leder-vurdering
+            conn.execute("""
+                UPDATE assessments
+                SET include_leader_assessment = 1, include_leader_self = 1
+                WHERE id = ?
+            """, (assessment['id'],))
+
+    # Ryd cache
+    invalidate_all()
+
+    flash(f'Tilføjet {added_count} manglende leder-responses og opdateret assessments', 'success')
+    return redirect(url_for('dev_tools'))
+
+
 @app.route('/admin/backup')
 @admin_required
 def backup_page():
