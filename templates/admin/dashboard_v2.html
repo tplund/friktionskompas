@@ -495,7 +495,14 @@
                 <span class="trend-legend-item"><span class="dot" style="background: #ef4444;"></span> BESVÆR</span>
             </div>
             {% else %}
-            <div class="empty-state">Vælg en enhed for at se trend</div>
+            <div class="empty-state">
+                Ingen trend-data tilgængelig
+                {% if trend_data %}
+                <div style="font-size: 0.7rem; color: #9ca3af; margin-top: 5px;">
+                    ({{ trend_data.assessments|length if trend_data.assessments else 0 }} målinger)
+                </div>
+                {% endif %}
+            </div>
             {% endif %}
         </div>
 
@@ -549,7 +556,7 @@ function toggleUnit(unitId) {
     const rows = document.querySelectorAll('.unit-row');
     const clickedRow = document.querySelector(`[data-unit-id="${unitId}"]`);
     const toggle = clickedRow.querySelector('.unit-toggle');
-    const isCollapsing = toggle.textContent === '▼';
+    const isCollapsing = toggle.textContent.trim() === '▼';
 
     toggle.textContent = isCollapsing ? '▶' : '▼';
 
@@ -559,10 +566,15 @@ function toggleUnit(unitId) {
             if (row.dataset.parentId === parentId) {
                 if (hide) {
                     row.classList.add('collapsed');
-                    // Collapse children's children too
+                    // Also reset toggle icon and collapse grandchildren
+                    const childToggle = row.querySelector('.unit-toggle');
+                    if (childToggle && childToggle.textContent.trim()) {
+                        childToggle.textContent = '▶';
+                    }
                     toggleChildren(row.dataset.unitId, true);
                 } else {
                     row.classList.remove('collapsed');
+                    // Note: don't auto-expand grandchildren - they stay collapsed
                 }
             }
         });
