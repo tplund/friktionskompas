@@ -179,6 +179,23 @@
         color: #6b7280;
         flex-shrink: 0;
     }
+    .unit-action {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border-radius: 4px;
+        text-decoration: none;
+        font-size: 0.9rem;
+        background: #f3f4f6;
+        margin-left: 8px;
+        transition: all 0.15s;
+    }
+    .unit-action:hover {
+        background: #e5e7eb;
+        transform: scale(1.1);
+    }
 
     /* Sidebar */
     .sidebar-card {
@@ -396,6 +413,7 @@
             <span class="header-item">K</span>
             <span class="header-item">B</span>
             <span class="responses-header">Svar</span>
+            <span style="width: 36px;"></span>
         </div>
         <div class="unit-tree">
             {% for unit in unit_scores %}
@@ -423,6 +441,7 @@
                     {% endfor %}
                 </div>
                 <div class="unit-responses">{{ unit.total_responses }}</div>
+                <a href="/admin/analyser?unit_id={{ unit.id }}" class="unit-action" onclick="event.stopPropagation();" title="Se analyse">📊</a>
             </div>
             {% endfor %}
         </div>

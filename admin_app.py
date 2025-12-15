@@ -2697,11 +2697,12 @@ def get_individual_scores(target_unit_id, assessment_id):
         """
 
         # Get all individual employee scores
-        # Use respondent_name as identifier (or a hash of unit+created_at if anonymous)
+        # Use respondent_name if available, otherwise use minute-based session grouping
+        # (assuming all responses from same respondent come within same minute)
         employee_query = f"""
         {subtree_cte}
         SELECT
-            COALESCE(r.respondent_name, CAST(r.id AS TEXT)) as resp_key,
+            COALESCE(r.respondent_name, strftime('%Y-%m-%d %H:%M', r.created_at)) as resp_key,
             q.field,
             AVG(CASE
                 WHEN q.reverse_scored = 1 THEN 6 - r.score
