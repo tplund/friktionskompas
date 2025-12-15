@@ -491,7 +491,7 @@ class TestGetUnitStatsWithKnownData:
             conn.execute("""
                 CREATE TABLE responses (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    assessment_id TEXT,
+                    campaign_id TEXT,
                     unit_id TEXT,
                     question_id INTEGER,
                     score INTEGER
@@ -524,7 +524,7 @@ class TestGetUnitStatsWithKnownData:
             # Create responses with known scores (all score 4)
             for qid, field in questions:
                 conn.execute(
-                    "INSERT INTO responses (assessment_id, unit_id, question_id, score) VALUES ('test-assess', 'test-unit', ?, 4)",
+                    "INSERT INTO responses (campaign_id, unit_id, question_id, score) VALUES ('test-assess', 'test-unit', ?, 4)",
                     (qid,)
                 )
 

@@ -783,12 +783,12 @@ def validate_and_use_token(token: str) -> Optional[Dict[str, str]]:
 # RESPONSES
 # ========================================
 
-def save_response(assessment_id: str, unit_id: str, question_id: int, 
+def save_response(assessment_id: str, unit_id: str, question_id: int,
                  score: int, comment: str = None, category_comment: str = None):
     """Gem svar"""
     with get_db() as conn:
         conn.execute("""
-            INSERT INTO responses (assessment_id, unit_id, question_id, score, comment, category_comment)
+            INSERT INTO responses (campaign_id, unit_id, question_id, score, comment, category_comment)
             VALUES (?, ?, ?, ?, ?, ?)
         """, (assessment_id, unit_id, question_id, score, comment, category_comment))
 
@@ -808,33 +808,33 @@ def get_unit_stats(unit_id: str, assessment_id: str, include_children: bool = Tr
                     SELECT ou.id FROM organizational_units ou
                     JOIN subtree st ON ou.parent_id = st.id
                 )
-                SELECT 
+                SELECT
                     q.field,
-                    AVG(CASE 
-                        WHEN q.reverse_scored = 1 THEN 6 - r.score 
-                        ELSE r.score 
+                    AVG(CASE
+                        WHEN q.reverse_scored = 1 THEN 6 - r.score
+                        ELSE r.score
                     END) as avg_score,
                     COUNT(r.id) as response_count
                 FROM questions q
-                LEFT JOIN responses r ON q.id = r.question_id 
+                LEFT JOIN responses r ON q.id = r.question_id
                     AND r.unit_id IN (SELECT id FROM subtree)
-                    AND r.assessment_id = ?
+                    AND r.campaign_id = ?
                 WHERE q.is_default = 1
                 GROUP BY q.field
             """, (unit_id, assessment_id)).fetchall()
         else:
             # Kun denne unit
             rows = conn.execute("""
-                SELECT 
+                SELECT
                     q.field,
-                    AVG(CASE 
-                        WHEN q.reverse_scored = 1 THEN 6 - r.score 
-                        ELSE r.score 
+                    AVG(CASE
+                        WHEN q.reverse_scored = 1 THEN 6 - r.score
+                        ELSE r.score
                     END) as avg_score,
                     COUNT(r.id) as response_count
                 FROM questions q
-                LEFT JOIN responses r ON q.id = r.question_id 
-                    AND r.unit_id = ? AND r.assessment_id = ?
+                LEFT JOIN responses r ON q.id = r.question_id
+                    AND r.unit_id = ? AND r.campaign_id = ?
                 WHERE q.is_default = 1
                 GROUP BY q.field
             """, (unit_id, assessment_id)).fetchall()
@@ -892,7 +892,7 @@ def get_assessment_overview(assessment_id: str) -> List[Dict]:
                     END), 1) as besvær_score
                 FROM responses r
                 JOIN questions q ON r.question_id = q.id
-                WHERE r.assessment_id = ? AND r.unit_id = ? AND q.field = 'BESVÆR'
+                WHERE r.campaign_id = ? AND r.unit_id = ? AND q.field = 'BESVÆR'
             """, (assessment_id, unit_id)).fetchone()
             
             overview.append({
