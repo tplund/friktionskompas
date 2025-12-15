@@ -1778,6 +1778,31 @@ def debug_analyser(unit_id):
     from flask import jsonify
 
     with get_db() as conn:
+        # Først: tjek reverse_scored statistik i denne database
+        reverse_stats = conn.execute("""
+            SELECT
+                COUNT(*) as total_questions,
+                SUM(CASE WHEN reverse_scored = 1 THEN 1 ELSE 0 END) as reverse_questions,
+                SUM(CASE WHEN reverse_scored = 0 THEN 1 ELSE 0 END) as normal_questions
+            FROM questions
+            WHERE is_default = 1
+        """).fetchone()
+
+        # Tjek specifikt for denne unit's responses
+        response_check = conn.execute("""
+            SELECT
+                q.reverse_scored,
+                COUNT(*) as count,
+                AVG(r.score) as raw_avg,
+                AVG(CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END) as adj_avg
+            FROM responses r
+            JOIN questions q ON r.question_id = q.id
+            JOIN assessments a ON r.assessment_id = a.id
+            WHERE a.target_unit_id = ?
+              AND r.respondent_type = 'employee'
+            GROUP BY q.reverse_scored
+        """, [unit_id]).fetchall()
+
         # Samme query som analyser endpoint
         query = """
             SELECT
@@ -1822,6 +1847,20 @@ def debug_analyser(unit_id):
             'assessment_id': result['assessment_id'],
             'assessment_name': result['assessment_name'],
             'total_responses': result['total_responses'],
+            'database_check': {
+                'total_default_questions': reverse_stats['total_questions'],
+                'reverse_scored_questions': reverse_stats['reverse_questions'],
+                'normal_questions': reverse_stats['normal_questions'],
+            },
+            'response_breakdown': [
+                {
+                    'reverse_scored': row['reverse_scored'],
+                    'count': row['count'],
+                    'raw_avg': round(row['raw_avg'], 2) if row['raw_avg'] else None,
+                    'adjusted_avg': round(row['adj_avg'], 2) if row['adj_avg'] else None,
+                }
+                for row in response_check
+            ],
             'raw_scores': {
                 'employee_overall': round(result['employee_overall'], 2) if result['employee_overall'] else None,
                 'employee_mening': round(result['employee_mening'], 2) if result['employee_mening'] else None,
