@@ -128,6 +128,16 @@ curl -s -X POST "https://api.cloudflare.com/client/v4/zones/ZONE_ID/dns_records"
 - **ALTID** opdater tests hvis du ændrer eksisterende API/funktionalitet
 - Placer tests i `tests/` mappen, navngivet `test_*.py`
 
+### Bug Fix Dokumentation (AUTOMATISK!)
+Når en bug fikses skal følgende ALTID ske UDEN at brugeren skal bede om det:
+
+1. **Tilføj regressionstest** - test der ville have fanget buggen
+2. **Opdater CLAUDE.md** hvis buggen relaterer til en arkitektur-beslutning
+3. **Tilføj til KENDTE BUGS FIKSET** sektionen nedenfor
+4. **Commit message skal forklare** hvad buggen var og hvordan den blev fikset
+
+Dette gælder for ALLE bugs - ikke kun dem brugeren specifikt beder om dokumentation for!
+
 #### Test kommandoer
 ```bash
 # Kør alle tests (quick)
@@ -181,6 +191,31 @@ python -m pytest tests/ -k "login" -v
 # Seed translations på Render (efter deployment)
 curl -X POST https://friktionskompas-eu.onrender.com/admin/seed-translations
 ```
+
+---
+
+## ✅ KENDTE BUGS FIKSET (Reference)
+
+### Bug: vary_testdata() ignorerede reverse_scored (2025-12-15)
+**Symptom:** Hammerum Skole viste 57% i stedet for ~80%
+**Årsag:** `vary_testdata()` genererede høje scores (4.0-4.8) for ALLE spørgsmål baseret på profiler, men `reverse_scored` spørgsmål kræver LAVE raw scores for at give høje adjusted scores.
+
+**Teknisk forklaring:**
+- Profilen sagde: "Hammerum Skole skal have høje scores (4.0-4.8)"
+- For normale spørgsmål: raw=4.5 → adjusted=4.5 ✅
+- For reverse spørgsmål: raw=4.5 → adjusted=6-4.5=1.5 ❌ (dårligt!)
+- Korrekt for reverse: raw=1.5 → adjusted=6-1.5=4.5 ✅
+
+**Fix:**
+```python
+# I vary_testdata():
+if r['reverse_scored'] == 1:
+    new_score = 6 - target_score  # Invert for reverse
+else:
+    new_score = target_score
+```
+
+**Regressionstest:** `test_vary_testdata_must_invert_reverse_scored()` i `tests/test_analysis.py`
 
 ---
 

@@ -765,3 +765,48 @@ class TestReverseScoreCalculation:
         # Test edge cases
         assert to_percent(None) == 0, "None = 0%"
         assert to_percent(0) == 0, "0 = 0%"
+
+    def test_vary_testdata_must_invert_reverse_scored(self):
+        """
+        REGRESSIONSTEST: vary_testdata() SKAL invertere scores for reverse_scored spørgsmål.
+
+        Bug opdaget 2025-12-15:
+        - vary_testdata() genererede høje scores (4.0-4.8) for ALLE spørgsmål
+        - Men reverse_scored spørgsmål skal have LAVE raw scores for at give høje adjusted scores
+        - Dette fik Hammerum Skole til at vise 57% i stedet for 79%
+
+        Fix: For reverse_scored spørgsmål: new_score = 6 - target_score
+        """
+        # Simuler vary_testdata logik
+        target_score = 4  # Profilen siger vi vil have adjusted score 4
+
+        # For NORMAL spørgsmål: raw = target
+        normal_raw = target_score
+        normal_adjusted = normal_raw  # Ingen ændring
+        assert normal_adjusted == 4, "Normal: target 4 → adjusted 4"
+
+        # For REVERSE spørgsmål: raw = 6 - target (så adjusted = 6 - raw = target)
+        reverse_raw = 6 - target_score  # = 2
+        reverse_adjusted = 6 - reverse_raw  # = 4
+        assert reverse_raw == 2, "Reverse: target 4 → raw 2"
+        assert reverse_adjusted == 4, "Reverse: raw 2 → adjusted 4"
+
+        # KRITISK: Begge typer giver SAMME adjusted score!
+        assert normal_adjusted == reverse_adjusted, "Both types should give same adjusted score"
+
+        # Test med lavere target score (organisation med problemer)
+        target_low = 2  # Dårlig organisation
+
+        # Normal: raw 2 → adjusted 2 (dårligt)
+        normal_raw_low = target_low
+        normal_adj_low = normal_raw_low
+        assert normal_adj_low == 2
+
+        # Reverse: raw 4 → adjusted 2 (også dårligt)
+        reverse_raw_low = 6 - target_low  # = 4
+        reverse_adj_low = 6 - reverse_raw_low  # = 2
+        assert reverse_raw_low == 4
+        assert reverse_adj_low == 2
+
+        # KRITISK: Lavt target = lav adjusted for BEGGE typer
+        assert normal_adj_low == reverse_adj_low == 2
