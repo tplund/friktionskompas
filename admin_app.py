@@ -3981,23 +3981,9 @@ def rename_assessments():
     return redirect(url_for('dev_tools'))
 
 
-@app.route('/api/vary-testdata/<secret>')
-def vary_testdata_api(secret):
-    """Offentligt endpoint med secret - til engangskørsel. FJERN EFTER BRUG!"""
-    if secret != 'frik2025vary':
-        return {'error': 'Invalid secret'}, 403
-    return vary_testdata_internal()
-
-
 @app.route('/admin/vary-testdata', methods=['POST'])
 @admin_required
 def vary_testdata():
-    result = vary_testdata_internal()
-    flash(result.get('message', 'Opdateret'), 'success')
-    return redirect(url_for('dev_tools'))
-
-
-def vary_testdata_internal():
     """Tilføj realistisk variation til testdata - forskellige organisationer får forskellige profiler"""
     import random
 
@@ -4066,7 +4052,8 @@ def vary_testdata_internal():
     # Ryd cache så nye værdier vises
     invalidate_all()
 
-    return {'success': True, 'updated': count, 'message': f'Opdateret {count} responses med realistisk variation'}
+    flash(f'Opdateret {count} responses med realistisk variation og ryddet cache', 'success')
+    return redirect(url_for('dev_tools'))
 
 
 @app.route('/admin/backup')
