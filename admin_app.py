@@ -4469,6 +4469,75 @@ def vary_testdata():
     return redirect(url_for('dev_tools'))
 
 
+@app.route('/api/vary-testdata/<secret>')
+def vary_testdata_api(secret):
+    """API endpoint til at køre vary-testdata uden login - MIDLERTIDIGT"""
+    if secret != 'fix2025reverse':
+        return {'error': 'Invalid secret'}, 403
+
+    import random
+
+    PROFILES = {
+        'Birk Skole': {'MENING': (3.8, 4.5), 'TRYGHED': (3.5, 4.2), 'KAN': (2.2, 3.0), 'BESVÆR': (3.0, 3.8)},
+        'Gødstrup Skole': {'MENING': (2.0, 2.8), 'TRYGHED': (2.5, 3.2), 'KAN': (2.8, 3.5), 'BESVÆR': (2.0, 2.8)},
+        'Hammerum Skole': {'MENING': (4.0, 4.8), 'TRYGHED': (4.2, 4.8), 'KAN': (3.5, 4.2), 'BESVÆR': (3.8, 4.5)},
+        'Snejbjerg Skole': {'MENING': (3.0, 3.8), 'TRYGHED': (2.0, 2.8), 'KAN': (3.2, 4.0), 'BESVÆR': (3.0, 3.8)},
+        'Aktivitetscentret Midt': {'MENING': (3.5, 4.2), 'TRYGHED': (3.0, 3.8), 'KAN': (1.8, 2.5), 'BESVÆR': (1.5, 2.3)},
+        'Bofællesskabet Åparken': {'MENING': (4.2, 4.8), 'TRYGHED': (3.8, 4.5), 'KAN': (3.0, 3.8), 'BESVÆR': (2.5, 3.2)},
+        'Støttecentret Vestergade': {'MENING': (2.2, 3.0), 'TRYGHED': (3.5, 4.2), 'KAN': (4.0, 4.8), 'BESVÆR': (3.5, 4.2)},
+    }
+    DEFAULT = {'MENING': (2.8, 3.8), 'TRYGHED': (2.8, 3.8), 'KAN': (2.8, 3.8), 'BESVÆR': (2.8, 3.8)}
+
+    def get_score(profile, field):
+        low, high = profile.get(field, DEFAULT[field])
+        return max(1, min(5, round(random.triangular(low, high, (low+high)/2))))
+
+    random.seed(42)
+    count = 0
+
+    with get_db() as conn:
+        responses = conn.execute("""
+            SELECT r.id, ou.name as unit_name, q.field, q.reverse_scored
+            FROM responses r
+            JOIN organizational_units ou ON r.unit_id = ou.id
+            JOIN questions q ON r.question_id = q.id
+            WHERE r.respondent_type = 'employee'
+        """).fetchall()
+
+        for r in responses:
+            profile = next((PROFILES[k] for k in PROFILES if k in r['unit_name']), DEFAULT)
+            target_score = get_score(profile, r['field'])
+            if r['reverse_scored'] == 1:
+                new_score = 6 - target_score
+            else:
+                new_score = target_score
+            conn.execute("UPDATE responses SET score = ? WHERE id = ?", (new_score, r['id']))
+            count += 1
+
+        leader_responses = conn.execute("""
+            SELECT r.id, ou.name as unit_name, q.field, q.reverse_scored
+            FROM responses r
+            JOIN organizational_units ou ON r.unit_id = ou.id
+            JOIN questions q ON r.question_id = q.id
+            WHERE r.respondent_type = 'leader_assess'
+        """).fetchall()
+
+        for r in leader_responses:
+            profile = next((PROFILES[k] for k in PROFILES if k in r['unit_name']), DEFAULT)
+            low, high = profile.get(r['field'], DEFAULT[r['field']])
+            leader_profile = {r['field']: (min(5, low + 0.5), min(5, high + 0.8))}
+            target_score = get_score(leader_profile, r['field'])
+            if r['reverse_scored'] == 1:
+                new_score = 6 - target_score
+            else:
+                new_score = target_score
+            conn.execute("UPDATE responses SET score = ? WHERE id = ?", (new_score, r['id']))
+            count += 1
+
+    invalidate_all()
+    return {'success': True, 'updated': count}
+
+
 @app.route('/admin/backup')
 @admin_required
 def backup_page():
