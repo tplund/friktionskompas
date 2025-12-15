@@ -38,6 +38,22 @@ curl -s -X POST "https://api.cloudflare.com/client/v4/zones/ZONE_ID/dns_records"
 
 **Render:** Konfigureret via MCP (mcp__render__*)
 
+### Data Opdatering - Render og Lokal
+- **ALTID** opdater data BÅDE lokalt OG på Render når testdata ændres
+- **ALTID** ryd cache på Render efter data-opdateringer (brug API endpoint eller Dev Tools)
+- Midlertidige API endpoints med secret keys er OK under udvikling
+- Cache-rydning endpoint: `curl https://friktionskompasset.dk/api/clear-cache/frik2025cache`
+- Data-variation endpoint: `curl https://friktionskompasset.dk/api/vary-testdata/frik2025vary`
+- **FJERN midlertidige endpoints før produktion!**
+- Lokale Python scripts kan køres direkte for lokal database
+- For Render: Opret midlertidigt API endpoint, push, kald via curl, fjern endpoint igen
+
+### Udviklings-workflow
+- Vi er IKKE i produktion endnu - vi udvikler stadig
+- Det er OK at pushe testdata-ændringer via git
+- Brug midlertidige endpoints til engangskørsler på Render
+- Vær proaktiv - gør tingene selv i stedet for at bede brugeren
+
 ### TODO.md Vedligeholdelse
 - **ALTID** opdater `TODO.md` når nye opgaver identificeres
 - **ALTID** marker opgaver som færdige når de er implementeret

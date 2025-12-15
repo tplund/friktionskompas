@@ -1478,91 +1478,162 @@ def analyser():
         show_assessments = False  # Whether we're showing individual assessments
 
         if unit_id:
-            # MODE 2: Show individual assessments for this unit
-            show_assessments = True
-
-            # Get unit name
-            unit_row = conn.execute("SELECT name FROM organizational_units WHERE id = ?", [unit_id]).fetchone()
+            # Get unit info
+            unit_row = conn.execute("SELECT id, name, parent_id FROM organizational_units WHERE id = ?", [unit_id]).fetchone()
             if unit_row:
                 selected_unit_name = unit_row['name']
 
-            # Query for individual assessments (grouped by assessment)
-            query = """
-                SELECT
-                    ou.id,
-                    ou.name,
-                    ou.full_path,
-                    ou.level,
-                    c.id as assessment_id,
-                    c.name as assessment_name,
-                    c.period,
-                    c.created_at,
-                    COUNT(DISTINCT r.id) as total_responses,
-                    -- Calculate respondents: employee responses / 24 questions per respondent
-                    CAST(SUM(CASE WHEN r.respondent_type = 'employee' THEN 1 ELSE 0 END) AS REAL) / 24 as unique_respondents,
+            # Check if this unit has direct assessments
+            has_direct_assessments = conn.execute("""
+                SELECT COUNT(*) FROM assessments WHERE target_unit_id = ?
+            """, [unit_id]).fetchone()[0] > 0
 
-                    -- Employee scores
-                    AVG(CASE WHEN r.respondent_type = 'employee' THEN
-                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_overall,
-                    AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'MENING' THEN
-                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_mening,
-                    AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'TRYGHED' THEN
-                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_tryghed,
-                    AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'KAN' THEN
-                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_kan,
-                    AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'BESVÆR' THEN
-                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_besvaer,
+            if has_direct_assessments:
+                # MODE 2a: Show individual assessments for this unit (leaf node)
+                show_assessments = True
 
-                    -- Leader assessment scores
-                    AVG(CASE WHEN r.respondent_type = 'leader_assess' THEN
-                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as leader_overall,
-                    AVG(CASE WHEN r.respondent_type = 'leader_assess' AND q.field = 'MENING' THEN
-                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as leader_mening,
-                    AVG(CASE WHEN r.respondent_type = 'leader_assess' AND q.field = 'TRYGHED' THEN
-                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as leader_tryghed,
-                    AVG(CASE WHEN r.respondent_type = 'leader_assess' AND q.field = 'KAN' THEN
-                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as leader_kan,
-                    AVG(CASE WHEN r.respondent_type = 'leader_assess' AND q.field = 'BESVÆR' THEN
-                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as leader_besvaer
+                query = """
+                    SELECT
+                        ou.id,
+                        ou.name,
+                        ou.full_path,
+                        ou.level,
+                        c.id as assessment_id,
+                        c.name as assessment_name,
+                        c.period,
+                        c.created_at,
+                        COUNT(DISTINCT r.id) as total_responses,
+                        CAST(SUM(CASE WHEN r.respondent_type = 'employee' THEN 1 ELSE 0 END) AS REAL) / 24 as unique_respondents,
 
-                FROM organizational_units ou
-                JOIN assessments c ON c.target_unit_id = ou.id
-                JOIN responses r ON c.id = r.assessment_id
-                JOIN questions q ON r.question_id = q.id
-                WHERE ou.id = ?
-            """
-            query_params = [unit_id]
+                        AVG(CASE WHEN r.respondent_type = 'employee' THEN
+                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_overall,
+                        AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'MENING' THEN
+                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_mening,
+                        AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'TRYGHED' THEN
+                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_tryghed,
+                        AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'KAN' THEN
+                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_kan,
+                        AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'BESVÆR' THEN
+                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_besvaer,
 
-            if where_clause != "1=1":
-                query += f" AND {where_clause}"
-                query_params.extend(params)
+                        AVG(CASE WHEN r.respondent_type = 'leader_assess' THEN
+                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as leader_overall,
+                        AVG(CASE WHEN r.respondent_type = 'leader_assess' AND q.field = 'MENING' THEN
+                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as leader_mening,
+                        AVG(CASE WHEN r.respondent_type = 'leader_assess' AND q.field = 'TRYGHED' THEN
+                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as leader_tryghed,
+                        AVG(CASE WHEN r.respondent_type = 'leader_assess' AND q.field = 'KAN' THEN
+                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as leader_kan,
+                        AVG(CASE WHEN r.respondent_type = 'leader_assess' AND q.field = 'BESVÆR' THEN
+                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as leader_besvaer
 
-            query += """
-                GROUP BY ou.id, c.id
-                HAVING total_responses > 0
-            """
+                    FROM organizational_units ou
+                    JOIN assessments c ON c.target_unit_id = ou.id
+                    JOIN responses r ON c.id = r.assessment_id
+                    JOIN questions q ON r.question_id = q.id
+                    WHERE ou.id = ?
+                """
+                query_params = [unit_id]
 
-            # Add sorting for assessment view
-            assessment_sort_columns = {
-                'name': 'c.name',
-                'date': 'c.created_at',
-                'responses': 'unique_respondents',
-                'employee_overall': 'employee_overall',
-                'mening': 'employee_mening',
-                'tryghed': 'employee_tryghed',
-                'kan': 'employee_kan',
-                'besvaer': 'employee_besvaer',
-            }
-            sort_col = assessment_sort_columns.get(sort_by, 'c.created_at')
-            order = 'DESC' if sort_order == 'desc' else 'ASC'
-            # Default to DESC for date sorting
-            if sort_by == 'date' and sort_order == 'asc':
-                order = 'ASC'
-            elif sort_by == 'date':
-                order = 'DESC'
-            query += f" ORDER BY {sort_col} {order}"
+                if where_clause != "1=1":
+                    query += f" AND {where_clause}"
+                    query_params.extend(params)
 
-            units = conn.execute(query, query_params).fetchall()
+                query += """
+                    GROUP BY ou.id, c.id
+                    HAVING total_responses > 0
+                """
+
+                assessment_sort_columns = {
+                    'name': 'c.name',
+                    'date': 'c.created_at',
+                    'responses': 'unique_respondents',
+                    'employee_overall': 'employee_overall',
+                    'mening': 'employee_mening',
+                    'tryghed': 'employee_tryghed',
+                    'kan': 'employee_kan',
+                    'besvaer': 'employee_besvaer',
+                }
+                sort_col = assessment_sort_columns.get(sort_by, 'c.created_at')
+                order = 'DESC' if sort_order == 'desc' else 'ASC'
+                if sort_by == 'date' and sort_order == 'asc':
+                    order = 'ASC'
+                elif sort_by == 'date':
+                    order = 'DESC'
+                query += f" ORDER BY {sort_col} {order}"
+
+                units = conn.execute(query, query_params).fetchall()
+
+            else:
+                # MODE 2b: Show children with aggregated scores (parent node)
+                # Use recursive CTE to get all descendants' data aggregated per direct child
+                show_assessments = False
+
+                query = """
+                    WITH RECURSIVE descendants AS (
+                        -- Direct children of the selected unit
+                        SELECT id, id as root_child_id, name as root_child_name
+                        FROM organizational_units
+                        WHERE parent_id = ?
+
+                        UNION ALL
+
+                        -- All descendants, keeping track of which direct child they belong to
+                        SELECT ou.id, d.root_child_id, d.root_child_name
+                        FROM organizational_units ou
+                        JOIN descendants d ON ou.parent_id = d.id
+                    )
+                    SELECT
+                        child.id,
+                        child.name,
+                        child.full_path,
+                        child.level,
+                        COUNT(DISTINCT c.id) as assessment_count,
+                        COUNT(DISTINCT r.id) as total_responses,
+                        CAST(SUM(CASE WHEN r.respondent_type = 'employee' THEN 1 ELSE 0 END) AS REAL) / 24 as unique_respondents,
+
+                        AVG(CASE WHEN r.respondent_type = 'employee' THEN
+                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_overall,
+                        AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'MENING' THEN
+                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_mening,
+                        AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'TRYGHED' THEN
+                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_tryghed,
+                        AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'KAN' THEN
+                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_kan,
+                        AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'BESVÆR' THEN
+                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_besvaer,
+
+                        AVG(CASE WHEN r.respondent_type = 'leader_assess' THEN
+                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as leader_overall,
+                        AVG(CASE WHEN r.respondent_type = 'leader_assess' AND q.field = 'MENING' THEN
+                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as leader_mening,
+                        AVG(CASE WHEN r.respondent_type = 'leader_assess' AND q.field = 'TRYGHED' THEN
+                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as leader_tryghed,
+                        AVG(CASE WHEN r.respondent_type = 'leader_assess' AND q.field = 'KAN' THEN
+                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as leader_kan,
+                        AVG(CASE WHEN r.respondent_type = 'leader_assess' AND q.field = 'BESVÆR' THEN
+                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as leader_besvaer
+
+                    FROM organizational_units child
+                    JOIN descendants d ON d.root_child_id = child.id
+                    JOIN assessments c ON c.target_unit_id = d.id
+                    JOIN responses r ON c.id = r.assessment_id
+                    JOIN questions q ON r.question_id = q.id
+                    WHERE child.parent_id = ?
+                """
+                query_params = [unit_id, unit_id]
+
+                if where_clause != "1=1":
+                    query += f" AND {where_clause}"
+                    query_params.extend(params)
+
+                query += """
+                    GROUP BY child.id
+                    HAVING total_responses > 0
+                    ORDER BY child.name
+                """
+
+                units = conn.execute(query, query_params).fetchall()
 
         else:
             # MODE 1: Show units with aggregated scores (no individual assessments)
@@ -3937,6 +4008,15 @@ def clear_cache():
     count = invalidate_all()
     flash(f'Cache ryddet! ({count} entries fjernet)', 'success')
     return redirect(url_for('dev_tools'))
+
+
+@app.route('/api/clear-cache/<secret>')
+def clear_cache_api(secret):
+    """Midlertidigt endpoint til cache rydning - FJERN EFTER BRUG"""
+    if secret != 'frik2025cache':
+        return {'error': 'Invalid secret'}, 403
+    count = invalidate_all()
+    return {'success': True, 'cleared': count}
 
 
 @app.route('/admin/rename-assessments', methods=['POST'])
