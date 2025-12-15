@@ -1772,6 +1772,73 @@ def analyser():
                          sort_order=sort_order)
 
 
+@app.route('/api/debug-analyser/<unit_id>')
+def debug_analyser(unit_id):
+    """Debug endpoint - viser raw data for analyser beregning"""
+    from flask import jsonify
+
+    with get_db() as conn:
+        # Samme query som analyser endpoint
+        query = """
+            SELECT
+                ou.id,
+                ou.name,
+                c.id as assessment_id,
+                c.name as assessment_name,
+                COUNT(DISTINCT r.id) as total_responses,
+
+                AVG(CASE WHEN r.respondent_type = 'employee' THEN
+                    CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_overall,
+                AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'MENING' THEN
+                    CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_mening,
+                AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'TRYGHED' THEN
+                    CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_tryghed,
+                AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'KAN' THEN
+                    CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_kan,
+                AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'BESVÆR' THEN
+                    CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_besvaer
+
+            FROM organizational_units ou
+            JOIN assessments c ON c.target_unit_id = ou.id
+            JOIN responses r ON c.id = r.assessment_id
+            JOIN questions q ON r.question_id = q.id
+            WHERE ou.id = ?
+            GROUP BY ou.id, c.id
+        """
+
+        result = conn.execute(query, [unit_id]).fetchone()
+
+        if not result:
+            return jsonify({'error': 'No data found', 'unit_id': unit_id})
+
+        def to_percent(score):
+            if score is None:
+                return None
+            return round(((score - 1) / 4) * 100, 1)
+
+        return jsonify({
+            'unit_id': result['id'],
+            'unit_name': result['name'],
+            'assessment_id': result['assessment_id'],
+            'assessment_name': result['assessment_name'],
+            'total_responses': result['total_responses'],
+            'raw_scores': {
+                'employee_overall': round(result['employee_overall'], 2) if result['employee_overall'] else None,
+                'employee_mening': round(result['employee_mening'], 2) if result['employee_mening'] else None,
+                'employee_tryghed': round(result['employee_tryghed'], 2) if result['employee_tryghed'] else None,
+                'employee_kan': round(result['employee_kan'], 2) if result['employee_kan'] else None,
+                'employee_besvaer': round(result['employee_besvaer'], 2) if result['employee_besvaer'] else None,
+            },
+            'percentages': {
+                'employee_overall': to_percent(result['employee_overall']),
+                'employee_mening': to_percent(result['employee_mening']),
+                'employee_tryghed': to_percent(result['employee_tryghed']),
+                'employee_kan': to_percent(result['employee_kan']),
+                'employee_besvaer': to_percent(result['employee_besvaer']),
+            }
+        })
+
+
 @app.route('/admin/bulk-upload', methods=['GET', 'POST'])
 @login_required
 def bulk_upload():
