@@ -224,7 +224,7 @@ def admin_required(f):
             return redirect(url_for('login'))
         if session['user']['role'] not in ('admin', 'superadmin'):
             flash('Kun admin har adgang til denne side', 'error')
-            return redirect(url_for('analyser'))
+            return redirect(url_for('admin_home'))
         return f(*args, **kwargs)
     return decorated_function
 
@@ -238,7 +238,7 @@ def superadmin_required(f):
             return redirect(url_for('login'))
         if session['user']['role'] != 'superadmin':
             flash('Kun system administrator har adgang til denne side', 'error')
-            return redirect(url_for('analyser'))
+            return redirect(url_for('admin_home'))
         return f(*args, **kwargs)
     return decorated_function
 
@@ -252,7 +252,7 @@ def get_current_user():
 def index():
     """Root route - redirect til login eller admin"""
     if 'user' in session:
-        return redirect(url_for('analyser'))
+        return redirect(url_for('admin_home'))
     return redirect(url_for('login'))
 
 
@@ -280,7 +280,7 @@ def login():
         if user:
             session['user'] = user
             flash(f'Velkommen {user["name"]}!', 'success')
-            return redirect(url_for('analyser'))
+            return redirect(url_for('admin_home'))
         else:
             flash('Forkert brugernavn eller password', 'error')
 
@@ -364,7 +364,7 @@ def oauth_callback(provider):
         if user:
             session['user'] = user
             flash(f'Velkommen {user["name"]}!', 'success')
-            return redirect(url_for('analyser'))
+            return redirect(url_for('admin_home'))
         else:
             flash('Kunne ikke logge ind - kontakt administrator', 'error')
             return redirect(url_for('login'))
@@ -521,7 +521,7 @@ def verify_email_login():
             if user['role'] == 'user':
                 return redirect(url_for('user_home'))
             else:
-                return redirect(url_for('analyser'))
+                return redirect(url_for('admin_home'))
         else:
             flash('Forkert eller udløbet kode. Prøv igen.', 'error')
 
@@ -615,7 +615,7 @@ def user_home():
     """Hjemmeside for B2C brugere"""
     user = session.get('user')
     if user['role'] != 'user':
-        return redirect(url_for('analyser'))
+        return redirect(url_for('admin_home'))
 
     return render_template('user_home.html')
 
@@ -1454,231 +1454,192 @@ def reschedule_assessment_route(assessment_id):
 @app.route('/admin/analyser')
 @login_required
 def analyser():
-    """Analyser: Aggregeret friktionsdata på tværs af organisationen"""
+    """Analyser: Aggregeret friktionsdata på tværs af organisationen.
+
+    Modes:
+    1. Default (no unit_id): Show units with aggregated scores across ALL assessments
+    2. With unit_id: Show individual assessments for that unit
+    """
     user = get_current_user()
     where_clause, params = get_customer_filter(user['role'], user['customer_id'], session.get('customer_filter'))
 
     # Get filter parameters
-    assessment_id = request.args.get('assessment_id', type=int)
     unit_id = request.args.get('unit_id')  # Filter by unit (and children)
     sort_by = request.args.get('sort', 'name')
     sort_order = request.args.get('order', 'asc')
 
     with get_db() as conn:
-        # Get available assessments for filtering - respect customer filter for all roles
-        if where_clause == "1=1":
-            # No filter - show all assessments
-            assessments = conn.execute("""
-                SELECT id, name, period
-                FROM assessments
-                ORDER BY created_at DESC
-            """).fetchall()
-        else:
-            # Filter by customer (via organizational_units)
-            assessments = conn.execute(f"""
-                SELECT DISTINCT c.id, c.name, c.period
-                FROM assessments c
-                JOIN organizational_units ou ON c.target_unit_id = ou.id
-                WHERE {where_clause}
-                ORDER BY c.created_at DESC
-            """, params).fetchall()
-
-        # Build query for unit friction scores with leader/employee comparison
-        query = """
-            SELECT
-                ou.id,
-                ou.name,
-                ou.full_path,
-                ou.level,
-                c.id as assessment_id,
-                COUNT(DISTINCT r.id) as total_responses,
-                COUNT(DISTINCT r.respondent_name) as unique_respondents,
-
-                -- Employee scores
-                AVG(CASE
-                    WHEN r.respondent_type = 'employee' THEN
-                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END
-                END) as employee_overall,
-
-                AVG(CASE
-                    WHEN r.respondent_type = 'employee' AND q.field = 'MENING' THEN
-                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END
-                END) as employee_mening,
-
-                AVG(CASE
-                    WHEN r.respondent_type = 'employee' AND q.field = 'TRYGHED' THEN
-                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END
-                END) as employee_tryghed,
-
-                AVG(CASE
-                    WHEN r.respondent_type = 'employee' AND q.field = 'KAN' THEN
-                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END
-                END) as employee_kan,
-
-                AVG(CASE
-                    WHEN r.respondent_type = 'employee' AND q.field = 'BESVÆR' THEN
-                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END
-                END) as employee_besvaer,
-
-                -- Leader assessment scores
-                AVG(CASE
-                    WHEN r.respondent_type = 'leader_assess' THEN
-                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END
-                END) as leader_overall,
-
-                AVG(CASE
-                    WHEN r.respondent_type = 'leader_assess' AND q.field = 'MENING' THEN
-                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END
-                END) as leader_mening,
-
-                AVG(CASE
-                    WHEN r.respondent_type = 'leader_assess' AND q.field = 'TRYGHED' THEN
-                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END
-                END) as leader_tryghed,
-
-                AVG(CASE
-                    WHEN r.respondent_type = 'leader_assess' AND q.field = 'KAN' THEN
-                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END
-                END) as leader_kan,
-
-                AVG(CASE
-                    WHEN r.respondent_type = 'leader_assess' AND q.field = 'BESVÆR' THEN
-                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END
-                END) as leader_besvaer
-
-            FROM organizational_units ou
-            LEFT JOIN assessments c ON c.target_unit_id = ou.id
-            LEFT JOIN responses r ON c.id = r.assessment_id
-            LEFT JOIN questions q ON r.question_id = q.id
-        """
-
-        # Add filters
-        conditions = []
-        query_params = []
-
-        # Always apply customer filter (works for all roles now)
-        if where_clause != "1=1":
-            conditions.append(where_clause)
-            query_params.extend(params)
-
-        if assessment_id:
-            conditions.append("c.id = ?")
-            query_params.append(assessment_id)
+        enriched_units = []
+        selected_unit_name = None
+        show_assessments = False  # Whether we're showing individual assessments
 
         if unit_id:
-            # Filter by unit and all its children
-            conditions.append("""
-                c.target_unit_id IN (
-                    WITH RECURSIVE subtree AS (
-                        SELECT id FROM organizational_units WHERE id = ?
-                        UNION ALL
-                        SELECT ou.id FROM organizational_units ou
-                        JOIN subtree st ON ou.parent_id = st.id
-                    )
-                    SELECT id FROM subtree
-                )
-            """)
-            query_params.append(unit_id)
+            # MODE 2: Show individual assessments for this unit
+            show_assessments = True
 
-        if conditions:
-            query += " WHERE " + " AND ".join(conditions)
-
-        query += """
-            GROUP BY ou.id, ou.name, ou.full_path, ou.level, c.id
-            HAVING total_responses > 0
-        """
-
-        # Add sorting
-        sort_columns = {
-            'name': 'ou.name',
-            'responses': 'total_responses',
-            'employee_overall': 'employee_overall',
-            'mening': 'employee_mening',
-            'tryghed': 'employee_tryghed',
-            'kan': 'employee_kan',
-            'besvaer': 'employee_besvaer',
-            'gap': 'ABS(employee_overall - leader_overall)'
-        }
-
-        sort_col = sort_columns.get(sort_by, 'ou.name')
-        order = 'DESC' if sort_order == 'desc' else 'ASC'
-        query += f" ORDER BY {sort_col} {order}"
-
-        units = conn.execute(query, query_params).fetchall()
-
-        # Beregn indikatorer for hver unit
-        enriched_units = []
-        for unit in units:
-            unit_dict = dict(unit)
-
-            # Beregn substitution
-            substitution = calculate_substitution(unit['id'], unit['assessment_id'], 'employee')
-            unit_dict['has_substitution'] = substitution.get('flagged', False)
-
-            # Beregn leader gap (forskel mellem leder vurdering og medarbejdere)
-            max_gap = 0
-            if unit['employee_overall'] and unit['leader_overall']:
-                for field in ['mening', 'tryghed', 'kan', 'besvaer']:
-                    emp_key = f'employee_{field}'
-                    leader_key = f'leader_{field}'
-                    if unit[emp_key] and unit[leader_key]:
-                        gap = abs(unit[emp_key] - unit[leader_key])
-                        if gap > max_gap:
-                            max_gap = gap
-            unit_dict['has_leader_gap'] = max_gap > 1.0
-
-            # Beregn leader blocked (lederens egne friktioner blokerer)
-            # Vi behøver leader_self scores - lad os hente dem
-            leader_self_scores = conn.execute("""
-                SELECT
-                    AVG(CASE
-                        WHEN r.respondent_type = 'leader_self' AND q.field = 'MENING' THEN
-                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END
-                    END) as leader_self_mening,
-                    AVG(CASE
-                        WHEN r.respondent_type = 'leader_self' AND q.field = 'TRYGHED' THEN
-                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END
-                    END) as leader_self_tryghed,
-                    AVG(CASE
-                        WHEN r.respondent_type = 'leader_self' AND q.field = 'KAN' THEN
-                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END
-                    END) as leader_self_kan,
-                    AVG(CASE
-                        WHEN r.respondent_type = 'leader_self' AND q.field = 'BESVÆR' THEN
-                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END
-                    END) as leader_self_besvaer
-                FROM responses r
-                JOIN questions q ON r.question_id = q.id
-                WHERE r.unit_id = ? AND r.assessment_id = ?
-            """, (unit['id'], unit['assessment_id'])).fetchone()
-
-            leader_blocked = False
-            if leader_self_scores:
-                for field in ['mening', 'tryghed', 'kan', 'besvaer']:
-                    emp_score = unit[f'employee_{field}']
-                    leader_self_score = leader_self_scores[f'leader_self_{field}']
-                    # Hvis BÅDE medarbejdere OG leder selv har høje friktioner (under 70%)
-                    if emp_score and leader_self_score and emp_score < 3.5 and leader_self_score < 3.5:
-                        leader_blocked = True
-                        break
-            unit_dict['has_leader_blocked'] = leader_blocked
-
-            enriched_units.append(unit_dict)
-
-    # Get selected unit name if filtering
-    selected_unit_name = None
-    if unit_id:
-        with get_db() as conn:
+            # Get unit name
             unit_row = conn.execute("SELECT name FROM organizational_units WHERE id = ?", [unit_id]).fetchone()
             if unit_row:
                 selected_unit_name = unit_row['name']
 
+            # Query for individual assessments (grouped by assessment)
+            query = """
+                SELECT
+                    ou.id,
+                    ou.name,
+                    ou.full_path,
+                    ou.level,
+                    c.id as assessment_id,
+                    c.name as assessment_name,
+                    c.period,
+                    c.created_at,
+                    COUNT(DISTINCT r.id) as total_responses,
+                    COUNT(DISTINCT CASE WHEN r.respondent_type = 'employee' THEN r.respondent_name END) as unique_respondents,
+
+                    -- Employee scores
+                    AVG(CASE WHEN r.respondent_type = 'employee' THEN
+                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_overall,
+                    AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'MENING' THEN
+                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_mening,
+                    AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'TRYGHED' THEN
+                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_tryghed,
+                    AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'KAN' THEN
+                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_kan,
+                    AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'BESVÆR' THEN
+                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_besvaer,
+
+                    -- Leader assessment scores
+                    AVG(CASE WHEN r.respondent_type = 'leader_assess' THEN
+                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as leader_overall,
+                    AVG(CASE WHEN r.respondent_type = 'leader_assess' AND q.field = 'MENING' THEN
+                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as leader_mening,
+                    AVG(CASE WHEN r.respondent_type = 'leader_assess' AND q.field = 'TRYGHED' THEN
+                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as leader_tryghed,
+                    AVG(CASE WHEN r.respondent_type = 'leader_assess' AND q.field = 'KAN' THEN
+                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as leader_kan,
+                    AVG(CASE WHEN r.respondent_type = 'leader_assess' AND q.field = 'BESVÆR' THEN
+                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as leader_besvaer
+
+                FROM organizational_units ou
+                JOIN assessments c ON c.target_unit_id = ou.id
+                JOIN responses r ON c.id = r.assessment_id
+                JOIN questions q ON r.question_id = q.id
+                WHERE ou.id = ?
+            """
+            query_params = [unit_id]
+
+            if where_clause != "1=1":
+                query += f" AND {where_clause}"
+                query_params.extend(params)
+
+            query += """
+                GROUP BY ou.id, c.id
+                HAVING total_responses > 0
+                ORDER BY c.created_at DESC
+            """
+
+            units = conn.execute(query, query_params).fetchall()
+
+        else:
+            # MODE 1: Show units with aggregated scores (no individual assessments)
+            query = """
+                SELECT
+                    ou.id,
+                    ou.name,
+                    ou.full_path,
+                    ou.level,
+                    COUNT(DISTINCT c.id) as assessment_count,
+                    COUNT(DISTINCT r.id) as total_responses,
+                    COUNT(DISTINCT CASE WHEN r.respondent_type = 'employee' THEN r.respondent_name END) as unique_respondents,
+
+                    -- Employee scores (aggregated across ALL assessments)
+                    AVG(CASE WHEN r.respondent_type = 'employee' THEN
+                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_overall,
+                    AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'MENING' THEN
+                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_mening,
+                    AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'TRYGHED' THEN
+                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_tryghed,
+                    AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'KAN' THEN
+                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_kan,
+                    AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'BESVÆR' THEN
+                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_besvaer,
+
+                    -- Leader assessment scores
+                    AVG(CASE WHEN r.respondent_type = 'leader_assess' THEN
+                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as leader_overall,
+                    AVG(CASE WHEN r.respondent_type = 'leader_assess' AND q.field = 'MENING' THEN
+                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as leader_mening,
+                    AVG(CASE WHEN r.respondent_type = 'leader_assess' AND q.field = 'TRYGHED' THEN
+                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as leader_tryghed,
+                    AVG(CASE WHEN r.respondent_type = 'leader_assess' AND q.field = 'KAN' THEN
+                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as leader_kan,
+                    AVG(CASE WHEN r.respondent_type = 'leader_assess' AND q.field = 'BESVÆR' THEN
+                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as leader_besvaer
+
+                FROM organizational_units ou
+                JOIN assessments c ON c.target_unit_id = ou.id
+                JOIN responses r ON c.id = r.assessment_id
+                JOIN questions q ON r.question_id = q.id
+            """
+
+            query_params = []
+            if where_clause != "1=1":
+                query += f" WHERE {where_clause}"
+                query_params.extend(params)
+
+            # Group by UNIT only (not assessment) to get aggregated scores
+            query += """
+                GROUP BY ou.id, ou.name, ou.full_path, ou.level
+                HAVING total_responses > 0
+            """
+
+            # Add sorting
+            sort_columns = {
+                'name': 'ou.name',
+                'responses': 'total_responses',
+                'employee_overall': 'employee_overall',
+                'mening': 'employee_mening',
+                'tryghed': 'employee_tryghed',
+                'kan': 'employee_kan',
+                'besvaer': 'employee_besvaer',
+                'gap': 'ABS(employee_overall - leader_overall)'
+            }
+
+            sort_col = sort_columns.get(sort_by, 'ou.name')
+            order = 'DESC' if sort_order == 'desc' else 'ASC'
+            query += f" ORDER BY {sort_col} {order}"
+
+            units = conn.execute(query, query_params).fetchall()
+
+        # Enrich units with indicators
+        for unit in units:
+            unit_dict = dict(unit)
+
+            # For aggregated view, we can't calculate per-assessment indicators
+            # Set defaults
+            unit_dict['has_substitution'] = False
+            unit_dict['has_leader_gap'] = False
+            unit_dict['has_leader_blocked'] = False
+
+            # Calculate leader gap if we have both scores
+            if unit_dict.get('employee_overall') and unit_dict.get('leader_overall'):
+                max_gap = 0
+                for field in ['mening', 'tryghed', 'kan', 'besvaer']:
+                    emp_score = unit_dict.get(f'employee_{field}')
+                    leader_score = unit_dict.get(f'leader_{field}')
+                    if emp_score and leader_score:
+                        gap = abs(emp_score - leader_score)
+                        if gap > max_gap:
+                            max_gap = gap
+                unit_dict['has_leader_gap'] = max_gap > 1.0
+
+            enriched_units.append(unit_dict)
+
     return render_template('admin/analyser.html',
                          units=enriched_units,
-                         assessments=[dict(c) for c in assessments],
-                         current_assessment=assessment_id,
                          current_unit_id=unit_id,
                          selected_unit_name=selected_unit_name,
+                         show_assessments=show_assessments,
                          sort_by=sort_by,
                          sort_order=sort_order)
 
@@ -4945,7 +4906,7 @@ def my_branding():
             customer_id = user.get('customer_id')
             if not customer_id:
                 flash('Ingen kunde tilknyttet din bruger', 'error')
-                return redirect(url_for('analyser'))
+                return redirect(url_for('admin_home'))
 
             domains = conn.execute("""
                 SELECT d.*, c.name as customer_name

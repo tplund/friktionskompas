@@ -128,6 +128,24 @@
     .unit-row.level-3 { padding-left: 75px; }
     .unit-row.collapsed { display: none; }
 
+    /* Collapsible sections */
+    .card h2 {
+        cursor: pointer;
+        user-select: none;
+    }
+    .card h2 .toggle-icon {
+        font-size: 0.8rem;
+        margin-right: 8px;
+        color: #9ca3af;
+        transition: transform 0.2s;
+    }
+    .card.collapsed h2 .toggle-icon {
+        transform: rotate(-90deg);
+    }
+    .card.collapsed .card-content {
+        display: none;
+    }
+
     .unit-toggle {
         width: 20px;
         color: #9ca3af;
@@ -399,11 +417,12 @@
 <!-- Main layout -->
 <div class="main-layout">
     <!-- Hierarkisk analyse -->
-    <div class="card">
-        <h2>
-            Analyse per enhed
-            <a href="/admin/analyser">Se detaljeret &rarr;</a>
+    <div class="card" id="analyseCard">
+        <h2 onclick="toggleSection('analyseCard')">
+            <span><span class="toggle-icon">▼</span> Analyse per enhed</span>
+            <a href="/admin/analyser" onclick="event.stopPropagation()">Se detaljeret &rarr;</a>
         </h2>
+        <div class="card-content">
         {% if unit_scores %}
         <div class="score-headers">
             <span style="width: 20px;"></span>
@@ -417,13 +436,13 @@
         </div>
         <div class="unit-tree">
             {% for unit in unit_scores %}
-            <div class="unit-row level-{{ unit.level }}"
+            <div class="unit-row level-{{ unit.level }}{% if unit.level > 0 %} collapsed{% endif %}"
                  data-unit-id="{{ unit.id }}"
                  data-parent-id="{{ unit.parent_id or '' }}"
                  data-level="{{ unit.level }}"
                  onclick="{% if unit.has_children %}toggleUnit('{{ unit.id }}'){% else %}location.href='/admin/analyser?unit_id={{ unit.id }}'{% endif %}">
                 <span class="unit-toggle">
-                    {% if unit.has_children %}▼{% endif %}
+                    {% if unit.has_children %}▶{% endif %}
                 </span>
                 <div class="unit-info">
                     <div class="unit-name">{{ unit.name }}</div>
@@ -448,6 +467,7 @@
         {% else %}
         <div class="empty-state">Ingen data endnu</div>
         {% endif %}
+        </div><!-- end card-content -->
     </div>
 
     <!-- Sidebar -->
@@ -551,6 +571,19 @@
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+// Toggle section (card fold/unfold)
+function toggleSection(cardId) {
+    const card = document.getElementById(cardId);
+    const toggleIcon = card.querySelector('.toggle-icon');
+    if (card.classList.contains('collapsed')) {
+        card.classList.remove('collapsed');
+        toggleIcon.textContent = '▼';
+    } else {
+        card.classList.add('collapsed');
+        toggleIcon.textContent = '▶';
+    }
+}
+
 // Toggle hierarki
 function toggleUnit(unitId) {
     const rows = document.querySelectorAll('.unit-row');

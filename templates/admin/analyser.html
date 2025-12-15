@@ -372,14 +372,26 @@
             </thead>
             <tbody>
                 {% for unit in units %}
+                {% if show_assessments %}
+                {# Assessment view: click goes to detailed assessment page #}
                 <tr onclick="window.location='/admin/assessment/{{ unit.assessment_id }}/detailed'">
+                    <td>
+                        <div class="unit-name">
+                            📊 {{ unit.assessment_name or unit.name }}
+                        </div>
+                        <div class="unit-level">{{ unit.period or unit.created_at[:10] if unit.created_at else '' }}</div>
+                    </td>
+                {% else %}
+                {# Unit view: click goes to unit's assessments #}
+                <tr onclick="window.location='/admin/analyser?unit_id={{ unit.id }}'">
                     <td>
                         <div class="unit-name">
                             {% if unit.level == 0 %}🏢{% elif unit.level == 1 %}📁{% elif unit.level == 2 %}📂{% else %}📄{% endif %}
                             {{ unit.name }}
                         </div>
-                        <div class="unit-level">{{ t('analyser.level') }} {{ unit.level }}</div>
+                        <div class="unit-level">{{ unit.assessment_count }} måling{{ 'er' if unit.assessment_count != 1 else '' }}</div>
                     </td>
+                {% endif %}
                     <td class="responses-count">
                         <strong>{{ unit.unique_respondents }}</strong> {{ t('analyser.respondents') }}<br>
                         <small>{{ unit.total_responses }} {{ t('analyser.responses')|lower }}</small>
