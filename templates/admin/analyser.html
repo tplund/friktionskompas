@@ -340,6 +340,12 @@
                         onclick="sortTable('name')" style="text-align: left;">
                         {{ t('analyser.org_unit') }}
                     </th>
+                    {% if show_assessments %}
+                    <th class="sortable {% if sort_by == 'date' %}sorted-{{ sort_order }}{% endif %}"
+                        onclick="sortTable('date')">
+                        <div class="field-header">Dato</div>
+                    </th>
+                    {% endif %}
                     <th class="sortable {% if sort_by == 'responses' %}sorted-{{ sort_order }}{% endif %}"
                         onclick="sortTable('responses')">
                         <div class="field-header">{{ t('analyser.responses') }}</div>
@@ -379,7 +385,10 @@
                         <div class="unit-name">
                             📊 {{ unit.assessment_name or unit.name }}
                         </div>
-                        <div class="unit-level">{{ unit.period or unit.created_at[:10] if unit.created_at else '' }}</div>
+                        <div class="unit-level">{{ unit.period or '' }}</div>
+                    </td>
+                    <td class="responses-count">
+                        {{ unit.created_at[:10] if unit.created_at else '-' }}
                     </td>
                 {% else %}
                 {# Unit view: click goes to unit's assessments #}
@@ -393,8 +402,7 @@
                     </td>
                 {% endif %}
                     <td class="responses-count">
-                        <strong>{{ unit.unique_respondents }}</strong> {{ t('analyser.respondents') }}<br>
-                        <small>{{ unit.total_responses }} {{ t('analyser.responses')|lower }}</small>
+                        <strong>{{ unit.unique_respondents|round|int }}</strong> {{ t('analyser.respondents') }}
                     </td>
                     <td style="text-align: center; padding: 8px;">
                         <div style="display: flex; gap: 6px; justify-content: center; flex-wrap: wrap;">

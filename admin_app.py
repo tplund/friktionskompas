@@ -994,7 +994,7 @@ def admin_home():
             {where}
             GROUP BY ou.id
             HAVING total_responses > 0
-            ORDER BY ou.level, ou.full_path
+            ORDER BY ou.full_path
         """.format(where=customer_where)
         unit_scores_raw = conn.execute(unit_scores_query, customer_params).fetchall()
 
@@ -1494,7 +1494,8 @@ def analyser():
                     c.period,
                     c.created_at,
                     COUNT(DISTINCT r.id) as total_responses,
-                    COUNT(DISTINCT CASE WHEN r.respondent_type = 'employee' THEN r.respondent_name END) as unique_respondents,
+                    -- Calculate respondents: employee responses / 24 questions per respondent
+                    CAST(SUM(CASE WHEN r.respondent_type = 'employee' THEN 1 ELSE 0 END) AS REAL) / 24 as unique_respondents,
 
                     -- Employee scores
                     AVG(CASE WHEN r.respondent_type = 'employee' THEN
@@ -1535,8 +1536,27 @@ def analyser():
             query += """
                 GROUP BY ou.id, c.id
                 HAVING total_responses > 0
-                ORDER BY c.created_at DESC
             """
+
+            # Add sorting for assessment view
+            assessment_sort_columns = {
+                'name': 'c.name',
+                'date': 'c.created_at',
+                'responses': 'unique_respondents',
+                'employee_overall': 'employee_overall',
+                'mening': 'employee_mening',
+                'tryghed': 'employee_tryghed',
+                'kan': 'employee_kan',
+                'besvaer': 'employee_besvaer',
+            }
+            sort_col = assessment_sort_columns.get(sort_by, 'c.created_at')
+            order = 'DESC' if sort_order == 'desc' else 'ASC'
+            # Default to DESC for date sorting
+            if sort_by == 'date' and sort_order == 'asc':
+                order = 'ASC'
+            elif sort_by == 'date':
+                order = 'DESC'
+            query += f" ORDER BY {sort_col} {order}"
 
             units = conn.execute(query, query_params).fetchall()
 
@@ -1550,7 +1570,8 @@ def analyser():
                     ou.level,
                     COUNT(DISTINCT c.id) as assessment_count,
                     COUNT(DISTINCT r.id) as total_responses,
-                    COUNT(DISTINCT CASE WHEN r.respondent_type = 'employee' THEN r.respondent_name END) as unique_respondents,
+                    -- Calculate respondents: employee responses / 24 questions per respondent
+                    CAST(SUM(CASE WHEN r.respondent_type = 'employee' THEN 1 ELSE 0 END) AS REAL) / 24 as unique_respondents,
 
                     -- Employee scores (aggregated across ALL assessments)
                     AVG(CASE WHEN r.respondent_type = 'employee' THEN
