@@ -1136,6 +1136,33 @@ def send_assessment_batch(contacts: List[Dict], tokens: List[str],
     return results
 
 
+def send_single_invitation(email: str, name: str, token: str,
+                          assessment_name: str, sender_name: str = "HR",
+                          language: str = 'da') -> bool:
+    """
+    Send enkelt invitation til individuel måling
+
+    Args:
+        email: Recipient email
+        name: Recipient name (optional, for personalization)
+        token: Survey token
+        assessment_name: Name of the assessment
+        sender_name: Name of sender (default "HR")
+        language: Language code ('da' or 'en', default 'da')
+
+    Returns:
+        True if sent successfully
+    """
+    return send_email_invitation(
+        to_email=email,
+        token=token,
+        assessment_name=assessment_name,
+        sender_name=sender_name,
+        recipient_name=name,
+        language=language
+    )
+
+
 # ========================================
 # FRIKTIONSPROFIL INVITATIONS
 # ========================================

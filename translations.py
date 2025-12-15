@@ -276,7 +276,7 @@ INITIAL_TRANSLATIONS = {
 
     # Analyser
     'analyser.title': {'da': 'Analyser', 'en': 'Analyses'},
-    'analyser.new_analysis': {'da': 'Ny Analyse', 'en': 'New Analysis'},
+    'analyser.new_analysis': {'da': 'Ny Måling', 'en': 'New Assessment'},
     'analyser.org_unit': {'da': 'Organisationsenhed', 'en': 'Organizational unit'},
     'analyser.responses': {'da': 'Svar', 'en': 'Responses'},
     'analyser.warnings': {'da': 'Advarsler', 'en': 'Warnings'},
@@ -339,9 +339,11 @@ INITIAL_TRANSLATIONS = {
     'contacts.upload': {'da': 'Upload kontakter (CSV med kolonner: email, phone)', 'en': 'Upload contacts (CSV with columns: email, phone)'},
 
     # Assessments / Analyses
-    'assessment.new_analysis': {'da': 'Ny Analyse', 'en': 'New Analysis'},
-    'assessment.analysis_name': {'da': 'Analyse navn', 'en': 'Analysis name'},
+    'assessment.new_analysis': {'da': 'Ny Måling', 'en': 'New Assessment'},
+    'assessment.analysis_name': {'da': 'Målingsnavn', 'en': 'Assessment name'},
     'assessment.period': {'da': 'Periode', 'en': 'Period'},
+    'assessment.type': {'da': 'Målingstype', 'en': 'Assessment type'},
+    'assessment.type_hint': {'da': 'Vælg hvilken type måling der skal gennemføres', 'en': 'Select which type of assessment to conduct'},
     'assessment.target_org': {'da': 'Target Organisation', 'en': 'Target Organization'},
     'assessment.select_org': {'da': 'Vælg organisation', 'en': 'Select organization'},
     'assessment.target_hint': {'da': 'Vælg hvilken organisation analysen skal sendes til. Alle afdelinger under denne vil modtage tokens.', 'en': 'Select which organization the analysis should be sent to. All departments under this will receive tokens.'},

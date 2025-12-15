@@ -3,6 +3,19 @@
 {% block title %}Målingstyper{% endblock %}
 
 {% block content %}
+<script>
+function toggleQuestions(typeId) {
+    const row = document.getElementById('questions-' + typeId);
+    const arrow = document.getElementById('arrow-' + typeId);
+    if (row.style.display === 'none') {
+        row.style.display = 'table-row';
+        arrow.textContent = '▲';
+    } else {
+        row.style.display = 'none';
+        arrow.textContent = '▼';
+    }
+}
+</script>
 <div style="max-width: 1200px; margin: 0 auto;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
         <div>
@@ -36,7 +49,7 @@
                 </thead>
                 <tbody>
                     {% for at in assessment_types %}
-                    <tr style="border-bottom: 1px solid #e5e7eb; {% if not at.is_active %}opacity: 0.5;{% endif %}">
+                    <tr style="border-bottom: 1px solid #e5e7eb; {% if not at.is_active %}opacity: 0.5;{% endif %}" class="type-row" data-type-id="{{ at.id }}">
                         <td style="padding: 16px 20px;">
                             <div style="display: flex; align-items: center; gap: 12px;">
                                 <span style="font-size: 1.5rem;">{{ at.icon }}</span>
@@ -50,9 +63,9 @@
                             {{ at.description }}
                         </td>
                         <td style="padding: 16px 20px; text-align: center;">
-                            <span style="background: #e5e7eb; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem;">
-                                {{ at.question_count }}
-                            </span>
+                            <button onclick="toggleQuestions('{{ at.id }}')" style="background: #e5e7eb; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; border: none; cursor: pointer;">
+                                {{ at.question_count }} <span id="arrow-{{ at.id }}">▼</span>
+                            </button>
                         </td>
                         <td style="padding: 16px 20px; text-align: center; color: #6b7280;">
                             {{ at.duration_minutes }} min
@@ -85,6 +98,27 @@
                                     {% if at.is_active %}Deaktiver{% else %}Aktiver{% endif %}
                                 </button>
                             </form>
+                        </td>
+                    </tr>
+                    <!-- Questions row (hidden by default) -->
+                    <tr id="questions-{{ at.id }}" style="display: none; background: #f9fafb;">
+                        <td colspan="7" style="padding: 0 20px 20px 20px;">
+                            <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 15px; margin-top: 10px;">
+                                <h4 style="margin: 0 0 10px 0; font-size: 0.95rem; color: #374151;">Spørgsmål i denne type</h4>
+                                {% if questions_by_type and questions_by_type.get(at.id) %}
+                                <ul style="margin: 0; padding-left: 20px; font-size: 0.85rem; color: #6b7280; max-height: 300px; overflow-y: auto;">
+                                    {% for q in questions_by_type.get(at.id, []) %}
+                                    <li style="margin-bottom: 6px;">
+                                        <span style="background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; margin-right: 8px;">{{ q.field }}</span>
+                                        {{ q.text_da }}
+                                        {% if q.get('reverse_scored') %}<span style="color: #ef4444; font-size: 0.75rem;">(R)</span>{% endif %}
+                                    </li>
+                                    {% endfor %}
+                                </ul>
+                                {% else %}
+                                <p style="margin: 0; color: #9ca3af; font-size: 0.85rem; font-style: italic;">Ingen spørgsmål konfigureret for denne type endnu.</p>
+                                {% endif %}
+                            </div>
                         </td>
                     </tr>
                     {% endfor %}
@@ -129,10 +163,10 @@
     <div style="margin-top: 30px; padding: 20px; background: #f3f4f6; border-radius: 12px;">
         <h3 style="margin: 0 0 10px 0; font-size: 1rem;">Hvordan fungerer det?</h3>
         <ul style="margin: 0; padding-left: 20px; color: #6b7280; font-size: 0.9rem; line-height: 1.8;">
-            <li><strong>Målingstyper</strong> definerer hvilke tests der findes i systemet</li>
-            <li><strong>Presets</strong> er foruddefinerede kombinationer som kan anvendes på kunder</li>
-            <li><strong>Default preset</strong> bruges automatisk for nye kunder og B2C brugere</li>
-            <li>Kunder kan have <strong>custom konfiguration</strong> der overskriver preset</li>
+            <li><strong>Målingstyper</strong> definerer hvilke tests der findes i systemet - klik på antal spørgsmål for at se dem</li>
+            <li><strong>Presets</strong> er foruddefinerede kombinationer som kan anvendes på kunder (read-only)</li>
+            <li><strong>Default preset</strong> (markeret med blå) bruges automatisk for nye kunder og B2C brugere</li>
+            <li>Kunder kan have <strong>custom konfiguration</strong> under Kunder & Brugere > Kunde > Målinger</li>
             <li>Domæner kan have <strong>egen konfiguration</strong> der overskriver kunde-config</li>
         </ul>
     </div>

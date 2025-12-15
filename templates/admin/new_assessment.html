@@ -55,6 +55,28 @@
     .unit-preview.active {
         display: block;
     }
+    .target-toggle {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 15px;
+    }
+    .target-toggle label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 20px;
+        border: 2px solid #e5e7eb;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .target-toggle input[type="radio"] {
+        width: auto;
+    }
+    .target-toggle label:has(input:checked) {
+        border-color: #3b82f6;
+        background: #eff6ff;
+    }
 </style>
 {% endblock %}
 
@@ -76,29 +98,87 @@
             <input type="text" id="period" name="period" required placeholder="2025Q4">
         </div>
 
+        {% if assessment_types %}
         <div class="form-group">
-            <label for="target_unit_id">{{ t('assessment.target_org') }} *</label>
-            <select id="target_unit_id" name="target_unit_id" required onchange="updatePreview()">
-                <option value="">-- {{ t('assessment.select_org') }} --</option>
-                {% for unit in units %}
-                <option value="{{ unit.id }}" data-level="{{ unit.level }}" data-path="{{ unit.full_path }}" data-employees="{{ unit.employee_count }}">
-                    {{ ('&nbsp;&nbsp;' * unit.level)|safe }}{{ unit.name }} ({{ unit.employee_count }} {{ t('org.employees') }})
+            <label for="assessment_type_id">{{ t('assessment.type', 'Målingstype') }} *</label>
+            <select id="assessment_type_id" name="assessment_type_id" required>
+                {% for at in assessment_types %}
+                <option value="{{ at.id }}" {% if at.id == 'gruppe_friktion' %}selected{% endif %}>
+                    {{ at.icon }} {{ at.name }} ({{ at.question_count }} spg., ca. {{ at.duration_minutes }} min)
                 </option>
                 {% endfor %}
             </select>
             <small style="color: #6b7280; margin-top: 5px; display: block;">
-                {{ t('assessment.target_hint') }}
+                {{ t('assessment.type_hint', 'Vælg hvilken type måling der skal gennemføres') }}
             </small>
+        </div>
+        {% endif %}
 
-            <div id="unit-preview" class="unit-preview">
-                <strong>Preview:</strong><br>
-                <div id="preview-content"></div>
+        <!-- Target type toggle -->
+        <div class="form-group">
+            <label>{{ t('assessment.target_type', 'Send til') }} *</label>
+            <div class="target-toggle">
+                <label>
+                    <input type="radio" name="target_type" value="organization" checked onchange="toggleTargetType()">
+                    <span>👥 {{ t('assessment.target_org_option', 'Organisation') }}</span>
+                </label>
+                <label>
+                    <input type="radio" name="target_type" value="individual" onchange="toggleTargetType()">
+                    <span>👤 {{ t('assessment.target_individual_option', 'Enkeltperson') }}</span>
+                </label>
             </div>
         </div>
 
-        <div class="info-box">
-            <strong>💡 {{ t('assessment.how_it_works') }}:</strong><br>
-            {{ t('assessment.target_hint') }}
+        <!-- Organization target (default) -->
+        <div id="org-target-fields">
+            <div class="form-group">
+                <label for="target_unit_id">{{ t('assessment.target_org') }} *</label>
+                <select id="target_unit_id" name="target_unit_id" onchange="updatePreview()">
+                    <option value="">-- {{ t('assessment.select_org') }} --</option>
+                    {% for unit in units %}
+                    <option value="{{ unit.id }}" data-level="{{ unit.level }}" data-path="{{ unit.full_path }}" data-employees="{{ unit.employee_count }}">
+                        {{ ('&nbsp;&nbsp;' * unit.level)|safe }}{{ unit.name }} ({{ unit.employee_count }} {{ t('org.employees') }})
+                    </option>
+                    {% endfor %}
+                </select>
+                <small style="color: #6b7280; margin-top: 5px; display: block;">
+                    {{ t('assessment.target_hint') }}
+                </small>
+
+                <div id="unit-preview" class="unit-preview">
+                    <strong>Preview:</strong><br>
+                    <div id="preview-content"></div>
+                </div>
+            </div>
+
+            <div class="info-box">
+                <strong>💡 {{ t('assessment.how_it_works') }}:</strong><br>
+                {{ t('assessment.target_hint') }}
+            </div>
+        </div>
+
+        <!-- Individual target (hidden by default) -->
+        <div id="individual-target-fields" style="display: none;">
+            <div class="form-group">
+                <label for="target_email">{{ t('assessment.target_email', 'Email') }} *</label>
+                <input type="email" id="target_email" name="target_email" placeholder="medarbejder@virksomhed.dk">
+                <small style="color: #6b7280; margin-top: 5px; display: block;">
+                    {{ t('assessment.target_email_hint', 'Målingen sendes direkte til denne email-adresse') }}
+                </small>
+            </div>
+
+            <div class="form-group">
+                <label for="target_name">{{ t('assessment.target_name', 'Navn (valgfrit)') }}</label>
+                <input type="text" id="target_name" name="target_name" placeholder="Jens Jensen">
+                <small style="color: #6b7280; margin-top: 5px; display: block;">
+                    {{ t('assessment.target_name_hint', 'Bruges til personalisering af email') }}
+                </small>
+            </div>
+
+            <div class="info-box">
+                <strong>💡 {{ t('assessment.individual_info', 'Individuel måling') }}:</strong><br>
+                {{ t('assessment.individual_hint', 'Der oprettes én unik token og sendes én email til modtageren.') }}
+            </div>
         </div>
 
         <div class="form-group">
@@ -152,6 +232,26 @@
 </div>
 
 <script>
+    function toggleTargetType() {
+        const targetType = document.querySelector('input[name="target_type"]:checked').value;
+        const orgFields = document.getElementById('org-target-fields');
+        const individualFields = document.getElementById('individual-target-fields');
+        const unitSelect = document.getElementById('target_unit_id');
+        const emailInput = document.getElementById('target_email');
+
+        if (targetType === 'organization') {
+            orgFields.style.display = 'block';
+            individualFields.style.display = 'none';
+            unitSelect.required = true;
+            emailInput.required = false;
+        } else {
+            orgFields.style.display = 'none';
+            individualFields.style.display = 'block';
+            unitSelect.required = false;
+            emailInput.required = true;
+        }
+    }
+
     function updatePreview() {
         const select = document.getElementById('target_unit_id');
         const preview = document.getElementById('unit-preview');
@@ -194,11 +294,12 @@
         }
     }
 
-    // Set min date to today
+    // Set min date to today and init target type
     document.addEventListener('DOMContentLoaded', function() {
         const dateInput = document.getElementById('scheduled_date');
         const today = new Date().toISOString().split('T')[0];
         dateInput.min = today;
+        toggleTargetType();  // Initialize on load
     });
 </script>
 {% endblock %}

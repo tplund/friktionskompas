@@ -292,7 +292,11 @@ def init_db():
             conn.execute("ALTER TABLE assessments ADD COLUMN sender_name TEXT DEFAULT 'HR'")
         except:
             pass
-        
+        try:
+            conn.execute("ALTER TABLE assessments ADD COLUMN assessment_type_id TEXT DEFAULT 'gruppe_friktion'")
+        except:
+            pass
+
         # Tokens (genereres per leaf-unit)
         conn.execute("""
             CREATE TABLE IF NOT EXISTS tokens (
@@ -618,30 +622,81 @@ def get_unit_path(unit_id: str) -> List[Dict]:
 # CAMPAIGN FUNCTIONS
 # ========================================
 
-def create_assessment(target_unit_id: str, name: str, period: str, 
-                   sent_from: str = 'admin') -> str:
+def create_assessment(target_unit_id: str, name: str, period: str,
+                   sent_from: str = 'admin',
+                   assessment_type_id: str = 'gruppe_friktion') -> str:
     """
     Opret kampagne rettet mod en unit
     Kampagnen rammer alle leaf units under target_unit_id
     """
     assessment_id = f"assess-{secrets.token_urlsafe(8)}"
-    
+
     with get_db() as conn:
         # Valider at target unit eksisterer
         unit = conn.execute(
             "SELECT id FROM organizational_units WHERE id = ?",
             (target_unit_id,)
         ).fetchone()
-        
+
         if not unit:
             raise ValueError(f"Unit {target_unit_id} ikke fundet")
-        
+
         # Opret kampagne
         conn.execute("""
-            INSERT INTO assessments (id, target_unit_id, name, period, sent_from)
+            INSERT INTO assessments (id, target_unit_id, name, period, sent_from, assessment_type_id)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (assessment_id, target_unit_id, name, period, sent_from, assessment_type_id))
+
+    return assessment_id
+
+
+def create_individual_assessment(
+    name: str,
+    period: str,
+    target_email: str,
+    target_name: str = None,
+    sent_from: str = 'admin',
+    sender_name: str = 'HR',
+    assessment_type_id: str = 'profil_fuld',
+    scheduled_at: str = None
+) -> str:
+    """
+    Opret individuel måling - sendes til en enkelt person via email.
+    """
+    from mailjet_integration import send_single_invitation
+    assessment_id = f"assess-{secrets.token_urlsafe(8)}"
+
+    with get_db() as conn:
+        # Opret assessment med target_email i stedet for target_unit_id
+        conn.execute("""
+            INSERT INTO assessments (id, name, period, sent_from, sender_name,
+                                    assessment_type_id, scheduled_at, status,
+                                    target_unit_id, mode)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (assessment_id, name, period, sent_from, sender_name,
+              assessment_type_id, scheduled_at,
+              'scheduled' if scheduled_at else 'sent',
+              None,  # No target_unit for individual
+              'individual'))  # Mark as individual
+
+        # Generer én token til personen
+        token = secrets.token_urlsafe(16)
+        conn.execute("""
+            INSERT INTO tokens (token, assessment_id, unit_id, respondent_type, respondent_name)
             VALUES (?, ?, ?, ?, ?)
-        """, (assessment_id, target_unit_id, name, period, sent_from))
-    
+        """, (token, assessment_id, None, 'individual', target_name or target_email))
+
+    # Send email med det samme (medmindre scheduled)
+    if not scheduled_at:
+        # Send invitation
+        send_single_invitation(
+            email=target_email,
+            name=target_name,
+            token=token,
+            assessment_name=name,
+            sender_name=sender_name
+        )
+
     return assessment_id
 
 
