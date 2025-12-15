@@ -1803,6 +1803,30 @@ def debug_analyser(unit_id):
             GROUP BY q.reverse_scored
         """, [unit_id]).fetchall()
 
+        # Tjek for responses der IKKE matcher questions (orphan responses)
+        orphan_check = conn.execute("""
+            SELECT
+                COUNT(*) as orphan_count,
+                GROUP_CONCAT(DISTINCT r.question_id) as orphan_question_ids
+            FROM responses r
+            LEFT JOIN questions q ON r.question_id = q.id
+            JOIN assessments a ON r.assessment_id = a.id
+            WHERE a.target_unit_id = ?
+              AND r.respondent_type = 'employee'
+              AND q.id IS NULL
+        """, [unit_id]).fetchone()
+
+        # List alle unikke question_ids i responses
+        response_question_ids = conn.execute("""
+            SELECT DISTINCT r.question_id, q.id as q_found, q.reverse_scored
+            FROM responses r
+            LEFT JOIN questions q ON r.question_id = q.id
+            JOIN assessments a ON r.assessment_id = a.id
+            WHERE a.target_unit_id = ?
+              AND r.respondent_type = 'employee'
+            ORDER BY r.question_id
+        """, [unit_id]).fetchall()
+
         # Samme query som analyser endpoint
         query = """
             SELECT
@@ -1860,6 +1884,18 @@ def debug_analyser(unit_id):
                     'adjusted_avg': round(row['adj_avg'], 2) if row['adj_avg'] else None,
                 }
                 for row in response_check
+            ],
+            'orphan_responses': {
+                'count': orphan_check['orphan_count'],
+                'question_ids': orphan_check['orphan_question_ids'],
+            },
+            'question_id_mapping': [
+                {
+                    'response_question_id': row['question_id'],
+                    'found_in_questions': row['q_found'],
+                    'reverse_scored': row['reverse_scored'],
+                }
+                for row in response_question_ids
             ],
             'raw_scores': {
                 'employee_overall': round(result['employee_overall'], 2) if result['employee_overall'] else None,
