@@ -788,7 +788,7 @@ def save_response(assessment_id: str, unit_id: str, question_id: int,
     """Gem svar"""
     with get_db() as conn:
         conn.execute("""
-            INSERT INTO responses (campaign_id, unit_id, question_id, score, comment, category_comment)
+            INSERT INTO responses (assessment_id, unit_id, question_id, score, comment, category_comment)
             VALUES (?, ?, ?, ?, ?, ?)
         """, (assessment_id, unit_id, question_id, score, comment, category_comment))
 
@@ -818,7 +818,7 @@ def get_unit_stats(unit_id: str, assessment_id: str, include_children: bool = Tr
                 FROM questions q
                 LEFT JOIN responses r ON q.id = r.question_id
                     AND r.unit_id IN (SELECT id FROM subtree)
-                    AND r.campaign_id = ?
+                    AND r.assessment_id = ?
                 WHERE q.is_default = 1
                 GROUP BY q.field
             """, (unit_id, assessment_id)).fetchall()
@@ -834,7 +834,7 @@ def get_unit_stats(unit_id: str, assessment_id: str, include_children: bool = Tr
                     COUNT(r.id) as response_count
                 FROM questions q
                 LEFT JOIN responses r ON q.id = r.question_id
-                    AND r.unit_id = ? AND r.campaign_id = ?
+                    AND r.unit_id = ? AND r.assessment_id = ?
                 WHERE q.is_default = 1
                 GROUP BY q.field
             """, (unit_id, assessment_id)).fetchall()
@@ -892,7 +892,7 @@ def get_assessment_overview(assessment_id: str) -> List[Dict]:
                     END), 1) as besvær_score
                 FROM responses r
                 JOIN questions q ON r.question_id = q.id
-                WHERE r.campaign_id = ? AND r.unit_id = ? AND q.field = 'BESVÆR'
+                WHERE r.assessment_id = ? AND r.unit_id = ? AND q.field = 'BESVÆR'
             """, (assessment_id, unit_id)).fetchone()
             
             overview.append({

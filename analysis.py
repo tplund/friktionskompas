@@ -106,7 +106,7 @@ def get_unit_stats_with_layers(
             FROM questions q
             LEFT JOIN responses r ON q.id = r.question_id
                 AND {unit_filter}
-                AND r.campaign_id = ?
+                AND r.assessment_id = ?
                 AND r.respondent_type = ?
             WHERE q.is_default = 1
             GROUP BY q.id, q.field, q.sequence
@@ -127,7 +127,7 @@ def get_unit_stats_with_layers(
             FROM questions q
             JOIN responses r ON q.id = r.question_id
                 AND {unit_filter}
-                AND r.campaign_id = ?
+                AND r.assessment_id = ?
                 AND r.respondent_type = ?
             WHERE q.is_default = 1
         """
@@ -312,7 +312,7 @@ def check_anonymity_threshold(assessment_id: str, unit_id: str) -> Dict:
         response_count = conn.execute("""
             SELECT COUNT(DISTINCT id) as cnt
             FROM responses
-            WHERE campaign_id = ? AND unit_id = ? AND respondent_type = 'employee'
+            WHERE assessment_id = ? AND unit_id = ? AND respondent_type = 'employee'
         """, (assessment_id, unit_id)).fetchone()['cnt']
 
         can_show = response_count >= min_required
@@ -356,7 +356,7 @@ def calculate_substitution(unit_id: str, assessment_id: str, respondent_type: st
             FROM responses r
             JOIN questions q ON r.question_id = q.id
             WHERE r.unit_id = ?
-              AND r.campaign_id = ?
+              AND r.assessment_id = ?
               AND r.respondent_type = ?
               AND q.sequence IN (5, 10, 14, 17, 18, 19, 20, 21, 22, 23)
             ORDER BY r.respondent_name, q.sequence
@@ -512,7 +512,7 @@ def get_free_text_comments(unit_id: str, assessment_id: str, include_children: b
                 r.comment
             FROM responses r
             WHERE {unit_filter}
-              AND r.campaign_id = ?
+              AND r.assessment_id = ?
               AND r.comment IS NOT NULL
               AND r.comment != ''
             ORDER BY r.respondent_type, r.respondent_name
@@ -1089,7 +1089,7 @@ def get_trend_data(unit_id: str = None, customer_id: str = None) -> Dict:
                 COUNT(DISTINCT r.id) as response_count
             FROM assessments c
             JOIN organizational_units ou ON c.target_unit_id = ou.id
-            LEFT JOIN responses r ON r.campaign_id = c.id
+            LEFT JOIN responses r ON r.assessment_id = c.id
             WHERE {where_clause}
             GROUP BY c.id
             HAVING response_count > 0
@@ -1117,7 +1117,7 @@ def get_trend_data(unit_id: str = None, customer_id: str = None) -> Dict:
                     END) as avg_score
                 FROM responses r
                 JOIN questions q ON r.question_id = q.id
-                WHERE r.campaign_id = ?
+                WHERE r.assessment_id = ?
                 GROUP BY q.field
             """
             score_rows = conn.execute(scores_query, (camp['id'],)).fetchall()

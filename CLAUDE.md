@@ -10,6 +10,41 @@
 - Nye instrukser fra brugeren har højere prioritet end at færdiggøre nuværende opgave
 - Ved nye instrukser: Tilføj til TODO → Fortsæt med nuværende opgave ELLER skift til ny opgave
 
+### Dokumentation af Beslutninger (KRITISK!)
+- **ALTID** dokumenter vigtige arkitektur-beslutninger i CLAUDE.md MED DET SAMME
+- **ALTID** dokumenter refactorings der IKKE må rulles tilbage (fx campaign → assessment)
+- **ALTID** dokumenter instrukser der gælder på tværs af sessioner
+- Ved store ændringer: Beskriv HVORFOR beslutningen blev taget
+- Sessioner kan kollapses/glemmes - CLAUDE.md er den permanente hukommelse
+- **UNDGÅ** at rulle ændringer tilbage uden at tjekke CLAUDE.md først!
+
+---
+
+## ⛔ BESLUTNINGS-TJEKLISTE - TJEK INDEN DU STARTER!
+
+Før du laver ændringer i følgende områder, TJEK denne liste:
+
+### 1. Database kolonne-navne
+- ✅ **responses.assessment_id** - IKKE campaign_id (refactored)
+- ✅ **tokens.assessment_id** - IKKE campaign_id (refactored)
+- ✅ **assessments** tabel - IKKE campaigns (refactored)
+
+### 2. Field navne i profil-spørgsmål
+- ✅ **KAN** - IKKE MULIGHED (database bruger KAN)
+- ✅ Field order: `['MENING', 'TRYGHED', 'KAN', 'BESVÆR']`
+
+### 3. Terminologi i UI
+- ✅ Brug "måling" - IKKE "kampagne"
+- ✅ Brug "analyse" - IKKE "rapport"
+- ✅ Brug "assessment" i kode - IKKE "campaign"
+
+### 4. Arkitektur
+- ✅ Database: SQLite med persistent disk på Render `/var/data/`
+- ✅ Auth: Session-based med Flask-Login
+- ✅ Oversættelser: Database-based (translations table)
+
+---
+
 ### Selvstændighed - Gør ting selv når muligt!
 - **ALTID** tjek CLAUDE.md for eksisterende API keys/credentials FØR du spørger brugeren
 - **ALTID** gem API keys og credentials i CLAUDE.md når brugeren giver dem
@@ -259,6 +294,24 @@ with open('local_data_export.json', 'w', encoding='utf-8') as f:
 URL: `/admin/cleanup-empty` (kræver admin login)
 
 ## Kendte Problemer og Løsninger
+
+### VIGTIG REFACTORING: campaign → assessment (DONE - MÅ IKKE RULLES TILBAGE!)
+**Besluttet tidligt i projektet - fuldt implementeret**
+
+- **Hvorfor**: "Campaign" lyder marketing-agtigt. "Assessment" / "Måling" er mere HR/læring-agtigt
+- **Database**: Kolonnen hedder `assessment_id` (ikke `campaign_id`)
+- **Kode**: Alle queries bruger `r.assessment_id`
+- **UI**: Bruger "måling" (dansk) i stedet for "kampagne"
+
+**ALDRIG rul tilbage til campaign_id!** Migrationsscripts i `db_hierarchical.py` konverterede automatisk:
+- `tokens.campaign_id` → `tokens.assessment_id`
+- `responses.campaign_id` → `responses.assessment_id`
+- Tabellen `campaigns` → `assessments`
+
+**Ved fremtidige ændringer:**
+- Brug altid `assessment_id` i SQL queries
+- Brug "måling" i brugersynlig tekst (ikke "kampagne")
+- Variabelnavne: `assessment_id`, `assessment`, `assessments`
 
 ### Problem: Data forsvinder på Render
 - **Årsag**: Ephemeral storage eller persistent disk ikke mounted
