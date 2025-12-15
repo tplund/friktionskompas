@@ -1460,6 +1460,7 @@ def analyser():
 
     # Get filter parameters
     assessment_id = request.args.get('assessment_id', type=int)
+    unit_id = request.args.get('unit_id')  # Filter by unit (and children)
     sort_by = request.args.get('sort', 'name')
     sort_order = request.args.get('order', 'asc')
 
@@ -1564,6 +1565,21 @@ def analyser():
             conditions.append("c.id = ?")
             query_params.append(assessment_id)
 
+        if unit_id:
+            # Filter by unit and all its children
+            conditions.append("""
+                c.target_unit_id IN (
+                    WITH RECURSIVE subtree AS (
+                        SELECT id FROM organizational_units WHERE id = ?
+                        UNION ALL
+                        SELECT ou.id FROM organizational_units ou
+                        JOIN subtree st ON ou.parent_id = st.id
+                    )
+                    SELECT id FROM subtree
+                )
+            """)
+            query_params.append(unit_id)
+
         if conditions:
             query += " WHERE " + " AND ".join(conditions)
 
@@ -1649,10 +1665,20 @@ def analyser():
 
             enriched_units.append(unit_dict)
 
+    # Get selected unit name if filtering
+    selected_unit_name = None
+    if unit_id:
+        with get_db() as conn:
+            unit_row = conn.execute("SELECT name FROM organizational_units WHERE id = ?", [unit_id]).fetchone()
+            if unit_row:
+                selected_unit_name = unit_row['name']
+
     return render_template('admin/analyser.html',
                          units=enriched_units,
                          assessments=[dict(c) for c in assessments],
                          current_assessment=assessment_id,
+                         current_unit_id=unit_id,
+                         selected_unit_name=selected_unit_name,
                          sort_by=sort_by,
                          sort_order=sort_order)
 

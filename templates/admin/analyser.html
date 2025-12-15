@@ -319,7 +319,14 @@
 {% block content %}
 <div class="card">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
-        <h2>📊 {{ t('analyser.title') }}</h2>
+        <div>
+            <h2 style="margin: 0;">📊 {{ t('analyser.title') }}{% if selected_unit_name %}: {{ selected_unit_name }}{% endif %}</h2>
+            {% if current_unit_id %}
+            <div style="margin-top: 8px;">
+                <a href="/admin/analyser" style="color: #6366f1; font-size: 0.85rem; text-decoration: none;">&larr; Vis alle enheder</a>
+            </div>
+            {% endif %}
+        </div>
         <a href="/admin/assessment/new" class="btn" style="background: #10b981; color: white; padding: 10px 20px; text-decoration: none; border-radius: 8px; font-weight: 500;">➕ {{ t('analyser.new_analysis') }}</a>
     </div>
 
