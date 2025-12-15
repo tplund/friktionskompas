@@ -330,7 +330,7 @@
                     <ul class="dropdown-menu">
                         <li><a href="/admin/assessments-overview" {% if 'assessments-overview' in request.path %}class="active"{% endif %}>📋 {{ t('nav.alle_maalinger') }}</a></li>
                         <li><a href="/admin/scheduled-assessments" {% if 'scheduled-assessments' in request.path %}class="active"{% endif %}>📅 {{ t('nav.planlagte', 'Planlagte') }}</a></li>
-                        <li><a href="/admin/new-assessment" {% if 'new-assessment' in request.path %}class="active"{% endif %}>➕ {{ t('nav.ny_maaling', 'Ny måling') }}</a></li>
+                        <li><a href="/admin/assessment/new" {% if 'assessment/new' in request.path %}class="active"{% endif %}>➕ {{ t('nav.ny_maaling', 'Ny måling') }}</a></li>
                         <li style="border-top: 1px solid rgba(255,255,255,0.1); margin: 5px 0;"></li>
                         <li><a href="/admin/analyser" {% if 'analyser' in request.path %}class="active"{% endif %}>📊 {{ t('nav.analyser') }}</a></li>
                     </ul>

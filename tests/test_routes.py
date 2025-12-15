@@ -375,3 +375,107 @@ class TestDeleteOperations:
             with get_db() as conn:
                 assessment = conn.execute("SELECT * FROM assessments WHERE id = ?", (test_assessment_id,)).fetchone()
                 assert assessment is None, "Assessment should be deleted"
+
+
+class TestMenuLinks:
+    """Test that all menu links in the navigation are valid routes.
+
+    This catches issues where menu hrefs don't match actual route definitions.
+    """
+
+    # All links that should appear in the main navigation menu
+    MENU_LINKS = [
+        # Dashboard
+        '/admin',
+        # Målinger dropdown
+        '/admin/assessments-overview',
+        '/admin/scheduled-assessments',
+        '/admin/assessment/new',  # NOT /admin/new-assessment!
+        '/admin/analyser',
+        # Friktionsprofil dropdown
+        '/admin/profiler',
+        # Organisation dropdown
+        '/admin/units',
+        '/admin/customers',
+        '/admin/domains',
+        # Indstillinger dropdown
+        '/admin/my-branding',
+        '/admin/auth-config',
+        '/admin/assessment-types',
+        '/admin/profil-questions',
+        '/admin/email-stats',
+        '/admin/email-templates',
+        '/admin/backup',
+        '/admin/dev-tools',
+    ]
+
+    def test_all_menu_links_are_valid(self, authenticated_client):
+        """Test that every link in MENU_LINKS returns 200 or valid redirect."""
+        for link in self.MENU_LINKS:
+            response = authenticated_client.get(link)
+            # 200 = OK, 302 = redirect (some pages redirect to setup or similar)
+            assert response.status_code in [200, 302], f"Menu link {link} should return 200/302, got {response.status_code}"
+
+    def test_menu_links_in_layout_match_routes(self, authenticated_client):
+        """Test that menu links extracted from layout.html actually work."""
+        import re
+
+        # Get a page that uses layout.html
+        response = authenticated_client.get('/admin')
+        assert response.status_code == 200
+        html = response.data.decode('utf-8')
+
+        # Extract all href="/admin/..." links from navigation
+        links = re.findall(r'href="(/admin[^"]*)"', html)
+
+        # Filter out external links, anchors, and dynamic URLs
+        valid_links = [
+            link for link in links
+            if not link.startswith('/admin/impersonate')
+            and not link.startswith('/admin/view/')
+            and not link.startswith('/admin/unit/')
+            and not link.startswith('/admin/assessment/')
+            and not link.startswith('/admin/customer/')
+            and not 'stop-impersonate' in link
+            and '{{' not in link  # Jinja variables
+        ]
+
+        # Remove duplicates
+        valid_links = list(set(valid_links))
+
+        # Test each link
+        for link in valid_links:
+            response = authenticated_client.get(link)
+            assert response.status_code in [200, 302], f"Link {link} from layout should be valid, got {response.status_code}"
+
+    def test_wrong_urls_return_404(self, authenticated_client):
+        """Test that common wrong URLs return 404 (not 500/502)."""
+        wrong_urls = [
+            '/admin/new-assessment',  # Wrong - should be /admin/assessment/new
+            '/admin/new-campaign',    # Old terminology
+            '/admin/kampagne/new',    # Old terminology
+        ]
+
+        for url in wrong_urls:
+            response = authenticated_client.get(url)
+            assert response.status_code == 404, f"Wrong URL {url} should return 404, got {response.status_code}"
+
+    def test_all_pages_have_consistent_navigation(self, authenticated_client):
+        """Test that key pages all have the same navigation structure."""
+        pages_to_test = [
+            '/admin',
+            '/admin/analyser',
+            '/admin/profil-questions',
+            '/admin/email-templates',
+            '/admin/backup',
+        ]
+
+        nav_items = None
+        for page in pages_to_test:
+            response = authenticated_client.get(page)
+            assert response.status_code == 200, f"Page {page} should load"
+            html = response.data.decode('utf-8')
+
+            # Check for key navigation elements that should be on ALL pages
+            assert 'Dashboard' in html or 'dashboard' in html.lower(), f"{page} should have Dashboard link"
+            assert 'Indstillinger' in html or 'indstillinger' in html.lower(), f"{page} should have Indstillinger menu"
