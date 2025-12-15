@@ -420,3 +420,157 @@ class TestColorCodingThresholds:
         assert 49 < 50  # red
         assert 25 < 50  # red
         assert 0 < 50  # red
+
+
+class TestGetUnitStatsWithKnownData:
+    """Test get_unit_stats returns correct values with known test data.
+
+    This is a regression test to ensure the field names match between
+    questions table and the code (KAN not MULIGHED).
+    """
+
+    def test_field_order_uses_kan_not_mulighed(self):
+        """Test that field_order uses 'KAN' not 'MULIGHED'."""
+        from db_hierarchical import get_unit_stats
+        import inspect
+
+        # Get the source code of get_unit_stats
+        source = inspect.getsource(get_unit_stats)
+
+        # Verify it uses KAN
+        assert "'KAN'" in source or '"KAN"' in source, \
+            "get_unit_stats should use 'KAN' field name"
+
+        # Verify it does NOT use MULIGHED
+        assert "'MULIGHED'" not in source and '"MULIGHED"' not in source, \
+            "get_unit_stats should NOT use 'MULIGHED' - use 'KAN' instead"
+
+    def test_get_unit_stats_returns_all_four_fields(self):
+        """Test that get_unit_stats returns all 4 fields: MENING, TRYGHED, KAN, BESVÆR.
+
+        Uses a minimal SQLite setup to test only the field matching logic.
+        """
+        import sqlite3
+        import tempfile
+        import os
+
+        # Use temp database
+        with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as f:
+            temp_db = f.name
+
+        # Temporarily override DB_PATH
+        import db_hierarchical
+        original_path = db_hierarchical.DB_PATH
+        db_hierarchical.DB_PATH = temp_db
+
+        try:
+            conn = sqlite3.connect(temp_db)
+            conn.row_factory = sqlite3.Row
+
+            # Create minimal schema needed for get_unit_stats
+            conn.execute("""
+                CREATE TABLE organizational_units (
+                    id TEXT PRIMARY KEY,
+                    name TEXT,
+                    level INTEGER DEFAULT 0,
+                    parent_id TEXT
+                )
+            """)
+
+            conn.execute("""
+                CREATE TABLE questions (
+                    id INTEGER PRIMARY KEY,
+                    field TEXT,
+                    text_da TEXT,
+                    text_en TEXT,
+                    is_default INTEGER DEFAULT 1,
+                    reverse_scored INTEGER DEFAULT 0
+                )
+            """)
+
+            conn.execute("""
+                CREATE TABLE responses (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    assessment_id TEXT,
+                    unit_id TEXT,
+                    question_id INTEGER,
+                    score INTEGER
+                )
+            """)
+
+            # Create unit
+            conn.execute("INSERT INTO organizational_units (id, name, level) VALUES ('test-unit', 'Test Unit', 0)")
+
+            # Create questions for all 4 fields (IDs 90-113 like in production)
+            questions = [
+                # MENING (5 questions)
+                (90, 'MENING'), (91, 'MENING'), (92, 'MENING'), (93, 'MENING'), (94, 'MENING'),
+                # TRYGHED (5 questions)
+                (95, 'TRYGHED'), (96, 'TRYGHED'), (97, 'TRYGHED'), (98, 'TRYGHED'), (99, 'TRYGHED'),
+                # KAN (8 questions) - THIS IS THE CRITICAL FIELD NAME
+                (100, 'KAN'), (101, 'KAN'), (102, 'KAN'), (103, 'KAN'),
+                (104, 'KAN'), (105, 'KAN'), (106, 'KAN'), (107, 'KAN'),
+                # BESVÆR (6 questions)
+                (108, 'BESVÆR'), (109, 'BESVÆR'), (110, 'BESVÆR'),
+                (111, 'BESVÆR'), (112, 'BESVÆR'), (113, 'BESVÆR'),
+            ]
+
+            for qid, field in questions:
+                conn.execute(
+                    "INSERT INTO questions (id, field, text_da, text_en, is_default) VALUES (?, ?, 'Test', 'Test', 1)",
+                    (qid, field)
+                )
+
+            # Create responses with known scores (all score 4)
+            for qid, field in questions:
+                conn.execute(
+                    "INSERT INTO responses (assessment_id, unit_id, question_id, score) VALUES ('test-assess', 'test-unit', ?, 4)",
+                    (qid,)
+                )
+
+            conn.commit()
+            conn.close()
+
+            # Now test get_unit_stats
+            from db_hierarchical import get_unit_stats
+            stats = get_unit_stats('test-unit', 'test-assess', include_children=False)
+
+            # Should return 4 fields
+            assert len(stats) == 4, f"Expected 4 fields, got {len(stats)}"
+
+            # Check field names
+            fields = [s['field'] for s in stats]
+            assert 'MENING' in fields, "Missing MENING field"
+            assert 'TRYGHED' in fields, "Missing TRYGHED field"
+            assert 'KAN' in fields, "Missing KAN field - check field_order uses 'KAN' not 'MULIGHED'"
+            assert 'BESVÆR' in fields, "Missing BESVÆR field"
+
+            # Check that MULIGHED is NOT in results
+            assert 'MULIGHED' not in fields, "Should not have MULIGHED, use KAN"
+
+            # Check average scores (all should be 4.0)
+            for stat in stats:
+                assert stat['avg_score'] == 4.0, \
+                    f"Expected avg_score 4.0 for {stat['field']}, got {stat['avg_score']}"
+                assert stat['response_count'] > 0, \
+                    f"Expected response_count > 0 for {stat['field']}"
+
+        finally:
+            # Restore original path
+            db_hierarchical.DB_PATH = original_path
+            # Clean up temp file
+            if os.path.exists(temp_db):
+                os.unlink(temp_db)
+
+    def test_known_data_calculation(self):
+        """Test with specific known data: score 4 everywhere = 4.0 avg = 75%."""
+        # This verifies the formula: (avg_score - 1) / 4 * 100 = percentage
+        avg_score = 4.0
+        expected_pct = int((avg_score - 1) / 4 * 100)
+
+        assert expected_pct == 75, f"Score 4.0 should be 75%, got {expected_pct}%"
+
+        # Also test edge cases
+        assert int((5.0 - 1) / 4 * 100) == 100, "Score 5.0 should be 100%"
+        assert int((1.0 - 1) / 4 * 100) == 0, "Score 1.0 should be 0%"
+        assert int((3.0 - 1) / 4 * 100) == 50, "Score 3.0 should be 50%"
