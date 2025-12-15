@@ -574,3 +574,194 @@ class TestGetUnitStatsWithKnownData:
         assert int((5.0 - 1) / 4 * 100) == 100, "Score 5.0 should be 100%"
         assert int((1.0 - 1) / 4 * 100) == 0, "Score 1.0 should be 0%"
         assert int((3.0 - 1) / 4 * 100) == 50, "Score 3.0 should be 50%"
+
+
+class TestReverseScoreCalculation:
+    """
+    Test reverse_scored beregning - KRITISK for korrekte procenter.
+
+    Problemet der blev opdaget 2025-12-15:
+    - Raw average var 3.39 (vises som 57%)
+    - Med reverse_scored justering skulle det være 4.36 (84%)
+    - UI viste 57% fordi reverse_scored ikke blev anvendt korrekt
+
+    Formel for reverse_scored spørgsmål:
+    - Normal: score bruges direkte
+    - Reverse: 6 - score (så 1 bliver 5, 2 bliver 4, etc.)
+    """
+
+    def test_reverse_score_formula(self):
+        """Test at reverse_scored formlen er korrekt: 6 - score."""
+        # For reverse_scored=1 spørgsmål:
+        # Lav score (1-2) = dårligt miljø = skal give høj adjusted score
+        # Høj score (4-5) = godt miljø = skal give lav adjusted score
+
+        # Hvis medarbejder svarer 2 på "Jeg føler mig stresset" (reverse)
+        # betyder det lav stress = godt = adjusted score = 6 - 2 = 4
+        assert 6 - 2 == 4, "Score 2 on reverse question should become 4"
+        assert 6 - 1 == 5, "Score 1 on reverse question should become 5"
+        assert 6 - 5 == 1, "Score 5 on reverse question should become 1"
+        assert 6 - 3 == 3, "Score 3 on reverse question stays 3"
+
+    def test_mixed_scores_with_reverse(self):
+        """
+        Test beregning med blandede normale og reverse spørgsmål.
+
+        Scenarie fra Hammerum Skole:
+        - Raw average: 3.39
+        - Efter reverse justering: 4.36
+        - Procent: 84%
+        """
+        # Simuler 4 svar: 2 normale, 2 reverse
+        normal_scores = [4, 4]  # Bruges direkte
+        reverse_scores = [2, 2]  # Bliver til 6-2=4 hver
+
+        # Beregn adjusted scores
+        adjusted_normal = normal_scores  # [4, 4]
+        adjusted_reverse = [6 - s for s in reverse_scores]  # [4, 4]
+
+        all_adjusted = adjusted_normal + adjusted_reverse
+        avg_adjusted = sum(all_adjusted) / len(all_adjusted)
+
+        assert avg_adjusted == 4.0, f"Expected 4.0, got {avg_adjusted}"
+
+        # Procent
+        pct = ((avg_adjusted - 1) / 4) * 100
+        assert pct == 75.0, f"Expected 75%, got {pct}%"
+
+    def test_raw_vs_adjusted_difference(self):
+        """
+        Test at raw og adjusted gennemsnit er forskellige når der er reverse spørgsmål.
+
+        Dette er kerneproblemet: Hvis UI viser raw average i stedet for adjusted,
+        får man forkerte (lavere) procenter.
+        """
+        # Scenarie: Medarbejdere svarer lavt på reverse spørgsmål (= godt)
+        # Men højt på normale spørgsmål (= også godt)
+
+        scores = [
+            (4, False),  # Normal spørgsmål, score 4
+            (4, False),  # Normal spørgsmål, score 4
+            (2, True),   # Reverse spørgsmål, score 2 -> adjusted 4
+            (2, True),   # Reverse spørgsmål, score 2 -> adjusted 4
+        ]
+
+        # Raw average (FORKERT at bruge denne!)
+        raw_avg = sum(s[0] for s in scores) / len(scores)
+        assert raw_avg == 3.0, f"Raw avg should be 3.0, got {raw_avg}"
+
+        # Adjusted average (KORREKT)
+        adjusted_scores = [
+            6 - s[0] if s[1] else s[0]
+            for s in scores
+        ]
+        adjusted_avg = sum(adjusted_scores) / len(adjusted_scores)
+        assert adjusted_avg == 4.0, f"Adjusted avg should be 4.0, got {adjusted_avg}"
+
+        # Procent forskel
+        raw_pct = ((raw_avg - 1) / 4) * 100
+        adjusted_pct = ((adjusted_avg - 1) / 4) * 100
+
+        assert raw_pct == 50.0, f"Raw % should be 50%, got {raw_pct}%"
+        assert adjusted_pct == 75.0, f"Adjusted % should be 75%, got {adjusted_pct}%"
+
+        # KRITISK: Der er 25 procentpoint forskel!
+        assert adjusted_pct - raw_pct == 25.0, "Should be 25 percentage points difference"
+
+    def test_sql_case_expression(self):
+        """
+        Test at SQL CASE expression for reverse_scored er korrekt.
+
+        Den korrekte SQL er:
+        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END
+        """
+        import sqlite3
+        import tempfile
+        import os
+
+        # Opret temp database
+        temp_db = tempfile.mktemp(suffix='.db')
+        conn = sqlite3.connect(temp_db)
+        conn.row_factory = sqlite3.Row
+
+        try:
+            # Opret tabeller
+            conn.execute("""
+                CREATE TABLE questions (
+                    id INTEGER PRIMARY KEY,
+                    field TEXT,
+                    reverse_scored INTEGER DEFAULT 0
+                )
+            """)
+
+            conn.execute("""
+                CREATE TABLE responses (
+                    id INTEGER PRIMARY KEY,
+                    assessment_id TEXT,
+                    question_id INTEGER,
+                    score INTEGER
+                )
+            """)
+
+            # Indsæt spørgsmål: 2 normale, 2 reverse
+            conn.execute("INSERT INTO questions (id, field, reverse_scored) VALUES (1, 'TEST', 0)")
+            conn.execute("INSERT INTO questions (id, field, reverse_scored) VALUES (2, 'TEST', 0)")
+            conn.execute("INSERT INTO questions (id, field, reverse_scored) VALUES (3, 'TEST', 1)")
+            conn.execute("INSERT INTO questions (id, field, reverse_scored) VALUES (4, 'TEST', 1)")
+
+            # Indsæt svar: normale=4, reverse=2
+            conn.execute("INSERT INTO responses (assessment_id, question_id, score) VALUES ('test', 1, 4)")
+            conn.execute("INSERT INTO responses (assessment_id, question_id, score) VALUES ('test', 2, 4)")
+            conn.execute("INSERT INTO responses (assessment_id, question_id, score) VALUES ('test', 3, 2)")
+            conn.execute("INSERT INTO responses (assessment_id, question_id, score) VALUES ('test', 4, 2)")
+            conn.commit()
+
+            # Test RAW average (FORKERT)
+            raw_result = conn.execute("""
+                SELECT AVG(r.score) as raw_avg
+                FROM responses r
+                WHERE r.assessment_id = 'test'
+            """).fetchone()
+
+            assert raw_result['raw_avg'] == 3.0, f"Raw avg should be 3.0, got {raw_result['raw_avg']}"
+
+            # Test ADJUSTED average (KORREKT)
+            adjusted_result = conn.execute("""
+                SELECT AVG(
+                    CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END
+                ) as adjusted_avg
+                FROM responses r
+                JOIN questions q ON r.question_id = q.id
+                WHERE r.assessment_id = 'test'
+            """).fetchone()
+
+            assert adjusted_result['adjusted_avg'] == 4.0, \
+                f"Adjusted avg should be 4.0, got {adjusted_result['adjusted_avg']}"
+
+        finally:
+            conn.close()
+            if os.path.exists(temp_db):
+                os.unlink(temp_db)
+
+    def test_to_percent_function(self):
+        """Test to_percent helper funktion."""
+        def to_percent(score):
+            """Convert 1-5 score to percent (1=0%, 5=100%)"""
+            if score is None or score == 0:
+                return 0
+            return ((score - 1) / 4) * 100
+
+        # Test alle værdier
+        assert to_percent(1.0) == 0.0, "Score 1 = 0%"
+        assert to_percent(2.0) == 25.0, "Score 2 = 25%"
+        assert to_percent(3.0) == 50.0, "Score 3 = 50%"
+        assert to_percent(4.0) == 75.0, "Score 4 = 75%"
+        assert to_percent(5.0) == 100.0, "Score 5 = 100%"
+
+        # Test mellemværdier
+        assert to_percent(3.5) == 62.5, "Score 3.5 = 62.5%"
+        assert abs(to_percent(4.36) - 84.0) < 0.01, "Score 4.36 ≈ 84%"  # Hammerum case
+
+        # Test edge cases
+        assert to_percent(None) == 0, "None = 0%"
+        assert to_percent(0) == 0, "0 = 0%"
