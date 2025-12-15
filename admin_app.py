@@ -190,10 +190,11 @@ def inject_customers():
             return 'gap-ok', '✓'
 
     def to_percent(score):
-        """Convert 0-5 score to percent"""
-        if score is None:
-            return None
-        return (score / 5) * 100
+        """Convert 1-5 score to percent (1=0%, 5=100%)"""
+        if score is None or score == 0:
+            return 0
+        # Convert 1-5 scale to 0-100%
+        return ((score - 1) / 4) * 100
 
     return dict(
         customers=customers,
@@ -1465,8 +1466,11 @@ def analyser():
 
     # Get filter parameters
     unit_id = request.args.get('unit_id')  # Filter by unit (and children)
-    sort_by = request.args.get('sort', 'name')
-    sort_order = request.args.get('order', 'asc')
+    # Default sort: by date DESC when viewing assessments (unit_id set), by name ASC otherwise
+    default_sort = 'date' if unit_id else 'name'
+    default_order = 'desc' if unit_id else 'asc'
+    sort_by = request.args.get('sort', default_sort)
+    sort_order = request.args.get('order', default_order)
 
     with get_db() as conn:
         enriched_units = []
@@ -3932,6 +3936,48 @@ def clear_cache():
     """Ryd hele cachen - kun admin"""
     count = invalidate_all()
     flash(f'Cache ryddet! ({count} entries fjernet)', 'success')
+    return redirect(url_for('dev_tools'))
+
+
+@app.route('/admin/rename-assessments', methods=['POST'])
+@admin_required
+def rename_assessments():
+    """Omdøb målinger fra 'Unit - Q# YYYY' til 'Q# YYYY - Unit' format"""
+    import re
+
+    # Kvartal til dato mapping
+    quarter_dates = {
+        'Q1': '2025-01-15',
+        'Q2': '2025-04-15',
+        'Q3': '2025-07-15',
+        'Q4': '2025-10-15'
+    }
+
+    count = 0
+    with get_db() as conn:
+        assessments = conn.execute("""
+            SELECT id, name, created_at
+            FROM assessments
+            WHERE name LIKE '% - Q_ 2025'
+        """).fetchall()
+
+        for a in assessments:
+            match = re.match(r'^(.+) - (Q\d) (\d{4})$', a['name'])
+            if match:
+                unit_name = match.group(1)
+                quarter = match.group(2)
+                year = match.group(3)
+                new_name = f"{quarter} {year} - {unit_name}"
+                new_date = quarter_dates.get(quarter, a['created_at'])
+
+                conn.execute("""
+                    UPDATE assessments
+                    SET name = ?, created_at = ?
+                    WHERE id = ?
+                """, (new_name, new_date, a['id']))
+                count += 1
+
+    flash(f'Omdøbt {count} målinger til nyt format', 'success')
     return redirect(url_for('dev_tools'))
 
 
