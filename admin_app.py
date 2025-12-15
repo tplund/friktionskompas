@@ -3981,6 +3981,81 @@ def rename_assessments():
     return redirect(url_for('dev_tools'))
 
 
+@app.route('/admin/vary-testdata', methods=['POST'])
+@admin_required
+def vary_testdata():
+    """Tilføj realistisk variation til testdata - forskellige organisationer får forskellige profiler"""
+    import random
+
+    # Profiler for forskellige organisationstyper
+    PROFILES = {
+        'Birk Skole': {'MENING': (3.8, 4.5), 'TRYGHED': (3.5, 4.2), 'KAN': (2.2, 3.0), 'BESVÆR': (3.0, 3.8)},
+        'Gødstrup Skole': {'MENING': (2.0, 2.8), 'TRYGHED': (2.5, 3.2), 'KAN': (2.8, 3.5), 'BESVÆR': (2.0, 2.8)},
+        'Hammerum Skole': {'MENING': (4.0, 4.8), 'TRYGHED': (4.2, 4.8), 'KAN': (3.5, 4.2), 'BESVÆR': (3.8, 4.5)},
+        'Snejbjerg Skole': {'MENING': (3.0, 3.8), 'TRYGHED': (2.0, 2.8), 'KAN': (3.2, 4.0), 'BESVÆR': (3.0, 3.8)},
+        'Aktivitetscentret Midt': {'MENING': (3.5, 4.2), 'TRYGHED': (3.0, 3.8), 'KAN': (1.8, 2.5), 'BESVÆR': (1.5, 2.3)},
+        'Bofællesskabet Åparken': {'MENING': (4.2, 4.8), 'TRYGHED': (3.8, 4.5), 'KAN': (3.0, 3.8), 'BESVÆR': (2.5, 3.2)},
+        'Støttecentret Vestergade': {'MENING': (2.2, 3.0), 'TRYGHED': (3.5, 4.2), 'KAN': (4.0, 4.8), 'BESVÆR': (3.5, 4.2)},
+    }
+    DEFAULT = {'MENING': (2.8, 3.8), 'TRYGHED': (2.8, 3.8), 'KAN': (2.8, 3.8), 'BESVÆR': (2.8, 3.8)}
+
+    def get_score(profile, field):
+        low, high = profile.get(field, DEFAULT[field])
+        return max(1, min(5, round(random.triangular(low, high, (low+high)/2))))
+
+    random.seed(42)
+    count = 0
+
+    with get_db() as conn:
+        # Opdater employee responses
+        responses = conn.execute("""
+            SELECT r.id, ou.name as unit_name, q.field
+            FROM responses r
+            JOIN organizational_units ou ON r.unit_id = ou.id
+            JOIN questions q ON r.question_id = q.id
+            WHERE r.respondent_type = 'employee'
+        """).fetchall()
+
+        for r in responses:
+            profile = next((PROFILES[k] for k in PROFILES if k in r['unit_name']), DEFAULT)
+            new_score = get_score(profile, r['field'])
+            conn.execute("UPDATE responses SET score = ? WHERE id = ?", (new_score, r['id']))
+            count += 1
+
+        # Opdater leader_assess (lidt højere scores)
+        leader_responses = conn.execute("""
+            SELECT r.id, ou.name as unit_name, q.field
+            FROM responses r
+            JOIN organizational_units ou ON r.unit_id = ou.id
+            JOIN questions q ON r.question_id = q.id
+            WHERE r.respondent_type = 'leader_assess'
+        """).fetchall()
+
+        for r in leader_responses:
+            profile = next((PROFILES[k] for k in PROFILES if k in r['unit_name']), DEFAULT)
+            low, high = profile.get(r['field'], DEFAULT[r['field']])
+            leader_profile = {r['field']: (min(5, low + 0.5), min(5, high + 0.8))}
+            new_score = get_score(leader_profile, r['field'])
+            conn.execute("UPDATE responses SET score = ? WHERE id = ?", (new_score, r['id']))
+            count += 1
+
+        # Opdater leader_self (varierer mere)
+        leader_self = conn.execute("""
+            SELECT r.id FROM responses r WHERE r.respondent_type = 'leader_self'
+        """).fetchall()
+
+        for r in leader_self:
+            new_score = random.choice([2, 3, 3, 4, 4, 4, 5])
+            conn.execute("UPDATE responses SET score = ? WHERE id = ?", (new_score, r['id']))
+            count += 1
+
+    # Ryd cache så nye værdier vises
+    invalidate_all()
+
+    flash(f'Opdateret {count} responses med realistisk variation og ryddet cache', 'success')
+    return redirect(url_for('dev_tools'))
+
+
 @app.route('/admin/backup')
 @admin_required
 def backup_page():
