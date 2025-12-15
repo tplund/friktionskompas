@@ -191,6 +191,39 @@ GOOGLE_CLIENT_SECRET=xxx
 - [ ] **SoMe ads automation** - Guardrails, budget-styring, A/B test
 - Se detaljeret plan: `PLAN_freemium_b2c.md`
 
+### B2C Friktionsprofil-produkter (Idéer til automatiseret markedsføring)
+
+> 💡 **Idé**: Bruge Facebook/Instagram annoncer til at drive trafik til gratis friktionsprofil-tests. Målgrupper med høj søgevolumen.
+
+#### Produkt 1: Parforhold-profil
+- [ ] **Landing page** - "Test dit parforhold" / "Er I på samme side?"
+- [ ] **Invitation flow** - Bruger tager test → inviterer partner via email/SMS
+- [ ] **Par-sammenligning** - Vis begges profiler side om side
+- [ ] **Gap-analyse** - Hvor er I uenige? Hvor supplerer I hinanden?
+- [ ] **Facebook annoncering** - Målret par, nyforlovede, samboende
+- [ ] **Automatiseret A/B test** - Forskellige hooks ("kommunikation", "stress", "prioriteter")
+
+#### Produkt 2: ADHD Friktionsprofil
+- [ ] **Landing page** - "Har du ADHD-friktion?" / "Hvorfor føles alting svært?"
+- [ ] **Tilpassede spørgsmål** - Fokus på executive function, tidsstyring, prioritering
+- [ ] **Resultat-fortolkning** - ADHD-venlig forklaring af friktionspunkter
+- [ ] **Handlingsplan** - Konkrete tips baseret på profil
+- [ ] **Facebook/Google Ads** - Høj søgevolumen på ADHD-relaterede termer
+- [ ] **SEO indhold** - Blog posts om ADHD og friktion
+
+#### Produkt 3: Karriere/Job-profil
+- [ ] **Landing page** - "Passer dit job til dig?" / "Hvorfor er du udbrændt?"
+- [ ] **Arbejdsplads-fokus** - Mening, tryghed, kapacitet i job-kontekst
+- [ ] **Karrierevejledning** - Anbefalinger baseret på profil
+- [ ] **LinkedIn annoncering** - Målret jobsøgende, utilfredse medarbejdere
+
+#### Fælles infrastruktur
+- [ ] **Automatiseret annoncering** - Budget-styring, auto-pause ved dårlig ROI
+- [ ] **Conversion tracking** - Facebook Pixel, GA4 events
+- [ ] **A/B test framework** - Landing pages, annoncetekster, CTA'er
+- [ ] **Email sequences** - Nurture flow efter gratis test
+- [ ] **Upsell til betalt** - Premium rapport, coaching, etc.
+
 ### Friktionsprofil V2 (i gang)
 - [x] Dokumentation opdateret (FRIKTIONSPROFIL_V2.md)
 - [x] 8 nye kapacitets-spørgsmål ("tage sig sammen"-mekanikken)
