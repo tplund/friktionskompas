@@ -279,9 +279,24 @@
             </div>
             {% endif %}
 
+            {% if session.user.role == 'superadmin' %}
+            <!-- Role simulation for superadmin -->
+            <div class="role-switcher" style="margin-left: 10px;">
+                <select id="roleSelect" onchange="switchRole(this.value)" style="padding: 6px 12px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.1); color: white; font-size: 0.85rem; cursor: pointer;">
+                    <option value="" {% if not session.simulated_role %}selected{% endif %}>👑 Superadmin</option>
+                    <option value="admin" {% if session.simulated_role == 'admin' %}selected{% endif %}>🔧 Admin</option>
+                    <option value="manager" {% if session.simulated_role == 'manager' %}selected{% endif %}>👔 Manager</option>
+                </select>
+            </div>
+            {% endif %}
+
             <div class="nav-user">
                 {{ session.user.name }}
+                {% if is_simulating %}
+                <span class="user-badge" style="background: #f59e0b;">{{ simulated_role|upper }} (sim)</span>
+                {% else %}
                 <span class="user-badge">{{ session.user.role|upper }}</span>
+                {% endif %}
                 {% if session.user.customer_name %}
                 <span style="opacity: 0.6; margin-left: 10px;">{{ session.user.customer_name }}</span>
                 {% endif %}
@@ -311,7 +326,7 @@
                 <li><a href="/admin/user-view/survey" {% if 'user-view' in request.path %}class="active"{% endif %}>📝 Spørgeskema</a></li>
             </ul>
 
-            {% elif view_mode == 'manager' or session.user.role == 'manager' %}
+            {% elif view_mode == 'manager' or effective_role == 'manager' %}
             <!-- Ledervisning submenu -->
             <ul class="submenu-links">
                 <li><a href="/admin/analyser" {% if 'analyser' in request.path %}class="active"{% endif %}>📊 Analyser</a></li>
@@ -351,7 +366,7 @@
                     <ul class="dropdown-menu">
                         <li><a href="/admin/units" {% if 'units' in request.path %}class="active"{% endif %}>🌳 {{ t('nav.organisationer') }}</a></li>
                         <li><a href="/admin/customers" {% if 'customers' in request.path %}class="active"{% endif %}>👥 {{ t('nav.kunder_brugere') }}</a></li>
-                        {% if session.user.role in ['admin', 'superadmin'] %}
+                        {% if effective_role in ['admin', 'superadmin'] %}
                         <li><a href="/admin/domains" {% if 'domains' in request.path %}class="active"{% endif %}>🌐 {{ t('nav.domaener', 'Domæner') }}</a></li>
                         {% endif %}
                     </ul>
@@ -359,12 +374,13 @@
 
                 <!-- Indstillinger dropdown -->
                 <li class="submenu-dropdown">
-                    <a href="#" class="dropdown-toggle {% if 'email' in request.path or 'profil-questions' in request.path or 'backup' in request.path or 'dev-tools' in request.path or 'my-branding' in request.path or 'auth-config' in request.path or 'assessment-types' in request.path %}active{% endif %}">⚙️ {{ t('nav.indstillinger') }} ▾</a>
+                    <a href="#" class="dropdown-toggle {% if 'email' in request.path or 'profil-questions' in request.path or 'backup' in request.path or 'dev-tools' in request.path or 'my-branding' in request.path or 'auth-config' in request.path or 'assessment-types' in request.path or 'impersonate' in request.path %}active{% endif %}">⚙️ {{ t('nav.indstillinger') }} ▾</a>
                     <ul class="dropdown-menu">
                         <li><a href="/admin/my-branding" {% if 'my-branding' in request.path %}class="active"{% endif %}>🎨 {{ t('nav.branding', 'Min Branding') }}</a></li>
-                        {% if session.user.role == 'superadmin' %}
+                        {% if effective_role == 'superadmin' or actual_role == 'superadmin' %}
                         <li><a href="/admin/auth-config" {% if 'auth-config' in request.path %}class="active"{% endif %}>🔐 {{ t('nav.auth_config', 'Auth Konfiguration') }}</a></li>
                         <li><a href="/admin/assessment-types" {% if 'assessment-types' in request.path %}class="active"{% endif %}>📋 {{ t('nav.assessment_types', 'Målingstyper') }}</a></li>
+                        <li><a href="/admin/impersonate" {% if 'impersonate' in request.path %}class="active"{% endif %}>👤 {{ t('nav.impersonate', 'Impersoner bruger') }}</a></li>
                         {% endif %}
                         <li style="border-top: 1px solid rgba(255,255,255,0.1); margin: 5px 0;"></li>
                         <li><a href="/admin/profil-questions" {% if 'profil-questions' in request.path %}class="active"{% endif %}>📝 {{ t('nav.profil_spoergsmaal', 'Profil-spørgsmål') }}</a></li>
@@ -455,6 +471,13 @@
             // Switch to this customer - stay on current page type
             window.location.href = "/admin/impersonate/" + customerId + "?next=" + returnUrl;
         }
+    }
+
+    function switchRole(role) {
+        // Switch simulated role for superadmin
+        var currentPath = window.location.pathname;
+        var returnUrl = encodeURIComponent(currentPath);
+        window.location.href = "/admin/simulate-role/" + (role || "clear") + "?next=" + returnUrl;
     }
 
     // Loading spinner functions

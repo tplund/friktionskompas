@@ -10,10 +10,10 @@ import secrets
 from functools import wraps
 from db_hierarchical import (
     init_db, create_unit, create_unit_from_path, create_assessment,
-    generate_tokens_for_assessment, get_unit_children, get_unit_path,
-    get_leaf_units, validate_and_use_token, save_response, get_unit_stats,
-    get_assessment_overview, get_questions, get_db, add_contacts_bulk,
-    get_unit_contacts
+    create_individual_assessment, generate_tokens_for_assessment,
+    get_unit_children, get_unit_path, get_leaf_units, validate_and_use_token,
+    save_response, get_unit_stats, get_assessment_overview, get_questions,
+    get_db, add_contacts_bulk, get_unit_contacts
 )
 from analysis import (
     get_detailed_breakdown, check_anonymity_threshold,
@@ -196,12 +196,23 @@ def inject_customers():
         # Convert 1-5 scale to 0-100%
         return ((score - 1) / 4) * 100
 
+    # Rolle-simulation info
+    simulated_role = session.get('simulated_role')
+    is_simulating = 'user' in session and session['user'].get('role') == 'superadmin' and simulated_role is not None
+    # Effective role - hvad brugeren ser systemet som
+    actual_role = session['user'].get('role') if 'user' in session else None
+    effective_role = simulated_role if is_simulating else actual_role
+
     return dict(
         customers=customers,
         get_score_class=get_score_class,
         get_percent_class=get_percent_class,
         get_gap_class=get_gap_class,
-        to_percent=to_percent
+        to_percent=to_percent,
+        simulated_role=simulated_role,
+        is_simulating=is_simulating,
+        effective_role=effective_role,
+        actual_role=actual_role
     )
 
 
@@ -247,6 +258,25 @@ def superadmin_required(f):
 def get_current_user():
     """Hent current user fra session"""
     return session.get('user')
+
+
+def get_effective_role():
+    """Returnerer den effektive rolle - simuleret eller faktisk"""
+    user = get_current_user()
+    if not user:
+        return None
+    # Superadmin kan simulere andre roller
+    if user.get('role') == 'superadmin' and 'simulated_role' in session:
+        return session['simulated_role']
+    return user.get('role')
+
+
+def is_role_simulated():
+    """Returnerer True hvis superadmin simulerer en anden rolle"""
+    user = get_current_user()
+    if not user:
+        return False
+    return user.get('role') == 'superadmin' and 'simulated_role' in session
 
 
 @app.route('/')
@@ -1624,7 +1654,9 @@ def analyser():
                 query_params = [unit_id, unit_id]
 
                 if where_clause != "1=1":
-                    query += f" AND {where_clause}"
+                    # Replace 'ou.' with 'child.' since we alias organizational_units as 'child'
+                    adjusted_where = where_clause.replace('ou.', 'child.')
+                    query += f" AND {adjusted_where}"
                     query_params.extend(params)
 
                 query += """
@@ -2231,11 +2263,12 @@ def new_assessment():
     user = get_current_user()
 
     if request.method == 'POST':
-        target_unit_id = request.form['target_unit_id']
         name = request.form['name']
         period = request.form['period']
         sent_from = request.form.get('sent_from', 'admin')
         sender_name = request.form.get('sender_name', 'HR')
+        assessment_type_id = request.form.get('assessment_type_id', 'gruppe_friktion')
+        target_type = request.form.get('target_type', 'organization')
 
         # Tjek om det er en scheduled assessment
         scheduled_date = request.form.get('scheduled_date', '').strip()
@@ -2248,35 +2281,71 @@ def new_assessment():
                 scheduled_time = '08:00'
             scheduled_at = f"{scheduled_date}T{scheduled_time}:00"
 
-        # Opret kampagne
-        assessment_id = create_assessment(
-            target_unit_id=target_unit_id,
-            name=name,
-            period=period,
-            sent_from=sent_from,
-            scheduled_at=scheduled_at,
-            sender_name=sender_name
-        )
+        if target_type == 'individual':
+            # ===== INDIVIDUEL MÅLING =====
+            target_email = request.form.get('target_email', '').strip()
+            target_name = request.form.get('target_name', '').strip()
 
-        if scheduled_at:
-            # Scheduled assessment - send ikke nu
-            flash(f'📅 Måling planlagt til {scheduled_date} kl. {scheduled_time}', 'success')
-            return redirect(url_for('scheduled_assessments'))
+            if not target_email:
+                flash('Email er påkrævet for individuel måling', 'error')
+                return redirect(url_for('new_assessment'))
+
+            # Opret assessment uden target_unit (individuel)
+            assessment_id = create_individual_assessment(
+                name=name,
+                period=period,
+                target_email=target_email,
+                target_name=target_name,
+                sent_from=sent_from,
+                sender_name=sender_name,
+                assessment_type_id=assessment_type_id,
+                scheduled_at=scheduled_at
+            )
+
+            if scheduled_at:
+                flash(f'📅 Individuel måling planlagt til {scheduled_date} kl. {scheduled_time}', 'success')
+                return redirect(url_for('scheduled_assessments'))
+            else:
+                flash(f'Individuel måling sendt til {target_email}!', 'success')
+                return redirect(url_for('view_assessment', assessment_id=assessment_id))
+
         else:
-            # Send nu
-            tokens_by_unit = generate_tokens_for_assessment(assessment_id)
+            # ===== ORGANISATIONS MÅLING (original logik) =====
+            target_unit_id = request.form.get('target_unit_id')
+            if not target_unit_id:
+                flash('Vælg en organisation', 'error')
+                return redirect(url_for('new_assessment'))
 
-            total_sent = 0
-            for unit_id, tokens in tokens_by_unit.items():
-                contacts = get_unit_contacts(unit_id)
-                if not contacts:
-                    continue
+            # Opret kampagne
+            assessment_id = create_assessment(
+                target_unit_id=target_unit_id,
+                name=name,
+                period=period,
+                sent_from=sent_from,
+                scheduled_at=scheduled_at,
+                sender_name=sender_name,
+                assessment_type_id=assessment_type_id
+            )
 
-                results = send_assessment_batch(contacts, tokens, name, sender_name)
-                total_sent += results['emails_sent'] + results['sms_sent']
+            if scheduled_at:
+                # Scheduled assessment - send ikke nu
+                flash(f'📅 Måling planlagt til {scheduled_date} kl. {scheduled_time}', 'success')
+                return redirect(url_for('scheduled_assessments'))
+            else:
+                # Send nu
+                tokens_by_unit = generate_tokens_for_assessment(assessment_id)
 
-            flash(f'Måling sendt! {sum(len(t) for t in tokens_by_unit.values())} tokens genereret, {total_sent} sendt.', 'success')
-            return redirect(url_for('view_assessment', assessment_id=assessment_id))
+                total_sent = 0
+                for unit_id, tokens in tokens_by_unit.items():
+                    contacts = get_unit_contacts(unit_id)
+                    if not contacts:
+                        continue
+
+                    results = send_assessment_batch(contacts, tokens, name, sender_name)
+                    total_sent += results['emails_sent'] + results['sms_sent']
+
+                flash(f'Måling sendt! {sum(len(t) for t in tokens_by_unit.values())} tokens genereret, {total_sent} sendt.', 'success')
+                return redirect(url_for('view_assessment', assessment_id=assessment_id))
 
     # GET: Vis form - kun units fra samme customer
     where_clause, params = get_customer_filter(user['role'], user['customer_id'], session.get('customer_filter'))
@@ -2289,8 +2358,16 @@ def new_assessment():
             ORDER BY ou.full_path
         """, params).fetchall()
 
+    # Hent tilgængelige målingstyper for denne kunde
+    lang = get_user_language()
+    assessment_types = get_available_assessments(
+        customer_id=user.get('customer_id'),
+        lang=lang
+    )
+
     return render_template('admin/new_assessment.html',
-                         units=[dict(u) for u in units])
+                         units=[dict(u) for u in units],
+                         assessment_types=assessment_types)
 
 
 @app.route('/admin/assessment/<assessment_id>')
@@ -2632,6 +2709,106 @@ def stop_impersonate():
         if '/dashboard' in next_url:
             return redirect(url_for('org_dashboard'))
         return redirect(next_url)
+    return redirect(url_for('admin_home'))
+
+
+@app.route('/admin/simulate-role/<role>')
+@login_required
+def simulate_role(role):
+    """Superadmin: Simuler en anden rolle for at se systemet som den rolle"""
+    user = get_current_user()
+    if user['role'] != 'superadmin':
+        flash('Kun superadmin kan simulere roller', 'error')
+        return redirect(url_for('admin_home'))
+
+    if role == 'clear' or role == '':
+        session.pop('simulated_role', None)
+        flash('Viser som Superadmin', 'info')
+    elif role in ('admin', 'manager'):
+        session['simulated_role'] = role
+        flash(f'Viser systemet som {role.title()}', 'info')
+    else:
+        flash('Ugyldig rolle', 'error')
+
+    # Return to originating page
+    next_url = request.args.get('next', '')
+    if next_url:
+        return redirect(next_url)
+    return redirect(url_for('admin_home'))
+
+
+@app.route('/admin/impersonate')
+@superadmin_required
+def impersonate_user_page():
+    """Superadmin: Søg og vælg bruger at impersonere"""
+    search = request.args.get('search', '').strip()
+
+    with get_db() as conn:
+        if search:
+            users = conn.execute("""
+                SELECT u.id, u.username, u.name, u.email, u.role, u.is_active,
+                       c.name as customer_name
+                FROM users u
+                LEFT JOIN customers c ON u.customer_id = c.id
+                WHERE u.role != 'superadmin'
+                  AND (u.username LIKE ? OR u.name LIKE ? OR u.email LIKE ? OR c.name LIKE ?)
+                ORDER BY u.name
+                LIMIT 50
+            """, (f'%{search}%', f'%{search}%', f'%{search}%', f'%{search}%')).fetchall()
+        else:
+            users = conn.execute("""
+                SELECT u.id, u.username, u.name, u.email, u.role, u.is_active,
+                       c.name as customer_name
+                FROM users u
+                LEFT JOIN customers c ON u.customer_id = c.id
+                WHERE u.role != 'superadmin'
+                ORDER BY u.name
+                LIMIT 50
+            """).fetchall()
+
+    return render_template('admin/impersonate.html',
+                         users=[dict(u) for u in users],
+                         search=search)
+
+
+@app.route('/admin/impersonate/<user_id>', methods=['POST'])
+@superadmin_required
+def impersonate_user(user_id):
+    """Superadmin: Log ind som en anden bruger"""
+    with get_db() as conn:
+        target_user = conn.execute("""
+            SELECT u.*, c.name as customer_name
+            FROM users u
+            LEFT JOIN customers c ON u.customer_id = c.id
+            WHERE u.id = ? AND u.role != 'superadmin'
+        """, (user_id,)).fetchone()
+
+        if not target_user:
+            flash('Bruger ikke fundet eller kan ikke impersoneres', 'error')
+            return redirect(url_for('impersonate_user_page'))
+
+        # Gem original bruger så vi kan vende tilbage
+        session['original_user'] = session['user']
+        session['impersonating'] = True
+
+        # Skift til target user
+        session['user'] = {
+            'id': target_user['id'],
+            'username': target_user['username'],
+            'name': target_user['name'],
+            'email': target_user['email'],
+            'role': target_user['role'],
+            'customer_id': target_user['customer_id'],
+            'customer_name': target_user['customer_name']
+        }
+
+        # Sæt customer filter til brugerens kunde
+        if target_user['customer_id']:
+            session['customer_filter'] = target_user['customer_id']
+            session['customer_filter_name'] = target_user['customer_name']
+
+        flash(f'Du er nu logget ind som {target_user["name"]} ({target_user["role"]})', 'info')
+
     return redirect(url_for('admin_home'))
 
 
@@ -4282,6 +4459,64 @@ def backup_restore():
     return redirect(url_for('backup_page'))
 
 
+@app.route('/admin/restore-db-from-backup', methods=['GET', 'POST'])
+def restore_db_from_backup():
+    """Restore database fra git-pushed db_backup.b64 fil.
+
+    Denne endpoint bruges til at synkronisere lokal database til Render:
+    1. Lokalt: python -c "import base64; open('db_backup.b64','w').write(base64.b64encode(open('friktionskompas_v3.db','rb').read()).decode())"
+    2. git add db_backup.b64 && git commit -m "DB sync" && git push
+    3. Vent på deployment
+    4. curl -X POST https://friktionskompasset.dk/admin/restore-db-from-backup
+    """
+    import base64
+    import shutil
+    from db_hierarchical import DB_PATH
+
+    # Find backup fil i repo
+    backup_path = os.path.join(os.path.dirname(__file__), 'db_backup.b64')
+
+    if not os.path.exists(backup_path):
+        return jsonify({
+            'success': False,
+            'error': 'db_backup.b64 ikke fundet i repo',
+            'hint': 'Kør lokalt: python -c "import base64; open(\'db_backup.b64\',\'w\').write(base64.b64encode(open(\'friktionskompas_v3.db\',\'rb\').read()).decode())"'
+        }), 404
+
+    try:
+        # Læs base64 og decode
+        with open(backup_path, 'r') as f:
+            b64_content = f.read()
+
+        db_content = base64.b64decode(b64_content)
+
+        # Backup eksisterende database
+        if os.path.exists(DB_PATH):
+            backup_existing = DB_PATH + '.before_restore'
+            shutil.copy2(DB_PATH, backup_existing)
+
+        # Skriv ny database
+        with open(DB_PATH, 'wb') as f:
+            f.write(db_content)
+
+        # Verificer
+        new_size = os.path.getsize(DB_PATH)
+
+        return jsonify({
+            'success': True,
+            'message': 'Database restored successfully',
+            'db_path': DB_PATH,
+            'new_size_bytes': new_size,
+            'new_size_mb': round(new_size / (1024 * 1024), 2)
+        })
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
 @app.route('/admin/db-status')
 def db_status():
     """Fuld database status - offentlig debug"""
@@ -5273,9 +5508,54 @@ def assessment_types():
     """Administrer målingstyper - kun superadmin"""
     types = get_all_assessment_types(get_user_language())
     presets = get_all_presets()
+
+    # Hent spørgsmål for hver type
+    questions_by_type = {}
+    with get_db() as conn:
+        # Mapping fra assessment_type_id til profil_questions question_type
+        type_mapping = {
+            'screening': 'screening',
+            'kapacitet': 'capacity',
+            'baandbredde': 'bandwidth',
+            'profil_fuld': None,  # Alle profil spørgsmål
+            'profil_situation': None,
+        }
+
+        # Hent profil-spørgsmål for individuelle typer
+        for at_id, q_type in type_mapping.items():
+            if q_type:
+                questions = conn.execute("""
+                    SELECT id, field, layer, text_da, question_type, sequence
+                    FROM profil_questions
+                    WHERE question_type = ?
+                    ORDER BY sequence
+                """, (q_type,)).fetchall()
+            elif at_id in ('profil_fuld', 'profil_situation'):
+                questions = conn.execute("""
+                    SELECT id, field, layer, text_da, question_type, sequence
+                    FROM profil_questions
+                    WHERE question_type IN ('sensitivity', 'capacity', 'bandwidth')
+                    ORDER BY sequence
+                """).fetchall()
+            else:
+                questions = []
+
+            questions_by_type[at_id] = [dict(q) for q in questions]
+
+        # Hent gruppe-spørgsmål (for gruppe_friktion og gruppe_leder)
+        gruppe_questions = conn.execute("""
+            SELECT id, field, text_da, reverse_scored, sequence
+            FROM questions
+            WHERE is_default = 1
+            ORDER BY field, sequence
+        """).fetchall()
+        questions_by_type['gruppe_friktion'] = [dict(q) for q in gruppe_questions]
+        questions_by_type['gruppe_leder'] = [dict(q) for q in gruppe_questions]
+
     return render_template('admin/assessment_types.html',
                          assessment_types=types,
-                         presets=presets)
+                         presets=presets,
+                         questions_by_type=questions_by_type)
 
 
 @app.route('/admin/seed-assessment-types', methods=['GET', 'POST'])

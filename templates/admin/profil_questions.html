@@ -415,13 +415,31 @@
     </div>
 </div>
 
+<!-- Info om målingstyper -->
+<div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 15px; margin-bottom: 20px;">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+        <div>
+            <strong style="color: #1e40af;">💡 Sådan hænger spørgsmål og målingstyper sammen:</strong>
+            <ul style="margin: 10px 0 0 0; padding-left: 20px; color: #374151; font-size: 14px;">
+                <li><strong>Sensitivitet</strong> → Bruges i <em>Friktionsprofil Fuld</em> og <em>Friktionsprofil Situation</em></li>
+                <li><strong>Kapacitet</strong> → Bruges i <em>Kapacitetsscreening</em> og de fulde profiler</li>
+                <li><strong>Båndbredde</strong> → Bruges i <em>Båndbreddescreening</em> og de fulde profiler</li>
+                <li><strong>Screening</strong> → Bruges i <em>Quick Screening</em></li>
+            </ul>
+        </div>
+        <a href="/admin/assessment-types" class="btn btn-secondary" style="white-space: nowrap;">
+            📋 Se målingstyper
+        </a>
+    </div>
+</div>
+
 <!-- Filters -->
 <div class="filters">
     <div class="filter-group">
-        <label>Type:</label>
+        <label>Spørgsmålstype:</label>
         <select id="filterType" onchange="filterQuestions()">
-            <option value="">Alle</option>
-            <option value="sensitivity">Sensitivitet</option>
+            <option value="">Alle typer</option>
+            <option value="sensitivity">Sensitivitet (profil)</option>
             <option value="capacity">Kapacitet</option>
             <option value="bandwidth">Båndbredde</option>
             <option value="screening">Screening</option>
@@ -520,17 +538,21 @@
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Type</label>
-                        <select id="questionType" name="question_type" required>
+                        <label>Spørgsmålstype</label>
+                        <select id="questionType" name="question_type" required onchange="updateTypeInfo()">
                             <option value="sensitivity">Sensitivitet</option>
                             <option value="capacity">Kapacitet</option>
                             <option value="bandwidth">Båndbredde</option>
                             <option value="screening">Screening</option>
                         </select>
+                        <div id="typeInfo" class="hint" style="margin-top: 8px; padding: 8px; background: #f0fdf4; border-radius: 4px; display: none;">
+                            <!-- Fyldes dynamisk -->
+                        </div>
                     </div>
                     <div class="form-group">
-                        <label>Sequence</label>
+                        <label>Rækkefølge</label>
                         <input type="number" id="questionSequence" name="sequence" required min="1">
+                        <p class="hint">Bestemmer sortering inden for typen</p>
                     </div>
                 </div>
 
@@ -569,12 +591,12 @@
                     <p class="hint">Bruges i situations-version ("lige nu, i denne situation")</p>
                 </div>
 
-                <div class="form-group">
-                    <label>
-                        <input type="checkbox" id="questionReverse" name="reverse_scored">
-                        Omvendt scoring
+                <div class="form-group" style="background: #f9fafb; padding: 15px; border-radius: 8px; border: 1px solid #e5e7eb;">
+                    <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin-bottom: 0;">
+                        <input type="checkbox" id="questionReverse" name="reverse_scored" style="width: 18px; height: 18px; accent-color: #3b82f6;">
+                        <span style="font-weight: 600;">Omvendt scoring</span>
                     </label>
-                    <p class="hint">Høj score = lav friktion (bruges til positive formuleringer)</p>
+                    <p class="hint" style="margin-left: 28px; margin-top: 8px;">Høj score = lav friktion (bruges til positive formuleringer)</p>
                 </div>
             </form>
         </div>
@@ -603,6 +625,26 @@ function filterQuestions() {
     });
 }
 
+// Vis hvilke målingstyper spørgsmålet bruges i baseret på type
+function updateTypeInfo() {
+    const type = document.getElementById('questionType').value;
+    const infoDiv = document.getElementById('typeInfo');
+
+    const typeMapping = {
+        'sensitivity': '📊 Bruges i: <strong>Friktionsprofil Fuld</strong> og <strong>Friktionsprofil Situation</strong>',
+        'capacity': '📊 Bruges i: <strong>Kapacitetsscreening</strong> og de fulde profiler',
+        'bandwidth': '📊 Bruges i: <strong>Båndbreddescreening</strong> og de fulde profiler',
+        'screening': '📊 Bruges i: <strong>Quick Screening</strong>'
+    };
+
+    if (typeMapping[type]) {
+        infoDiv.innerHTML = typeMapping[type];
+        infoDiv.style.display = 'block';
+    } else {
+        infoDiv.style.display = 'none';
+    }
+}
+
 // Modal functions
 function openAddModal() {
     document.getElementById('modalTitle').textContent = 'Tilføj spørgsmål';
@@ -612,6 +654,7 @@ function openAddModal() {
     const maxSeq = Math.max(...questionsData.map(q => q.sequence || 0), 0);
     document.getElementById('questionSequence').value = maxSeq + 1;
     document.getElementById('questionModal').classList.add('active');
+    updateTypeInfo();  // Vis info om default type
 }
 
 function editQuestion(id) {
@@ -629,6 +672,7 @@ function editQuestion(id) {
     document.getElementById('questionReverse').checked = question.reverse_scored === 1;
 
     document.getElementById('questionModal').classList.add('active');
+    updateTypeInfo();  // Vis info om valgt type
 }
 
 function closeModal() {

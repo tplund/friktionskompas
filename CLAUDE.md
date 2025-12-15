@@ -203,6 +203,30 @@ curl -X POST https://friktionskompas-eu.onrender.com/admin/seed-translations
 - Lokal: `friktionskompas_v3.db`
 - Render: `/var/data/friktionskompas_v3.db`
 
+### Database Synkronisering (Lokal → Render)
+Når lokale data-ændringer ikke reflekteres på Render (pga. persistent disk), kan databasen pushes via git:
+
+**Metode: Push database som base64 via git**
+```bash
+# 1. Eksporter lokal database som base64
+python -c "import base64; open('db_backup.b64','w').write(base64.b64encode(open('friktionskompas_v3.db','rb').read()).decode())"
+
+# 2. Commit og push
+git add db_backup.b64
+git commit -m "Database backup for Render sync"
+git push
+
+# 3. Efter deployment, kald restore endpoint:
+curl -X POST https://friktionskompasset.dk/admin/restore-db-from-backup
+
+# 4. Slet backup fil fra git (valgfrit)
+git rm db_backup.b64
+git commit -m "Remove db backup"
+git push
+```
+
+**Alternativ: JSON import/export** (se nedenfor)
+
 ## Data Import/Export
 
 ### Eksporter lokal data
