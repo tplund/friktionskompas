@@ -2,6 +2,14 @@
 
 ## VIGTIGT: Projekt Regler
 
+### TODO-Liste Disciplin (KRITISK!)
+- **ALTID** tilføj nye instrukser/opgaver til TODO-listen MED DET SAMME - også midt i en anden opgave
+- **ALDRIG** start på en opgave uden at den er på TODO-listen først
+- **ALTID** marker opgaver som in_progress før du begynder
+- **ALTID** marker opgaver som completed straks de er færdige
+- Nye instrukser fra brugeren har højere prioritet end at færdiggøre nuværende opgave
+- Ved nye instrukser: Tilføj til TODO → Fortsæt med nuværende opgave ELLER skift til ny opgave
+
 ### Selvstændighed - Gør ting selv når muligt!
 - **ALTID** tjek CLAUDE.md for eksisterende API keys/credentials FØR du spørger brugeren
 - **ALTID** gem API keys og credentials i CLAUDE.md når brugeren giver dem
