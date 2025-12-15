@@ -4407,8 +4407,12 @@ def vary_testdata():
 
     with get_db() as conn:
         # Opdater employee responses
+        # VIGTIGT: For reverse_scored spørgsmål skal vi invertere scoren!
+        # Profilen angiver den ØNSKEDE justerede score (efter reverse).
+        # Så hvis vi vil have adjusted=4.5 for et reverse_scored spørgsmål,
+        # skal raw score være 6-4.5=1.5 → afrundet til 2
         responses = conn.execute("""
-            SELECT r.id, ou.name as unit_name, q.field
+            SELECT r.id, ou.name as unit_name, q.field, q.reverse_scored
             FROM responses r
             JOIN organizational_units ou ON r.unit_id = ou.id
             JOIN questions q ON r.question_id = q.id
@@ -4417,13 +4421,18 @@ def vary_testdata():
 
         for r in responses:
             profile = next((PROFILES[k] for k in PROFILES if k in r['unit_name']), DEFAULT)
-            new_score = get_score(profile, r['field'])
+            target_score = get_score(profile, r['field'])
+            # For reverse_scored spørgsmål: invert scoren
+            if r['reverse_scored'] == 1:
+                new_score = 6 - target_score
+            else:
+                new_score = target_score
             conn.execute("UPDATE responses SET score = ? WHERE id = ?", (new_score, r['id']))
             count += 1
 
         # Opdater leader_assess (lidt højere scores)
         leader_responses = conn.execute("""
-            SELECT r.id, ou.name as unit_name, q.field
+            SELECT r.id, ou.name as unit_name, q.field, q.reverse_scored
             FROM responses r
             JOIN organizational_units ou ON r.unit_id = ou.id
             JOIN questions q ON r.question_id = q.id
@@ -4434,7 +4443,12 @@ def vary_testdata():
             profile = next((PROFILES[k] for k in PROFILES if k in r['unit_name']), DEFAULT)
             low, high = profile.get(r['field'], DEFAULT[r['field']])
             leader_profile = {r['field']: (min(5, low + 0.5), min(5, high + 0.8))}
-            new_score = get_score(leader_profile, r['field'])
+            target_score = get_score(leader_profile, r['field'])
+            # For reverse_scored spørgsmål: invert scoren
+            if r['reverse_scored'] == 1:
+                new_score = 6 - target_score
+            else:
+                new_score = target_score
             conn.execute("UPDATE responses SET score = ? WHERE id = ?", (new_score, r['id']))
             count += 1
 
