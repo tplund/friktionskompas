@@ -51,6 +51,7 @@ from oauth import (
     DEFAULT_AUTH_PROVIDERS
 )
 from cache import get_cache_stats, invalidate_all, invalidate_assessment_cache, Pagination
+from audit import log_action, AuditAction, get_audit_logs, get_audit_log_count, get_action_summary, init_audit_tables
 
 # Copy seed database to persistent disk on first deploy (if not exists)
 def copy_seed_database():
@@ -310,9 +311,26 @@ def login():
 
         if user:
             session['user'] = user
+            # Audit log successful login
+            log_action(
+                AuditAction.LOGIN_SUCCESS,
+                entity_type="user",
+                entity_id=user.get('id'),
+                details=f"User {username} logged in",
+                user_id=user.get('id'),
+                username=username,
+                customer_id=user.get('customer_id')
+            )
             flash(f'Velkommen {user["name"]}!', 'success')
             return redirect(url_for('admin_home'))
         else:
+            # Audit log failed login attempt
+            log_action(
+                AuditAction.LOGIN_FAILED,
+                entity_type="user",
+                details=f"Failed login attempt for username: {username}",
+                username=username
+            )
             flash('Forkert brugernavn eller password', 'error')
 
     # Get enabled OAuth providers for this domain
@@ -409,6 +427,15 @@ def oauth_callback(provider):
 @app.route('/logout')
 def logout():
     """Logout"""
+    # Audit log logout
+    user = session.get('user')
+    if user:
+        log_action(
+            AuditAction.LOGOUT,
+            entity_type="user",
+            entity_id=user.get('id'),
+            details=f"User {user.get('username')} logged out"
+        )
     session.pop('user', None)
     flash('Du er nu logget ud', 'success')
     return redirect(url_for('login'))
@@ -2300,6 +2327,14 @@ def delete_unit(unit_id):
         # pga. ON DELETE CASCADE i foreign key constraints
         conn.execute("DELETE FROM organizational_units WHERE id = ?", (unit_id,))
 
+        # Audit log unit deletion
+        log_action(
+            AuditAction.UNIT_DELETED,
+            entity_type="unit",
+            entity_id=unit_id,
+            details=f"Deleted unit: {unit_name}"
+        )
+
     flash(f'Organisation "{unit_name}" og alle underorganisationer er slettet', 'success')
     return redirect(url_for('admin_home'))
 
@@ -2327,6 +2362,14 @@ def delete_customer(customer_id):
         # - responses
         # - users tilknyttet kunden
         conn.execute("DELETE FROM customers WHERE id = ?", (customer_id,))
+
+        # Audit log customer deletion
+        log_action(
+            AuditAction.CUSTOMER_DELETED,
+            entity_type="customer",
+            entity_id=customer_id,
+            details=f"Deleted customer: {customer_name}"
+        )
 
     flash(f'Kunde "{customer_name}" og alle tilhørende data er slettet', 'success')
     return redirect(url_for('admin_home'))
@@ -2588,6 +2631,14 @@ def delete_assessment(assessment_id):
         conn.execute("DELETE FROM assessments WHERE id = ?", [assessment_id])
         conn.commit()
 
+        # Audit log assessment deletion
+        log_action(
+            AuditAction.ASSESSMENT_DELETED,
+            entity_type="assessment",
+            entity_id=assessment_id,
+            details=f"Deleted assessment: {assessment_name}"
+        )
+
         flash(f'Målingen "{assessment_name}" blev slettet', 'success')
 
     return redirect(url_for('assessments_overview'))
@@ -2836,6 +2887,19 @@ def impersonate_customer(customer_id):
 @login_required
 def stop_impersonate():
     """Clear customer filter - show all data"""
+    # Audit log impersonation end
+    if 'original_user' in session and session.get('impersonating'):
+        original_user = session.get('original_user', {})
+        impersonated_user = session.get('user', {})
+        log_action(
+            AuditAction.IMPERSONATE_END,
+            entity_type="user",
+            entity_id=impersonated_user.get('id'),
+            details=f"Admin {original_user.get('username')} stopped impersonating {impersonated_user.get('username')}",
+            user_id=original_user.get('id'),
+            username=original_user.get('username')
+        )
+
     session.pop('customer_filter', None)
     session.pop('customer_filter_name', None)
     # Also clear old impersonating data if present
@@ -2948,6 +3012,17 @@ def impersonate_user(user_id):
         if target_user['customer_id']:
             session['customer_filter'] = target_user['customer_id']
             session['customer_filter_name'] = target_user['customer_name']
+
+        # Audit log impersonation start
+        original_user = session.get('original_user', {})
+        log_action(
+            AuditAction.IMPERSONATE_START,
+            entity_type="user",
+            entity_id=user_id,
+            details=f"Admin {original_user.get('username')} impersonating {target_user['username']}",
+            user_id=original_user.get('id'),
+            username=original_user.get('username')
+        )
 
         flash(f'Du er nu logget ind som {target_user["name"]} ({target_user["role"]})', 'info')
 
@@ -4320,6 +4395,47 @@ def dev_tools():
     return render_template('admin/dev_tools.html', stats=stats, cache_stats=cache_stats)
 
 
+@app.route('/admin/audit-log')
+@admin_required
+def audit_log_page():
+    """Audit log oversigt - kun admin"""
+    page = request.args.get('page', 1, type=int)
+    per_page = 50
+
+    filters = {
+        'action': request.args.get('action', ''),
+        'start_date': request.args.get('start_date', ''),
+        'end_date': request.args.get('end_date', '')
+    }
+
+    # Get logs with filters
+    logs = get_audit_logs(
+        limit=per_page,
+        offset=(page - 1) * per_page,
+        action=filters['action'] or None,
+        start_date=filters['start_date'] or None,
+        end_date=filters['end_date'] or None
+    )
+
+    # Get total count for pagination
+    total = get_audit_log_count(
+        action=filters['action'] or None,
+        start_date=filters['start_date'] or None,
+        end_date=filters['end_date'] or None
+    )
+    total_pages = (total + per_page - 1) // per_page
+
+    # Get summary for last 30 days
+    summary = get_action_summary(days=30)
+
+    return render_template('admin/audit_log.html',
+                          logs=logs,
+                          page=page,
+                          total_pages=total_pages,
+                          filters=filters,
+                          summary=summary)
+
+
 @app.route('/admin/clear-cache', methods=['POST'])
 @admin_required
 def clear_cache():
@@ -4623,6 +4739,13 @@ def backup_download():
             except Exception as e:
                 backup_data['tables'][table] = {'error': str(e)}
 
+    # Audit log backup creation
+    log_action(
+        AuditAction.BACKUP_CREATED,
+        entity_type="database",
+        details=f"Full database backup downloaded"
+    )
+
     # Returner som downloadbar JSON fil
     json_str = json.dumps(backup_data, ensure_ascii=False, indent=2, default=str)
     filename = f"friktionskompas_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
@@ -4712,6 +4835,13 @@ def backup_restore():
 
         conn.execute("PRAGMA foreign_keys=ON")
         conn.commit()
+
+    # Audit log restore
+    log_action(
+        AuditAction.BACKUP_RESTORED,
+        entity_type="database",
+        details=f"Database restored from backup (mode: {restore_mode}). {stats['inserted']} inserted, {stats['skipped']} skipped, {stats['errors']} errors"
+    )
 
     flash(f"Restore gennemført: {stats['inserted']} rækker importeret, {stats['skipped']} sprunget over, {stats['errors']} fejl", 'success')
     return redirect(url_for('backup_page'))

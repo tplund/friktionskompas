@@ -388,6 +388,7 @@
                         <li><a href="/admin/email-templates" {% if 'email-templates' in request.path %}class="active"{% endif %}>✉️ {{ t('nav.email_templates', 'Email Templates') }}</a></li>
                         <li style="border-top: 1px solid rgba(255,255,255,0.1); margin: 5px 0;"></li>
                         <li><a href="/admin/backup" {% if 'backup' in request.path %}class="active"{% endif %}>💾 {{ t('nav.backup', 'Backup & Restore') }}</a></li>
+                        <li><a href="/admin/audit-log" {% if 'audit-log' in request.path %}class="active"{% endif %}>📋 {{ t('nav.audit_log', 'Audit Log') }}</a></li>
                         <li><a href="/admin/dev-tools" {% if 'dev-tools' in request.path %}class="active"{% endif %}>🔧 {{ t('nav.dev_tools', 'Dev Tools') }}</a></li>
                     </ul>
                 </li>
