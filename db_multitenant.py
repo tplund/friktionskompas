@@ -1035,13 +1035,13 @@ INITIAL_PRESETS = [
     {
         'name': 'B2C Individuel',
         'description': 'Standard for selvregistrerede individuelle brugere',
-        'is_default': 1,
+        'is_default': 0,
         'types': ['screening', 'profil_fuld']
     },
     {
         'name': 'B2B Standard',
         'description': 'Standard for business kunder med team-målinger',
-        'is_default': 0,
+        'is_default': 1,  # Nu default - inkluderer gruppe_friktion
         'types': ['screening', 'profil_fuld', 'gruppe_friktion']
     },
     {

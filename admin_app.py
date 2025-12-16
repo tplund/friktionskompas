@@ -5826,6 +5826,34 @@ def seed_assessment_types_route():
     return redirect(url_for('assessment_types'))
 
 
+@app.route('/admin/fix-default-preset', methods=['GET'])
+def fix_default_preset():
+    """Fix default preset til B2B Standard (inkl. gruppe_friktion)"""
+    with get_db() as conn:
+        # Sæt B2C Individuel til ikke-default
+        conn.execute("UPDATE assessment_presets SET is_default = 0 WHERE name = 'B2C Individuel'")
+        # Sæt B2B Standard til default
+        conn.execute("UPDATE assessment_presets SET is_default = 1 WHERE name = 'B2B Standard'")
+
+        # Tjek om gruppe_friktion er i B2B Standard preset
+        preset = conn.execute("SELECT id FROM assessment_presets WHERE name = 'B2B Standard'").fetchone()
+        if preset:
+            existing = conn.execute("""
+                SELECT 1 FROM preset_assessment_types
+                WHERE preset_id = ? AND assessment_type_id = 'gruppe_friktion'
+            """, (preset['id'],)).fetchone()
+            if not existing:
+                conn.execute("""
+                    INSERT INTO preset_assessment_types (preset_id, assessment_type_id)
+                    VALUES (?, 'gruppe_friktion')
+                """, (preset['id'],))
+
+    return jsonify({
+        'status': 'ok',
+        'message': 'Default preset ændret til B2B Standard (screening, profil_fuld, gruppe_friktion)'
+    })
+
+
 @app.route('/admin/assessment-type/<type_id>/toggle', methods=['POST'])
 @superadmin_required
 def toggle_assessment_type(type_id):
