@@ -17,9 +17,15 @@ from db_hierarchical import (
 )
 from analysis import (
     get_detailed_breakdown, check_anonymity_threshold,
-    get_layer_interpretation, calculate_substitution,
+    get_layer_interpretation, calculate_substitution_db,
     get_free_text_comments, get_kkc_recommendations,
     get_start_here_recommendation, get_trend_data
+)
+# Import beregningsfunktioner fra central motor
+from friction_engine import (
+    score_to_percent, get_percent_class as engine_get_percent_class,
+    get_severity, get_spread_level, THRESHOLDS, FRICTION_FIELDS,
+    Severity, SpreadLevel
 )
 from db_multitenant import (
     authenticate_user, create_customer, create_user, list_customers,
@@ -3281,7 +3287,7 @@ def assessment_detailed_analysis(assessment_id):
         breakdown = get_detailed_breakdown(target_unit_id, assessment_id, include_children=True)
 
         # Calculate substitution (tid-bias)
-        substitution = calculate_substitution(target_unit_id, assessment_id, 'employee')
+        substitution = calculate_substitution_db(target_unit_id, assessment_id, 'employee')
 
         # Add has_substitution flag and count for template
         substitution['has_substitution'] = substitution.get('flagged', False) and substitution.get('flagged_count', 0) > 0
@@ -3372,7 +3378,7 @@ def assessment_detailed_test(assessment_id):
         breakdown = get_detailed_breakdown(target_unit_id, assessment_id, include_children=True)
 
         # Calculate substitution (tid-bias)
-        substitution = calculate_substitution(target_unit_id, assessment_id, 'employee')
+        substitution = calculate_substitution_db(target_unit_id, assessment_id, 'employee')
         substitution['has_substitution'] = substitution.get('flagged', False) and substitution.get('flagged_count', 0) > 0
         substitution['count'] = substitution.get('flagged_count', 0)
 
@@ -3468,7 +3474,7 @@ def assessment_pdf_export(assessment_id):
 
         # Get all data
         breakdown = get_detailed_breakdown(target_unit_id, assessment_id, include_children=True)
-        substitution = calculate_substitution(target_unit_id, assessment_id, 'employee')
+        substitution = calculate_substitution_db(target_unit_id, assessment_id, 'employee')
         free_text_comments = get_free_text_comments(target_unit_id, assessment_id, include_children=True)
 
         employee_stats = breakdown.get('employee', {})

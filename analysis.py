@@ -1,46 +1,29 @@
 """
 Analyse-funktioner for Friktionskompasset
 Håndterer lagdeling (ydre/indre) og avancerede analyser
+
+BEMÆRK: Beregningslogik er nu centraliseret i friction_engine.py
+Denne fil wrapper database-operationer og bruger friction_engine funktioner.
 """
 from typing import Dict, List, Optional
 from db_hierarchical import get_db
 from cache import cached
 
-
-# ============================================
-# SPØRGSMÅLS-MAPPING TIL LAG
-# ============================================
-
-QUESTION_LAYERS = {
-    # MENING - ingen lagdeling (V1.4: 1-5)
-    'MENING': {
-        'all': [1, 2, 3, 4, 5]
-    },
-
-    # TRYGHED - ydre (social) vs indre (emotionel) (V1.4: 6-10)
-    'TRYGHED': {
-        'ydre': [6, 7, 8],           # Social tryghed: holder for mig selv, opfølgning, fejl
-        'indre': [9, 10]             # Emotionel: usikkerhed, udskyder pga reaktioner
-    },
-
-    # KAN - ydre (rammer) vs indre (evne) (V1.4: 11-18)
-    'KAN': {
-        'ydre': [11, 13, 14, 15, 16, 17], # Ydre: systemer, hjælp, tid, beslutninger, cues, regler
-        'indre': [12, 18]                  # Indre: ved ikke præcist, kender ikke første skridt
-    },
-
-    # BESVÆR - mekanisk vs oplevet/flow (V1.4: 19-24)
-    'BESVÆR': {
-        'mekanisk': [19, 21, 22],    # Mekanisk friktion: dobbeltindtastning, ventetid, afbrydelser
-        'oplevet': [20, 23, 24]      # Oplevet flow: let at starte, udskyder trods tid, rimelig indsats
-    }
-}
-
-# Stealth substitution items
-SUBSTITUTION_ITEMS = {
-    'stealth_s': [5, 10, 17, 18, 23],  # Items der måler substitutionsadfærd
-    'tid_item': 14                      # "Jeg har tid nok..."
-}
+# Import fra central beregningsmotor
+from friction_engine import (
+    # Konstanter
+    FRICTION_FIELDS, QUESTION_LAYERS, THRESHOLDS, SUBSTITUTION_ITEMS,
+    # Enums og dataklasser
+    Severity, SpreadLevel, FieldScore, GapAnalysis, SubstitutionResult, Warning,
+    # Core funktioner
+    score_to_percent, percent_to_score, adjust_score,
+    get_severity, get_percent_class, get_spread_level,
+    calculate_std_dev, calculate_field_scores,
+    calculate_gap, check_leader_blocked, analyze_gaps,
+    calculate_substitution_for_respondent, calculate_substitution,
+    get_warnings, get_start_here_recommendation as engine_get_start_here,
+    get_profile_type, to_percent, get_color_class
+)
 
 
 @cached(ttl=300, prefix="stats")
@@ -134,23 +117,17 @@ def get_unit_stats_with_layers(
 
         individual_rows = conn.execute(individual_query, params).fetchall()
 
-        # Calculate std dev per field
-        field_scores = {}
+        # Calculate std dev per field using friction_engine
+        field_scores_raw = {}
         for row in individual_rows:
             field = row['field']
-            if field not in field_scores:
-                field_scores[field] = []
-            field_scores[field].append(row['score'])
+            if field not in field_scores_raw:
+                field_scores_raw[field] = []
+            field_scores_raw[field].append(row['score'])
 
         field_std_devs = {}
-        for field, scores in field_scores.items():
-            if len(scores) > 1:
-                mean = sum(scores) / len(scores)
-                variance = sum((x - mean) ** 2 for x in scores) / len(scores)
-                std_dev = variance ** 0.5
-                field_std_devs[field] = std_dev
-            else:
-                field_std_devs[field] = 0
+        for field, scores in field_scores_raw.items():
+            field_std_devs[field] = calculate_std_dev(scores)
 
         # Organize by field and layer
         results = {}
@@ -187,17 +164,13 @@ def get_unit_stats_with_layers(
                 field_data['avg_score'] = round(sum(all_scores) / len(all_scores), 1)
                 field_data['response_count'] = sum(all_counts)
 
-            # Add standard deviation and spread classification
+            # Add standard deviation and spread classification using friction_engine
             std_dev = field_std_devs.get(field, 0)
             field_data['std_dev'] = round(std_dev, 2)
 
-            # Classify spread (based on 1-5 scale)
-            if std_dev < 0.5:
-                field_data['spread'] = 'lav'
-            elif std_dev < 1.0:
-                field_data['spread'] = 'medium'
-            else:
-                field_data['spread'] = 'høj'
+            # Classify spread using friction_engine
+            spread_level = get_spread_level(std_dev)
+            field_data['spread'] = spread_level.value  # 'lav', 'medium', eller 'høj'
 
             results[field] = field_data
 
@@ -232,28 +205,23 @@ def get_comparison_by_respondent_type(
     leader_assess_stats = get_unit_stats_with_layers(unit_id, assessment_id, 'leader_assess', include_children)
     leader_self_stats = get_unit_stats_with_layers(unit_id, assessment_id, 'leader_self', include_children)
 
-    for field in ['MENING', 'TRYGHED', 'KAN', 'BESVÆR']:
+    for field in FRICTION_FIELDS:
         employee_score = employee_stats.get(field, {}).get('avg_score', 0)
         leader_assess_score = leader_assess_stats.get(field, {}).get('avg_score', 0)
         leader_self_score = leader_self_stats.get(field, {}).get('avg_score', 0)
 
-        gap = abs(employee_score - leader_assess_score) if employee_score and leader_assess_score else 0
-
-        # Gap severity levels
-        if gap >= 1.0:
-            gap_severity = 'kritisk'
-        elif gap >= 0.6:
-            gap_severity = 'moderat'
-        else:
-            gap_severity = None
+        # Brug friction_engine til gap-beregning
+        gap, gap_severity, has_misalignment = calculate_gap(
+            employee_score, leader_assess_score, leader_self_score
+        )
 
         results[field] = {
             'employee': employee_score,
             'leader_assess': leader_assess_score,
             'leader_self': leader_self_score,
-            'gap': round(gap, 1),
+            'gap': gap,
             'gap_severity': gap_severity,
-            'has_misalignment': gap >= 0.6  # Flagges ved 0.6+ (12%+)
+            'has_misalignment': has_misalignment
         }
 
     return results
@@ -328,22 +296,12 @@ def check_anonymity_threshold(assessment_id: str, unit_id: str) -> Dict:
 
 
 @cached(ttl=300, prefix="substitution")
-def calculate_substitution(unit_id: str, assessment_id: str, respondent_type: str = 'employee') -> Dict:
+def calculate_substitution_db(unit_id: str, assessment_id: str, respondent_type: str = 'employee') -> Dict:
     """
-    Beregn substitution (tid) - stealth version V1.4 (cached i 5 minutter)
+    Beregn substitution (tid) fra database - wrapper til friction_engine (cached i 5 minutter)
 
     Returns:
-        {
-            'tid_mangel': float,
-            'proc': float,
-            'underliggende': float,
-            'kalender_gap': float,
-            'tid_bias': float,
-            'flagged': bool,
-            'response_count': int,
-            'flagged_count': int,
-            'flagged_pct': float
-        }
+        Dict med response_count, flagged_count, flagged_pct, avg_tid_bias, flagged
     """
     with get_db() as conn:
         # Hent alle responses for denne unit/assessment/type
@@ -376,59 +334,22 @@ def calculate_substitution(unit_id: str, assessment_id: str, respondent_type: st
             }
 
         # Grupper per respondent
-        respondents = {}
+        respondent_scores = {}
         for row in responses:
             name = row['respondent_name']
-            if name not in respondents:
-                respondents[name] = {}
-            respondents[name][row['sequence']] = row['score']
+            if name not in respondent_scores:
+                respondent_scores[name] = {}
+            respondent_scores[name][row['sequence']] = row['score']
 
-        # Beregn for hver respondent
-        flagged_count = 0
-        tid_biases = []
-
-        for name, scores in respondents.items():
-            # TID_MANGEL = 6 - item14
-            tid_mangel = 6 - scores.get(14, 3)
-
-            # PROC = gennemsnit(19, 6-20, 6-21, 6-22)
-            proc = (
-                scores.get(19, 3) +  # Allerede reverse i DB
-                (6 - scores.get(20, 3)) +
-                (6 - scores.get(21, 3)) +
-                (6 - scores.get(22, 3))
-            ) / 4
-
-            # UNDERLIGGENDE = max(5, 10, 17, 18)
-            underliggende = max(
-                scores.get(5, 1),
-                scores.get(10, 1),
-                scores.get(17, 1),
-                scores.get(18, 1)
-            )
-
-            # KALENDER_GAP = item 23
-            kalender_gap = scores.get(23, 1)
-
-            # TID_BIAS
-            tid_bias = tid_mangel - proc
-            tid_biases.append(tid_bias)
-
-            # Flag substitution
-            if tid_bias >= 0.6 and underliggende >= 3.5:
-                flagged_count += 1
-
-        # Aggreger
-        response_count = len(respondents)
-        flagged_pct = (flagged_count / response_count * 100) if response_count > 0 else 0
-        avg_tid_bias = sum(tid_biases) / len(tid_biases) if tid_biases else 0
+        # Brug friction_engine til beregning
+        result = calculate_substitution(respondent_scores)
 
         return {
-            'response_count': response_count,
-            'flagged_count': flagged_count,
-            'flagged_pct': round(flagged_pct, 1),
-            'avg_tid_bias': round(avg_tid_bias, 2),
-            'flagged': flagged_count > 0
+            'response_count': result.response_count,
+            'flagged_count': result.flagged_count,
+            'flagged_pct': result.flagged_pct,
+            'avg_tid_bias': result.avg_tid_bias,
+            'flagged': result.flagged
         }
 
 
@@ -646,11 +567,12 @@ def get_kkc_recommendations(stats: Dict, comparison: Dict = None) -> List[Dict]:
         if score == 0:
             continue
 
-        # Bestem severity
-        if score <= 2.5:
+        # Bestem severity baseret på THRESHOLDS fra friction_engine
+        severity_enum = get_severity(score)
+        if severity_enum == Severity.HIGH:
             severity = 'høj'
             severity_emoji = '🔴'
-        elif score <= 3.5:
+        elif severity_enum == Severity.MEDIUM:
             severity = 'medium'
             severity_emoji = '🟡'
         else:
@@ -872,7 +794,7 @@ def get_alerts_and_findings(breakdown: Dict, comparison: Dict, substitution: Dic
     alerts = []
 
     # 1. KRITISK LAV SCORE (< 40% / 2.0)
-    for field in ['MENING', 'TRYGHED', 'KAN', 'BESVÆR']:
+    for field in FRICTION_FIELDS:
         emp_score = breakdown['employee'].get(field, {}).get('avg_score', 0)
         if emp_score > 0 and emp_score < 2.0:
             alerts.append({
@@ -886,7 +808,7 @@ def get_alerts_and_findings(breakdown: Dict, comparison: Dict, substitution: Dic
             })
 
     # 2. GAP - LEDER/MEDARBEJDER UENIGHED
-    for field in ['MENING', 'TRYGHED', 'KAN', 'BESVÆR']:
+    for field in FRICTION_FIELDS:
         comp = comparison.get(field, {})
         gap_severity = comp.get('gap_severity')
         gap = comp.get('gap', 0)
@@ -908,7 +830,7 @@ def get_alerts_and_findings(breakdown: Dict, comparison: Dict, substitution: Dic
             })
 
     # 3. HØJ SPREDNING
-    for field in ['MENING', 'TRYGHED', 'KAN', 'BESVÆR']:
+    for field in FRICTION_FIELDS:
         field_data = breakdown['employee'].get(field, {})
         spread = field_data.get('spread')
         std_dev = field_data.get('std_dev', 0)
@@ -925,11 +847,12 @@ def get_alerts_and_findings(breakdown: Dict, comparison: Dict, substitution: Dic
             })
 
     # 4. BLOCKED LEADER
-    for field in ['MENING', 'TRYGHED', 'KAN', 'BESVÆR']:
+    for field in FRICTION_FIELDS:
         emp = breakdown['employee'].get(field, {}).get('avg_score', 0)
         leader_self = breakdown['leader_self'].get(field, {}).get('avg_score', 0)
 
-        if emp < 3.5 and leader_self < 3.5:
+        # Brug friction_engine til blocked check
+        if check_leader_blocked(emp, leader_self):
             alerts.append({
                 'severity': 'moderat',
                 'type': 'blocked',
@@ -941,12 +864,12 @@ def get_alerts_and_findings(breakdown: Dict, comparison: Dict, substitution: Dic
             })
 
     # 5. LEDER PARADOKS (leder selv meget forskellig fra vurdering af team)
-    for field in ['MENING', 'TRYGHED', 'KAN', 'BESVÆR']:
+    for field in FRICTION_FIELDS:
         leader_assess = breakdown['leader_assess'].get(field, {}).get('avg_score', 0)
         leader_self = breakdown['leader_self'].get(field, {}).get('avg_score', 0)
         paradox_gap = abs(leader_self - leader_assess)
 
-        if paradox_gap >= 1.0:  # 20% forskel
+        if paradox_gap >= THRESHOLDS['gap_significant']:  # 20% forskel
             direction = "højere" if leader_self > leader_assess else "lavere"
             alerts.append({
                 'severity': 'info',

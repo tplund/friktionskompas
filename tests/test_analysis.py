@@ -58,8 +58,10 @@ class TestQuestionLayers:
         """Test substitution detection items are configured."""
         from analysis import SUBSTITUTION_ITEMS
 
-        assert 'stealth_s' in SUBSTITUTION_ITEMS
+        # Ny struktur fra friction_engine.py
         assert 'tid_item' in SUBSTITUTION_ITEMS
+        assert 'proc_items' in SUBSTITUTION_ITEMS
+        assert 'underliggende' in SUBSTITUTION_ITEMS
         assert SUBSTITUTION_ITEMS['tid_item'] == 14
 
     def test_no_duplicate_questions_in_layers(self):
@@ -142,10 +144,10 @@ class TestKKCRecommendations:
         from analysis import get_kkc_recommendations
 
         stats = {
-            'MENING': {'avg_score': 3.0},  # medium
-            'TRYGHED': {'avg_score': 2.0},  # høj
-            'KAN': {'avg_score': 4.0},  # lav
-            'BESVÆR': {'avg_score': 2.5},  # høj
+            'MENING': {'avg_score': 3.0},  # medium (2.5-3.5)
+            'TRYGHED': {'avg_score': 2.0},  # høj (< 2.5)
+            'KAN': {'avg_score': 4.0},  # lav (>= 3.5)
+            'BESVÆR': {'avg_score': 2.4},  # høj (< 2.5)
         }
 
         recommendations = get_kkc_recommendations(stats)
@@ -153,7 +155,7 @@ class TestKKCRecommendations:
         # High severity items should come first
         severities = [r['severity'] for r in recommendations]
         assert severities[0] == 'høj'  # TRYGHED first (score 2.0)
-        assert severities[1] == 'høj'  # BESVÆR second (score 2.5)
+        assert severities[1] == 'høj'  # BESVÆR second (score 2.4 < 2.5)
 
     def test_recommendations_include_actions(self):
         """Test that recommendations include actionable items."""
@@ -191,18 +193,18 @@ class TestKKCRecommendations:
         """Test severity level thresholds (høj < 2.5, medium < 3.5)."""
         from analysis import get_kkc_recommendations
 
-        # Test høj severity (score <= 2.5)
-        stats_high = {'MENING': {'avg_score': 2.5}}
+        # Test høj severity (score < 2.5)
+        stats_high = {'MENING': {'avg_score': 2.4}}  # Under 2.5 = høj
         recs = get_kkc_recommendations(stats_high)
         assert recs[0]['severity'] == 'høj'
 
         # Test medium severity (score 2.5-3.5)
-        stats_medium = {'MENING': {'avg_score': 3.0}}
+        stats_medium = {'MENING': {'avg_score': 3.0}}  # 2.5 <= score < 3.5 = medium
         recs = get_kkc_recommendations(stats_medium)
         assert recs[0]['severity'] == 'medium'
 
-        # Test lav severity (score > 3.5)
-        stats_low = {'MENING': {'avg_score': 4.0}}
+        # Test lav severity (score >= 3.5)
+        stats_low = {'MENING': {'avg_score': 4.0}}  # >= 3.5 = lav
         recs = get_kkc_recommendations(stats_low)
         assert recs[0]['severity'] == 'lav'
 
