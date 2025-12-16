@@ -32,7 +32,7 @@ class SpreadLevel(Enum):
 
 
 # Friktionsfelter
-FRICTION_FIELDS = ['MENING', 'TRYGHED', 'KAN', 'BESVÆR']
+FRICTION_FIELDS = ['TRYGHED', 'MENING', 'KAN', 'BESVÆR']
 
 # Spørgsmålsmapping til lag
 QUESTION_LAYERS = {
@@ -706,7 +706,7 @@ def get_start_here_recommendation(field_scores: Dict[str, FieldScore]) -> Option
         3. KAN (ved jeg hvordan)
         4. BESVÆR (mekanisk flow)
     """
-    priority_order = ['MENING', 'TRYGHED', 'KAN', 'BESVÆR']
+    priority_order = ['TRYGHED', 'MENING', 'KAN', 'BESVÆR']
 
     for field in priority_order:
         score = field_scores.get(field)

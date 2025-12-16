@@ -561,7 +561,7 @@ def get_kkc_recommendations(stats: Dict, comparison: Dict = None) -> List[Dict]:
     }
 
     # Beregn prioritet for hver friktion
-    for field in ['MENING', 'TRYGHED', 'KAN', 'BESVÆR']:
+    for field in ['TRYGHED', 'MENING', 'KAN', 'BESVÆR']:
         score = stats.get(field, {}).get('avg_score', 0)
 
         if score == 0:
@@ -966,7 +966,7 @@ def get_trend_data(unit_id: str = None, customer_id: str = None) -> Dict:
                 },
                 ...
             ],
-            'fields': ['MENING', 'TRYGHED', 'KAN', 'BESVÆR'],
+            'fields': ['TRYGHED', 'MENING', 'KAN', 'BESVÆR'],
             'summary': {
                 'total_assessments': 5,
                 'date_range': '2024-06 til 2025-03'
@@ -1024,7 +1024,7 @@ def get_trend_data(unit_id: str = None, customer_id: str = None) -> Dict:
         if not assessments_raw:
             return {
                 'assessments': [],
-                'fields': ['MENING', 'TRYGHED', 'KAN', 'BESVÆR'],
+                'fields': ['TRYGHED', 'MENING', 'KAN', 'BESVÆR'],
                 'summary': {'total_assessments': 0, 'date_range': '-'}
             }
 
@@ -1067,7 +1067,7 @@ def get_trend_data(unit_id: str = None, customer_id: str = None) -> Dict:
 
         return {
             'assessments': assessments,
-            'fields': ['MENING', 'TRYGHED', 'KAN', 'BESVÆR'],
+            'fields': ['TRYGHED', 'MENING', 'KAN', 'BESVÆR'],
             'summary': {
                 'total_assessments': len(assessments),
                 'date_range': date_range

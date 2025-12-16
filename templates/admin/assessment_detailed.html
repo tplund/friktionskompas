@@ -105,7 +105,7 @@
                             </td>
                         </tr>
 
-                        {% for field in ['MENING', 'TRYGHED', 'KAN', 'BESVÆR'] %}
+                        {% for field in ['TRYGHED', 'MENING', 'KAN', 'BESVÆR'] %}
                         {% set emp_score = breakdown.employee[field].avg_score %}
                         {% set leader_assess_score = breakdown.leader_assess[field].avg_score %}
                         {% set leader_self_score = breakdown.leader_self[field].avg_score %}
@@ -329,7 +329,7 @@
                     {% set y_spacing = 100 %}
                     {% set y_start = 80 %}
 
-                    {% for field_idx, field in [('0', 'MENING'), ('1', 'TRYGHED'), ('2', 'KAN'), ('3', 'BESVÆR')] %}
+                    {% for field_idx, field in [('0', 'TRYGHED'), ('1', 'MENING'), ('2', 'KAN'), ('3', 'BESVÆR')] %}
                         {% set y = y_start + (field_idx|int * y_spacing) %}
                         {% set emp = to_percent(breakdown.employee[field].avg_score) %}
                         {% set leader_assess = to_percent(breakdown.leader_assess[field].avg_score) %}

@@ -62,7 +62,7 @@
 <div class="raw-data-section">
     <h3>📋 Hvad vi spurgte om - og hvad de svarede</h3>
     
-    {% for field in ['MENING', 'TRYGHED', 'KAN', 'BESVÆR'] %}
+    {% for field in ['TRYGHED', 'MENING', 'KAN', 'BESVÆR'] %}
     {% if field in by_field %}
     {% set field_score = (stats | selectattr('field', 'equalto', field) | first).avg_score %}
     <div class="field-section {{ get_color_class(field_score) }}">

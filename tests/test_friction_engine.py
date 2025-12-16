@@ -317,25 +317,25 @@ class TestWarnings:
 class TestStartHereRecommendation:
     """Test KKC 'Start Her' anbefaling"""
 
-    def test_start_with_mening(self):
-        """MENING prioriteres først"""
+    def test_start_with_tryghed(self):
+        """TRYGHED prioriteres først (ny rækkefølge: TRYGHED, MENING, KAN, BESVÆR)"""
         scores = {
             'MENING': FieldScore('MENING', 2.0, 10, 0.5, SpreadLevel.LOW),
             'TRYGHED': FieldScore('TRYGHED', 2.0, 10, 0.5, SpreadLevel.LOW),
             'KAN': FieldScore('KAN', 2.0, 10, 0.5, SpreadLevel.LOW),
             'BESVÆR': FieldScore('BESVÆR', 2.0, 10, 0.5, SpreadLevel.LOW),
         }
-        assert get_start_here_recommendation(scores) == 'MENING'
+        assert get_start_here_recommendation(scores) == 'TRYGHED'
 
-    def test_start_with_tryghed_if_mening_ok(self):
-        """TRYGHED prioriteres når MENING er OK"""
+    def test_start_with_mening_if_tryghed_ok(self):
+        """MENING prioriteres når TRYGHED er OK"""
         scores = {
-            'MENING': FieldScore('MENING', 4.0, 10, 0.5, SpreadLevel.LOW),
-            'TRYGHED': FieldScore('TRYGHED', 2.0, 10, 0.5, SpreadLevel.LOW),
+            'MENING': FieldScore('MENING', 2.0, 10, 0.5, SpreadLevel.LOW),
+            'TRYGHED': FieldScore('TRYGHED', 4.0, 10, 0.5, SpreadLevel.LOW),
             'KAN': FieldScore('KAN', 2.0, 10, 0.5, SpreadLevel.LOW),
             'BESVÆR': FieldScore('BESVÆR', 2.0, 10, 0.5, SpreadLevel.LOW),
         }
-        assert get_start_here_recommendation(scores) == 'TRYGHED'
+        assert get_start_here_recommendation(scores) == 'MENING'
 
     def test_no_recommendation_if_all_ok(self):
         """Ingen anbefaling hvis alt er OK"""

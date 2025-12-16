@@ -31,7 +31,7 @@ Før du laver ændringer i følgende områder, TJEK denne liste:
 
 ### 2. Field navne i profil-spørgsmål
 - ✅ **KAN** - IKKE MULIGHED (database bruger KAN)
-- ✅ Field order: `['MENING', 'TRYGHED', 'KAN', 'BESVÆR']`
+- ✅ Field order: `['TRYGHED', 'MENING', 'KAN', 'BESVÆR']`
 
 ### 3. Terminologi i UI
 - ✅ Brug "måling" - IKKE "kampagne"

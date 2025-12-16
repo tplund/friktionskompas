@@ -840,7 +840,7 @@ def get_unit_stats(unit_id: str, assessment_id: str, include_children: bool = Tr
             """, (unit_id, assessment_id)).fetchall()
         
         # Returner i fast rækkefølge
-        field_order = ['MENING', 'TRYGHED', 'KAN', 'BESVÆR']
+        field_order = ['TRYGHED', 'MENING', 'KAN', 'BESVÆR']
         data_by_field = {row['field']: row for row in rows}
         
         return [

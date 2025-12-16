@@ -235,7 +235,7 @@
         <form method="POST" action="/s/{{ token }}/submit" id="surveyForm">
             <input type="hidden" name="token" value="{{ token }}">
 
-            {% set field_order = ['MENING', 'TRYGHED', 'KAN', 'BESVÆR'] %}
+            {% set field_order = ['TRYGHED', 'MENING', 'KAN', 'BESVÆR'] %}
             {% set questions_by_field = {} %}
             {% for question in questions %}
                 {% set _ = questions_by_field.setdefault(question.field, []).append(question) %}

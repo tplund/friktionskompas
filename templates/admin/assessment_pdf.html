@@ -222,7 +222,7 @@
                 </tr>
             </thead>
             <tbody>
-                {% for field in ['MENING', 'TRYGHED', 'KAN', 'BESVÆR'] %}
+                {% for field in ['TRYGHED', 'MENING', 'KAN', 'BESVÆR'] %}
                 {% set emp = breakdown.employee[field] %}
                 {% set leader_assess = breakdown.leader_assess[field] %}
                 {% set leader_self = breakdown.leader_self[field] %}

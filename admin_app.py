@@ -7,6 +7,7 @@ import csv
 import io
 import os
 import secrets
+from datetime import datetime, timedelta
 from functools import wraps
 from db_hierarchical import (
     init_db, create_unit, create_unit_from_path, create_assessment,
@@ -98,6 +99,10 @@ app = Flask(__name__)
 
 # Sikker secret key fra miljøvariabel (fallback til autogeneret i development)
 app.secret_key = os.environ.get('SECRET_KEY') or secrets.token_hex(32)
+
+# Session configuration - timeout efter 8 timers inaktivitet
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=8)
+app.config['SESSION_REFRESH_EACH_REQUEST'] = True  # Refresh timeout ved aktivitet
 
 # Initialize OAuth
 init_oauth(app)
@@ -288,10 +293,47 @@ def is_role_simulated():
 
 @app.route('/')
 def index():
-    """Root route - redirect til login eller admin"""
+    """Root route - show landing page or redirect to admin if logged in"""
     if 'user' in session:
         return redirect(url_for('admin_home'))
-    return redirect(url_for('login'))
+    return render_template('landing.html')
+
+
+@app.route('/landing')
+def landing():
+    """Public landing page"""
+    return render_template('landing.html')
+
+
+@app.route('/robots.txt')
+def robots_txt():
+    """Serve robots.txt for SEO"""
+    return send_from_directory('static', 'robots.txt', mimetype='text/plain')
+
+
+@app.route('/sitemap.xml')
+def sitemap_xml():
+    """Generate dynamic sitemap.xml"""
+    base_url = request.url_root.rstrip('/')
+    xml = f'''<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>{base_url}/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>{base_url}/profil/local</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>{base_url}/help</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+</urlset>'''
+    return Response(xml, mimetype='application/xml')
 
 
 @app.route('/verifyforzoho.html')
@@ -317,6 +359,7 @@ def login():
 
         if user:
             session['user'] = user
+            session.permanent = True  # Aktivér session timeout
             # Audit log successful login
             log_action(
                 AuditAction.LOGIN_SUCCESS,
@@ -418,6 +461,7 @@ def oauth_callback(provider):
 
         if user:
             session['user'] = user
+            session.permanent = True  # Aktivér session timeout
             flash(f'Velkommen {user["name"]}!', 'success')
             return redirect(url_for('admin_home'))
         else:
@@ -518,6 +562,7 @@ def verify_registration():
                         'customer_id': user['customer_id'],
                         'customer_name': user.get('customer_name')
                     }
+                    session.permanent = True  # Aktivér session timeout
                     session.pop('pending_registration', None)
                     flash(f'Velkommen {user["name"]}! Din konto er oprettet.', 'success')
                     return redirect(url_for('user_home'))
@@ -578,6 +623,7 @@ def verify_email_login():
         user = authenticate_by_email_code(email, code)
         if user:
             session['user'] = user
+            session.permanent = True  # Aktivér session timeout
             session.pop('pending_email_login', None)
             flash(f'Velkommen {user["name"]}!', 'success')
 
@@ -1785,7 +1831,7 @@ def analyser():
             # Calculate leader gap if we have both scores
             if unit_dict.get('employee_overall') and unit_dict.get('leader_overall'):
                 max_gap = 0
-                for field in ['mening', 'tryghed', 'kan', 'besvaer']:
+                for field in ['tryghed', 'mening', 'kan', 'besvaer']:
                     emp_score = unit_dict.get(f'employee_{field}')
                     leader_score = unit_dict.get(f'leader_{field}')
                     if emp_score and leader_score:
@@ -3013,6 +3059,7 @@ def impersonate_user(user_id):
             'customer_id': target_user['customer_id'],
             'customer_name': target_user['customer_name']
         }
+        session.permanent = True  # Behold session timeout ved impersonation
 
         # Sæt customer filter til brugerens kunde
         if target_user['customer_id']:
@@ -3498,7 +3545,7 @@ def assessment_pdf_export(assessment_id):
         # Calculate overall score
         emp = breakdown.get('employee', {})
         if emp:
-            fields = ['MENING', 'TRYGHED', 'KAN', 'BESVÆR']
+            fields = ['TRYGHED', 'MENING', 'KAN', 'BESVÆR']
             scores = [emp.get(f, {}).get('avg_score', 3) for f in fields]
             avg_score = sum(scores) / len(scores)
             overall_score = (avg_score - 1) / 4 * 100
@@ -3778,6 +3825,196 @@ def profil_delete():
         'success': True,
         'deleted': deleted
     })
+
+
+# ========================================
+# FRIKTIONSPROFIL API (Stateless - Privacy by Design)
+# ========================================
+# Disse endpoints gemmer IKKE data på serveren.
+# B2C brugere kan bruge localStorage i browseren.
+
+@app.route('/profil/api/questions', methods=['GET'])
+def profil_api_questions():
+    """
+    Hent alle profil-spørgsmål (stateless - ingen session oprettet)
+
+    Query params:
+        types: comma-separated liste af typer (sensitivity,capacity,bandwidth,screening,baseline)
+               Default: sensitivity
+
+    Returns JSON:
+        {
+            questions: [...],
+            fields: ['TRYGHED', 'MENING', 'KAN', 'BESVÆR'],
+            layers: ['BIOLOGI', 'EMOTION', 'INDRE', 'KOGNITION'],
+            version: "1.0"
+        }
+    """
+    from db_profil import get_questions_by_type, get_all_questions
+
+    # Parse question types fra query param
+    types_param = request.args.get('types', 'sensitivity')
+    question_types = [t.strip() for t in types_param.split(',')]
+
+    # Hent spørgsmål
+    if 'all' in question_types:
+        questions = get_all_questions()
+    else:
+        questions = get_questions_by_type(question_types)
+
+    # Konverter til serialiserbar liste
+    questions_list = []
+    for q in questions:
+        questions_list.append({
+            'id': q['id'],
+            'field': q['field'],
+            'layer': q['layer'],
+            'text_da': q['text_da'],
+            'state_text_da': q.get('state_text_da'),
+            'question_type': q.get('question_type', 'sensitivity'),
+            'reverse_scored': bool(q.get('reverse_scored', 0)),
+            'sequence': q['sequence']
+        })
+
+    return jsonify({
+        'questions': questions_list,
+        'fields': ['TRYGHED', 'MENING', 'KAN', 'BESVÆR'],
+        'layers': ['BIOLOGI', 'EMOTION', 'INDRE', 'KOGNITION'],
+        'version': '1.0',
+        'count': len(questions_list)
+    })
+
+
+@app.route('/profil/api/calculate', methods=['POST'])
+def profil_api_calculate():
+    """
+    Beregn profil-analyse fra responses (stateless - gemmer INTET)
+
+    Request body:
+        {
+            responses: [{question_id: 1, score: 3}, ...],
+            context: "general"  // optional
+        }
+
+    Returns JSON:
+        {
+            score_matrix: {...},
+            color_matrix: {...},
+            columns: {...},
+            summary: {...},
+            interpretations: {...}
+        }
+    """
+    from analysis_profil import (
+        score_to_color, analyze_column, interpret_bandwidth,
+        generate_interpretations, FIELDS, LAYERS, COLOR_LABELS
+    )
+    from db_profil import get_all_questions
+
+    data = request.get_json()
+    if not data or 'responses' not in data:
+        return jsonify({'error': 'Missing responses in request body'}), 400
+
+    responses = data['responses']
+    if not isinstance(responses, list) or len(responses) == 0:
+        return jsonify({'error': 'Responses must be a non-empty array'}), 400
+
+    # Hent spørgsmål for at kende reverse_scored
+    all_questions = {q['id']: q for q in get_all_questions()}
+
+    # Byg score matrix fra responses
+    score_matrix = {
+        'TRYGHED': {},
+        'MENING': {},
+        'KAN': {},
+        'BESVÆR': {}
+    }
+
+    for resp in responses:
+        q_id = resp.get('question_id')
+        score = resp.get('score')
+
+        if q_id is None or score is None:
+            continue
+
+        question = all_questions.get(q_id)
+        if not question:
+            continue
+
+        field = question['field']
+        layer = question['layer']
+
+        # Ignorer spørgsmål der ikke passer i 4x4 matrix
+        if field not in score_matrix or layer not in LAYERS:
+            continue
+
+        # Håndter reverse scoring
+        if question.get('reverse_scored'):
+            score = 6 - score
+
+        score_matrix[field][layer] = score
+
+    # Beregn color matrix
+    color_matrix = {}
+    for field in FIELDS:
+        color_matrix[field] = {}
+        for layer in LAYERS:
+            score = score_matrix.get(field, {}).get(layer)
+            if score is not None:
+                color_matrix[field][layer] = score_to_color(score)
+            else:
+                color_matrix[field][layer] = 'unknown'
+
+    # Analyser hver søjle
+    columns = {}
+    for field in FIELDS:
+        layer_scores = score_matrix.get(field, {})
+        columns[field] = analyze_column(field, layer_scores)
+
+    # Samlet profil-analyse
+    all_scores = []
+    for field_data in columns.values():
+        all_scores.extend(field_data['scores'].values())
+
+    total_avg = sum(all_scores) / len(all_scores) if all_scores else 0
+
+    # Find dominerende manifestationslag
+    manifestations = [c['manifestation_layer'] for c in columns.values() if c['manifestation_layer']]
+    dominant_manifestation = max(set(manifestations), key=manifestations.count) if manifestations else None
+
+    # Beregn samlet båndbredde
+    bandwidths = [c['bandwidth'] for c in columns.values()]
+    avg_bandwidth = sum(bandwidths) / len(bandwidths) if bandwidths else 0
+
+    summary = {
+        'total_avg_score': round(total_avg, 2),
+        'overall_color': score_to_color(total_avg),
+        'overall_label': COLOR_LABELS.get(score_to_color(total_avg), 'Ukendt'),
+        'dominant_manifestation': dominant_manifestation,
+        'avg_bandwidth': round(avg_bandwidth, 2),
+        'bandwidth_interpretation': interpret_bandwidth(avg_bandwidth)
+    }
+
+    interpretations = generate_interpretations(columns)
+
+    return jsonify({
+        'score_matrix': score_matrix,
+        'color_matrix': color_matrix,
+        'columns': columns,
+        'summary': summary,
+        'interpretations': interpretations,
+        'context': data.get('context', 'general'),
+        'calculated_at': datetime.now().isoformat()
+    })
+
+
+@app.route('/profil/local')
+def profil_local():
+    """
+    Client-side friktionsprofil (Privacy by Design)
+    Alt gemmes i brugerens browser - serveren gemmer intet.
+    """
+    return render_template('profil/local.html')
 
 
 # ========================================
