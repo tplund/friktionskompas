@@ -1,0 +1,48 @@
+{# Google Tag Manager Macros #}
+{# GTM Container IDs per domain #}
+{# friktionskompasset.dk = GTM-KRM92FXQ #}
+{# frictioncompass.com = GTM-P7J74JZZ #}
+
+{% macro gtm_head() %}
+{# Determine GTM container ID based on domain #}
+{% set host = request.host if request is defined else 'friktionskompasset.dk' %}
+{% if 'frictioncompass.com' in host %}
+    {% set gtm_id = 'GTM-P7J74JZZ' %}
+{% else %}
+    {% set gtm_id = 'GTM-KRM92FXQ' %}
+{% endif %}
+
+<!-- Google Consent Mode v2 - MUST be BEFORE GTM -->
+<script src="/static/js/cookie-consent.js"></script>
+<script>CookieConsent.initConsentMode();</script>
+
+<!-- Google Tag Manager ({{ gtm_id }}) -->
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','{{ gtm_id }}');</script>
+<!-- End Google Tag Manager -->
+{% endmacro %}
+
+{% macro gtm_body() %}
+{# Determine GTM container ID based on domain #}
+{% set host = request.host if request is defined else 'friktionskompasset.dk' %}
+{% if 'frictioncompass.com' in host %}
+    {% set gtm_id = 'GTM-P7J74JZZ' %}
+{% else %}
+    {% set gtm_id = 'GTM-KRM92FXQ' %}
+{% endif %}
+
+<!-- Google Tag Manager (noscript) -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id={{ gtm_id }}"
+height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->
+{% endmacro %}
+
+{% macro cookie_consent_init() %}
+<script>
+    const userLang = document.documentElement.lang || 'da';
+    CookieConsent.init(userLang);
+</script>
+{% endmacro %}
