@@ -273,7 +273,7 @@ GOOGLE_CLIENT_SECRET=xxx
 
 ### Teknisk
 - [ ] **Session timeout** - Auto-logout efter inaktivitet
-- [ ] **Audit log** - Logning af vigtige handlinger (sletninger, ændringer)
+- [x] ~~**Audit log** - Logning af vigtige handlinger (sletninger, ændringer)~~ (`audit.py` + `/admin/audit-log` UI)
 - [ ] **Database vacuum** - Automatisk cleanup af slettet data
 
 ### B2C Forberedelse
