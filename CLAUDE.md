@@ -91,6 +91,24 @@ curl -s -X POST "https://api.cloudflare.com/client/v4/zones/ZONE_ID/dns_records"
 - Lokale Python scripts kan køres direkte for lokal database
 - For Render: Opret midlertidigt API endpoint, push, kald via curl, fjern endpoint igen
 
+### Git Disciplin (KRITISK!)
+- **ALTID** kør `git status` FØR push for at sikre alle nødvendige filer er committed
+- **ALDRIG** push uden at verificere at templates, static filer og Python moduler er med
+- **ALTID** tjek at nye filer (templates, JS, CSS) er `git add`'et - de er IKKE automatisk tracked!
+- Ved nye features: Tjek ALLE relaterede filer (templates, static, routes) er committed
+- Fejl på produktion (404, 502) skyldes ofte manglende filer i git - tjek `git status` først!
+
+**Pre-push tjekliste:**
+```bash
+# Kør ALTID før push:
+git status --short templates/ static/ *.py
+# Hvis der er ?? (untracked) eller M (modified) filer der burde med:
+git add <filerne>
+git commit -m "beskrivelse"
+# FØRST DEREFTER:
+git push
+```
+
 ### Udviklings-workflow
 - Vi er IKKE i produktion endnu - vi udvikler stadig
 - Det er OK at pushe testdata-ændringer via git
