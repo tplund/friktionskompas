@@ -1,10 +1,17 @@
+{% from 'macros/gtm.html' import gtm_head, gtm_body, cookie_consent_init %}
 <!DOCTYPE html>
-<html>
+<html lang="{{ get_user_language() if get_user_language is defined else 'da' }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Log ind på Friktionskompasset - et værktøj til at identificere og fjerne friktioner i din organisation.">
+    <meta name="robots" content="noindex, nofollow">
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="canonical" href="{{ request.url_root }}login">
     <title>{{ t('login.title') }} - Friktionskompasset</title>
+
+    {{ gtm_head() }}
+
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -59,6 +66,36 @@
             outline: none;
             border-color: #475569;
             box-shadow: 0 0 0 3px rgba(71, 85, 105, 0.1);
+        }
+        .form-group.has-error input {
+            border-color: #ef4444;
+            background-color: #fef2f2;
+        }
+        .form-group.has-error input:focus {
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
+        }
+        .form-error {
+            color: #dc2626;
+            font-size: 0.8rem;
+            margin-top: 5px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .form-error::before {
+            content: '⚠';
+        }
+        /* Focus styling for accessibility */
+        input:focus,
+        button:focus,
+        a:focus {
+            outline: 2px solid #475569;
+            outline-offset: 2px;
+        }
+        input:focus:not(:focus-visible),
+        button:focus:not(:focus-visible),
+        a:focus:not(:focus-visible) {
+            outline: none;
         }
         .btn {
             width: 100%;
@@ -213,6 +250,8 @@
     </style>
 </head>
 <body>
+    {{ gtm_body() }}
+
     <div class="login-container">
         <div class="logo">
             <h1>🏢 Friktionskompasset</h1>
@@ -281,18 +320,20 @@
         {% endif %}
 
         {% if show_email_password is not defined or show_email_password %}
-        <form method="POST">
+        <form method="POST" aria-label="Login formular">
             <div class="form-group">
                 <label for="username">{{ t('login.username') }}</label>
-                <input type="text" id="username" name="username" required autofocus>
+                <input type="text" id="username" name="username" required autofocus
+                       autocomplete="username" aria-describedby="username-hint">
             </div>
 
             <div class="form-group">
                 <label for="password">{{ t('login.password') }}</label>
-                <input type="password" id="password" name="password" required>
+                <input type="password" id="password" name="password" required
+                       autocomplete="current-password">
             </div>
 
-            <button type="submit" class="btn">{{ t('login.button') }}</button>
+            <button type="submit" class="btn" aria-label="Log ind">{{ t('login.button') }}</button>
 
             <div class="links-section">
                 <a href="{{ url_for('forgot_password') }}">{{ t('login.forgot_password', 'Glemt password?') }}</a>
@@ -312,5 +353,83 @@
             <a href="{{ url_for('help_page') }}" style="font-weight: normal;">{{ t('login.need_help', 'Brug for hjælp?') }}</a>
         </div>
     </div>
+
+    <script>
+    // Form validation for login
+    document.addEventListener('DOMContentLoaded', function() {
+        var form = document.querySelector('form');
+        if (!form) return;
+
+        var usernameInput = document.getElementById('username');
+        var passwordInput = document.getElementById('password');
+
+        function showError(input, message) {
+            var group = input.closest('.form-group');
+            clearError(input);
+            group.classList.add('has-error');
+            var errorEl = document.createElement('div');
+            errorEl.className = 'form-error';
+            errorEl.textContent = message;
+            group.appendChild(errorEl);
+        }
+
+        function clearError(input) {
+            var group = input.closest('.form-group');
+            group.classList.remove('has-error');
+            var errorEl = group.querySelector('.form-error');
+            if (errorEl) errorEl.remove();
+        }
+
+        // Validate on blur
+        usernameInput.addEventListener('blur', function() {
+            if (!this.value.trim()) {
+                showError(this, 'Indtast dit brugernavn eller email');
+            } else {
+                clearError(this);
+            }
+        });
+
+        passwordInput.addEventListener('blur', function() {
+            if (!this.value) {
+                showError(this, 'Indtast dit password');
+            } else {
+                clearError(this);
+            }
+        });
+
+        // Clear error when typing
+        [usernameInput, passwordInput].forEach(function(input) {
+            input.addEventListener('input', function() {
+                if (this.closest('.form-group').classList.contains('has-error')) {
+                    clearError(this);
+                }
+            });
+        });
+
+        // Validate on submit
+        form.addEventListener('submit', function(e) {
+            var valid = true;
+
+            if (!usernameInput.value.trim()) {
+                showError(usernameInput, 'Indtast dit brugernavn eller email');
+                valid = false;
+            }
+
+            if (!passwordInput.value) {
+                showError(passwordInput, 'Indtast dit password');
+                valid = false;
+            }
+
+            if (!valid) {
+                e.preventDefault();
+                // Focus first error field
+                var firstError = form.querySelector('.form-group.has-error input');
+                if (firstError) firstError.focus();
+            }
+        });
+    });
+    </script>
+
+    {{ cookie_consent_init() }}
 </body>
 </html>

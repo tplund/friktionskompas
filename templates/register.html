@@ -1,10 +1,16 @@
+{% from 'macros/gtm.html' import gtm_head, gtm_body, cookie_consent_init %}
 <!DOCTYPE html>
-<html>
+<html lang="{{ get_user_language() if get_user_language is defined else 'da' }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Opret en konto på Friktionskompasset og få indsigt i hvad der dræner din energi.">
+    <meta name="robots" content="noindex, nofollow">
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <title>{{ t('register.title', 'Opret konto') }} - Friktionskompasset</title>
+
+    {{ gtm_head() }}
+
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -155,6 +161,8 @@
     </style>
 </head>
 <body>
+    {{ gtm_body() }}
+
     <div class="container">
         <div class="logo">
             <h1>Friktionskompasset</h1>
@@ -214,5 +222,7 @@
             <a href="{{ url_for('login') }}">{{ t('register.login_link', 'Log ind her') }}</a>
         </div>
     </div>
+
+    {{ cookie_consent_init() }}
 </body>
 </html>

@@ -1,0 +1,30 @@
+# Friktionskompasset robots.txt
+# Admin og login sider skal ikke indekseres
+
+User-agent: *
+
+# Tillad offentlige sider
+Allow: /
+Allow: /help
+Allow: /profil/local
+
+# Bloker admin og auth
+Disallow: /admin
+Disallow: /login
+Disallow: /register
+Disallow: /logout
+Disallow: /auth/
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /verify-code
+Disallow: /email-login
+
+# Bloker API endpoints
+Disallow: /api/
+Disallow: /profil/api/
+
+# Bloker survey tokens (private links)
+Disallow: /survey/
+
+# Sitemap
+Sitemap: https://friktionskompasset.dk/sitemap.xml

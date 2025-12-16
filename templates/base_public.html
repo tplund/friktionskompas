@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="{{ get_user_language() if get_user_language is defined else 'da' }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    {# Page-specific meta #}
+    <title>{% block title %}Friktionskompasset{% endblock %}</title>
+    <meta name="description" content="{% block meta_description %}Friktionskompasset hjælper dig med at identificere og fjerne friktioner der dræner din energi.{% endblock %}">
+    {% block meta_robots %}{% endblock %}
+
+    {# Canonical URL #}
+    <link rel="canonical" href="{{ request.url if request is defined else '' }}">
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+
+    {# Open Graph / Facebook #}
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ request.url if request is defined else '' }}">
+    <meta property="og:title" content="{% block og_title %}Friktionskompasset{% endblock %}">
+    <meta property="og:description" content="{% block og_description %}Find og fjern de friktioner der dræner din energi.{% endblock %}">
+    <meta property="og:image" content="{{ request.url_root if request is defined else '/' }}static/og-image.svg">
+    <meta property="og:locale" content="{{ 'da_DK' if (get_user_language() if get_user_language is defined else 'da') == 'da' else 'en_US' }}">
+
+    {# Twitter Card #}
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{% block twitter_title %}Friktionskompasset{% endblock %}">
+    <meta name="twitter:description" content="{% block twitter_description %}Find og fjern de friktioner der dræner din energi.{% endblock %}">
+    <meta name="twitter:image" content="{{ request.url_root if request is defined else '/' }}static/og-image.svg">
+
+    {# ====== Google Consent Mode v2 - MUST be BEFORE GTM ====== #}
+    <script src="/static/js/cookie-consent.js"></script>
+    <script>CookieConsent.initConsentMode();</script>
+
+    {# ====== Google Tag Manager ====== #}
+    {# TODO: Replace GTM-XXXXXXX with actual container ID #}
+    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+    })(window,document,'script','dataLayer','GTM-XXXXXXX');</script>
+    {# End Google Tag Manager #}
+
+    {# Page-specific head content #}
+    {% block head %}{% endblock %}
+
+    {# Base styles for public pages #}
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #1f2937;
+        }
+
+        /* Skip link for accessibility */
+        .skip-link {
+            position: absolute;
+            top: -40px;
+            left: 0;
+            background: #3b82f6;
+            color: white;
+            padding: 8px 16px;
+            z-index: 100001;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .skip-link:focus {
+            top: 0;
+        }
+
+        /* Focus visible for keyboard navigation */
+        :focus-visible {
+            outline: 2px solid #3b82f6;
+            outline-offset: 2px;
+        }
+
+        /* Common button styles */
+        .btn {
+            display: inline-block;
+            padding: 14px 28px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1rem;
+            transition: all 0.2s;
+            cursor: pointer;
+            border: none;
+        }
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+        .btn-secondary {
+            background: transparent;
+            color: white;
+            border: 2px solid rgba(255,255,255,0.3);
+        }
+        .btn-secondary:hover {
+            background: rgba(255,255,255,0.1);
+        }
+
+        {% block styles %}{% endblock %}
+    </style>
+</head>
+<body>
+    {# Google Tag Manager (noscript) #}
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-XXXXXXX"
+    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+    {# End Google Tag Manager (noscript) #}
+
+    {# Skip link for accessibility #}
+    <a href="#main-content" class="skip-link">
+        {{ 'Spring til hovedindhold' if (get_user_language() if get_user_language is defined else 'da') == 'da' else 'Skip to main content' }}
+    </a>
+
+    {% block body %}{% endblock %}
+
+    {# Initialize Cookie Consent Banner #}
+    <script>
+        const userLang = document.documentElement.lang || 'da';
+        CookieConsent.init(userLang);
+    </script>
+
+    {# Page-specific scripts #}
+    {% block scripts %}{% endblock %}
+</body>
+</html>

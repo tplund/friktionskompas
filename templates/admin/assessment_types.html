@@ -43,6 +43,7 @@ function toggleQuestions(typeId) {
                         <th style="padding: 12px 20px; text-align: center; font-weight: 600; color: #6b7280; font-size: 0.85rem;">Spørgsmål</th>
                         <th style="padding: 12px 20px; text-align: center; font-weight: 600; color: #6b7280; font-size: 0.85rem;">Varighed</th>
                         <th style="padding: 12px 20px; text-align: center; font-weight: 600; color: #6b7280; font-size: 0.85rem;">Type</th>
+                        <th style="padding: 12px 20px; text-align: center; font-weight: 600; color: #6b7280; font-size: 0.85rem;">Storage</th>
                         <th style="padding: 12px 20px; text-align: center; font-weight: 600; color: #6b7280; font-size: 0.85rem;">Status</th>
                         <th style="padding: 12px 20px; text-align: center; font-weight: 600; color: #6b7280; font-size: 0.85rem;">Handling</th>
                     </tr>
@@ -82,6 +83,22 @@ function toggleQuestions(typeId) {
                             {% endif %}
                         </td>
                         <td style="padding: 16px 20px; text-align: center;">
+                            {% set storage = at.storage_mode or 'server' %}
+                            {% if storage == 'local' %}
+                            <span style="background: #ecfdf5; color: #065f46; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem;" title="Data gemmes kun i brugerens browser (localStorage)">
+                                Lokal
+                            </span>
+                            {% elif storage == 'both' %}
+                            <span style="background: #f3e8ff; color: #7c3aed; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem;" title="Bruger vælger: lokal eller server">
+                                Valgfri
+                            </span>
+                            {% else %}
+                            <span style="background: #dbeafe; color: #1e40af; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem;" title="Data gemmes centralt på serveren">
+                                Server
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td style="padding: 16px 20px; text-align: center;">
                             {% if at.is_active %}
                             <span style="background: #d1fae5; color: #065f46; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem;">
                                 Aktiv
@@ -102,7 +119,7 @@ function toggleQuestions(typeId) {
                     </tr>
                     <!-- Questions row (hidden by default) -->
                     <tr id="questions-{{ at.id }}" style="display: none; background: #f9fafb;">
-                        <td colspan="7" style="padding: 0 20px 20px 20px;">
+                        <td colspan="8" style="padding: 0 20px 20px 20px;">
                             <div style="background: white; border: 1px solid #e5e7eb; border-radius: 8px; padding: 15px; margin-top: 10px;">
                                 <h4 style="margin: 0 0 10px 0; font-size: 0.95rem; color: #374151;">Spørgsmål i denne type</h4>
                                 {% if questions_by_type and questions_by_type.get(at.id) %}
@@ -168,6 +185,13 @@ function toggleQuestions(typeId) {
             <li><strong>Default preset</strong> (markeret med blå) bruges automatisk for nye kunder og B2C brugere</li>
             <li>Kunder kan have <strong>custom konfiguration</strong> under Kunder & Brugere > Kunde > Målinger</li>
             <li>Domæner kan have <strong>egen konfiguration</strong> der overskriver kunde-config</li>
+        </ul>
+
+        <h4 style="margin: 20px 0 10px 0; font-size: 0.95rem;">Storage Modes (Privacy by Design)</h4>
+        <ul style="margin: 0; padding-left: 20px; color: #6b7280; font-size: 0.9rem; line-height: 1.8;">
+            <li><strong style="color: #065f46;">Lokal</strong> - Data gemmes KUN i brugerens browser (localStorage). Serveren beregner resultater men gemmer intet. Ideelt til B2C, parforhold-tests, ADHD-profiler.</li>
+            <li><strong style="color: #1e40af;">Server</strong> - Data gemmes centralt på serveren. Standard for B2B organisationsmålinger hvor admin skal kunne se resultater.</li>
+            <li><strong style="color: #7c3aed;">Valgfri</strong> - Bruger kan vælge om data skal gemmes lokalt eller på server.</li>
         </ul>
     </div>
 </div>

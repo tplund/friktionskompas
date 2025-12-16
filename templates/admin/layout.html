@@ -1,8 +1,9 @@
 <!DOCTYPE html>
-<html>
+<html lang="{{ get_user_language() }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <title>{% block title %}Admin{% endblock %} - {{ domain_config.branding_company_name or 'Friktionskompasset' }}</title>
     <style>
@@ -238,11 +239,223 @@
             from { opacity: 0; transform: translateX(100%); }
             to { opacity: 1; transform: translateX(0); }
         }
+
+        /* ========================================
+           MOBILE RESPONSIVE STYLES
+           ======================================== */
+
+        /* Mobile menu toggle button */
+        .mobile-menu-toggle {
+            display: none;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 10px;
+        }
+
+        /* Mobile: < 768px */
+        @media (max-width: 767px) {
+            .nav-container {
+                flex-wrap: wrap;
+                padding: 10px 15px;
+            }
+
+            .nav-brand {
+                font-size: 1rem;
+                padding: 10px 0;
+            }
+
+            .mobile-menu-toggle {
+                display: block;
+            }
+
+            /* Hide view switcher on mobile */
+            .view-switcher {
+                display: none;
+                width: 100%;
+                flex-direction: column;
+                margin-top: 10px;
+            }
+            .view-switcher.show {
+                display: flex;
+            }
+            .view-switcher a {
+                padding: 12px 15px;
+                text-align: center;
+            }
+
+            /* Customer/role switchers stack */
+            .customer-switcher,
+            .role-switcher {
+                margin: 10px 0 0 0 !important;
+                width: 100%;
+            }
+            .customer-switcher select,
+            .role-switcher select {
+                width: 100%;
+            }
+
+            /* Nav user info */
+            .nav-user {
+                width: 100%;
+                text-align: center;
+                padding: 10px 0;
+                font-size: 0.8rem;
+            }
+            .nav-user .user-badge {
+                display: block;
+                margin: 5px auto;
+            }
+
+            /* Submenu horizontal scroll */
+            .submenu-container {
+                padding: 0 10px;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            .submenu-links {
+                flex-wrap: nowrap;
+                min-width: max-content;
+            }
+            .submenu-links a {
+                padding: 10px 12px;
+                font-size: 0.8rem;
+                white-space: nowrap;
+            }
+
+            /* Dropdown menu in submenu */
+            .submenu-dropdown .dropdown-menu {
+                position: fixed;
+                left: 10px;
+                right: 10px;
+                width: auto;
+                max-height: 60vh;
+                overflow-y: auto;
+            }
+
+            /* Main content */
+            .container {
+                padding: 15px 10px;
+            }
+
+            /* Toast notifications */
+            .toast-container {
+                left: 10px;
+                right: 10px;
+                max-width: none;
+            }
+        }
+
+        /* Tablet: 768px - 1024px */
+        @media (min-width: 768px) and (max-width: 1024px) {
+            .nav-container {
+                padding: 0 15px;
+            }
+
+            .view-switcher a {
+                padding: 8px 12px;
+                font-size: 0.9rem;
+            }
+
+            .submenu-links a {
+                padding: 10px 12px;
+                font-size: 0.85rem;
+            }
+
+            .container {
+                padding: 15px;
+            }
+        }
+
+        /* Utility classes for responsive hiding */
+        @media (max-width: 767px) {
+            .hide-mobile { display: none !important; }
+        }
+        @media (min-width: 768px) {
+            .hide-desktop { display: none !important; }
+        }
+
+        /* Form validation styles */
+        .form-group.has-error input,
+        .form-group.has-error select,
+        .form-group.has-error textarea {
+            border-color: #ef4444 !important;
+            background-color: #fef2f2;
+        }
+        .form-group.has-error input:focus,
+        .form-group.has-error select:focus,
+        .form-group.has-error textarea:focus {
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
+        }
+        .form-error {
+            color: #dc2626;
+            font-size: 0.8rem;
+            margin-top: 5px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .form-error::before {
+            content: '⚠';
+        }
+        .form-group.has-success input,
+        .form-group.has-success select {
+            border-color: #22c55e !important;
+        }
+        .input-hint {
+            color: #6b7280;
+            font-size: 0.8rem;
+            margin-top: 4px;
+        }
+        /* Skip link for accessibility */
+        .skip-link {
+            position: absolute;
+            top: -40px;
+            left: 0;
+            background: #3b82f6;
+            color: white;
+            padding: 8px 16px;
+            z-index: 10000;
+            text-decoration: none;
+            font-weight: 600;
+            border-radius: 0 0 4px 0;
+        }
+        .skip-link:focus {
+            top: 0;
+        }
+
+        /* Focus styling for accessibility */
+        a:focus,
+        button:focus,
+        input:focus,
+        select:focus,
+        textarea:focus,
+        [tabindex]:focus {
+            outline: 2px solid #3b82f6;
+            outline-offset: 2px;
+        }
+        /* Remove outline for mouse users, keep for keyboard */
+        a:focus:not(:focus-visible),
+        button:focus:not(:focus-visible) {
+            outline: none;
+        }
+        a:focus-visible,
+        button:focus-visible,
+        input:focus-visible,
+        select:focus-visible {
+            outline: 2px solid #3b82f6;
+            outline-offset: 2px;
+        }
     </style>
     {% block extra_css %}{% endblock %}
 </head>
 <body>
-    <nav class="nav">
+    <!-- Skip link for keyboard users -->
+    <a href="#main-content" class="skip-link">Spring til hovedindhold</a>
+
+    <nav class="nav" role="navigation" aria-label="Hovednavigation">
         <div class="nav-container">
             <div class="nav-brand">
                 {% if domain_config and domain_config.branding_logo_url %}
@@ -357,6 +570,8 @@
                     <ul class="dropdown-menu">
                         <li><a href="/admin/profiler" {% if request.path == '/admin/profiler' %}class="active"{% endif %}>📋 {{ t('nav.alle_profiler', 'Alle profiler') }}</a></li>
                         <li><a href="/friktionsprofil/" target="_blank">🧪 {{ t('nav.tag_test', 'Tag profil-test') }} ↗</a></li>
+                        <li style="border-top: 1px solid rgba(255,255,255,0.1); margin: 5px 0;"></li>
+                        <li><a href="/profil/local" target="_blank">🔒 {{ t('nav.lokal_profil', 'Lokal profil (B2C)') }} ↗</a></li>
                     </ul>
                 </li>
 
@@ -398,11 +613,11 @@
     </div>
 
     <!-- Toast container for notifications -->
-    <div id="toastContainer" class="toast-container"></div>
+    <div id="toastContainer" class="toast-container" role="alert" aria-live="polite"></div>
 
-    <div class="container">
+    <main id="main-content" class="container" role="main">
         {% block content %}{% endblock %}
-    </div>
+    </main>
 
     <!-- Flash messages as toasts (from server) -->
     {% with messages = get_flashed_messages(with_categories=true) %}
@@ -542,6 +757,228 @@
             }
         }, 300);
     }
+
+    // Form validation helper functions
+    var FormValidation = {
+        // Show error on a form field
+        showError: function(input, message) {
+            var group = input.closest('.form-group');
+            if (!group) return;
+
+            // Remove any existing error
+            this.clearError(input);
+
+            group.classList.add('has-error');
+            group.classList.remove('has-success');
+
+            var errorEl = document.createElement('div');
+            errorEl.className = 'form-error';
+            errorEl.textContent = message;
+            group.appendChild(errorEl);
+        },
+
+        // Clear error from a form field
+        clearError: function(input) {
+            var group = input.closest('.form-group');
+            if (!group) return;
+
+            group.classList.remove('has-error');
+            var errorEl = group.querySelector('.form-error');
+            if (errorEl) errorEl.remove();
+        },
+
+        // Show success state
+        showSuccess: function(input) {
+            var group = input.closest('.form-group');
+            if (!group) return;
+
+            this.clearError(input);
+            group.classList.add('has-success');
+        },
+
+        // Validate email format
+        isValidEmail: function(email) {
+            return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+        },
+
+        // Common validation messages (Danish)
+        messages: {
+            required: 'Dette felt er påkrævet',
+            email: 'Indtast en gyldig email-adresse',
+            minLength: function(n) { return 'Minimum ' + n + ' tegn påkrævet'; },
+            maxLength: function(n) { return 'Maksimum ' + n + ' tegn tilladt'; },
+            passwordMatch: 'Passwords matcher ikke',
+            invalidFormat: 'Ugyldigt format'
+        },
+
+        // Validate a single input
+        validateInput: function(input) {
+            var value = input.value.trim();
+            var type = input.type;
+            var required = input.hasAttribute('required');
+            var minLength = input.getAttribute('minlength');
+            var maxLength = input.getAttribute('maxlength');
+
+            // Required check
+            if (required && !value) {
+                this.showError(input, this.messages.required);
+                return false;
+            }
+
+            // Skip further validation if empty and not required
+            if (!value) {
+                this.clearError(input);
+                return true;
+            }
+
+            // Email validation
+            if (type === 'email' && !this.isValidEmail(value)) {
+                this.showError(input, this.messages.email);
+                return false;
+            }
+
+            // Min length
+            if (minLength && value.length < parseInt(minLength)) {
+                this.showError(input, this.messages.minLength(minLength));
+                return false;
+            }
+
+            // Max length
+            if (maxLength && value.length > parseInt(maxLength)) {
+                this.showError(input, this.messages.maxLength(maxLength));
+                return false;
+            }
+
+            this.showSuccess(input);
+            return true;
+        },
+
+        // Validate entire form
+        validateForm: function(form) {
+            var inputs = form.querySelectorAll('input, select, textarea');
+            var isValid = true;
+            var firstError = null;
+
+            inputs.forEach(function(input) {
+                if (!this.validateInput(input)) {
+                    isValid = false;
+                    if (!firstError) firstError = input;
+                }
+            }.bind(this));
+
+            // Focus first error field
+            if (firstError) {
+                firstError.focus();
+            }
+
+            return isValid;
+        },
+
+        // Initialize validation on a form
+        init: function(form) {
+            var self = this;
+
+            // Validate on blur (when user leaves field)
+            form.querySelectorAll('input, select, textarea').forEach(function(input) {
+                input.addEventListener('blur', function() {
+                    self.validateInput(this);
+                });
+
+                // Clear error when user starts typing
+                input.addEventListener('input', function() {
+                    var group = this.closest('.form-group');
+                    if (group && group.classList.contains('has-error')) {
+                        self.clearError(this);
+                    }
+                });
+            });
+
+            // Validate on submit
+            form.addEventListener('submit', function(e) {
+                if (!self.validateForm(form)) {
+                    e.preventDefault();
+                    showToast('Ret venligst fejlene i formularen', 'error');
+                }
+            });
+        }
+    };
+
+    // Auto-initialize validation on forms with data-validate attribute
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('form[data-validate]').forEach(function(form) {
+            FormValidation.init(form);
+        });
+    });
+
+    // Keyboard navigation - Enter to submit forms
+    document.addEventListener('DOMContentLoaded', function() {
+        // Allow Enter key to submit forms from input fields
+        document.querySelectorAll('form input:not([type="submit"]):not([type="button"])').forEach(function(input) {
+            input.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    // Don't submit if it's a search input or has specific handling
+                    if (input.classList.contains('no-enter-submit')) return;
+
+                    var form = input.closest('form');
+                    if (form) {
+                        // If there's a next input, move to it instead of submitting
+                        var inputs = Array.from(form.querySelectorAll('input:not([type="submit"]):not([type="button"]):not([type="hidden"]), select, textarea'));
+                        var currentIndex = inputs.indexOf(input);
+
+                        // If this is the last input (or a password field), submit
+                        if (currentIndex === inputs.length - 1 || input.type === 'password') {
+                            e.preventDefault();
+                            // Find and click submit button, or submit form directly
+                            var submitBtn = form.querySelector('button[type="submit"], input[type="submit"]');
+                            if (submitBtn) {
+                                submitBtn.click();
+                            } else {
+                                form.submit();
+                            }
+                        }
+                        // Otherwise, let default behavior move to next field
+                    }
+                }
+            });
+        });
+
+        // Escape key to close modals/dropdowns
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                // Close any open dropdowns
+                document.querySelectorAll('.dropdown-menu').forEach(function(menu) {
+                    menu.style.display = 'none';
+                });
+
+                // Close loading overlay if somehow stuck
+                var overlay = document.getElementById('loadingOverlay');
+                if (overlay && overlay.classList.contains('active')) {
+                    // Only close if it's been showing for more than 30 seconds (stuck)
+                    // This prevents accidentally closing during actual loading
+                }
+            }
+        });
+
+        // Tab key navigation improvements for dropdowns
+        document.querySelectorAll('.submenu-dropdown').forEach(function(dropdown) {
+            var toggle = dropdown.querySelector('.dropdown-toggle');
+            var menu = dropdown.querySelector('.dropdown-menu');
+
+            if (toggle && menu) {
+                // Open dropdown with Enter/Space when focused
+                toggle.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        var isVisible = menu.style.opacity === '1' || window.getComputedStyle(menu).opacity === '1';
+                        if (!isVisible) {
+                            // Trigger hover state
+                            dropdown.dispatchEvent(new MouseEvent('mouseenter'));
+                        }
+                    }
+                });
+            }
+        });
+    });
     </script>
     {% block extra_js %}{% endblock %}
 </body>

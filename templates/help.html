@@ -1,9 +1,29 @@
+{% from 'macros/gtm.html' import gtm_head, gtm_body, cookie_consent_init %}
 <!DOCTYPE html>
 <html lang="{{ get_user_language() }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Hjælp og vejledning til Friktionskompasset - et værktøj til at identificere og fjerne friktioner i din organisation.">
+
+    {{ gtm_head() }}
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ request.url }}">
+    <meta property="og:title" content="{{ t('help.title', 'Hjælp') }} - Friktionskompasset">
+    <meta property="og:description" content="Få hjælp til at bruge Friktionskompasset og fjern friktioner i din organisation.">
+    <meta property="og:image" content="{{ request.url_root }}static/og-image.svg">
+    <meta property="og:locale" content="{{ get_user_language() }}_{{ 'DK' if get_user_language() == 'da' else 'GB' }}">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ t('help.title', 'Hjælp') }} - Friktionskompasset">
+    <meta name="twitter:description" content="Få hjælp til at bruge Friktionskompasset og fjern friktioner i din organisation.">
+    <meta name="twitter:image" content="{{ request.url_root }}static/og-image.svg">
+
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="canonical" href="{{ request.url }}">
     <title>{{ t('help.title', 'Hjælp') }} - Friktionskompasset</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -231,6 +251,8 @@
     </style>
 </head>
 <body>
+    {{ gtm_body() }}
+
     <nav class="navbar">
         <h1>Friktionskompasset</h1>
         <div>
@@ -458,6 +480,9 @@
                 }
             });
         });
+
     </script>
+
+    {{ cookie_consent_init() }}
 </body>
 </html>

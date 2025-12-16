@@ -1,10 +1,15 @@
+{% from 'macros/gtm.html' import gtm_head, gtm_body, cookie_consent_init %}
 <!DOCTYPE html>
-<html>
+<html lang="{{ get_user_language() if get_user_language is defined else 'da' }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <title>{{ title }} - Friktionskompasset</title>
+
+    {{ gtm_head() }}
+
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -193,6 +198,8 @@
         <a href="{{ url_for('login') }}" class="back-link">← {{ t('verify.back', 'Tilbage til login') }}</a>
     </div>
 
+    {{ gtm_body() }}
+
     <script>
         // Auto-fokus på næste felt og auto-submit når 6 cifre er indtastet
         const codeInput = document.getElementById('code');
@@ -204,5 +211,7 @@
             }
         });
     </script>
+
+    {{ cookie_consent_init() }}
 </body>
 </html>

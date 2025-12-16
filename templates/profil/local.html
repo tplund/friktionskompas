@@ -1,0 +1,1078 @@
+{% from 'macros/gtm.html' import gtm_head, gtm_body, cookie_consent_init %}
+<!DOCTYPE html>
+<html lang="{{ get_user_language() if get_user_language is defined else 'da' }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Tag din personlige friktionsprofil helt privat. Dine data gemmes kun lokalt i din browser - intet sendes til serveren.">
+
+    {{ gtm_head() }}
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ request.url if request is defined else '' }}">
+    <meta property="og:title" content="Friktionsprofil - Privacy First">
+    <meta property="og:description" content="Tag din personlige friktionsprofil helt privat. Dine data gemmes kun lokalt i din browser.">
+    <meta property="og:image" content="{{ request.url_root if request is defined else '/' }}static/og-image.svg">
+    <meta property="og:locale" content="da_DK">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Friktionsprofil - Privacy First">
+    <meta name="twitter:description" content="Tag din personlige friktionsprofil helt privat. Dine data gemmes kun lokalt i din browser.">
+    <meta name="twitter:image" content="{{ request.url_root if request is defined else '/' }}static/og-image.svg">
+
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <link rel="canonical" href="{{ request.url if request is defined else '' }}">
+    <title>Friktionsprofil - Privacy First</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #0f3460 0%, #16213e 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 { font-size: 24px; margin-bottom: 10px; }
+        .header .subtitle { opacity: 0.8; font-size: 14px; }
+        .privacy-badge {
+            display: inline-block;
+            background: rgba(255,255,255,0.2);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            margin-top: 15px;
+        }
+        .privacy-badge::before { content: "🔒 "; }
+
+        /* Progress */
+        .progress-container {
+            padding: 20px 30px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .progress-bar {
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #8BC34A);
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+        .progress-text {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+            font-size: 13px;
+            color: #666;
+        }
+
+        /* Content areas */
+        .content { padding: 30px; }
+
+        /* Start screen */
+        #start-screen .info-box {
+            background: #f0f4f8;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+        }
+        #start-screen .info-box h3 {
+            color: #0f3460;
+            margin-bottom: 10px;
+        }
+        #start-screen .info-box ul {
+            color: #666;
+            padding-left: 20px;
+            line-height: 1.8;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+        }
+        .form-group .hint {
+            font-weight: normal;
+            color: #999;
+            font-size: 13px;
+        }
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        /* Survey screen */
+        #survey-screen { display: none; }
+        .question-card {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+        }
+        .question-field {
+            display: inline-block;
+            background: #0f3460;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+        }
+        .question-text {
+            font-size: 18px;
+            color: #333;
+            line-height: 1.5;
+            margin-bottom: 20px;
+        }
+        .rating-scale {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+        }
+        .rating-option {
+            flex: 1;
+            text-align: center;
+        }
+        .rating-option input {
+            display: none;
+        }
+        .rating-option label {
+            display: block;
+            padding: 15px 10px;
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 600;
+            color: #666;
+        }
+        .rating-option input:checked + label {
+            background: #0f3460;
+            border-color: #0f3460;
+            color: white;
+        }
+        .rating-option label:hover {
+            border-color: #0f3460;
+        }
+        .scale-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: #999;
+            margin-top: 8px;
+            padding: 0 5px;
+        }
+
+        /* Result screen */
+        #result-screen { display: none; }
+        .result-summary {
+            text-align: center;
+            padding: 30px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            margin-bottom: 30px;
+        }
+        .result-summary .overall-label {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+        .result-summary .overall-color {
+            display: inline-block;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            margin-bottom: 15px;
+        }
+        .result-summary .overall-color.green { background: #4CAF50; }
+        .result-summary .overall-color.yellow { background: #FFC107; }
+        .result-summary .overall-color.orange { background: #FF9800; }
+        .result-summary h2 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        /* Color grid */
+        .color-grid {
+            margin: 30px 0;
+        }
+        .color-grid table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .color-grid th, .color-grid td {
+            padding: 12px;
+            text-align: center;
+            border: 1px solid #e0e0e0;
+        }
+        .color-grid th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #333;
+        }
+        .color-grid .cell {
+            width: 50px;
+            height: 50px;
+            border-radius: 8px;
+            display: inline-block;
+        }
+        .color-grid .cell.green { background: #4CAF50; }
+        .color-grid .cell.yellow { background: #FFC107; }
+        .color-grid .cell.orange { background: #FF9800; }
+        .color-grid .cell.unknown { background: #e0e0e0; }
+
+        /* Interpretations */
+        .interpretations {
+            margin: 30px 0;
+        }
+        .interpretation-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            border-left: 4px solid #0f3460;
+        }
+        .interpretation-card h4 {
+            color: #0f3460;
+            margin-bottom: 8px;
+        }
+        .interpretation-card p {
+            color: #666;
+            line-height: 1.6;
+        }
+
+        /* History screen */
+        #history-screen { display: none; }
+        .history-list {
+            list-style: none;
+        }
+        .history-item {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .history-item-info h4 {
+            color: #333;
+            margin-bottom: 5px;
+        }
+        .history-item-info .date {
+            color: #999;
+            font-size: 13px;
+        }
+        .history-item-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 14px 28px;
+            font-size: 16px;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #0f3460 0%, #16213e 100%);
+            color: white;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(15, 52, 96, 0.3);
+        }
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+        }
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+        .btn-small {
+            padding: 8px 16px;
+            font-size: 14px;
+        }
+        .btn-danger {
+            background: #f44336;
+            color: white;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 20px;
+            font-size: 13px;
+            color: #999;
+            border-top: 1px solid #eee;
+        }
+        .footer a {
+            color: #666;
+            text-decoration: none;
+        }
+        .footer a:hover {
+            text-decoration: underline;
+        }
+        .footer .separator {
+            margin: 0 10px;
+            color: #ccc;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 30px;
+        }
+
+        /* Nav */
+        .nav-tabs {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        .nav-tab {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            border: none;
+            background: transparent;
+            font-size: 14px;
+            font-weight: 600;
+            color: #666;
+            transition: all 0.2s;
+        }
+        .nav-tab.active {
+            color: #0f3460;
+            border-bottom: 3px solid #0f3460;
+            background: white;
+        }
+        .nav-tab:hover:not(.active) {
+            background: #f0f0f0;
+        }
+
+        /* Utility */
+        .text-center { text-align: center; }
+        .mt-20 { margin-top: 20px; }
+        .hidden { display: none !important; }
+
+        /* Loading */
+        .loading {
+            text-align: center;
+            padding: 40px;
+        }
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f0f0f0;
+            border-top-color: #0f3460;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* ========================================
+           MOBILE RESPONSIVE STYLES
+           ======================================== */
+
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+
+            .container {
+                border-radius: 12px;
+            }
+
+            .header {
+                padding: 20px 15px;
+            }
+            .header h1 {
+                font-size: 20px;
+            }
+            .header .subtitle {
+                font-size: 12px;
+            }
+            .privacy-badge {
+                font-size: 11px;
+                padding: 6px 12px;
+            }
+
+            .progress-container {
+                padding: 15px;
+            }
+
+            .content {
+                padding: 20px 15px;
+            }
+
+            /* Tabs */
+            .nav-tabs {
+                flex-direction: column;
+                gap: 0;
+            }
+            .nav-tab {
+                padding: 12px 15px;
+                text-align: center;
+            }
+
+            /* Questions */
+            .question-card {
+                padding: 20px 15px;
+            }
+            .question-text {
+                font-size: 16px;
+            }
+
+            /* Rating options - vertical on very small screens */
+            .rating-options {
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+            .rating-option {
+                flex: 1 1 calc(20% - 8px);
+                min-width: 45px;
+            }
+            .rating-option label {
+                padding: 12px 8px;
+                font-size: 14px;
+            }
+            .scale-labels {
+                font-size: 10px;
+            }
+
+            /* Result summary */
+            .result-summary {
+                padding: 20px 15px;
+            }
+            .result-summary h2 {
+                font-size: 22px;
+            }
+            .result-summary .overall-color {
+                width: 60px;
+                height: 60px;
+            }
+
+            /* Color grid - make scrollable */
+            .color-grid {
+                overflow-x: auto;
+            }
+            .color-grid table {
+                min-width: 400px;
+            }
+            .color-grid th, .color-grid td {
+                padding: 8px;
+                font-size: 12px;
+            }
+            .color-grid .cell {
+                width: 35px;
+                height: 35px;
+            }
+
+            /* Interpretation cards */
+            .interpretation-card {
+                padding: 15px;
+            }
+            .interpretation-card h4 {
+                font-size: 14px;
+            }
+            .interpretation-card p {
+                font-size: 13px;
+            }
+
+            /* History list */
+            .history-item {
+                padding: 15px;
+            }
+
+            /* Buttons */
+            .btn {
+                padding: 12px 20px;
+                font-size: 14px;
+            }
+
+            /* Actions row */
+            .actions {
+                flex-direction: column;
+                gap: 10px;
+            }
+            .actions .btn {
+                width: 100%;
+            }
+        }
+
+        /* Tablet */
+        @media (min-width: 601px) and (max-width: 900px) {
+            body {
+                padding: 15px;
+            }
+
+            .header {
+                padding: 25px 20px;
+            }
+
+            .content {
+                padding: 25px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    {{ gtm_body() }}
+
+    <div class="container">
+        <div class="header">
+            <h1>🔬 Friktionsprofil</h1>
+            <p class="subtitle">Forstå hvordan pres bevæger sig gennem dit system</p>
+            <div class="privacy-badge">Alt gemmes lokalt i din browser - vi gemmer intet</div>
+        </div>
+
+        <div class="nav-tabs">
+            <button class="nav-tab active" data-tab="survey">Ny Profil</button>
+            <button class="nav-tab" data-tab="history">Mine Profiler</button>
+        </div>
+
+        <div class="progress-container" id="progress-container" style="display: none;">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill"></div>
+            </div>
+            <div class="progress-text">
+                <span id="progress-current">0</span>
+                <span id="progress-total">af 16 spørgsmål</span>
+            </div>
+        </div>
+
+        <!-- Start Screen -->
+        <div class="content" id="start-screen">
+            <div class="info-box">
+                <h3>Hvad måler friktionsprofilen?</h3>
+                <ul>
+                    <li>Hvordan du reagerer på pres i 4 felter: Tryghed, Mening, Kan og Besvær</li>
+                    <li>Hvilke lag (krop, emotion, indre, kognition) der er mest følsomme</li>
+                    <li>Din båndbredde - evnen til at løfte pres op i forståelse</li>
+                </ul>
+            </div>
+
+            <div class="form-group">
+                <label>
+                    Kontekst
+                    <span class="hint">- vælg hvad profilen handler om</span>
+                </label>
+                <select id="context-select">
+                    <option value="general">Generel selvindsigt</option>
+                    <option value="mus">MUS-samtale</option>
+                    <option value="coaching">Coaching</option>
+                    <option value="konflikt">Konfliktløsning</option>
+                    <option value="onboarding">Onboarding</option>
+                </select>
+            </div>
+
+            <div class="button-group">
+                <button class="btn btn-primary" id="start-btn">
+                    Start spørgeskema
+                </button>
+            </div>
+
+            <p class="text-center mt-20" style="color: #999; font-size: 13px;">
+                ⏱️ Tager ca. 5-7 minutter
+            </p>
+        </div>
+
+        <!-- Survey Screen -->
+        <div class="content" id="survey-screen">
+            <div id="questions-container"></div>
+
+            <div class="button-group">
+                <button class="btn btn-secondary" id="prev-btn" disabled>← Tilbage</button>
+                <button class="btn btn-primary" id="next-btn">Næste →</button>
+            </div>
+        </div>
+
+        <!-- Loading Screen -->
+        <div class="content hidden" id="loading-screen">
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Beregner din profil...</p>
+            </div>
+        </div>
+
+        <!-- Result Screen -->
+        <div class="content" id="result-screen">
+            <div class="result-summary" id="result-summary"></div>
+
+            <h3>Farvegrid</h3>
+            <div class="color-grid" id="color-grid"></div>
+
+            <h3>Fortolkninger</h3>
+            <div class="interpretations" id="interpretations"></div>
+
+            <div class="button-group">
+                <button class="btn btn-secondary" id="export-btn">📥 Download profil</button>
+                <button class="btn btn-primary" id="new-profile-btn">Start ny profil</button>
+            </div>
+        </div>
+
+        <!-- History Screen -->
+        <div class="content" id="history-screen">
+            <div id="history-empty" class="text-center" style="padding: 40px; color: #999;">
+                <p style="font-size: 48px; margin-bottom: 20px;">📋</p>
+                <p>Du har ingen gemte profiler endnu.</p>
+                <p style="margin-top: 10px;">Start en ny profil for at se dine resultater her.</p>
+            </div>
+
+            <ul class="history-list" id="history-list"></ul>
+
+            <div class="button-group" id="history-actions" style="display: none;">
+                <button class="btn btn-secondary" id="import-btn">📤 Importer profiler</button>
+                <button class="btn btn-secondary" id="export-all-btn">📥 Eksporter alle</button>
+            </div>
+            <input type="file" id="import-file" accept=".json" style="display: none;">
+        </div>
+
+        <!-- Footer with privacy link -->
+        <div class="footer">
+            <a href="/help">Hjælp</a>
+            <span class="separator">·</span>
+            <a href="#" onclick="CookieConsent.showSettings('da'); return false;">Privatlivsindstillinger</a>
+            <span class="separator">·</span>
+            <a href="/login">Log ind</a>
+        </div>
+    </div>
+
+    <script src="/static/js/profil-storage.js"></script>
+    <script>
+        // ========================================
+        // State
+        // ========================================
+        let questions = [];
+        let currentQuestionIndex = 0;
+        let currentTab = 'survey';
+
+        // ========================================
+        // DOM Elements
+        // ========================================
+        const startScreen = document.getElementById('start-screen');
+        const surveyScreen = document.getElementById('survey-screen');
+        const loadingScreen = document.getElementById('loading-screen');
+        const resultScreen = document.getElementById('result-screen');
+        const historyScreen = document.getElementById('history-screen');
+        const progressContainer = document.getElementById('progress-container');
+
+        // ========================================
+        // Tab Navigation
+        // ========================================
+        document.querySelectorAll('.nav-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                const targetTab = tab.dataset.tab;
+                switchTab(targetTab);
+            });
+        });
+
+        function switchTab(tab) {
+            currentTab = tab;
+
+            // Update tab buttons
+            document.querySelectorAll('.nav-tab').forEach(t => {
+                t.classList.toggle('active', t.dataset.tab === tab);
+            });
+
+            // Hide all screens
+            startScreen.style.display = 'none';
+            surveyScreen.style.display = 'none';
+            resultScreen.style.display = 'none';
+            historyScreen.style.display = 'none';
+            progressContainer.style.display = 'none';
+
+            if (tab === 'survey') {
+                startScreen.style.display = 'block';
+            } else if (tab === 'history') {
+                historyScreen.style.display = 'block';
+                renderHistory();
+            }
+        }
+
+        // ========================================
+        // Start Survey
+        // ========================================
+        document.getElementById('start-btn').addEventListener('click', async () => {
+            const context = document.getElementById('context-select').value;
+
+            // Start session
+            ProfilStorage.startSession(context);
+
+            // Fetch questions
+            try {
+                const response = await fetch('/profil/api/questions?types=sensitivity');
+                const data = await response.json();
+                questions = data.questions;
+
+                if (questions.length === 0) {
+                    alert('Ingen spørgsmål fundet');
+                    return;
+                }
+
+                // Show survey
+                startScreen.style.display = 'none';
+                surveyScreen.style.display = 'block';
+                progressContainer.style.display = 'block';
+
+                currentQuestionIndex = 0;
+                renderQuestion();
+                updateProgress();
+            } catch (e) {
+                console.error('Error fetching questions:', e);
+                alert('Kunne ikke hente spørgsmål. Prøv igen.');
+            }
+        });
+
+        // ========================================
+        // Survey Navigation
+        // ========================================
+        document.getElementById('prev-btn').addEventListener('click', () => {
+            if (currentQuestionIndex > 0) {
+                currentQuestionIndex--;
+                renderQuestion();
+                updateProgress();
+            }
+        });
+
+        document.getElementById('next-btn').addEventListener('click', async () => {
+            // Save current answer
+            const selected = document.querySelector('input[name="rating"]:checked');
+            if (!selected) {
+                alert('Vælg venligst et svar');
+                return;
+            }
+
+            const questionId = questions[currentQuestionIndex].id;
+            const score = parseInt(selected.value);
+            ProfilStorage.saveResponse(questionId, score);
+
+            // Next or finish
+            if (currentQuestionIndex < questions.length - 1) {
+                currentQuestionIndex++;
+                renderQuestion();
+                updateProgress();
+            } else {
+                // Calculate result
+                await calculateResult();
+            }
+        });
+
+        function renderQuestion() {
+            const q = questions[currentQuestionIndex];
+            const responses = ProfilStorage.getResponses();
+            const existingResponse = responses.find(r => r.question_id === q.id);
+
+            const container = document.getElementById('questions-container');
+            container.innerHTML = `
+                <div class="question-card">
+                    <span class="question-field">${q.field}</span>
+                    <p class="question-text">${q.text_da}</p>
+                    <div class="rating-scale">
+                        ${[1, 2, 3, 4, 5].map(n => `
+                            <div class="rating-option">
+                                <input type="radio" name="rating" id="r${n}" value="${n}"
+                                    ${existingResponse && existingResponse.score === n ? 'checked' : ''}>
+                                <label for="r${n}">${n}</label>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div class="scale-labels">
+                        <span>Meget uenig</span>
+                        <span>Meget enig</span>
+                    </div>
+                </div>
+            `;
+
+            // Update buttons
+            document.getElementById('prev-btn').disabled = currentQuestionIndex === 0;
+            document.getElementById('next-btn').textContent =
+                currentQuestionIndex === questions.length - 1 ? 'Se resultat' : 'Næste →';
+        }
+
+        function updateProgress() {
+            const pct = ((currentQuestionIndex + 1) / questions.length) * 100;
+            document.getElementById('progress-fill').style.width = pct + '%';
+            document.getElementById('progress-current').textContent = currentQuestionIndex + 1;
+            document.getElementById('progress-total').textContent = `af ${questions.length} spørgsmål`;
+        }
+
+        // ========================================
+        // Calculate Result
+        // ========================================
+        async function calculateResult() {
+            surveyScreen.style.display = 'none';
+            loadingScreen.classList.remove('hidden');
+
+            const responses = ProfilStorage.getResponses();
+            const session = ProfilStorage.getCurrentSession();
+
+            try {
+                const response = await fetch('/profil/api/calculate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        responses: responses,
+                        context: session.context
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.error) {
+                    throw new Error(result.error);
+                }
+
+                // Save result
+                ProfilStorage.completeSession(result);
+
+                // Show result
+                loadingScreen.classList.add('hidden');
+                progressContainer.style.display = 'none';
+                renderResult(result);
+                resultScreen.style.display = 'block';
+
+            } catch (e) {
+                console.error('Error calculating result:', e);
+                alert('Kunne ikke beregne resultat: ' + e.message);
+                loadingScreen.classList.add('hidden');
+                surveyScreen.style.display = 'block';
+            }
+        }
+
+        // ========================================
+        // Render Result
+        // ========================================
+        function renderResult(result) {
+            // Summary
+            const summary = result.summary;
+            document.getElementById('result-summary').innerHTML = `
+                <p class="overall-label">Din overordnede profil</p>
+                <div class="overall-color ${summary.overall_color}"></div>
+                <h2>${summary.overall_label}</h2>
+                <p style="color: #666; margin-top: 15px;">
+                    Gennemsnitsscore: ${summary.total_avg_score} / 5<br>
+                    Båndbredde: ${summary.avg_bandwidth > 0 ? '+' : ''}${summary.avg_bandwidth}
+                </p>
+                <p style="color: #666; margin-top: 10px; font-size: 14px;">
+                    ${summary.bandwidth_interpretation}
+                </p>
+            `;
+
+            // Color grid
+            const fields = ['TRYGHED', 'MENING', 'KAN', 'BESVÆR'];
+            const layers = ['BIOLOGI', 'EMOTION', 'INDRE', 'KOGNITION'];
+            const layerLabels = {
+                'BIOLOGI': 'Biologi',
+                'EMOTION': 'Emotion',
+                'INDRE': 'Indre',
+                'KOGNITION': 'Kognition'
+            };
+
+            let gridHtml = '<table><thead><tr><th></th>';
+            layers.forEach(l => gridHtml += `<th>${layerLabels[l]}</th>`);
+            gridHtml += '</tr></thead><tbody>';
+
+            fields.forEach(field => {
+                gridHtml += `<tr><th>${field}</th>`;
+                layers.forEach(layer => {
+                    const color = result.color_matrix[field]?.[layer] || 'unknown';
+                    gridHtml += `<td><div class="cell ${color}"></div></td>`;
+                });
+                gridHtml += '</tr>';
+            });
+            gridHtml += '</tbody></table>';
+
+            document.getElementById('color-grid').innerHTML = gridHtml;
+
+            // Interpretations
+            let interpHtml = '';
+            for (const [field, text] of Object.entries(result.interpretations)) {
+                interpHtml += `
+                    <div class="interpretation-card">
+                        <h4>${field}</h4>
+                        <p>${text}</p>
+                    </div>
+                `;
+            }
+            document.getElementById('interpretations').innerHTML = interpHtml;
+        }
+
+        // ========================================
+        // Result Actions
+        // ========================================
+        document.getElementById('export-btn').addEventListener('click', () => {
+            ProfilStorage.exportToFile();
+        });
+
+        document.getElementById('new-profile-btn').addEventListener('click', () => {
+            resultScreen.style.display = 'none';
+            startScreen.style.display = 'block';
+        });
+
+        // ========================================
+        // History
+        // ========================================
+        function renderHistory() {
+            const history = ProfilStorage.getHistory();
+            const list = document.getElementById('history-list');
+            const empty = document.getElementById('history-empty');
+            const actions = document.getElementById('history-actions');
+
+            if (history.length === 0) {
+                list.innerHTML = '';
+                empty.style.display = 'block';
+                actions.style.display = 'none';
+                return;
+            }
+
+            empty.style.display = 'none';
+            actions.style.display = 'flex';
+
+            list.innerHTML = history.map(session => {
+                const date = new Date(session.completed_at);
+                const dateStr = date.toLocaleDateString('da-DK', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+                const color = session.result?.summary?.overall_color || 'unknown';
+                const label = session.result?.summary?.overall_label || 'Ukendt';
+
+                return `
+                    <li class="history-item">
+                        <div class="history-item-info">
+                            <h4>
+                                <span class="cell ${color}" style="width: 16px; height: 16px; display: inline-block; vertical-align: middle; margin-right: 8px;"></span>
+                                ${label}
+                            </h4>
+                            <p class="date">${dateStr} - ${session.context}</p>
+                        </div>
+                        <div class="history-item-actions">
+                            <button class="btn btn-small btn-secondary" onclick="viewProfile('${session.id}')">Se</button>
+                            <button class="btn btn-small btn-danger" onclick="deleteProfile('${session.id}')">Slet</button>
+                        </div>
+                    </li>
+                `;
+            }).join('');
+        }
+
+        function viewProfile(sessionId) {
+            const session = ProfilStorage.getSession(sessionId);
+            if (session && session.result) {
+                renderResult(session.result);
+                historyScreen.style.display = 'none';
+                resultScreen.style.display = 'block';
+            }
+        }
+
+        function deleteProfile(sessionId) {
+            if (confirm('Er du sikker på du vil slette denne profil?')) {
+                ProfilStorage.deleteSession(sessionId);
+                renderHistory();
+            }
+        }
+
+        document.getElementById('export-all-btn').addEventListener('click', () => {
+            ProfilStorage.exportToFile();
+        });
+
+        document.getElementById('import-btn').addEventListener('click', () => {
+            document.getElementById('import-file').click();
+        });
+
+        document.getElementById('import-file').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            try {
+                const result = await ProfilStorage.importFromFile(file);
+                alert(`Importeret ${result.imported} af ${result.total} profiler`);
+                renderHistory();
+            } catch (err) {
+                alert('Import fejlede: ' + err.message);
+            }
+
+            e.target.value = ''; // Reset file input
+        });
+
+        // ========================================
+        // Init
+        // ========================================
+        if (!ProfilStorage.isAvailable()) {
+            alert('Din browser understøtter ikke lokal lagring. Profiler kan ikke gemmes.');
+        }
+
+        // Show stats in console
+        console.log('ProfilStorage stats:', ProfilStorage.getStats());
+    </script>
+
+    <!-- Cookie Consent (script loaded via gtm_head macro) -->
+    <script>
+        // Initialize cookie consent with current language
+        const userLang = document.documentElement.lang || 'da';
+        CookieConsent.init(userLang);
+
+        // Listen for consent changes
+        window.addEventListener('cookieConsentGiven', function(e) {
+            if (!e.detail.functional) {
+                // User rejected functional cookies - disable profil storage
+                console.log('Functional cookies rejected - profil data will not be stored');
+                // Show message to user
+                const msg = userLang === 'da'
+                    ? 'Du har fravalgt lagring af profildata. Dine resultater vil ikke blive gemt.'
+                    : 'You have declined data storage. Your results will not be saved.';
+                alert(msg);
+            }
+        });
+
+        // Check consent before using ProfilStorage
+        const originalStartSession = ProfilStorage.startSession;
+        ProfilStorage.startSession = function(context) {
+            if (!CookieConsent.hasConsent('functional')) {
+                console.warn('ProfilStorage: No consent for functional cookies');
+                // Still allow the session, but warn user
+            }
+            return originalStartSession.call(ProfilStorage, context);
+        };
+    </script>
+</body>
+</html>
