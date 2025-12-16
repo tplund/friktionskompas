@@ -5828,29 +5828,56 @@ def seed_assessment_types_route():
 
 @app.route('/admin/fix-default-preset', methods=['GET'])
 def fix_default_preset():
-    """Fix default preset til B2B Standard (inkl. gruppe_friktion)"""
+    """Fix default preset til Enterprise Full (alle 7 målingstyper)"""
     with get_db() as conn:
-        # Sæt B2C Individuel til ikke-default
-        conn.execute("UPDATE assessment_presets SET is_default = 0 WHERE name = 'B2C Individuel'")
-        # Sæt B2B Standard til default
-        conn.execute("UPDATE assessment_presets SET is_default = 1 WHERE name = 'B2B Standard'")
+        # Sæt alle presets til ikke-default
+        conn.execute("UPDATE assessment_presets SET is_default = 0")
 
-        # Tjek om gruppe_friktion er i B2B Standard preset
-        preset = conn.execute("SELECT id FROM assessment_presets WHERE name = 'B2B Standard'").fetchone()
-        if preset:
-            existing = conn.execute("""
-                SELECT 1 FROM preset_assessment_types
-                WHERE preset_id = ? AND assessment_type_id = 'gruppe_friktion'
-            """, (preset['id'],)).fetchone()
-            if not existing:
+        # Sæt Enterprise Full til default
+        conn.execute("UPDATE assessment_presets SET is_default = 1 WHERE name = 'Enterprise Full'")
+
+        # Tjek om Enterprise Full preset eksisterer
+        preset = conn.execute("SELECT id FROM assessment_presets WHERE name = 'Enterprise Full'").fetchone()
+
+        if not preset:
+            # Opret Enterprise Full preset hvis det ikke eksisterer
+            conn.execute("""
+                INSERT INTO assessment_presets (name, description, is_default)
+                VALUES ('Enterprise Full', 'Alle målingstyper aktiveret', 1)
+            """)
+            preset_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+
+            # Tilføj alle 7 målingstyper
+            all_types = ['screening', 'profil_fuld', 'profil_situation', 'gruppe_friktion',
+                        'gruppe_leder', 'kapacitet', 'baandbredde']
+            for type_id in all_types:
                 conn.execute("""
-                    INSERT INTO preset_assessment_types (preset_id, assessment_type_id)
-                    VALUES (?, 'gruppe_friktion')
-                """, (preset['id'],))
+                    INSERT OR IGNORE INTO preset_assessment_types (preset_id, assessment_type_id)
+                    VALUES (?, ?)
+                """, (preset_id, type_id))
+
+            types_added = all_types
+        else:
+            preset_id = preset['id']
+            # Tilføj alle manglende typer til Enterprise Full
+            all_types = ['screening', 'profil_fuld', 'profil_situation', 'gruppe_friktion',
+                        'gruppe_leder', 'kapacitet', 'baandbredde']
+            for type_id in all_types:
+                conn.execute("""
+                    INSERT OR IGNORE INTO preset_assessment_types (preset_id, assessment_type_id)
+                    VALUES (?, ?)
+                """, (preset_id, type_id))
+
+            # Hent tilføjede typer
+            types_in_preset = conn.execute("""
+                SELECT assessment_type_id FROM preset_assessment_types WHERE preset_id = ?
+            """, (preset_id,)).fetchall()
+            types_added = [t['assessment_type_id'] for t in types_in_preset]
 
     return jsonify({
         'status': 'ok',
-        'message': 'Default preset ændret til B2B Standard (screening, profil_fuld, gruppe_friktion)'
+        'message': f'Default preset ændret til Enterprise Full ({len(types_added)} målingstyper)',
+        'types': types_added
     })
 
 

@@ -1041,13 +1041,13 @@ INITIAL_PRESETS = [
     {
         'name': 'B2B Standard',
         'description': 'Standard for business kunder med team-målinger',
-        'is_default': 1,  # Nu default - inkluderer gruppe_friktion
+        'is_default': 0,
         'types': ['screening', 'profil_fuld', 'gruppe_friktion']
     },
     {
         'name': 'Enterprise Full',
-        'description': 'Alle målingstyper aktiveret for enterprise kunder',
-        'is_default': 0,
+        'description': 'Alle målingstyper aktiveret',
+        'is_default': 1,  # Nu default - alle 7 typer
         'types': ['screening', 'profil_fuld', 'profil_situation', 'gruppe_friktion', 'gruppe_leder', 'kapacitet', 'baandbredde']
     }
 ]
