@@ -2,16 +2,16 @@
 
 ## 🔥 Høj Prioritet
 
-### Central Beregningsmotor (friction_engine) 🆕
-- [ ] **Opret `friction_engine.py`** - Samlet motor til alle friktionsberegninger
+### Central Beregningsmotor (friction_engine) ✅
+- [x] ~~**Opret `friction_engine.py`** - Samlet motor til alle friktionsberegninger~~
   - `calculate_field_scores(responses)` → {MENING: 3.5, TRYGHED: 2.8, ...}
   - `calculate_spread(responses)` → {MENING: 0.8, ...} (std_dev)
   - `calculate_gap(employee_scores, leader_scores)` → {...}
   - `get_warnings(scores, spread, gap)` → [Warning(...), ...]
   - `get_profile_type(scores)` → "travlt_team" | "siloed" | ...
+- [x] ~~**Unit tests** for alle beregningsfunktioner~~ (36 tests, alle passerer)
 - [ ] **Migrér beregninger fra `analysis.py`** til motoren
 - [ ] **Migrér beregninger fra `admin_app.py`** til motoren
-- [ ] **Unit tests** for alle beregningsfunktioner
 - [ ] **Dokumentér mekanik** i `ANALYSELOGIK.md`
 
 **Formål:** Ét sted at opdatere når mekanikken ændres, lettere at teste, konsistens på tværs af alle visninger.
