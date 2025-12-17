@@ -121,20 +121,21 @@
 
 **Formål:** Enterprise-kunder kan integrere Friktionskompasset med deres HR-systemer, Power BI dashboards, etc.
 
-### Situationsmåling (NY - Høj Prioritet)
+### Situationsmåling ✅ FÆRDIG
 Mål friktion for specifikke **handlinger** i specifikke **opgaver** - ikke personprofiler.
 Bruges til udvikling af e-læring, kommunikation og adfærdsdesign.
 
-- [ ] **Database udvidelse** - `tasks`, `actions`, `action_responses` tabeller
-- [ ] **Handlingsbaseret struktur** - Én opgave → 2-5 konkrete handlinger → måling per handling
-- [ ] **Indirekte spørgsmål** - Undgå substitution (Kahneman-problemet)
+- [x] ~~**Database udvidelse** - `tasks`, `actions`, `situation_assessments`, `situation_tokens`, `situation_responses` tabeller~~
+- [x] ~~**Handlingsbaseret struktur** - Én opgave → 2-5 konkrete handlinger → måling per handling~~
+- [x] ~~**Indirekte spørgsmål** - Undgå substitution (Kahneman-problemet)~~
   - Tryghed: "Hvor ubehageligt ville det være at lave en fejl her?"
   - Mening: "Hvor tydeligt kan du se, hvem handlingen hjælper?"
   - Kan: "Hvor sikkert ved du, hvad første skridt er?"
   - Besvær: "Hvor mange mentale stop er der typisk?"
-- [ ] **Admin UI** - Opret opgaver og handlinger
-- [ ] **Respondent flow** - 5-8 spørgsmål total, 2-3 minutter
-- [ ] **Resultat-visning** - Prioriteret friktionsliste per handling
+- [x] ~~**Admin UI** - Opret opgaver og handlinger (CRUD med navigation)~~
+- [x] ~~**Email-integration** - Mailjet invitationer til respondenter~~
+- [x] ~~**Respondent flow** - 4 spørgsmål per handling, token-baseret adgang~~
+- [x] ~~**Resultat-visning** - Prioriteret friktionsliste per handling med anbefalinger~~
 - Se detaljeret plan: `PLAN_situationsmaaling.md`
 
 **Formål:** Målrettet udvikling af læring og kommunikation. Svar på "hvad skal adresseres først?"
