@@ -583,7 +583,7 @@ def logout():
         )
     session.pop('user', None)
     flash('Du er nu logget ud', 'success')
-    return redirect(url_for('login'))
+    return redirect('/')
 
 
 # ========================================
