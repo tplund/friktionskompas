@@ -121,6 +121,55 @@
 
 **Formål:** Enterprise-kunder kan integrere Friktionskompasset med deres HR-systemer, Power BI dashboards, etc.
 
+### Situationsmåling (NY - Høj Prioritet)
+Mål friktion for specifikke **handlinger** i specifikke **opgaver** - ikke personprofiler.
+Bruges til udvikling af e-læring, kommunikation og adfærdsdesign.
+
+- [ ] **Database udvidelse** - `tasks`, `actions`, `action_responses` tabeller
+- [ ] **Handlingsbaseret struktur** - Én opgave → 2-5 konkrete handlinger → måling per handling
+- [ ] **Indirekte spørgsmål** - Undgå substitution (Kahneman-problemet)
+  - Tryghed: "Hvor ubehageligt ville det være at lave en fejl her?"
+  - Mening: "Hvor tydeligt kan du se, hvem handlingen hjælper?"
+  - Kan: "Hvor sikkert ved du, hvad første skridt er?"
+  - Besvær: "Hvor mange mentale stop er der typisk?"
+- [ ] **Admin UI** - Opret opgaver og handlinger
+- [ ] **Respondent flow** - 5-8 spørgsmål total, 2-3 minutter
+- [ ] **Resultat-visning** - Prioriteret friktionsliste per handling
+- Se detaljeret plan: `PLAN_situationsmaaling.md`
+
+**Formål:** Målrettet udvikling af læring og kommunikation. Svar på "hvad skal adresseres først?"
+
+### Data Import/Export & Research (NY)
+Bulk data håndtering til forskning, analyse og integration.
+
+- [ ] **Bulk eksport** - JSON/CSV med fuld metadata
+  - Måledata (svar, scores, timestamps)
+  - Spørgeskema-definition (versioneret)
+  - Felt-mapping (TRYGHED, MENING, KAN, BESVÆR)
+- [ ] **Anonymisering** - Irreversibel anonymisering til research
+- [ ] **Pseudonymisering** - Respondent-UUID som default
+- [ ] **Import** - Mapping-interface for eksterne data (Excel, Qualtrics, etc.)
+- [ ] **Research mode** - Særlig datatilstand uden personhenførbarhed
+
+**Formål:** Muliggør forskning, benchmarking og brug af data uden lock-in.
+
+### GDPR & DPO-overblik (NY)
+Compliance-features der gør det nemt for kunder at dokumentere.
+
+- [ ] **Auto-DPA** - Generer databehandleraftale med kundeinfo
+  - Versioneret
+  - Download PDF / digital accept
+- [ ] **Underdatabehandlere** - Live liste med formål, datatyper, region
+- [ ] **DPO Dashboard** - Samlet overblik for Data Protection Officers
+  - Aktive aftaler
+  - Datatilstande (hvad gemmes, hvad anonymiseres)
+  - Retention-regler
+  - Dataoversigt (antal målinger, respondenter)
+- [ ] **Sletning som feature** - Bruger-initieret sletning med eksport først
+- [ ] **Retention-regler** - Auto-sletning efter X måneder (kundevalg)
+
+**Formål:** Compliance uden friktion. DPO'er kan dokumentere alt på 5 minutter.
+
 ### Social Login & SSO (i gang)
 - [x] ~~**Database struktur** - `auth_providers` JSON felt på customers/domains, `user_oauth_links` tabel~~
 - [x] ~~**OAuth modul** - `oauth.py` med Authlib integration~~
@@ -220,6 +269,25 @@ GOOGLE_CLIENT_SECRET=xxx
 ---
 
 ## 🔮 Lav Prioritet / Future
+
+### Preskriptiv Læring / Friktionsstyret Indhold (Fremtidsvision)
+Brug friktionsmåling **før** læring til automatisk at matche indholdstype.
+
+- [ ] **Indholdstype-mapping** - Knyt indholdstyper til friktionsfelter
+  - TRYGHED/MENING friktion → Social proof, videoer med rigtige mennesker
+  - KAN friktion → Instruktion, eksempler, step-by-step (tekst er ofte nok)
+  - BESVÆR friktion → Tjeklister, links, overblik
+- [ ] **Automatisk match** - Logik der vælger indhold baseret på måling
+- [ ] **LMS integration** - Hooks til eksisterende læringssystemer
+- [ ] **Illusorisk kunnen-detektion** - Sammenlign "oplevet kunnen" vs "faktisk usikkerhed"
+
+**Hvorfor bedre end klassiske adaptive systemer:**
+- Klassisk: Tester viden → giver næste opgave → antager viden er problemet
+- Friktionsbaseret: Tester modstand → matcher indhold til barrieren → accepterer at adfærd stopper før viden
+
+**Formål:** Giv kun instruktion når det er problemet. Motivér kun når det er problemet. Reducer når det er problemet.
+
+Se detaljeret plan: `PLAN_situationsmaaling.md`
 
 ### B2C Freemium & Public Access ⏸️ AFVENTER BUSINESS ANALYSE
 - [ ] **Business analyse** - prissætning, freemium-struktur, målgruppe
