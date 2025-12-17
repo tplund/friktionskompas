@@ -171,7 +171,8 @@
             background: rgba(255,255,255,0.15);
             border-color: rgba(255,255,255,0.5);
         }
-        .customer-switcher select option {
+        .customer-switcher select option,
+        .role-switcher select option {
             background: #1f2937;
             color: white;
         }
@@ -475,8 +476,8 @@
             </ul>
             {% endif %}
 
-            {% if session.user.role in ['admin', 'superadmin'] %}
-            <!-- Customer switcher dropdown -->
+            {% if session.user.role == 'superadmin' %}
+            <!-- Customer switcher dropdown - KUN for superadmin -->
             <div class="customer-switcher">
                 <select id="customerSelect" onchange="switchCustomer(this.value)">
                     <option value="">🌍 Alle kunder</option>

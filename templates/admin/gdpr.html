@@ -2,195 +2,521 @@
 
 {% block title %}GDPR & Dataoverblik - Friktionskompasset{% endblock %}
 
+{% block extra_css %}
+<style>
+    .gdpr-header {
+        background: linear-gradient(135deg, #1e3a5f 0%, #2d4a6f 100%);
+        color: white;
+        padding: 30px;
+        border-radius: 12px;
+        margin-bottom: 25px;
+    }
+    .gdpr-header h1 {
+        margin: 0 0 8px 0;
+        font-size: 1.75rem;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .gdpr-header p {
+        margin: 0;
+        opacity: 0.85;
+        font-size: 1rem;
+    }
+    .gdpr-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: rgba(16, 185, 129, 0.2);
+        color: #10b981;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        margin-left: auto;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 15px;
+        margin-bottom: 25px;
+    }
+    .stat-card {
+        background: white;
+        padding: 20px;
+        border-radius: 12px;
+        text-align: center;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        border: 1px solid #e5e7eb;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .stat-icon {
+        font-size: 1.5rem;
+        margin-bottom: 8px;
+    }
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #1f2937;
+        line-height: 1.2;
+    }
+    .stat-label {
+        font-size: 0.85rem;
+        color: #6b7280;
+        margin-top: 4px;
+    }
+
+    .section-card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        border: 1px solid #e5e7eb;
+        margin-bottom: 25px;
+        overflow: hidden;
+    }
+    .section-header {
+        padding: 20px 25px;
+        border-bottom: 1px solid #e5e7eb;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .section-header h2 {
+        margin: 0;
+        font-size: 1.1rem;
+        color: #1f2937;
+    }
+    .section-header .icon {
+        font-size: 1.25rem;
+    }
+    .section-body {
+        padding: 25px;
+    }
+    .section-subtitle {
+        color: #6b7280;
+        margin-bottom: 20px;
+        font-size: 0.9rem;
+    }
+
+    .processor-grid {
+        display: grid;
+        gap: 12px;
+    }
+    .processor-card {
+        display: grid;
+        grid-template-columns: 1fr 2fr 1.5fr 1fr auto;
+        gap: 15px;
+        padding: 15px 20px;
+        background: #f9fafb;
+        border-radius: 8px;
+        align-items: center;
+        font-size: 0.9rem;
+    }
+    .processor-card:hover {
+        background: #f1f5f9;
+    }
+    .processor-name {
+        font-weight: 600;
+        color: #1f2937;
+    }
+    .processor-purpose {
+        color: #4b5563;
+    }
+    .processor-data {
+        color: #6b7280;
+        font-size: 0.85rem;
+    }
+    .processor-location {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        color: #059669;
+        font-size: 0.85rem;
+    }
+    .processor-link {
+        color: #3b82f6;
+        text-decoration: none;
+        font-size: 0.85rem;
+    }
+    .processor-link:hover {
+        text-decoration: underline;
+    }
+
+    @media (max-width: 900px) {
+        .processor-card {
+            grid-template-columns: 1fr;
+            gap: 8px;
+        }
+    }
+
+    .retention-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 15px;
+    }
+    .retention-item {
+        background: #f9fafb;
+        padding: 18px;
+        border-radius: 8px;
+        border-left: 3px solid #3b82f6;
+    }
+    .retention-item strong {
+        display: block;
+        color: #1f2937;
+        margin-bottom: 5px;
+    }
+    .retention-item p {
+        margin: 0;
+        color: #6b7280;
+        font-size: 0.9rem;
+    }
+
+    .compliance-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+    }
+    .compliance-item {
+        background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+        padding: 18px;
+        border-radius: 8px;
+        border-left: 3px solid #10b981;
+    }
+    .compliance-item .check-icon {
+        color: #10b981;
+        margin-right: 6px;
+    }
+    .compliance-item strong {
+        color: #065f46;
+    }
+    .compliance-item p {
+        margin: 8px 0 0 0;
+        color: #047857;
+        font-size: 0.85rem;
+    }
+
+    .dpo-contact {
+        margin-top: 20px;
+        padding: 20px;
+        background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+    .dpo-contact .icon {
+        font-size: 2rem;
+    }
+    .dpo-contact strong {
+        display: block;
+        color: #1e40af;
+        margin-bottom: 4px;
+    }
+    .dpo-contact a {
+        color: #3b82f6;
+    }
+
+    .danger-section {
+        border: 2px solid #fecaca;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+    .danger-section .section-header {
+        background: #fef2f2;
+        border-bottom-color: #fecaca;
+    }
+    .danger-section .section-header h2 {
+        color: #991b1b;
+    }
+    .danger-warning {
+        background: #fef2f2;
+        border: 1px solid #fecaca;
+        color: #991b1b;
+        padding: 12px 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 0.9rem;
+    }
+
+    .customer-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .customer-table th {
+        text-align: left;
+        padding: 12px 15px;
+        background: #f9fafb;
+        color: #374151;
+        font-weight: 600;
+        font-size: 0.85rem;
+        border-bottom: 2px solid #e5e7eb;
+    }
+    .customer-table td {
+        padding: 15px;
+        border-bottom: 1px solid #e5e7eb;
+        color: #4b5563;
+    }
+    .customer-table tr:hover td {
+        background: #f9fafb;
+    }
+    .customer-table .customer-name {
+        font-weight: 600;
+        color: #1f2937;
+    }
+    .btn-danger-small {
+        background: #dc2626;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+    .btn-danger-small:hover {
+        background: #b91c1c;
+    }
+
+    .data-timeline {
+        display: flex;
+        gap: 15px;
+        margin-top: 15px;
+    }
+    .timeline-item {
+        flex: 1;
+        background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+        padding: 15px;
+        border-radius: 8px;
+        text-align: center;
+    }
+    .timeline-label {
+        font-size: 0.8rem;
+        color: #047857;
+        margin-bottom: 5px;
+    }
+    .timeline-value {
+        font-weight: 600;
+        color: #065f46;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="page-header">
-    <h1>GDPR & Dataoverblik</h1>
+<div class="gdpr-header">
+    <h1>
+        <span>🔒</span>
+        GDPR & Dataoverblik
+        <span class="gdpr-badge">✓ Compliant</span>
+    </h1>
     <p>Compliance dashboard for Data Protection Officers</p>
 </div>
 
 <!-- Data Statistik -->
-<div class="card" style="margin-bottom: 20px;">
-    <h2>Dataoversigt</h2>
-
-    {% if is_superadmin %}
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 20px;">
-        <div style="background: #f8fafc; padding: 15px; border-radius: 8px; text-align: center;">
-            <div style="font-size: 2rem; font-weight: bold; color: #3b82f6;">{{ stats.customers }}</div>
-            <div style="color: #6b7280;">Kunder</div>
-        </div>
-        <div style="background: #f8fafc; padding: 15px; border-radius: 8px; text-align: center;">
-            <div style="font-size: 2rem; font-weight: bold; color: #3b82f6;">{{ stats.users }}</div>
-            <div style="color: #6b7280;">Brugere</div>
-        </div>
-        <div style="background: #f8fafc; padding: 15px; border-radius: 8px; text-align: center;">
-            <div style="font-size: 2rem; font-weight: bold; color: #3b82f6;">{{ stats.units }}</div>
-            <div style="color: #6b7280;">Organisationer</div>
-        </div>
-        <div style="background: #f8fafc; padding: 15px; border-radius: 8px; text-align: center;">
-            <div style="font-size: 2rem; font-weight: bold; color: #3b82f6;">{{ stats.assessments }}</div>
-            <div style="color: #6b7280;">Målinger</div>
-        </div>
-        <div style="background: #f8fafc; padding: 15px; border-radius: 8px; text-align: center;">
-            <div style="font-size: 2rem; font-weight: bold; color: #3b82f6;">{{ stats.responses }}</div>
-            <div style="color: #6b7280;">Svar</div>
-        </div>
-        <div style="background: #f8fafc; padding: 15px; border-radius: 8px; text-align: center;">
-            <div style="font-size: 2rem; font-weight: bold; color: #3b82f6;">{{ stats.tokens }}</div>
-            <div style="color: #6b7280;">Tokens</div>
-        </div>
+{% if is_superadmin %}
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon">🏢</div>
+        <div class="stat-value">{{ stats.customers }}</div>
+        <div class="stat-label">Kunder</div>
     </div>
-
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
-        <div style="background: #f0fdf4; padding: 15px; border-radius: 8px;">
-            <strong>Ældste data:</strong> {{ stats.oldest_data }}
-        </div>
-        <div style="background: #f0fdf4; padding: 15px; border-radius: 8px;">
-            <strong>Nyeste data:</strong> {{ stats.newest_data }}
-        </div>
+    <div class="stat-card">
+        <div class="stat-icon">👤</div>
+        <div class="stat-value">{{ stats.users }}</div>
+        <div class="stat-label">Brugere</div>
     </div>
+    <div class="stat-card">
+        <div class="stat-icon">🌳</div>
+        <div class="stat-value">{{ stats.units }}</div>
+        <div class="stat-label">Organisationer</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon">📋</div>
+        <div class="stat-value">{{ stats.assessments }}</div>
+        <div class="stat-label">Målinger</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon">💬</div>
+        <div class="stat-value">{{ stats.responses }}</div>
+        <div class="stat-label">Svar</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon">🔑</div>
+        <div class="stat-value">{{ stats.tokens }}</div>
+        <div class="stat-label">Tokens</div>
+    </div>
+</div>
 
+<div class="data-timeline">
+    <div class="timeline-item">
+        <div class="timeline-label">Ældste data</div>
+        <div class="timeline-value">{{ stats.oldest_data or 'N/A' }}</div>
+    </div>
+    <div class="timeline-item">
+        <div class="timeline-label">Nyeste data</div>
+        <div class="timeline-value">{{ stats.newest_data or 'N/A' }}</div>
+    </div>
     {% if stats.situation_assessments > 0 %}
-    <div style="background: #eff6ff; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-        <strong>Situationsmålinger:</strong> {{ stats.situation_assessments }} målinger, {{ stats.situation_responses }} svar
-    </div>
-    {% endif %}
-
-    {% else %}
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-        <div style="background: #f8fafc; padding: 15px; border-radius: 8px; text-align: center;">
-            <div style="font-size: 2rem; font-weight: bold; color: #3b82f6;">{{ stats.units }}</div>
-            <div style="color: #6b7280;">Organisationer</div>
-        </div>
-        <div style="background: #f8fafc; padding: 15px; border-radius: 8px; text-align: center;">
-            <div style="font-size: 2rem; font-weight: bold; color: #3b82f6;">{{ stats.users }}</div>
-            <div style="color: #6b7280;">Brugere</div>
-        </div>
+    <div class="timeline-item" style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);">
+        <div class="timeline-label" style="color: #1e40af;">Situationsmålinger</div>
+        <div class="timeline-value" style="color: #1e3a8a;">{{ stats.situation_assessments }} målinger, {{ stats.situation_responses }} svar</div>
     </div>
     {% endif %}
 </div>
+{% else %}
+<div class="stats-grid" style="max-width: 400px;">
+    <div class="stat-card">
+        <div class="stat-icon">🌳</div>
+        <div class="stat-value">{{ stats.units }}</div>
+        <div class="stat-label">Organisationer</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon">👤</div>
+        <div class="stat-value">{{ stats.users }}</div>
+        <div class="stat-label">Brugere</div>
+    </div>
+</div>
+{% endif %}
 
 <!-- Underdatabehandlere -->
-<div class="card" style="margin-bottom: 20px;">
-    <h2>Underdatabehandlere (Sub-processors)</h2>
-    <p style="color: #6b7280; margin-bottom: 15px;">
-        Disse tjenester behandler data på vegne af Friktionskompasset.
-    </p>
+<div class="section-card" style="margin-top: 25px;">
+    <div class="section-header">
+        <span class="icon">🔗</span>
+        <h2>Underdatabehandlere (Sub-processors)</h2>
+    </div>
+    <div class="section-body">
+        <p class="section-subtitle">
+            Disse tjenester behandler data på vegne af Friktionskompasset i henhold til databehandleraftaler.
+        </p>
 
-    <table class="data-table">
-        <thead>
-            <tr>
-                <th>Tjeneste</th>
-                <th>Formål</th>
-                <th>Datatyper</th>
-                <th>Lokation</th>
-                <th>Privacy</th>
-            </tr>
-        </thead>
-        <tbody>
+        <div class="processor-grid">
             {% for sp in sub_processors %}
-            <tr>
-                <td><strong>{{ sp.name }}</strong></td>
-                <td>{{ sp.purpose }}</td>
-                <td>{{ sp.data_types }}</td>
-                <td>{{ sp.location }}</td>
-                <td><a href="{{ sp.url }}" target="_blank" rel="noopener">Link</a></td>
-            </tr>
+            <div class="processor-card">
+                <div class="processor-name">{{ sp.name }}</div>
+                <div class="processor-purpose">{{ sp.purpose }}</div>
+                <div class="processor-data">{{ sp.data_types }}</div>
+                <div class="processor-location">🇪🇺 {{ sp.location }}</div>
+                <a href="{{ sp.url }}" target="_blank" rel="noopener" class="processor-link">Privacy →</a>
+            </div>
             {% endfor %}
-        </tbody>
-    </table>
+        </div>
+    </div>
 </div>
 
 <!-- Data Retention -->
-<div class="card" style="margin-bottom: 20px;">
-    <h2>Dataopbevaring (Retention)</h2>
-
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
-        <div style="background: #f8fafc; padding: 15px; border-radius: 8px;">
-            <strong>Måledata (responses)</strong>
-            <p style="color: #6b7280; margin: 5px 0 0 0;">Opbevares indtil kunde anmoder om sletning</p>
-        </div>
-        <div style="background: #f8fafc; padding: 15px; border-radius: 8px;">
-            <strong>Brugerkonti</strong>
-            <p style="color: #6b7280; margin: 5px 0 0 0;">Opbevares indtil bruger eller admin sletter</p>
-        </div>
-        <div style="background: #f8fafc; padding: 15px; border-radius: 8px;">
-            <strong>Email logs</strong>
-            <p style="color: #6b7280; margin: 5px 0 0 0;">90 dage, derefter automatisk sletning</p>
-        </div>
-        <div style="background: #f8fafc; padding: 15px; border-radius: 8px;">
-            <strong>Audit log</strong>
-            <p style="color: #6b7280; margin: 5px 0 0 0;">1 år, derefter automatisk sletning</p>
+<div class="section-card">
+    <div class="section-header">
+        <span class="icon">📅</span>
+        <h2>Dataopbevaring (Retention)</h2>
+    </div>
+    <div class="section-body">
+        <div class="retention-grid">
+            <div class="retention-item">
+                <strong>📊 Måledata (responses)</strong>
+                <p>Opbevares indtil kunde anmoder om sletning</p>
+            </div>
+            <div class="retention-item">
+                <strong>👤 Brugerkonti</strong>
+                <p>Opbevares indtil bruger eller admin sletter</p>
+            </div>
+            <div class="retention-item">
+                <strong>📧 Email logs</strong>
+                <p>90 dage, derefter automatisk sletning</p>
+            </div>
+            <div class="retention-item">
+                <strong>📋 Audit log</strong>
+                <p>1 år, derefter automatisk sletning</p>
+            </div>
         </div>
     </div>
 </div>
 
 <!-- Sletning (kun superadmin) -->
 {% if is_superadmin and stats.customers_detail %}
-<div class="card" style="margin-bottom: 20px;">
-    <h2>Slet kundedata (GDPR Art. 17)</h2>
-    <p style="color: #6b7280; margin-bottom: 15px;">
-        Slet al data for en kunde. <strong style="color: #dc2626;">Dette kan ikke fortrydes!</strong>
-    </p>
+<div class="section-card danger-section">
+    <div class="section-header">
+        <span class="icon">⚠️</span>
+        <h2>Slet kundedata (GDPR Art. 17 - Retten til sletning)</h2>
+    </div>
+    <div class="section-body">
+        <div class="danger-warning">
+            <span>⚠️</span>
+            <span>Sletning af kundedata er permanent og kan ikke fortrydes. Alle brugerkonti, organisationer, målinger og svar bliver slettet.</span>
+        </div>
 
-    <table class="data-table">
-        <thead>
-            <tr>
-                <th>Kunde</th>
-                <th>Brugere</th>
-                <th>Organisationer</th>
-                <th>Målinger</th>
-                <th>Handling</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for customer in stats.customers_detail %}
-            <tr>
-                <td><strong>{{ customer.name }}</strong></td>
-                <td>{{ customer.user_count }}</td>
-                <td>{{ customer.unit_count }}</td>
-                <td>{{ customer.assessment_count }}</td>
-                <td>
-                    <form method="POST" action="{{ url_for('admin_gdpr_delete_customer', customer_id=customer.id) }}"
-                          style="margin: 0;"
-                          onsubmit="return confirm('ADVARSEL: Du er ved at slette AL data for {{ customer.name }}.\n\nDette inkluderer:\n- Alle brugere\n- Alle organisationer\n- Alle målinger og svar\n\nDette kan IKKE fortrydes!\n\nSkriv kundens navn for at bekræfte:') && prompt('Skriv kundenavnet for at bekræfte sletning:') === '{{ customer.name }}';">
-                        <button type="submit" class="btn btn-danger btn-small">Slet al data</button>
-                    </form>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+        <table class="customer-table">
+            <thead>
+                <tr>
+                    <th>Kunde</th>
+                    <th>Brugere</th>
+                    <th>Organisationer</th>
+                    <th>Målinger</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for customer in stats.customers_detail %}
+                <tr>
+                    <td class="customer-name">{{ customer.name }}</td>
+                    <td>{{ customer.user_count }}</td>
+                    <td>{{ customer.unit_count }}</td>
+                    <td>{{ customer.assessment_count }}</td>
+                    <td>
+                        <form method="POST" action="{{ url_for('admin_gdpr_delete_customer', customer_id=customer.id) }}"
+                              style="margin: 0;"
+                              onsubmit="return confirm('ADVARSEL: Du er ved at slette AL data for {{ customer.name }}.\n\nDette inkluderer:\n- Alle brugere\n- Alle organisationer\n- Alle målinger og svar\n\nDette kan IKKE fortrydes!\n\nSkriv kundens navn for at bekræfte:') && prompt('Skriv kundenavnet for at bekræfte sletning:') === '{{ customer.name }}';">
+                            <button type="submit" class="btn-danger-small">Slet data</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 {% endif %}
 
 <!-- Compliance Info -->
-<div class="card">
-    <h2>Compliance Information</h2>
-
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
-        <div style="background: #f0fdf4; padding: 15px; border-radius: 8px; border-left: 4px solid #10b981;">
-            <strong>GDPR Compliant</strong>
-            <p style="color: #6b7280; margin: 5px 0 0 0;">Data behandles i EU (Frankfurt)</p>
-        </div>
-        <div style="background: #f0fdf4; padding: 15px; border-radius: 8px; border-left: 4px solid #10b981;">
-            <strong>Kryptering</strong>
-            <p style="color: #6b7280; margin: 5px 0 0 0;">TLS 1.3 for data i transit, AES-256 at rest</p>
-        </div>
-        <div style="background: #f0fdf4; padding: 15px; border-radius: 8px; border-left: 4px solid #10b981;">
-            <strong>Anonymisering</strong>
-            <p style="color: #6b7280; margin: 5px 0 0 0;">Survey-svar er ikke knyttet til individer</p>
-        </div>
-        <div style="background: #f0fdf4; padding: 15px; border-radius: 8px; border-left: 4px solid #10b981;">
-            <strong>Audit Logging</strong>
-            <p style="color: #6b7280; margin: 5px 0 0 0;">Alle sletninger logges</p>
-        </div>
+<div class="section-card">
+    <div class="section-header">
+        <span class="icon">✅</span>
+        <h2>Compliance & Sikkerhed</h2>
     </div>
+    <div class="section-body">
+        <div class="compliance-grid">
+            <div class="compliance-item">
+                <strong><span class="check-icon">✓</span> GDPR Compliant</strong>
+                <p>Data behandles i EU (Frankfurt)</p>
+            </div>
+            <div class="compliance-item">
+                <strong><span class="check-icon">✓</span> Kryptering</strong>
+                <p>TLS 1.3 i transit, AES-256 at rest</p>
+            </div>
+            <div class="compliance-item">
+                <strong><span class="check-icon">✓</span> Anonymisering</strong>
+                <p>Survey-svar ikke knyttet til individer</p>
+            </div>
+            <div class="compliance-item">
+                <strong><span class="check-icon">✓</span> Audit Logging</strong>
+                <p>Alle handlinger logges</p>
+            </div>
+        </div>
 
-    <div style="margin-top: 20px; padding: 15px; background: #eff6ff; border-radius: 8px;">
-        <strong>Kontakt DPO:</strong>
-        <p style="margin: 5px 0 0 0;">
-            For spørgsmål om databeskyttelse, kontakt <a href="mailto:dpo@friktionskompasset.dk">dpo@friktionskompasset.dk</a>
-        </p>
+        <div class="dpo-contact">
+            <span class="icon">📬</span>
+            <div>
+                <strong>Kontakt Data Protection Officer</strong>
+                <span>For spørgsmål om databeskyttelse: <a href="mailto:dpo@friktionskompasset.dk">dpo@friktionskompasset.dk</a></span>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}
