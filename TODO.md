@@ -100,6 +100,12 @@
   - `/admin/seed-translations` - Seed oversættelser
   - `/api/admin/clear-cache` - Ryd alle caches
 - [x] ~~**Dokumentation i CLAUDE.md** - API brug og eksempler~~
+- [ ] **API sikkerhed** - Beskyttelse mod brute force og misbrug
+  - Rate limiting på API endpoints (max requests per minute)
+  - Brute force protection (lockout efter X fejlede forsøg)
+  - API key rotation mulighed
+  - Audit logging af alle API kald
+  - IP whitelist option for enterprise
 
 ### Kunde API (Planlagt)
 - [ ] **Kunde-facing REST API** - Giv enterprise-kunder mulighed for at integrere med egne systemer
