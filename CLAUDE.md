@@ -58,61 +58,103 @@ Før du laver ændringer i følgende områder, TJEK denne liste:
 - Render MCP kan bruges til at opdatere environment variables direkte
 - Tjek altid logs og status via MCP før du spørger brugeren
 
-### API Keys og Credentials (FORTROLIGT)
-Disse keys er til brug i Claude Code sessioner - spørg IKKE brugeren om dem igen!
+---
 
-**Cloudflare:**
-- API Token (Bred access): `36M4rmOrLGb_q69d77RNwwRx77emyXdCM2oCv1lU`
-- Zone ID for frictioncompass.com: `78b1e32c9fcde984f5ca1d088da0db63`
-- Zone ID for friktionskompasset.dk: `8fae5ce31f4002c8e2e55935eceacc32`
+## 🔧 Infrastruktur API'er og Adgang
 
-**Cloudflare DNS eksempler:**
+Disse API'er kan bruges direkte fra Claude Code sessioner til at administrere infrastruktur.
+
+### Render (Hosting)
+**API Key:** `rnd_3MflEFHakX6sYZVIXxICAti0v5pZ`
+**Service ID:** `srv-d4q8t8k9c44c73b8ut60` (friktionskompas-eu)
+
+**Hvad kan jeg gøre:**
+- ✅ Liste services og deployments
+- ✅ Trigger deploy/restart
+- ✅ Læse/skrive environment variables
+- ✅ Se logs
+- ✅ Tjekke deploy status
+
 ```bash
-# List DNS records
-curl -s "https://api.cloudflare.com/client/v4/zones/ZONE_ID/dns_records" \
+# Liste services
+curl -s "https://api.render.com/v1/services" \
+  -H "Authorization: Bearer rnd_3MflEFHakX6sYZVIXxICAti0v5pZ"
+
+# Sæt environment variable
+curl -s -X PUT "https://api.render.com/v1/services/srv-d4q8t8k9c44c73b8ut60/env-vars/VAR_NAME" \
+  -H "Authorization: Bearer rnd_3MflEFHakX6sYZVIXxICAti0v5pZ" \
+  -H "Content-Type: application/json" \
+  -d '{"value": "VAR_VALUE"}'
+
+# Trigger deploy
+curl -s -X POST "https://api.render.com/v1/services/srv-d4q8t8k9c44c73b8ut60/deploys" \
+  -H "Authorization: Bearer rnd_3MflEFHakX6sYZVIXxICAti0v5pZ" \
+  -H "Content-Type: application/json" \
+  -d '{"clearCache": "do_not_clear"}'
+
+# Check deploy status
+curl -s "https://api.render.com/v1/services/srv-d4q8t8k9c44c73b8ut60/deploys?limit=1" \
+  -H "Authorization: Bearer rnd_3MflEFHakX6sYZVIXxICAti0v5pZ"
+```
+
+### Cloudflare (DNS & CDN)
+**API Token:** `36M4rmOrLGb_q69d77RNwwRx77emyXdCM2oCv1lU`
+
+**Zone IDs:**
+- frictioncompass.com: `78b1e32c9fcde984f5ca1d088da0db63`
+- friktionskompasset.dk: `8fae5ce31f4002c8e2e55935eceacc32`
+
+**Hvad kan jeg gøre:**
+- ✅ Oprette/ændre/slette DNS records
+- ✅ Konfigurere subdomæner
+- ✅ Se zone status og indstillinger
+- ✅ Purge cache
+
+```bash
+# List DNS records for friktionskompasset.dk
+curl -s "https://api.cloudflare.com/client/v4/zones/8fae5ce31f4002c8e2e55935eceacc32/dns_records" \
   -H "Authorization: Bearer 36M4rmOrLGb_q69d77RNwwRx77emyXdCM2oCv1lU"
 
 # Create CNAME record
 curl -s -X POST "https://api.cloudflare.com/client/v4/zones/ZONE_ID/dns_records" \
   -H "Authorization: Bearer 36M4rmOrLGb_q69d77RNwwRx77emyXdCM2oCv1lU" \
   -H "Content-Type: application/json" \
-  --data '{"type":"CNAME","name":"subdomain","content":"target.com","ttl":1,"proxied":false}'
+  --data '{"type":"CNAME","name":"subdomain","content":"target.com","ttl":1,"proxied":true}'
+
+# Purge cache
+curl -s -X POST "https://api.cloudflare.com/client/v4/zones/ZONE_ID/purge_cache" \
+  -H "Authorization: Bearer 36M4rmOrLGb_q69d77RNwwRx77emyXdCM2oCv1lU" \
+  -H "Content-Type: application/json" \
+  --data '{"purge_everything":true}'
 ```
 
-**Render:** Konfigureret via MCP (mcp__render__*)
+### Friktionskompasset Admin API (Applikation)
+**API Key:** `w_r0xNlJAzAm7XSKARbo2T4GkKCePxiqXroB2w0o29s`
+**Header:** `X-Admin-API-Key`
 
-**Admin API Key (til automatiserede operationer):**
-- `ADMIN_API_KEY`: `frik2025adminapi`
-- Environment variable sat på Render
-
-### Admin API (PERMANENT LØSNING)
-Brug Admin API til at udføre admin-operationer uden session login:
+**Hvad kan jeg gøre:**
+- ✅ Seede domæner og oversættelser
+- ✅ Rydde caches
+- ✅ Tjekke database status
 
 ```bash
-# Check API status og database info
+# Check status
 curl https://friktionskompasset.dk/api/admin/status \
-     -H "X-Admin-API-Key: frik2025adminapi"
+  -H "X-Admin-API-Key: w_r0xNlJAzAm7XSKARbo2T4GkKCePxiqXroB2w0o29s"
 
-# Seed domæner (bruges efter deployment med nye domæner)
+# Seed efter deployment
 curl https://friktionskompasset.dk/admin/seed-domains \
-     -H "X-Admin-API-Key: frik2025adminapi"
-
-# Seed oversættelser (bruges efter tilføjelse af nye oversættelser)
+  -H "X-Admin-API-Key: w_r0xNlJAzAm7XSKARbo2T4GkKCePxiqXroB2w0o29s"
 curl https://friktionskompasset.dk/admin/seed-translations \
-     -H "X-Admin-API-Key: frik2025adminapi"
-
-# Ryd alle caches
-curl -X POST https://friktionskompasset.dk/api/admin/clear-cache \
-     -H "X-Admin-API-Key: frik2025adminapi"
+  -H "X-Admin-API-Key: w_r0xNlJAzAm7XSKARbo2T4GkKCePxiqXroB2w0o29s"
 ```
 
-**Tilgængelige Admin API endpoints:**
-| Endpoint | Method | Beskrivelse |
-|----------|--------|-------------|
-| `/api/admin/status` | GET | Database status og aktive domæner |
-| `/admin/seed-domains` | GET/POST | Seed/opdater standard domæner |
-| `/admin/seed-translations` | GET/POST | Seed oversættelser fra translations.py |
-| `/api/admin/clear-cache` | POST | Ryd alle caches |
+### MCP Tools (når tilgængelige)
+Følgende MCP tools KAN være tilgængelige i sessionen:
+- `mcp__friktionskompas__*` - Lokal database queries
+- `mcp__render__*` - Render management (ikke altid aktivt)
+
+**Tjek altid med curl først** hvis MCP tools fejler.
 
 ### Data Opdatering - Render og Lokal
 - **ALTID** opdater data BÅDE lokalt OG på Render når testdata ændres
