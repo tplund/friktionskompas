@@ -773,8 +773,10 @@ def admin_link_oauth_callback(provider):
             flash('Kunne ikke tilknytte konto', 'error')
 
     except Exception as e:
+        import traceback
         print(f"[OAuth] Link callback error for {provider}: {e}")
-        flash(f'Fejl ved tilknytning af {provider.title()}', 'error')
+        print(f"[OAuth] Traceback: {traceback.format_exc()}")
+        flash(f'Fejl ved tilknytning af {provider.title()}: {str(e)}', 'error')
 
     return redirect(url_for('admin_my_account'))
 
