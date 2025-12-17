@@ -785,12 +785,8 @@ def admin_link_oauth_callback(provider):
             flash(f'{provider.title()} er ikke konfigureret', 'error')
             return redirect(url_for('admin_my_account'))
 
-        # Get token - for Microsoft multi-tenant, skip ID token parsing
-        if provider == 'microsoft':
-            # Fetch token without parsing ID token (avoids issuer validation)
-            token = client.authorize_access_token(claims_options={'iss': {'essential': False}})
-        else:
-            token = client.authorize_access_token()
+        # Get token - compliance_fix in oauth.py handles Microsoft multi-tenant
+        token = client.authorize_access_token()
 
         # Get user info
         if provider == 'microsoft':
@@ -830,7 +826,7 @@ def admin_link_oauth_callback(provider):
 
             # Log the action
             log_action(
-                AuditAction.UPDATE,
+                AuditAction.USER_UPDATED,
                 entity_type="user",
                 entity_id=user.get('id'),
                 details=f"Linked {provider} account ({provider_email})"
@@ -882,7 +878,7 @@ def admin_unlink_oauth(provider):
 
         # Log the action
         log_action(
-            AuditAction.UPDATE,
+            AuditAction.USER_UPDATED,
             entity_type="user",
             entity_id=user.get('id'),
             details=f"Unlinked {provider} account"

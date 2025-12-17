@@ -31,13 +31,29 @@ DEFAULT_AUTH_PROVIDERS = {
 }
 
 
+def _microsoft_compliance_fix(client, token, refresh_token=None, access_token=None):
+    """
+    Compliance fix for Microsoft OAuth multi-tenant tokens.
+    Azure AD returns ID tokens with tenant-specific issuers, but the metadata
+    contains a template. We skip ID token parsing and rely on access token + userinfo.
+    """
+    # Remove id_token to prevent authlib from trying to parse/validate it
+    # We'll get user info from Microsoft Graph API instead
+    if 'id_token' in token:
+        # Store it but don't let authlib parse it
+        token['_raw_id_token'] = token.pop('id_token')
+    return token
+
+
 def init_oauth(app):
     """Initialize OAuth with Flask app"""
     oauth.init_app(app)
 
     # Register Microsoft OAuth
-    # Note: For multi-tenant apps, we configure endpoints manually to avoid
-    # issuer validation issues with tokens from different tenants
+    # Note: For multi-tenant apps, we must handle issuer validation specially.
+    # Azure AD returns issuer with {tenantid} placeholder in metadata, but
+    # actual tokens have the real tenant ID, causing validation failures.
+    # Solution: Use compliance_fix to skip ID token parsing entirely
     if os.getenv('MICROSOFT_CLIENT_ID'):
         oauth.register(
             name='microsoft',
@@ -46,12 +62,13 @@ def init_oauth(app):
             authorize_url='https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
             access_token_url='https://login.microsoftonline.com/common/oauth2/v2.0/token',
             userinfo_endpoint='https://graph.microsoft.com/oidc/userinfo',
+            jwks_uri='https://login.microsoftonline.com/common/discovery/v2.0/keys',
             client_kwargs={
                 'scope': 'openid email profile',
                 'token_endpoint_auth_method': 'client_secret_post'
             },
-            # Don't validate ID token for multi-tenant
-            userinfo_compliance_fix=lambda client, data: data
+            # Use compliance fix to skip ID token parsing for multi-tenant
+            compliance_fix=_microsoft_compliance_fix
         )
 
     # Register Google OAuth
