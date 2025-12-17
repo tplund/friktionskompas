@@ -10,23 +10,32 @@ DEFAULT_LANGUAGE = 'da'
 
 
 def get_user_language():
-    """Hent brugerens valgte sprog fra session eller browser"""
-    # 1. Check session
+    """Hent brugerens valgte sprog fra session, domæne eller browser"""
+    # 1. Check session (user explicitly set language)
     if 'language' in session:
         return session['language']
 
-    # 2. Check logged in user
+    # 2. Check logged in user preference
     if 'user' in session and session['user'].get('language'):
         return session['user']['language']
 
-    # 3. Check browser Accept-Language header
+    # 3. Check domain default language (important for multi-domain setup)
+    try:
+        if hasattr(g, 'domain_config') and g.domain_config:
+            domain_lang = g.domain_config.get('default_language')
+            if domain_lang and domain_lang in SUPPORTED_LANGUAGES:
+                return domain_lang
+    except RuntimeError:
+        pass  # Outside request context
+
+    # 4. Check browser Accept-Language header
     if request and request.accept_languages:
         for lang in request.accept_languages.values():
             lang_code = lang[:2].lower()
             if lang_code in SUPPORTED_LANGUAGES:
                 return lang_code
 
-    # 4. Default
+    # 5. Default
     return DEFAULT_LANGUAGE
 
 
