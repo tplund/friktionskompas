@@ -311,6 +311,49 @@ def robots_txt():
     return send_from_directory('static', 'robots.txt', mimetype='text/plain')
 
 
+# Temporary public seed endpoint - REMOVE BEFORE PRODUCTION
+@app.route('/api/init-setup/<secret>')
+def api_init_setup(secret):
+    """One-time setup endpoint for seeding domains and translations - REMOVE LATER"""
+    if secret != 'frik2025setup':
+        return jsonify({'error': 'Invalid secret'}), 403
+
+    import json
+    import secrets as secrets_module
+    from translations import seed_translations
+
+    results = {'domains': {'created': 0, 'updated': 0}, 'translations': 'seeded'}
+
+    # Seed domains
+    domains_config = [
+        {'domain': 'friktionskompasset.dk', 'default_language': 'da',
+         'auth_providers': {'email_password': True, 'microsoft': {'enabled': True}, 'google': {'enabled': True}, 'apple': {'enabled': False}, 'facebook': {'enabled': False}}},
+        {'domain': 'frictioncompass.com', 'default_language': 'en',
+         'auth_providers': {'email_password': True, 'microsoft': {'enabled': True}, 'google': {'enabled': True}, 'apple': {'enabled': False}, 'facebook': {'enabled': False}}},
+        {'domain': 'herning.friktionskompasset.dk', 'default_language': 'da',
+         'auth_providers': {'email_password': True, 'microsoft': {'enabled': True}, 'google': {'enabled': False}, 'apple': {'enabled': False}, 'facebook': {'enabled': False}}}
+    ]
+
+    with get_db() as conn:
+        for config in domains_config:
+            existing = conn.execute('SELECT id FROM domains WHERE domain = ?', (config['domain'],)).fetchone()
+            if existing:
+                conn.execute('UPDATE domains SET default_language = ?, auth_providers = ?, is_active = 1 WHERE domain = ?',
+                           (config['default_language'], json.dumps(config['auth_providers']), config['domain']))
+                results['domains']['updated'] += 1
+            else:
+                domain_id = 'dom-' + secrets_module.token_urlsafe(8)
+                conn.execute('INSERT INTO domains (id, domain, default_language, auth_providers, is_active) VALUES (?, ?, ?, ?, 1)',
+                           (domain_id, config['domain'], config['default_language'], json.dumps(config['auth_providers'])))
+                results['domains']['created'] += 1
+        conn.commit()
+
+    # Seed translations
+    seed_translations()
+
+    return jsonify(results)
+
+
 @app.route('/sitemap.xml')
 def sitemap_xml():
     """Generate dynamic sitemap.xml"""
