@@ -722,15 +722,18 @@ def admin_link_oauth_callback(provider):
             flash(f'{provider.title()} er ikke konfigureret', 'error')
             return redirect(url_for('admin_my_account'))
 
-        # Get token
-        token = client.authorize_access_token()
+        # Get token - for Microsoft multi-tenant, skip ID token parsing
+        if provider == 'microsoft':
+            # Fetch token without parsing ID token (avoids issuer validation)
+            token = client.authorize_access_token(claims_options={'iss': {'essential': False}})
+        else:
+            token = client.authorize_access_token()
 
         # Get user info
         if provider == 'microsoft':
-            userinfo = token.get('userinfo')
-            if not userinfo:
-                resp = client.get('https://graph.microsoft.com/oidc/userinfo')
-                userinfo = resp.json()
+            # Always fetch from Graph API for Microsoft
+            resp = client.get('https://graph.microsoft.com/oidc/userinfo', token=token)
+            userinfo = resp.json()
         elif provider == 'google':
             userinfo = token.get('userinfo')
             if not userinfo:

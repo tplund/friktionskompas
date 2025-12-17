@@ -36,22 +36,22 @@ def init_oauth(app):
     oauth.init_app(app)
 
     # Register Microsoft OAuth
-    # Note: For multi-tenant apps, we skip issuer validation since tokens
-    # come from different tenant issuers depending on the user's organization
+    # Note: For multi-tenant apps, we configure endpoints manually to avoid
+    # issuer validation issues with tokens from different tenants
     if os.getenv('MICROSOFT_CLIENT_ID'):
         oauth.register(
             name='microsoft',
             client_id=os.getenv('MICROSOFT_CLIENT_ID'),
             client_secret=os.getenv('MICROSOFT_CLIENT_SECRET'),
-            server_metadata_url='https://login.microsoftonline.com/common/v2.0/.well-known/openid-configuration',
+            authorize_url='https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
+            access_token_url='https://login.microsoftonline.com/common/oauth2/v2.0/token',
+            userinfo_endpoint='https://graph.microsoft.com/oidc/userinfo',
             client_kwargs={
-                'scope': 'openid email profile'
+                'scope': 'openid email profile',
+                'token_endpoint_auth_method': 'client_secret_post'
             },
-            claims_options={
-                'iss': {
-                    'essential': False  # Skip issuer validation for multi-tenant
-                }
-            }
+            # Don't validate ID token for multi-tenant
+            userinfo_compliance_fix=lambda client, data: data
         )
 
     # Register Google OAuth
