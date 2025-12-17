@@ -16,16 +16,25 @@
 
 **Formål:** Ét sted at opdatere når mekanikken ændres, lettere at teste, konsistens på tværs af alle visninger.
 
-### Privacy by Design - B2C Local Storage 🆕
-- [ ] **Analyse af data flow** - Hvad skal gemmes hvor (server vs. local)
-- [ ] **LocalStorage implementation** - Gem B2C profiler krypteret i browser
-- [ ] **Stateless API** - Server serverer spørgsmål + beregner resultater, gemmer intet
-- [ ] **Eksport/import** - Bruger kan downloade/uploade sin profil som JSON
-- [ ] **Opt-in server storage** - Valgfrit for brugere der vil have backup
-- [ ] **Cookie consent** - Opdater privacy notice for localStorage brug
-- [ ] **B2B uændret** - Enterprise kunder gemmer stadig centralt
+### Privacy by Design - B2C Local Storage ✅ FÆRDIG
+- [x] ~~**Analyse af data flow** - Hvad skal gemmes hvor (server vs. local)~~
+- [x] ~~**LocalStorage implementation** - Gem B2C profiler i browser (`static/js/profil-storage.js`)~~
+- [x] ~~**Stateless API** - `/profil/api/questions` + `/profil/api/calculate` (gemmer intet)~~
+- [x] ~~**Eksport/import** - JSON fil eksport/import i profil-storage.js~~
+- [x] ~~**Client-side UI** - `/profil/local` med fuld survey + historik~~
+- [x] ~~**Storage mode konfiguration** - `storage_mode` kolonne på assessment_types (local/server/both)~~
+- [x] ~~**Admin UI** - Viser storage mode i /admin/assessment-types~~
+- [ ] **Opt-in server storage** - Valgfrit for brugere der vil have backup (fremtidig)
+- [ ] **Cookie consent** - Opdater privacy notice for localStorage brug (fremtidig)
+- [x] ~~**B2B uændret** - Enterprise kunder gemmer stadig centralt~~
+
+**Storage modes:**
+- `local` = Data gemmes KUN i browser (B2C: screening, profil_fuld, profil_situation, kapacitet)
+- `server` = Data gemmes centralt (B2B: gruppe_friktion, gruppe_leder, baandbredde)
+- `both` = Bruger vælger
 
 **Formål:** GDPR compliance, lavere omkostninger, skalerbarhed, brugertillid. B2C data fylder ikke på serveren, ingen privacy-problemer.
+**Se plan:** `PLAN_privacy_localStorage.md`
 
 ### Flersproget Support (Oversættelser)
 - [x] ~~**Database ændringer** - `language` på users, `translations` tabel~~
@@ -43,12 +52,13 @@
 - [x] ~~**Test framework** - pytest opsætning med fixtures~~
 - [x] ~~**Database test** - CRUD, constraints, cascade delete (8 tests)~~
 - [x] ~~**Auth test** - Login, logout, authorization (8 tests)~~
-- [x] ~~**Route test** - Alle endpoints, navigation, 404 håndtering (21 tests)~~
+- [x] ~~**Route test** - Alle endpoints, navigation, 404 håndtering (38 tests)~~
 - [x] ~~**Sikkerhedstest** - SQL injection, XSS, auth bypass, session hijacking (12 tests)~~
-- [x] ~~**UI/UX test** - Playwright tests af brugerflows~~ (19 tests: login, dropdown navigation, organisation tree, campaigns, backup, responsive)
+- [x] ~~**UI/UX test** - Playwright tests af brugerflows~~ (27 tests: login, navigation, localStorage profil, responsive)
 - [x] ~~**Integration test** - End-to-end test af survey flow~~ (22 tests inkl. superadmin access tests)
-- [x] ~~**Data isolation tests** - Verificerer at Herning/Esbjerg data er isoleret korrekt~~ (17 tests - tjekker faktisk HTML content, ikke bare status 200)
-- [x] ~~**CI/CD** - GitHub Actions workflow kører tests automatisk ved push~~ (123 tests total)
+- [x] ~~**Data isolation tests** - Verificerer at Herning/Esbjerg data er isoleret korrekt~~ (17 tests)
+- [x] ~~**localStorage API tests** - Stateless API endpoints og storage_mode~~ (21 tests)
+- [x] ~~**CI/CD** - GitHub Actions workflow kører tests automatisk ved push~~
 
 ### ⚠️ VIGTIGT - Dokumentation
 - [ ] **Ved ALLE ændringer i analyselogik:** Opdater `ANALYSELOGIK.md`
@@ -81,6 +91,29 @@
 - [x] ~~**Branding side** - Admin kan redigere branding for egne domæner~~
 - [ ] CSRF protection (deferred til produktion)
 - [ ] Rate limiting på login (deferred til produktion)
+
+### Admin API ✅ FÆRDIG
+- [x] ~~**Intern Admin API** - API endpoints til automatiserede admin-operationer~~
+  - `X-Admin-API-Key` header authentication
+  - `/api/admin/status` - Database status og aktive domæner
+  - `/admin/seed-domains` - Seed standard domæner
+  - `/admin/seed-translations` - Seed oversættelser
+  - `/api/admin/clear-cache` - Ryd alle caches
+- [x] ~~**Dokumentation i CLAUDE.md** - API brug og eksempler~~
+
+### Kunde API (Planlagt)
+- [ ] **Kunde-facing REST API** - Giv enterprise-kunder mulighed for at integrere med egne systemer
+  - Autentifikation via API keys per kunde
+  - GET `/api/v1/assessments` - Liste over målinger
+  - GET `/api/v1/assessments/{id}/results` - Resultater for en måling
+  - GET `/api/v1/units` - Organisationsoversigt
+  - POST `/api/v1/assessments` - Opret ny måling
+  - Rate limiting per kunde
+  - Webhook support til notifikationer
+- [ ] **API dokumentation** - OpenAPI/Swagger spec
+- [ ] **API key management** - Admin UI til oprettelse/rotation af API keys
+
+**Formål:** Enterprise-kunder kan integrere Friktionskompasset med deres HR-systemer, Power BI dashboards, etc.
 
 ### Social Login & SSO (i gang)
 - [x] ~~**Database struktur** - `auth_providers` JSON felt på customers/domains, `user_oauth_links` tabel~~
@@ -261,10 +294,19 @@ GOOGLE_CLIENT_SECRET=xxx
 ## 🔧 Små Forbedringer (Nice-to-have)
 
 ### UX/UI
-- [ ] **Mobile responsiveness** - Test og forbedring af mobilvisning
-- [ ] **Bedre fejlbeskeder** - Mere informative fejlbeskeder ved validation errors
-- [ ] **Loading states** - Tydeligere loading-indikatorer på lange operationer
-- [ ] **Keyboard navigation** - Tab-navigation og Enter-submit på forms
+- [x] ~~**Mobile responsiveness** - Test og forbedring af mobilvisning~~
+  - Admin layout.html: responsive nav, submenu scroll, stacked elements
+  - Profil local.html: responsive tabs, questions, result grid
+  - Breakpoints: mobile (<768px), tablet (768-1024px), desktop
+- [x] ~~**Bedre fejlbeskeder** - Mere informative fejlbeskeder ved validation errors~~
+  - FormValidation JS objekt med inline errors
+  - CSS styling for has-error/has-success states
+  - Danske fejlbeskeder
+- [x] ~~**Loading states** - Tydeligere loading-indikatorer på lange operationer~~ (allerede implementeret)
+- [x] ~~**Keyboard navigation** - Tab-navigation og Enter-submit på forms~~
+  - Enter submitter fra sidste felt/password
+  - Escape lukker dropdowns
+  - Focus-visible styling
 
 ### Dokumentation
 - [ ] **Admin dokumentation** - Vejledning til admin-brugere (målinger, organisationer, analyser)
@@ -272,12 +314,57 @@ GOOGLE_CLIENT_SECRET=xxx
 - [ ] **Friktionsprofil dokumentation** - Forklaring af tests og resultater til slutbrugere
 
 ### Teknisk
-- [ ] **Session timeout** - Auto-logout efter inaktivitet
+- [x] ~~**Session timeout** - Auto-logout efter 8 timers inaktivitet~~
+  - PERMANENT_SESSION_LIFETIME = 8 timer
+  - SESSION_REFRESH_EACH_REQUEST = True
+  - session.permanent = True på alle login paths
 - [x] ~~**Audit log** - Logning af vigtige handlinger (sletninger, ændringer)~~ (`audit.py` + `/admin/audit-log` UI)
 - [ ] **Database vacuum** - Automatisk cleanup af slettet data
 
+### SEO & Tilgængelighed
+- [x] ~~**Webtilgængelighed (a11y)**~~
+  - Skip-link til hovedindhold
+  - ARIA roles og labels på navigation, formularer, toasts
+  - Focus-visible styling for keyboard navigation
+  - Dynamisk lang attribut baseret på brugerens sprog
+- [x] ~~**Teknisk SEO**~~
+  - robots.txt med Disallow for admin/auth
+  - Dynamisk sitemap.xml
+  - Meta descriptions på offentlige sider
+  - Open Graph + Twitter Card meta tags
+  - Canonical URLs
+  - OG image (SVG)
+- [x] ~~**Cookie consent med Google Consent Mode v2**~~
+  - GDPR-compliant cookie banner
+  - 4 kategorier: nødvendige, funktionelle, statistik, marketing
+  - Google Consent Mode v2 integration (alle 7 consent signals)
+  - DataLayer events for GTM triggers
+
+### Marketing & Analytics
+- [x] ~~**Google Tag Manager (GTM)**~~
+  - [x] ~~Opret GTM containere~~ (GTM-KRM92FXQ for .dk, GTM-P7J74JZZ for .com)
+  - [x] ~~Implementer domæne-baseret GTM~~ (`templates/macros/gtm.html`)
+  - [x] ~~Integrer i alle public templates~~ (10 templates opdateret)
+  - [ ] Opsæt GA4 tag i GTM (med consent mode)
+  - [ ] Opsæt conversion events (profil startet, profil færdig, registrering)
+- [x] ~~**Google Analytics 4 (GA4)**~~
+  - [x] ~~Opret GA4 property~~ (G-FTWM9JK2FW)
+  - [ ] Konfigurer GA4 tag i GTM
+  - [ ] Opsæt key events/conversions
+  - [ ] Dashboard til B2C trafik og funnel
+- [ ] **Google Search Console**
+  - [ ] Verificer friktionskompasset.dk
+  - [ ] Verificer frictioncompass.com
+  - [ ] Submit sitemaps
+  - [ ] Overvåg indeksering og søgeperformance
+- [ ] **Performance tracking**
+  - [ ] Core Web Vitals monitoring
+  - [ ] PageSpeed Insights baseline
+  - [ ] Bounce rate og session duration analyse
+- [x] ~~**GTM MCP Server**~~ - Tilføjet til .mcp.json for AI-styret GTM konfiguration
+
 ### B2C Forberedelse
-- [ ] **Landing page** - Public info-side om Friktionskompasset
+- [x] ~~**Landing page**~~ - `/landing` med hero, features, privacy sektion, CTA
 - [ ] **Prøveresultat** - Teaser-visning af resultater før betaling
 - [ ] **Email capture** - Nyhedsbrev signup på landing page
 

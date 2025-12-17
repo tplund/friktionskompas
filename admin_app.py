@@ -267,6 +267,53 @@ def superadmin_required(f):
     return decorated_function
 
 
+def check_admin_api_key():
+    """Check for valid admin API key in request header.
+    Returns True if valid API key found, False otherwise.
+    API key should be passed in X-Admin-API-Key header.
+    """
+    api_key = request.headers.get('X-Admin-API-Key')
+    if not api_key:
+        return False
+    expected_key = os.environ.get('ADMIN_API_KEY')
+    if not expected_key:
+        return False
+    return api_key == expected_key
+
+
+def is_api_request():
+    """Check if request is from API client (expects JSON response)"""
+    return (
+        request.headers.get('Accept') == 'application/json' or
+        check_admin_api_key() or
+        request.args.get('format') == 'json'
+    )
+
+
+def api_or_admin_required(f):
+    """Decorator that accepts either admin session OR valid API key.
+    Returns JSON for API requests, HTML redirect for browser requests.
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        # Check API key first
+        if check_admin_api_key():
+            return f(*args, **kwargs)
+        # Fall back to session auth
+        if 'user' not in session:
+            if is_api_request():
+                return jsonify({'error': 'Authentication required'}), 401
+            flash('Du skal være logget ind', 'error')
+            return redirect(url_for('login'))
+        if session['user']['role'] not in ('admin', 'superadmin'):
+            if is_api_request():
+                return jsonify({'error': 'Admin access required'}), 403
+            flash('Kun admin har adgang til denne side', 'error')
+            return redirect(url_for('admin_home'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+
 def get_current_user():
     """Hent current user fra session"""
     return session.get('user')
@@ -311,47 +358,52 @@ def robots_txt():
     return send_from_directory('static', 'robots.txt', mimetype='text/plain')
 
 
-# Temporary public seed endpoint - REMOVE BEFORE PRODUCTION
-@app.route('/api/init-setup/<secret>')
-def api_init_setup(secret):
-    """One-time setup endpoint for seeding domains and translations - REMOVE LATER"""
-    if secret != 'frik2025setup':
-        return jsonify({'error': 'Invalid secret'}), 403
+# Admin API endpoints - authenticated via X-Admin-API-Key header
+@app.route('/api/admin/status')
+@api_or_admin_required
+def api_admin_status():
+    """Get admin API status and database info.
 
-    import json
-    import secrets as secrets_module
-    from translations import seed_translations
-
-    results = {'domains': {'created': 0, 'updated': 0}, 'translations': 'seeded'}
-
-    # Seed domains
-    domains_config = [
-        {'domain': 'friktionskompasset.dk', 'default_language': 'da',
-         'auth_providers': {'email_password': True, 'microsoft': {'enabled': True}, 'google': {'enabled': True}, 'apple': {'enabled': False}, 'facebook': {'enabled': False}}},
-        {'domain': 'frictioncompass.com', 'default_language': 'en',
-         'auth_providers': {'email_password': True, 'microsoft': {'enabled': True}, 'google': {'enabled': True}, 'apple': {'enabled': False}, 'facebook': {'enabled': False}}},
-        {'domain': 'herning.friktionskompasset.dk', 'default_language': 'da',
-         'auth_providers': {'email_password': True, 'microsoft': {'enabled': True}, 'google': {'enabled': False}, 'apple': {'enabled': False}, 'facebook': {'enabled': False}}}
-    ]
-
+    API Usage:
+        curl https://friktionskompasset.dk/api/admin/status \
+             -H "X-Admin-API-Key: YOUR_KEY"
+    """
     with get_db() as conn:
-        for config in domains_config:
-            existing = conn.execute('SELECT id FROM domains WHERE domain = ?', (config['domain'],)).fetchone()
-            if existing:
-                conn.execute('UPDATE domains SET default_language = ?, auth_providers = ?, is_active = 1 WHERE domain = ?',
-                           (config['default_language'], json.dumps(config['auth_providers']), config['domain']))
-                results['domains']['updated'] += 1
-            else:
-                domain_id = 'dom-' + secrets_module.token_urlsafe(8)
-                conn.execute('INSERT INTO domains (id, domain, default_language, auth_providers, is_active) VALUES (?, ?, ?, ?, 1)',
-                           (domain_id, config['domain'], config['default_language'], json.dumps(config['auth_providers'])))
-                results['domains']['created'] += 1
-        conn.commit()
+        counts = {}
+        for table in ['customers', 'users', 'assessments', 'responses', 'domains', 'translations']:
+            try:
+                count = conn.execute(f'SELECT COUNT(*) FROM {table}').fetchone()[0]
+                counts[table] = count
+            except:
+                counts[table] = 'N/A'
 
-    # Seed translations
-    seed_translations()
+        domains = conn.execute('SELECT domain, default_language FROM domains WHERE is_active = 1').fetchall()
 
-    return jsonify(results)
+    return jsonify({
+        'status': 'ok',
+        'database': counts,
+        'active_domains': [{'domain': d[0], 'language': d[1]} for d in domains],
+        'available_endpoints': [
+            {'endpoint': '/api/admin/status', 'method': 'GET', 'description': 'Get API status'},
+            {'endpoint': '/admin/seed-domains', 'method': 'GET/POST', 'description': 'Seed default domains'},
+            {'endpoint': '/admin/seed-translations', 'method': 'GET/POST', 'description': 'Seed translations'},
+            {'endpoint': '/api/admin/clear-cache', 'method': 'POST', 'description': 'Clear all caches'},
+        ]
+    })
+
+
+@app.route('/api/admin/clear-cache', methods=['POST'])
+@api_or_admin_required
+def api_admin_clear_cache():
+    """Clear all caches.
+
+    API Usage:
+        curl -X POST https://friktionskompasset.dk/api/admin/clear-cache \
+             -H "X-Admin-API-Key: YOUR_KEY"
+    """
+    clear_translation_cache()
+    invalidate_all()
+    return jsonify({'success': True, 'message': 'All caches cleared'})
 
 
 @app.route('/sitemap.xml')
@@ -787,11 +839,25 @@ def set_user_language(lang):
     return redirect(request.referrer or url_for('index'))
 
 
-@app.route('/admin/seed-translations', methods=['POST'])
+@app.route('/admin/seed-translations', methods=['GET', 'POST'])
+@api_or_admin_required
 def admin_seed_translations():
-    """Seed translations til database (public for db-status access)"""
+    """Seed translations til database. Supports both browser and API access.
+
+    API Usage:
+        curl -X POST https://friktionskompasset.dk/admin/seed-translations \
+             -H "X-Admin-API-Key: YOUR_KEY"
+    """
     seed_translations()
     clear_translation_cache()
+
+    # Return JSON for API requests
+    if is_api_request():
+        return jsonify({
+            'success': True,
+            'message': 'Translations seeded successfully'
+        })
+
     # Check if request came from db-status (no flash, just redirect)
     referrer = request.referrer or ''
     if 'db-status' in referrer:
@@ -801,8 +867,14 @@ def admin_seed_translations():
 
 
 @app.route('/admin/seed-domains', methods=['GET', 'POST'])
+@api_or_admin_required
 def admin_seed_domains():
-    """Seed standard domæner til database - GET for API/curl, POST for form"""
+    """Seed standard domæner til database. Supports both browser and API access.
+
+    API Usage:
+        curl https://friktionskompasset.dk/admin/seed-domains \
+             -H "X-Admin-API-Key: YOUR_KEY"
+    """
     import json
     import secrets
 
@@ -875,6 +947,15 @@ def admin_seed_domains():
                 created += 1
 
         conn.commit()
+
+    # Return JSON for API requests
+    if is_api_request():
+        return jsonify({
+            'success': True,
+            'created': created,
+            'updated': updated,
+            'domains': [d['domain'] for d in domains_config]
+        })
 
     flash(f'Domæner seedet: {created} oprettet, {updated} opdateret', 'success')
     return redirect(request.referrer or url_for('manage_domains'))

@@ -81,6 +81,39 @@ curl -s -X POST "https://api.cloudflare.com/client/v4/zones/ZONE_ID/dns_records"
 
 **Render:** Konfigureret via MCP (mcp__render__*)
 
+**Admin API Key (til automatiserede operationer):**
+- `ADMIN_API_KEY`: `frik2025adminapi`
+- Environment variable sat på Render
+
+### Admin API (PERMANENT LØSNING)
+Brug Admin API til at udføre admin-operationer uden session login:
+
+```bash
+# Check API status og database info
+curl https://friktionskompasset.dk/api/admin/status \
+     -H "X-Admin-API-Key: frik2025adminapi"
+
+# Seed domæner (bruges efter deployment med nye domæner)
+curl https://friktionskompasset.dk/admin/seed-domains \
+     -H "X-Admin-API-Key: frik2025adminapi"
+
+# Seed oversættelser (bruges efter tilføjelse af nye oversættelser)
+curl https://friktionskompasset.dk/admin/seed-translations \
+     -H "X-Admin-API-Key: frik2025adminapi"
+
+# Ryd alle caches
+curl -X POST https://friktionskompasset.dk/api/admin/clear-cache \
+     -H "X-Admin-API-Key: frik2025adminapi"
+```
+
+**Tilgængelige Admin API endpoints:**
+| Endpoint | Method | Beskrivelse |
+|----------|--------|-------------|
+| `/api/admin/status` | GET | Database status og aktive domæner |
+| `/admin/seed-domains` | GET/POST | Seed/opdater standard domæner |
+| `/admin/seed-translations` | GET/POST | Seed oversættelser fra translations.py |
+| `/api/admin/clear-cache` | POST | Ryd alle caches |
+
 ### Data Opdatering - Render og Lokal
 - **ALTID** opdater data BÅDE lokalt OG på Render når testdata ændres
 - **ALTID** ryd cache på Render efter data-opdateringer (brug API endpoint eller Dev Tools)
