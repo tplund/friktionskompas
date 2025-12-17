@@ -1,0 +1,93 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}Ny situationsmåling - {{ task.name }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Start ny måling</h1>
+    <p><a href="{{ url_for('admin_task_detail', task_id=task.id) }}">← Tilbage til {{ task.name }}</a></p>
+</div>
+
+<div class="card" style="margin-bottom: 20px;">
+    <h2>Opgave: {{ task.name }}</h2>
+    {% if task.description %}
+    <p style="color: #6b7280;">{{ task.description }}</p>
+    {% endif %}
+
+    <div style="margin-top: 15px;">
+        <strong>Handlinger der måles ({{ task.actions|length }}):</strong>
+        <ol style="margin-top: 10px;">
+            {% for action in task.actions %}
+            <li>{{ action.name }}</li>
+            {% endfor %}
+        </ol>
+    </div>
+</div>
+
+<div class="card">
+    <h2>Målingsdetaljer</h2>
+
+    <form method="POST" action="{{ url_for('admin_situation_assessment_new', task_id=task.id) }}">
+        <div class="form-group">
+            <label for="name">Målingens navn (valgfrit)</label>
+            <input type="text" id="name" name="name"
+                   placeholder="Fx 'Januar 2025 måling' (default: 'Måling af {{ task.name }}')">
+        </div>
+
+        <div class="form-group">
+            <label for="period">Periode (valgfrit)</label>
+            <input type="text" id="period" name="period"
+                   placeholder="Fx '2025 Q1' eller 'Januar 2025'">
+        </div>
+
+        <div class="form-group">
+            <label for="unit_id">Send til organisation *</label>
+            <select id="unit_id" name="unit_id" required>
+                <option value="">-- Vælg organisation --</option>
+                {% for unit in units %}
+                <option value="{{ unit.id }}" {% if task.unit_id == unit.id %}selected{% endif %}>
+                    {{ unit.name }}
+                </option>
+                {% endfor %}
+            </select>
+            <small style="color: #6b7280;">Alle kontakter i organisationen modtager en invitation</small>
+        </div>
+
+        <div class="form-group">
+            <label for="sender_name">Afsendernavn</label>
+            <input type="text" id="sender_name" name="sender_name"
+                   placeholder="Fx 'HR-afdelingen' eller 'Dit navn'">
+        </div>
+
+        <div class="form-group">
+            <label for="sent_from">Afsender email (valgfrit)</label>
+            <input type="email" id="sent_from" name="sent_from"
+                   placeholder="noreply@friktionskompasset.dk">
+        </div>
+
+        <div class="form-group" style="margin-top: 20px;">
+            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                <input type="checkbox" name="send_emails" checked style="width: auto;">
+                <span>Send invitationer via email med det samme</span>
+            </label>
+            <small style="color: #6b7280; display: block; margin-left: 25px;">
+                Hvis ikke valgt, oprettes tokens men emails sendes ikke automatisk
+            </small>
+        </div>
+
+        <div class="info-box" style="margin-top: 20px;">
+            <strong>Hvad sker der?</strong>
+            <ol style="margin-top: 10px; margin-bottom: 0;">
+                <li>En unik invitation sendes til hver kontakt i organisationen</li>
+                <li>Modtageren besvarer 4 spørgsmål per handling ({{ task.actions|length * 4 }} spørgsmål total)</li>
+                <li>Resultater vises anonymt og aggregeret</li>
+            </ol>
+        </div>
+
+        <div class="form-actions" style="margin-top: 20px;">
+            <button type="submit" class="btn">Start måling</button>
+            <a href="{{ url_for('admin_task_detail', task_id=task.id) }}" class="btn btn-secondary">Annuller</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

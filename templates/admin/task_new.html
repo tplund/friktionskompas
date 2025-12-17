@@ -1,0 +1,56 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}Opret opgave - Friktionskompasset{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Opret ny opgave</h1>
+    <p><a href="{{ url_for('admin_tasks') }}">← Tilbage til oversigt</a></p>
+</div>
+
+<div class="card">
+    <form method="POST" action="{{ url_for('admin_task_new') }}">
+        <div class="form-group">
+            <label for="name">Opgavens navn *</label>
+            <input type="text" id="name" name="name" required
+                   placeholder="Fx 'Sygefraværshåndtering' eller 'Onboarding af nye medarbejdere'">
+            <small style="color: #6b7280;">Vælg et kort, beskrivende navn for opgaven</small>
+        </div>
+
+        <div class="form-group">
+            <label for="description">Beskrivelse</label>
+            <textarea id="description" name="description" rows="3"
+                      placeholder="Kort beskrivelse af opgaven og dens kontekst..."></textarea>
+            <small style="color: #6b7280;">Denne tekst vises til respondenterne så de forstår konteksten</small>
+        </div>
+
+        <div class="form-group">
+            <label for="unit_id">Organisation (valgfrit)</label>
+            <select id="unit_id" name="unit_id">
+                <option value="">-- Vælg organisation --</option>
+                {% for unit in units %}
+                <option value="{{ unit.id }}">{{ unit.name }}</option>
+                {% endfor %}
+            </select>
+            <small style="color: #6b7280;">Knyt opgaven til en specifik organisation</small>
+        </div>
+
+        <div class="info-box" style="margin-top: 20px;">
+            <strong>Næste skridt:</strong> Efter du har oprettet opgaven, skal du tilføje 2-5 konkrete handlinger.
+            <br><br>
+            <strong>Eksempel på handlinger for "Sygefraværshåndtering":</strong>
+            <ol style="margin-top: 10px; margin-bottom: 0;">
+                <li>Ring til medarbejderen på første sygedag</li>
+                <li>Tal om forventet varighed</li>
+                <li>Følg op på dag 5/14</li>
+                <li>Dokumenter samtalen korrekt</li>
+            </ol>
+        </div>
+
+        <div class="form-actions" style="margin-top: 20px;">
+            <button type="submit" class="btn">Opret opgave</button>
+            <a href="{{ url_for('admin_tasks') }}" class="btn btn-secondary">Annuller</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

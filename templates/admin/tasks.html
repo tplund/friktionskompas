@@ -1,0 +1,68 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}Situationsmålinger - Friktionskompasset{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Situationsmålinger</h1>
+    <p>Mål friktion i specifikke opgaver og handlinger</p>
+</div>
+
+<div class="card" style="margin-bottom: 20px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 style="margin: 0;">Opgaver</h2>
+        <a href="{{ url_for('admin_task_new') }}" class="btn">+ Opret opgave</a>
+    </div>
+
+    {% if tasks %}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Opgave</th>
+                <th>Organisation</th>
+                <th>Handlinger</th>
+                <th>Målinger</th>
+                <th>Oprettet</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for task in tasks %}
+            <tr>
+                <td>
+                    <a href="{{ url_for('admin_task_detail', task_id=task.id) }}" style="font-weight: 500;">
+                        {{ task.name }}
+                    </a>
+                    {% if task.description %}
+                    <div style="font-size: 0.85rem; color: #6b7280;">{{ task.description[:50] }}{% if task.description|length > 50 %}...{% endif %}</div>
+                    {% endif %}
+                </td>
+                <td>{{ task.unit_name or '-' }}</td>
+                <td>{{ task.action_count }}</td>
+                <td>{{ task.assessment_count }}</td>
+                <td>{{ task.created_at[:10] if task.created_at else '-' }}</td>
+                <td>
+                    <a href="{{ url_for('admin_task_detail', task_id=task.id) }}" class="btn btn-small">Detaljer</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="info-box">
+        <p>Ingen opgaver oprettet endnu.</p>
+        <p><a href="{{ url_for('admin_task_new') }}">Opret din første opgave</a> for at komme i gang med situationsmålinger.</p>
+    </div>
+    {% endif %}
+</div>
+
+<div class="info-box">
+    <strong>Hvad er situationsmålinger?</strong><br>
+    I stedet for at måle generel friktion, måler situationsmålinger friktion i specifikke opgaver og handlinger.
+    <ul style="margin-top: 10px; margin-bottom: 0;">
+        <li><strong>Opgave:</strong> En arbejdsopgave (fx "Sygefraværshåndtering")</li>
+        <li><strong>Handlinger:</strong> 2-5 konkrete handlinger i opgaven (fx "Ring til medarbejderen")</li>
+        <li><strong>Måling:</strong> 4 spørgsmål per handling om tryghed, mening, kunnen og besvær</li>
+    </ul>
+</div>
+{% endblock %}

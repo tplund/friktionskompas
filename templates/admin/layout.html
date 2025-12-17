@@ -564,6 +564,15 @@
                     </ul>
                 </li>
 
+                <!-- Situationsmålinger dropdown -->
+                <li class="submenu-dropdown">
+                    <a href="#" class="dropdown-toggle {% if 'tasks' in request.path or active_page == 'tasks' %}active{% endif %}">🎯 Situationsmålinger ▾</a>
+                    <ul class="dropdown-menu">
+                        <li><a href="/admin/tasks" {% if request.path == '/admin/tasks' %}class="active"{% endif %}>📋 Alle opgaver</a></li>
+                        <li><a href="/admin/tasks/new" {% if 'tasks/new' in request.path %}class="active"{% endif %}>➕ Ny opgave</a></li>
+                    </ul>
+                </li>
+
                 <!-- Friktionsprofil dropdown -->
                 <li class="submenu-dropdown">
                     <a href="#" class="dropdown-toggle {% if 'profil' in request.path and 'profil-questions' not in request.path %}active{% endif %}">🧠 {{ t('nav.friktionsprofil', 'Friktionsprofil') }} ▾</a>

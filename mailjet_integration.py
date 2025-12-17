@@ -1628,6 +1628,141 @@ def send_login_code(to_email: str, code: str, code_type: str = 'login',
         return False
 
 
+def send_situation_assessment_batch(recipients: List[Dict], tokens: List[str],
+                                    task_name: str, sender_name: str = "Friktionskompasset",
+                                    sent_from: str = None, language: str = 'da') -> Dict:
+    """
+    Send situationsmåling invitationer til en batch af modtagere
+
+    Args:
+        recipients: List[{'email': '...', 'name': '...'}]
+        tokens: List[str] - samme længde som recipients
+        task_name: Navnet på opgaven der måles
+        sender_name: Afsendernavn
+        sent_from: Afsender email (bruges ikke, vi bruger altid FROM_EMAIL)
+        language: 'da' or 'en'
+
+    Returns: {'emails_sent': X, 'errors': Y}
+    """
+    results = {
+        'emails_sent': 0,
+        'errors': 0
+    }
+
+    # Email templates
+    if language == 'en':
+        subject = f"Situation assessment: {task_name}"
+        intro = "You have been invited to participate in a short survey"
+        task_label = "Task"
+        what_happens = "What happens?"
+        what_happens_text = "You will answer 4 questions per action (approx. 2 minutes total). Your answers are anonymous."
+        button_text = "Start survey"
+        ignore_text = "If you did not expect this email, you can ignore it."
+    else:
+        subject = f"Situationsmåling: {task_name}"
+        intro = "Du er inviteret til at deltage i en kort undersøgelse"
+        task_label = "Opgave"
+        what_happens = "Hvad sker der?"
+        what_happens_text = "Du besvarer 4 spørgsmål per handling (ca. 2 minutter total). Dine svar er anonyme."
+        button_text = "Start undersøgelse"
+        ignore_text = "Hvis du ikke forventede denne email, kan du ignorere den."
+
+    for i, recipient in enumerate(recipients):
+        if not recipient.get('email'):
+            continue
+
+        token = tokens[i]
+        survey_url = f"{os.environ.get('BASE_URL', 'https://friktionskompasset.dk')}/situation/{token}"
+
+        html_content = f"""
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <div style="background: linear-gradient(135deg, #1e3a5f, #2d4a6f); color: white; padding: 30px; border-radius: 12px 12px 0 0;">
+                <h1 style="margin: 0; font-size: 24px;">{subject}</h1>
+            </div>
+
+            <div style="background: #f8fafc; padding: 30px; border-radius: 0 0 12px 12px;">
+                <p style="font-size: 16px; color: #374151; margin-top: 0;">
+                    {intro}
+                </p>
+
+                <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                    <strong>{task_label}:</strong> {task_name}
+                </div>
+
+                <div style="background: #e0f2fe; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                    <strong>{what_happens}</strong><br>
+                    {what_happens_text}
+                </div>
+
+                <div style="text-align: center; margin: 30px 0;">
+                    <a href="{survey_url}"
+                       style="display: inline-block; background: #3b82f6; color: white; padding: 15px 40px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">
+                        {button_text}
+                    </a>
+                </div>
+
+                <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">
+                    {ignore_text}
+                </p>
+
+                <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
+
+                <p style="color: #9ca3af; font-size: 12px; margin-bottom: 0; text-align: center;">
+                    Sendt af {sender_name} via Friktionskompasset
+                </p>
+            </div>
+        </div>
+        """
+
+        text_content = f"""
+{subject}
+
+{intro}
+
+{task_label}: {task_name}
+
+{what_happens}
+{what_happens_text}
+
+Start her: {survey_url}
+
+{ignore_text}
+
+---
+Sendt af {sender_name} via Friktionskompasset
+        """
+
+        try:
+            data = {
+                'Messages': [
+                    {
+                        'From': {'Email': FROM_EMAIL, 'Name': sender_name or FROM_NAME},
+                        'To': [{'Email': recipient['email']}],
+                        'Subject': subject,
+                        'HTMLPart': html_content,
+                        'TextPart': text_content
+                    }
+                ]
+            }
+
+            result = mailjet.send.create(data=data)
+
+            if result.status_code == 200:
+                log_email(recipient['email'], subject, 'situation_assessment', 'sent')
+                results['emails_sent'] += 1
+            else:
+                log_email(recipient['email'], subject, 'situation_assessment', 'failed',
+                         error_message=str(result.json()))
+                results['errors'] += 1
+
+        except Exception as e:
+            log_email(recipient['email'], subject, 'situation_assessment', 'failed',
+                     error_message=str(e))
+            results['errors'] += 1
+
+    return results
+
+
 if __name__ == "__main__":
     # Test connection
     test_mailjet_connection()

@@ -6470,5 +6470,243 @@ def apply_preset_to_customer(customer_id, preset_id):
     return redirect(url_for('customer_assessments', customer_id=customer_id))
 
 
+# ========================================
+# SITUATIONSMÅLING ROUTES
+# ========================================
+
+@app.route('/admin/tasks')
+@admin_required
+def admin_tasks():
+    """Liste over opgaver (tasks) for situationsmåling"""
+    from db_hierarchical import get_tasks
+
+    customer_filter = get_customer_filter()
+    if customer_filter[0]:
+        # Brug customer_id fra filter
+        customer_id = customer_filter[1][0] if customer_filter[1] else None
+        tasks = get_tasks(customer_id)
+    else:
+        tasks = get_tasks()
+
+    return render_template('admin/tasks.html',
+                           tasks=tasks,
+                           active_page='tasks')
+
+
+@app.route('/admin/tasks/new', methods=['GET', 'POST'])
+@admin_required
+def admin_task_new():
+    """Opret ny opgave"""
+    from db_hierarchical import create_task, get_toplevel_units
+
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        description = request.form.get('description', '').strip()
+        unit_id = request.form.get('unit_id') or None
+
+        if not name:
+            flash('Navn er påkrævet', 'error')
+            return redirect(url_for('admin_task_new'))
+
+        # Find customer_id
+        customer_filter = get_customer_filter()
+        if customer_filter[0]:
+            customer_id = customer_filter[1][0]
+        else:
+            # Superadmin uden filter - brug customer fra valgt unit
+            if unit_id:
+                with get_db() as conn:
+                    unit = conn.execute('SELECT customer_id FROM organizational_units WHERE id = ?', (unit_id,)).fetchone()
+                    customer_id = unit['customer_id'] if unit else None
+            else:
+                flash('Vælg en organisation eller sæt kundefilter', 'error')
+                return redirect(url_for('admin_task_new'))
+
+        task_id = create_task(
+            customer_id=customer_id,
+            name=name,
+            description=description,
+            unit_id=unit_id,
+            created_by=session['user'].get('email')
+        )
+
+        flash('Opgave oprettet! Tilføj nu handlinger.', 'success')
+        return redirect(url_for('admin_task_detail', task_id=task_id))
+
+    # GET - vis formular
+    customer_filter = get_customer_filter()
+    if customer_filter[0]:
+        customer_id = customer_filter[1][0]
+        units = get_toplevel_units(customer_id)
+    else:
+        units = get_toplevel_units()
+
+    return render_template('admin/task_new.html',
+                           units=units,
+                           active_page='tasks')
+
+
+@app.route('/admin/tasks/<task_id>')
+@admin_required
+def admin_task_detail(task_id):
+    """Vis opgave med handlinger"""
+    from db_hierarchical import get_task
+
+    task = get_task(task_id)
+    if not task:
+        flash('Opgave ikke fundet', 'error')
+        return redirect(url_for('admin_tasks'))
+
+    return render_template('admin/task_detail.html',
+                           task=task,
+                           active_page='tasks')
+
+
+@app.route('/admin/tasks/<task_id>/add-action', methods=['POST'])
+@admin_required
+def admin_add_action(task_id):
+    """Tilføj handling til opgave"""
+    from db_hierarchical import add_action, get_task
+
+    task = get_task(task_id)
+    if not task:
+        flash('Opgave ikke fundet', 'error')
+        return redirect(url_for('admin_tasks'))
+
+    name = request.form.get('name', '').strip()
+    description = request.form.get('description', '').strip()
+
+    if not name:
+        flash('Handlingens navn er påkrævet', 'error')
+        return redirect(url_for('admin_task_detail', task_id=task_id))
+
+    if len(task['actions']) >= 5:
+        flash('Maksimalt 5 handlinger per opgave', 'error')
+        return redirect(url_for('admin_task_detail', task_id=task_id))
+
+    add_action(task_id, name, description or None)
+    flash('Handling tilføjet', 'success')
+    return redirect(url_for('admin_task_detail', task_id=task_id))
+
+
+@app.route('/admin/tasks/<task_id>/delete-action/<action_id>', methods=['POST'])
+@admin_required
+def admin_delete_action(task_id, action_id):
+    """Slet handling fra opgave"""
+    from db_hierarchical import delete_action
+
+    delete_action(action_id)
+    flash('Handling slettet', 'success')
+    return redirect(url_for('admin_task_detail', task_id=task_id))
+
+
+@app.route('/admin/tasks/<task_id>/delete', methods=['POST'])
+@admin_required
+def admin_delete_task(task_id):
+    """Slet opgave"""
+    from db_hierarchical import delete_task
+
+    delete_task(task_id)
+    flash('Opgave slettet', 'success')
+    return redirect(url_for('admin_tasks'))
+
+
+@app.route('/admin/tasks/<task_id>/new-assessment', methods=['GET', 'POST'])
+@admin_required
+def admin_situation_assessment_new(task_id):
+    """Opret ny situationsmåling for en opgave"""
+    from db_hierarchical import (get_task, get_toplevel_units, get_unit_contacts,
+                                  create_situation_assessment, generate_situation_tokens)
+
+    task = get_task(task_id)
+    if not task:
+        flash('Opgave ikke fundet', 'error')
+        return redirect(url_for('admin_tasks'))
+
+    if len(task['actions']) < 2:
+        flash('Tilføj mindst 2 handlinger før du kan starte en måling', 'error')
+        return redirect(url_for('admin_task_detail', task_id=task_id))
+
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip() or f"Måling af {task['name']}"
+        period = request.form.get('period', '').strip()
+        unit_id = request.form.get('unit_id') or task.get('unit_id')
+        sent_from = request.form.get('sent_from', '').strip()
+        sender_name = request.form.get('sender_name', '').strip()
+
+        if not unit_id:
+            flash('Vælg en organisation at sende til', 'error')
+            return redirect(url_for('admin_situation_assessment_new', task_id=task_id))
+
+        # Opret assessment
+        assessment_id = create_situation_assessment(
+            task_id=task_id,
+            name=name,
+            period=period,
+            unit_id=unit_id,
+            sent_from=sent_from,
+            sender_name=sender_name
+        )
+
+        # Hent kontakter fra unit
+        contacts = get_unit_contacts(unit_id)
+        if not contacts:
+            flash('Ingen kontakter fundet i den valgte organisation. Tilføj kontakter først.', 'error')
+            return redirect(url_for('admin_situation_assessment_new', task_id=task_id))
+
+        # Generer tokens
+        recipients = [{'email': c['email'], 'name': c.get('name')} for c in contacts if c.get('email')]
+        tokens = generate_situation_tokens(assessment_id, recipients)
+
+        # Send emails hvis ønsket
+        send_emails = request.form.get('send_emails') == 'on'
+        if send_emails and tokens:
+            from mailjet_integration import send_situation_assessment_batch
+            try:
+                result = send_situation_assessment_batch(
+                    recipients=recipients,
+                    tokens=tokens,
+                    task_name=task['name'],
+                    sender_name=sender_name or 'Friktionskompasset',
+                    sent_from=sent_from
+                )
+                flash(f'Måling oprettet og {result.get("emails_sent", 0)} invitationer sendt!', 'success')
+            except Exception as e:
+                flash(f'Måling oprettet, men der opstod en fejl ved afsendelse: {str(e)}', 'warning')
+        else:
+            flash(f'Måling oprettet med {len(tokens)} tokens. Emails ikke sendt.', 'success')
+
+        return redirect(url_for('admin_situation_assessment_view', assessment_id=assessment_id))
+
+    # GET - vis formular
+    customer_filter = get_customer_filter()
+    if customer_filter[0]:
+        customer_id = customer_filter[1][0]
+        units = get_toplevel_units(customer_id)
+    else:
+        units = get_toplevel_units()
+
+    return render_template('admin/situation_assessment_new.html',
+                           task=task,
+                           units=units,
+                           active_page='tasks')
+
+
+@app.route('/admin/situation-assessments/<assessment_id>')
+@admin_required
+def admin_situation_assessment_view(assessment_id):
+    """Vis resultater for situationsmåling"""
+    from db_hierarchical import get_situation_results
+
+    results = get_situation_results(assessment_id)
+    if not results:
+        flash('Måling ikke fundet', 'error')
+        return redirect(url_for('admin_tasks'))
+
+    return render_template('admin/situation_assessment.html',
+                           results=results,
+                           active_page='tasks')
+
+
 if __name__ == '__main__':
     app.run(debug=True, port=5001)

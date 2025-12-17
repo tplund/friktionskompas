@@ -200,5 +200,82 @@ def submit():
     )
 
 
+# ========================================
+# SITUATIONSMÅLING ROUTES
+# ========================================
+
+@app.route('/situation/<token>')
+def situation_survey(token):
+    """Vis situationsmåling survey"""
+    from db_hierarchical import validate_situation_token
+    from situation_questions import get_questions, get_field_name
+
+    token_data = validate_situation_token(token)
+    if not token_data:
+        return render_template('error.html',
+            title='Ugyldigt link',
+            message='Dette link er ugyldigt eller allerede brugt. Kontakt din administrator hvis du mener dette er en fejl.'
+        ), 404
+
+    questions = get_questions('da')  # TODO: Detect language
+
+    return render_template('situation_survey.html',
+        token=token,
+        task_name=token_data['task_name'],
+        task_description=token_data.get('task_description'),
+        actions=token_data['actions'],
+        questions=questions,
+        get_field_name=get_field_name
+    )
+
+
+@app.route('/situation/<token>/submit', methods=['POST'])
+def situation_survey_submit(token):
+    """Gem svar for situationsmåling"""
+    from db_hierarchical import validate_situation_token, save_situation_responses
+    from situation_questions import get_questions, adjust_score
+
+    token_data = validate_situation_token(token)
+    if not token_data:
+        return render_template('error.html',
+            title='Ugyldigt link',
+            message='Dette link er ugyldigt eller allerede brugt.'
+        ), 404
+
+    questions = get_questions('da')
+    responses = []
+
+    # Parse svar for hver handling og hvert felt
+    for action in token_data['actions']:
+        action_id = action['id']
+        for q in questions:
+            field = q['field']
+            key = f"action_{action_id}_{field}"
+            raw_score = request.form.get(key)
+
+            if raw_score:
+                # Juster score for reverse_scored
+                score = adjust_score(int(raw_score), q['reverse_scored'])
+                responses.append({
+                    'action_id': action_id,
+                    'field': field,
+                    'score': score
+                })
+
+    if not responses:
+        return render_template('error.html',
+            title='Ingen svar',
+            message='Du skal besvare mindst ét spørgsmål.'
+        ), 400
+
+    # Gem svar
+    saved_count = save_situation_responses(token, responses)
+
+    return render_template('situation_thanks.html',
+        saved_count=saved_count,
+        action_count=len(token_data['actions'])
+    )
+
+
 if __name__ == '__main__':
     app.run(debug=True, port=5002)

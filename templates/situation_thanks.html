@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tak for din besvarelse</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            background: #f1f5f9;
+            color: #1f2937;
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+        .card {
+            background: white;
+            padding: 40px 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .success-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #10b981, #059669);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 25px;
+        }
+        .success-icon svg {
+            width: 40px;
+            height: 40px;
+            stroke: white;
+            stroke-width: 3;
+            fill: none;
+        }
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            color: #1f2937;
+        }
+        .message {
+            color: #6b7280;
+            font-size: 1rem;
+            margin-bottom: 20px;
+        }
+        .stats {
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+        }
+        .stats p {
+            color: #374151;
+            font-size: 0.95rem;
+        }
+        .stats strong {
+            color: #3b82f6;
+        }
+        .info {
+            font-size: 0.9rem;
+            color: #9ca3af;
+        }
+        .branding {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+        }
+        .branding a {
+            color: #6b7280;
+            text-decoration: none;
+            font-size: 0.85rem;
+        }
+        .branding a:hover {
+            color: #3b82f6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="success-icon">
+                <svg viewBox="0 0 24 24">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+            </div>
+
+            <h1>Tak for din besvarelse!</h1>
+
+            <p class="message">
+                Dine svar er nu registreret og vil indgå i analysen.
+            </p>
+
+            <div class="stats">
+                <p>
+                    Du har besvaret <strong>{{ saved_count }}</strong> spørgsmål
+                    for <strong>{{ action_count }}</strong> handling{{ 'er' if action_count > 1 else '' }}.
+                </p>
+            </div>
+
+            <p class="info">
+                Alle svar behandles anonymt og bruges til at identificere
+                forbedringsmuligheder i arbejdsprocesserne.
+            </p>
+
+            <p class="info" style="margin-top: 15px;">
+                Du kan nu lukke dette vindue.
+            </p>
+        </div>
+
+        <div class="branding">
+            <a href="https://friktionskompasset.dk">Friktionskompasset</a>
+        </div>
+    </div>
+</body>
+</html>

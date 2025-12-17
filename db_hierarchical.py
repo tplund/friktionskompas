@@ -406,7 +406,82 @@ def init_db():
                 FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
             )
         """)
-        
+
+        # ========================================
+        # SITUATIONSMÅLING TABELLER
+        # ========================================
+
+        # Opgaver (tasks) - knyttet til customer og evt. unit
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS tasks (
+                id TEXT PRIMARY KEY,
+                customer_id TEXT NOT NULL,
+                unit_id TEXT,
+                name TEXT NOT NULL,
+                description TEXT,
+                created_by TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE,
+                FOREIGN KEY (unit_id) REFERENCES organizational_units(id) ON DELETE SET NULL
+            )
+        """)
+
+        # Handlinger (actions) - 2-5 per opgave
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS actions (
+                id TEXT PRIMARY KEY,
+                task_id TEXT NOT NULL,
+                name TEXT NOT NULL,
+                description TEXT,
+                sequence INTEGER DEFAULT 0,
+                FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
+            )
+        """)
+
+        # Situationsmålinger (assessments for tasks)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS situation_assessments (
+                id TEXT PRIMARY KEY,
+                task_id TEXT NOT NULL,
+                unit_id TEXT,
+                name TEXT,
+                period TEXT,
+                sent_from TEXT,
+                sender_name TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,
+                FOREIGN KEY (unit_id) REFERENCES organizational_units(id) ON DELETE SET NULL
+            )
+        """)
+
+        # Tokens til situationsmålinger
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS situation_tokens (
+                token TEXT PRIMARY KEY,
+                situation_assessment_id TEXT NOT NULL,
+                recipient_email TEXT,
+                recipient_name TEXT,
+                is_used INTEGER DEFAULT 0,
+                used_at TIMESTAMP,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (situation_assessment_id) REFERENCES situation_assessments(id) ON DELETE CASCADE
+            )
+        """)
+
+        # Svar per handling per felt
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS situation_responses (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                token TEXT NOT NULL,
+                action_id TEXT NOT NULL,
+                field TEXT NOT NULL,
+                score INTEGER CHECK(score BETWEEN 1 AND 5),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (token) REFERENCES situation_tokens(token) ON DELETE CASCADE,
+                FOREIGN KEY (action_id) REFERENCES actions(id) ON DELETE CASCADE
+            )
+        """)
+
         # Indsæt default spørgsmål hvis tom database
         count = conn.execute("SELECT COUNT(*) as cnt FROM questions").fetchone()['cnt']
         
@@ -1288,6 +1363,368 @@ def move_unit(unit_id: str, new_parent_id: Optional[str]) -> bool:
             """, (desc_new_path, desc_new_level, new_customer_id, desc['id']))
 
         return True
+
+
+# ========================================
+# SITUATIONSMÅLING FUNCTIONS
+# ========================================
+
+def create_task(customer_id: str, name: str, description: str = None,
+                unit_id: str = None, created_by: str = None) -> str:
+    """Opret ny opgave (task) for situationsmåling"""
+    task_id = f"task-{secrets.token_urlsafe(8)}"
+
+    with get_db() as conn:
+        conn.execute("""
+            INSERT INTO tasks (id, customer_id, unit_id, name, description, created_by)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (task_id, customer_id, unit_id, name, description, created_by))
+
+    return task_id
+
+
+def get_tasks(customer_id: str = None) -> List[Dict]:
+    """Hent alle opgaver, evt. filtreret på customer"""
+    with get_db() as conn:
+        if customer_id:
+            rows = conn.execute("""
+                SELECT t.*, ou.name as unit_name,
+                       (SELECT COUNT(*) FROM actions WHERE task_id = t.id) as action_count,
+                       (SELECT COUNT(*) FROM situation_assessments WHERE task_id = t.id) as assessment_count
+                FROM tasks t
+                LEFT JOIN organizational_units ou ON t.unit_id = ou.id
+                WHERE t.customer_id = ?
+                ORDER BY t.created_at DESC
+            """, (customer_id,)).fetchall()
+        else:
+            rows = conn.execute("""
+                SELECT t.*, ou.name as unit_name,
+                       (SELECT COUNT(*) FROM actions WHERE task_id = t.id) as action_count,
+                       (SELECT COUNT(*) FROM situation_assessments WHERE task_id = t.id) as assessment_count
+                FROM tasks t
+                LEFT JOIN organizational_units ou ON t.unit_id = ou.id
+                ORDER BY t.created_at DESC
+            """).fetchall()
+        return [dict(r) for r in rows]
+
+
+def get_task(task_id: str) -> Optional[Dict]:
+    """Hent en opgave med dens handlinger"""
+    with get_db() as conn:
+        task = conn.execute("""
+            SELECT t.*, ou.name as unit_name, c.name as customer_name
+            FROM tasks t
+            LEFT JOIN organizational_units ou ON t.unit_id = ou.id
+            LEFT JOIN customers c ON t.customer_id = c.id
+            WHERE t.id = ?
+        """, (task_id,)).fetchone()
+
+        if not task:
+            return None
+
+        result = dict(task)
+
+        # Hent handlinger
+        actions = conn.execute("""
+            SELECT * FROM actions WHERE task_id = ? ORDER BY sequence
+        """, (task_id,)).fetchall()
+        result['actions'] = [dict(a) for a in actions]
+
+        # Hent situationsmålinger
+        assessments = conn.execute("""
+            SELECT sa.*, ou.name as unit_name,
+                   (SELECT COUNT(*) FROM situation_tokens WHERE situation_assessment_id = sa.id) as token_count,
+                   (SELECT COUNT(*) FROM situation_tokens WHERE situation_assessment_id = sa.id AND is_used = 1) as response_count
+            FROM situation_assessments sa
+            LEFT JOIN organizational_units ou ON sa.unit_id = ou.id
+            WHERE sa.task_id = ?
+            ORDER BY sa.created_at DESC
+        """, (task_id,)).fetchall()
+        result['assessments'] = [dict(a) for a in assessments]
+
+        return result
+
+
+def update_task(task_id: str, name: str = None, description: str = None, unit_id: str = None) -> bool:
+    """Opdater opgave"""
+    with get_db() as conn:
+        updates = []
+        params = []
+
+        if name is not None:
+            updates.append("name = ?")
+            params.append(name)
+        if description is not None:
+            updates.append("description = ?")
+            params.append(description)
+        if unit_id is not None:
+            updates.append("unit_id = ?")
+            params.append(unit_id)
+
+        if not updates:
+            return False
+
+        params.append(task_id)
+        conn.execute(f"UPDATE tasks SET {', '.join(updates)} WHERE id = ?", params)
+        return True
+
+
+def delete_task(task_id: str) -> bool:
+    """Slet opgave (cascade sletter handlinger og målinger)"""
+    with get_db() as conn:
+        conn.execute("DELETE FROM tasks WHERE id = ?", (task_id,))
+        return True
+
+
+def add_action(task_id: str, name: str, description: str = None) -> str:
+    """Tilføj handling til opgave"""
+    action_id = f"action-{secrets.token_urlsafe(8)}"
+
+    with get_db() as conn:
+        # Find højeste sequence
+        max_seq = conn.execute(
+            "SELECT COALESCE(MAX(sequence), -1) as max_seq FROM actions WHERE task_id = ?",
+            (task_id,)
+        ).fetchone()['max_seq']
+
+        conn.execute("""
+            INSERT INTO actions (id, task_id, name, description, sequence)
+            VALUES (?, ?, ?, ?, ?)
+        """, (action_id, task_id, name, description, max_seq + 1))
+
+    return action_id
+
+
+def update_action(action_id: str, name: str = None, description: str = None, sequence: int = None) -> bool:
+    """Opdater handling"""
+    with get_db() as conn:
+        updates = []
+        params = []
+
+        if name is not None:
+            updates.append("name = ?")
+            params.append(name)
+        if description is not None:
+            updates.append("description = ?")
+            params.append(description)
+        if sequence is not None:
+            updates.append("sequence = ?")
+            params.append(sequence)
+
+        if not updates:
+            return False
+
+        params.append(action_id)
+        conn.execute(f"UPDATE actions SET {', '.join(updates)} WHERE id = ?", params)
+        return True
+
+
+def delete_action(action_id: str) -> bool:
+    """Slet handling"""
+    with get_db() as conn:
+        conn.execute("DELETE FROM actions WHERE id = ?", (action_id,))
+        return True
+
+
+def create_situation_assessment(task_id: str, name: str = None, period: str = None,
+                                 unit_id: str = None, sent_from: str = None,
+                                 sender_name: str = None) -> str:
+    """Opret situationsmåling for en opgave"""
+    assessment_id = f"sitass-{secrets.token_urlsafe(8)}"
+
+    with get_db() as conn:
+        conn.execute("""
+            INSERT INTO situation_assessments (id, task_id, unit_id, name, period, sent_from, sender_name)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (assessment_id, task_id, unit_id, name, period, sent_from, sender_name))
+
+    return assessment_id
+
+
+def get_situation_assessment(assessment_id: str) -> Optional[Dict]:
+    """Hent situationsmåling med detaljer"""
+    with get_db() as conn:
+        assessment = conn.execute("""
+            SELECT sa.*, t.name as task_name, t.description as task_description,
+                   ou.name as unit_name, c.name as customer_name
+            FROM situation_assessments sa
+            JOIN tasks t ON sa.task_id = t.id
+            LEFT JOIN organizational_units ou ON sa.unit_id = ou.id
+            LEFT JOIN customers c ON t.customer_id = c.id
+            WHERE sa.id = ?
+        """, (assessment_id,)).fetchone()
+
+        if not assessment:
+            return None
+
+        result = dict(assessment)
+
+        # Hent handlinger
+        actions = conn.execute("""
+            SELECT * FROM actions WHERE task_id = ? ORDER BY sequence
+        """, (result['task_id'],)).fetchall()
+        result['actions'] = [dict(a) for a in actions]
+
+        # Hent tokens
+        tokens = conn.execute("""
+            SELECT * FROM situation_tokens WHERE situation_assessment_id = ?
+        """, (assessment_id,)).fetchall()
+        result['tokens'] = [dict(t) for t in tokens]
+        result['token_count'] = len(tokens)
+        result['response_count'] = sum(1 for t in tokens if t['is_used'])
+
+        return result
+
+
+def generate_situation_tokens(assessment_id: str, recipients: List[Dict]) -> List[str]:
+    """Generer tokens for situationsmåling
+
+    recipients: [{'email': '...', 'name': '...'}, ...]
+    """
+    tokens = []
+
+    with get_db() as conn:
+        for recipient in recipients:
+            token = secrets.token_urlsafe(16)
+            conn.execute("""
+                INSERT INTO situation_tokens (token, situation_assessment_id, recipient_email, recipient_name)
+                VALUES (?, ?, ?, ?)
+            """, (token, assessment_id, recipient.get('email'), recipient.get('name')))
+            tokens.append(token)
+
+    return tokens
+
+
+def validate_situation_token(token: str) -> Optional[Dict]:
+    """Valider og hent token data for situationsmåling"""
+    with get_db() as conn:
+        token_data = conn.execute("""
+            SELECT st.*, sa.task_id, sa.name as assessment_name,
+                   t.name as task_name, t.description as task_description
+            FROM situation_tokens st
+            JOIN situation_assessments sa ON st.situation_assessment_id = sa.id
+            JOIN tasks t ON sa.task_id = t.id
+            WHERE st.token = ? AND st.is_used = 0
+        """, (token,)).fetchone()
+
+        if not token_data:
+            return None
+
+        result = dict(token_data)
+
+        # Hent handlinger
+        actions = conn.execute("""
+            SELECT * FROM actions WHERE task_id = ? ORDER BY sequence
+        """, (result['task_id'],)).fetchall()
+        result['actions'] = [dict(a) for a in actions]
+
+        return result
+
+
+def save_situation_responses(token: str, responses: List[Dict]) -> int:
+    """Gem svar for situationsmåling
+
+    responses: [{'action_id': '...', 'field': 'TRYGHED', 'score': 3}, ...]
+    """
+    with get_db() as conn:
+        for resp in responses:
+            conn.execute("""
+                INSERT INTO situation_responses (token, action_id, field, score)
+                VALUES (?, ?, ?, ?)
+            """, (token, resp['action_id'], resp['field'], resp['score']))
+
+        # Marker token som brugt
+        conn.execute("""
+            UPDATE situation_tokens SET is_used = 1, used_at = CURRENT_TIMESTAMP
+            WHERE token = ?
+        """, (token,))
+
+    return len(responses)
+
+
+def get_situation_results(assessment_id: str) -> Dict:
+    """Hent aggregerede resultater for situationsmåling"""
+    with get_db() as conn:
+        # Hent assessment info
+        assessment = get_situation_assessment(assessment_id)
+        if not assessment:
+            return None
+
+        # Hent alle svar
+        responses = conn.execute("""
+            SELECT sr.action_id, sr.field, sr.score, a.name as action_name, a.sequence
+            FROM situation_responses sr
+            JOIN situation_tokens st ON sr.token = st.token
+            JOIN actions a ON sr.action_id = a.id
+            WHERE st.situation_assessment_id = ?
+        """, (assessment_id,)).fetchall()
+
+        if not responses:
+            return {
+                'assessment': assessment,
+                'actions': [],
+                'summary': None,
+                'response_count': 0
+            }
+
+        # Aggreger per handling per felt
+        from collections import defaultdict
+        scores_by_action = defaultdict(lambda: defaultdict(list))
+        action_names = {}
+        action_sequences = {}
+
+        for r in responses:
+            action_id = r['action_id']
+            scores_by_action[action_id][r['field']].append(r['score'])
+            action_names[action_id] = r['action_name']
+            action_sequences[action_id] = r['sequence']
+
+        # Beregn gennemsnit
+        from friction_engine import score_to_percent, get_severity, adjust_score
+
+        action_results = []
+        for action_id, fields in scores_by_action.items():
+            field_scores = {}
+            for field, scores in fields.items():
+                avg = sum(scores) / len(scores)
+                # Note: reverse_scored håndteres i spørgsmålsdefinitionen
+                pct = score_to_percent(avg)
+                severity = get_severity(avg)
+                field_scores[field] = {
+                    'score': round(avg, 2),
+                    'percent': round(pct, 0),
+                    'severity': severity.value,
+                    'response_count': len(scores)
+                }
+
+            # Find primær friktion (laveste score)
+            min_field = min(field_scores.keys(), key=lambda f: field_scores[f]['score'])
+
+            action_results.append({
+                'id': action_id,
+                'name': action_names[action_id],
+                'sequence': action_sequences[action_id],
+                'scores': field_scores,
+                'primary_friction': min_field
+            })
+
+        # Sorter efter sequence
+        action_results.sort(key=lambda a: a['sequence'])
+
+        # Find højeste friktion overall
+        worst_action = min(action_results, key=lambda a: min(a['scores'][f]['score'] for f in a['scores']))
+        worst_field = worst_action['primary_friction']
+
+        return {
+            'assessment': assessment,
+            'actions': action_results,
+            'summary': {
+                'highest_friction_action': worst_action['name'],
+                'highest_friction_field': worst_field,
+                'recommendation': f"Start med at adressere {worst_field} i \"{worst_action['name']}\""
+            },
+            'response_count': assessment['response_count']
+        }
 
 
 # Initialize on import

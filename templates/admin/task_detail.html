@@ -1,0 +1,151 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}{{ task.name }} - Friktionskompasset{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{{ task.name }}</h1>
+    <p><a href="{{ url_for('admin_tasks') }}">← Tilbage til oversigt</a></p>
+</div>
+
+<div class="card" style="margin-bottom: 20px;">
+    <h2>Opgavedetaljer</h2>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
+        <div>
+            <strong>Organisation:</strong><br>
+            {{ task.unit_name or 'Ikke knyttet' }}
+        </div>
+        <div>
+            <strong>Oprettet af:</strong><br>
+            {{ task.created_by or '-' }}
+        </div>
+        <div>
+            <strong>Oprettet:</strong><br>
+            {{ task.created_at[:10] if task.created_at else '-' }}
+        </div>
+    </div>
+
+    {% if task.description %}
+    <div style="background: #f8fafc; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+        <strong>Beskrivelse:</strong><br>
+        {{ task.description }}
+    </div>
+    {% endif %}
+
+    <div style="margin-top: 20px;">
+        <form method="POST" action="{{ url_for('admin_delete_task', task_id=task.id) }}"
+              style="display: inline;"
+              onsubmit="return confirm('Er du sikker på at du vil slette denne opgave? Alle handlinger og målinger slettes også.');">
+            <button type="submit" class="btn btn-danger btn-small">Slet opgave</button>
+        </form>
+    </div>
+</div>
+
+<div class="card" style="margin-bottom: 20px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 style="margin: 0;">Handlinger ({{ task.actions|length }}/5)</h2>
+    </div>
+
+    {% if task.actions %}
+    <div class="actions-list">
+        {% for action in task.actions %}
+        <div class="action-item" style="display: flex; justify-content: space-between; align-items: center; padding: 15px; background: #f8fafc; border-radius: 8px; margin-bottom: 10px;">
+            <div>
+                <strong>{{ loop.index }}. {{ action.name }}</strong>
+                {% if action.description %}
+                <div style="font-size: 0.9rem; color: #6b7280; margin-top: 5px;">{{ action.description }}</div>
+                {% endif %}
+            </div>
+            <form method="POST" action="{{ url_for('admin_delete_action', task_id=task.id, action_id=action.id) }}"
+                  style="margin: 0;"
+                  onsubmit="return confirm('Slet denne handling?');">
+                <button type="submit" class="btn btn-danger btn-small">Slet</button>
+            </form>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="info-box">
+        <p>Ingen handlinger tilføjet endnu. Tilføj mindst 2 handlinger for at kunne starte en måling.</p>
+    </div>
+    {% endif %}
+
+    {% if task.actions|length < 5 %}
+    <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+        <h3>Tilføj handling</h3>
+        <form method="POST" action="{{ url_for('admin_add_action', task_id=task.id) }}">
+            <div class="form-group">
+                <label for="action_name">Handlingens navn *</label>
+                <input type="text" id="action_name" name="name" required
+                       placeholder="Fx 'Ring til medarbejderen på første sygedag'">
+            </div>
+            <div class="form-group">
+                <label for="action_description">Beskrivelse (valgfrit)</label>
+                <input type="text" id="action_description" name="description"
+                       placeholder="Kort uddybning af handlingen">
+            </div>
+            <button type="submit" class="btn">+ Tilføj handling</button>
+        </form>
+    </div>
+    {% endif %}
+</div>
+
+{% if task.actions|length >= 2 %}
+<div class="card" style="margin-bottom: 20px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 style="margin: 0;">Målinger</h2>
+        <a href="{{ url_for('admin_situation_assessment_new', task_id=task.id) }}" class="btn">+ Start ny måling</a>
+    </div>
+
+    {% if task.assessments %}
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Måling</th>
+                <th>Periode</th>
+                <th>Sendt til</th>
+                <th>Svar</th>
+                <th>Status</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for assessment in task.assessments %}
+            <tr>
+                <td>{{ assessment.name or 'Måling' }}</td>
+                <td>{{ assessment.period or '-' }}</td>
+                <td>{{ assessment.unit_name or '-' }}</td>
+                <td>{{ assessment.response_count }}/{{ assessment.token_count }}</td>
+                <td>
+                    {% if assessment.response_count == 0 %}
+                    <span style="color: #f59e0b;">Afventer svar</span>
+                    {% elif assessment.response_count < assessment.token_count %}
+                    <span style="color: #3b82f6;">{{ ((assessment.response_count / assessment.token_count) * 100)|round|int }}% besvaret</span>
+                    {% else %}
+                    <span style="color: #10b981;">Komplet</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="{{ url_for('admin_situation_assessment_view', assessment_id=assessment.id) }}" class="btn btn-small">Se resultater</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="info-box">
+        <p>Ingen målinger startet endnu.</p>
+        <p><a href="{{ url_for('admin_situation_assessment_new', task_id=task.id) }}">Start en måling</a> for at indsamle svar fra medarbejderne.</p>
+    </div>
+    {% endif %}
+</div>
+{% else %}
+<div class="card">
+    <div class="warning">
+        Tilføj mindst 2 handlinger før du kan starte en måling.
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}

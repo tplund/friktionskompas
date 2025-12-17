@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Situationsmåling - {{ task_name }}</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            background: #f1f5f9;
+            color: #1f2937;
+            line-height: 1.6;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
+        }
+        .header {
+            background: linear-gradient(135deg, #1e3a5f, #2d4a6f);
+            color: white;
+            padding: 30px;
+            border-radius: 12px 12px 0 0;
+            text-align: center;
+        }
+        .header h1 {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+        }
+        .header p {
+            color: #cbd5e1;
+            font-size: 0.95rem;
+        }
+        .content {
+            background: white;
+            padding: 30px;
+            border-radius: 0 0 12px 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .task-context {
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+        .task-context h2 {
+            font-size: 1.1rem;
+            color: #374151;
+            margin-bottom: 5px;
+        }
+        .task-context p {
+            color: #6b7280;
+            font-size: 0.95rem;
+        }
+        .action-section {
+            margin-bottom: 40px;
+            padding-bottom: 30px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        .action-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        .action-header {
+            background: #3b82f6;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .action-header h3 {
+            margin: 0;
+            font-size: 1rem;
+        }
+        .action-header .action-num {
+            opacity: 0.7;
+            font-weight: normal;
+        }
+        .question-card {
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        .question-text {
+            font-weight: 500;
+            margin-bottom: 15px;
+            color: #374151;
+        }
+        .field-badge {
+            display: inline-block;
+            background: #e0f2fe;
+            color: #0369a1;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        .scale {
+            display: flex;
+            gap: 5px;
+            justify-content: space-between;
+        }
+        .scale-option {
+            flex: 1;
+            text-align: center;
+        }
+        .scale-option input {
+            display: none;
+        }
+        .scale-option label {
+            display: block;
+            padding: 12px 5px;
+            background: white;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-weight: 500;
+        }
+        .scale-option input:checked + label {
+            background: #3b82f6;
+            border-color: #3b82f6;
+            color: white;
+        }
+        .scale-option label:hover {
+            border-color: #3b82f6;
+        }
+        .scale-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+            font-size: 0.8rem;
+            color: #6b7280;
+        }
+        .submit-section {
+            margin-top: 30px;
+            text-align: center;
+        }
+        .btn {
+            display: inline-block;
+            background: #3b82f6;
+            color: white;
+            padding: 15px 40px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .btn:hover {
+            background: #2563eb;
+        }
+        .btn:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+        .progress {
+            background: #e5e7eb;
+            height: 8px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        .progress-bar {
+            height: 100%;
+            background: #3b82f6;
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+        .progress-text {
+            text-align: center;
+            font-size: 0.9rem;
+            color: #6b7280;
+            margin-bottom: 10px;
+        }
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+            .header, .content {
+                padding: 20px;
+            }
+            .scale {
+                flex-wrap: wrap;
+            }
+            .scale-option {
+                width: 18%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Situationsmåling</h1>
+            <p>{{ task_name }}</p>
+        </div>
+
+        <div class="content">
+            {% if task_description %}
+            <div class="task-context">
+                <h2>Om denne opgave</h2>
+                <p>{{ task_description }}</p>
+            </div>
+            {% endif %}
+
+            <div class="progress-text">
+                <span id="answered">0</span> / <span id="total">{{ actions|length * 4 }}</span> spørgsmål besvaret
+            </div>
+            <div class="progress">
+                <div class="progress-bar" id="progress-bar" style="width: 0%"></div>
+            </div>
+
+            <form method="POST" action="{{ url_for('situation_survey_submit', token=token) }}" id="survey-form">
+                {% for action in actions %}
+                <div class="action-section">
+                    <div class="action-header">
+                        <h3><span class="action-num">Handling {{ loop.index }}:</span> {{ action.name }}</h3>
+                    </div>
+
+                    {% for q in questions %}
+                    <div class="question-card">
+                        <span class="field-badge">{{ get_field_name(q.field, 'da') }}</span>
+                        <div class="question-text">{{ q.text }}</div>
+
+                        <div class="scale">
+                            {% for i in range(1, 6) %}
+                            <div class="scale-option">
+                                <input type="radio"
+                                       name="action_{{ action.id }}_{{ q.field }}"
+                                       value="{{ i }}"
+                                       id="action_{{ action.id }}_{{ q.field }}_{{ i }}"
+                                       onchange="updateProgress()">
+                                <label for="action_{{ action.id }}_{{ q.field }}_{{ i }}">{{ i }}</label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <div class="scale-labels">
+                            <span>{{ q.scale_labels[0] }}</span>
+                            <span>{{ q.scale_labels[1] }}</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endfor %}
+
+                <div class="submit-section">
+                    <button type="submit" class="btn" id="submit-btn" disabled>Send svar</button>
+                    <p style="margin-top: 10px; font-size: 0.85rem; color: #6b7280;">
+                        Dine svar er anonyme
+                    </p>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function updateProgress() {
+            const total = parseInt(document.getElementById('total').textContent);
+            const answered = document.querySelectorAll('input[type="radio"]:checked').length;
+            const percent = (answered / total) * 100;
+
+            document.getElementById('answered').textContent = answered;
+            document.getElementById('progress-bar').style.width = percent + '%';
+
+            // Enable submit when all questions answered
+            document.getElementById('submit-btn').disabled = (answered < total);
+        }
+
+        // Initialize on load
+        updateProgress();
+    </script>
+</body>
+</html>

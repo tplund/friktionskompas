@@ -1,0 +1,201 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}Resultater - {{ results.assessment.task_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .score-bar {
+        height: 24px;
+        border-radius: 4px;
+        transition: width 0.3s ease;
+    }
+    .score-high { background: linear-gradient(90deg, #10b981, #059669); }
+    .score-medium { background: linear-gradient(90deg, #f59e0b, #d97706); }
+    .score-low { background: linear-gradient(90deg, #ef4444, #dc2626); }
+
+    .action-card {
+        background: #f8fafc;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 15px;
+    }
+    .action-card.worst {
+        border: 2px solid #ef4444;
+        background: #fef2f2;
+    }
+    .field-row {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        margin-bottom: 10px;
+    }
+    .field-label {
+        width: 80px;
+        font-weight: 500;
+        font-size: 0.9rem;
+    }
+    .field-bar-container {
+        flex: 1;
+        background: #e5e7eb;
+        border-radius: 4px;
+        height: 24px;
+    }
+    .field-value {
+        width: 60px;
+        text-align: right;
+        font-weight: 600;
+    }
+    .primary-friction {
+        display: inline-block;
+        background: #fef2f2;
+        color: #dc2626;
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        font-weight: 500;
+    }
+    .summary-box {
+        background: linear-gradient(135deg, #1e3a5f, #2d4a6f);
+        color: white;
+        padding: 25px;
+        border-radius: 12px;
+        margin-bottom: 20px;
+    }
+    .summary-box h3 {
+        margin-top: 0;
+        color: #93c5fd;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Resultater: {{ results.assessment.task_name }}</h1>
+    <p><a href="{{ url_for('admin_task_detail', task_id=results.assessment.task_id) }}">← Tilbage til opgaven</a></p>
+</div>
+
+<!-- Status og info -->
+<div class="card" style="margin-bottom: 20px;">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px;">
+        <div>
+            <strong>Periode:</strong><br>
+            {{ results.assessment.period or '-' }}
+        </div>
+        <div>
+            <strong>Organisation:</strong><br>
+            {{ results.assessment.unit_name or '-' }}
+        </div>
+        <div>
+            <strong>Svar:</strong><br>
+            {{ results.response_count }} / {{ results.assessment.token_count }}
+            {% if results.assessment.token_count > 0 %}
+            ({{ ((results.response_count / results.assessment.token_count) * 100)|round|int }}%)
+            {% endif %}
+        </div>
+        <div>
+            <strong>Status:</strong><br>
+            {% if results.response_count == 0 %}
+            <span style="color: #f59e0b;">Afventer svar</span>
+            {% elif results.response_count < results.assessment.token_count %}
+            <span style="color: #3b82f6;">Igangværende</span>
+            {% else %}
+            <span style="color: #10b981;">Komplet</span>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% if results.summary %}
+<!-- Anbefaling -->
+<div class="summary-box">
+    <h3>Start her</h3>
+    <p style="font-size: 1.1rem; margin-bottom: 10px;">
+        {{ results.summary.recommendation }}
+    </p>
+    <p style="font-size: 0.9rem; color: #cbd5e1; margin: 0;">
+        Handlingen "{{ results.summary.highest_friction_action }}" har højest friktion i feltet <strong>{{ results.summary.highest_friction_field }}</strong>
+    </p>
+</div>
+{% endif %}
+
+{% if results.actions %}
+<!-- Resultater per handling -->
+<div class="card">
+    <h2>Friktion per handling</h2>
+
+    {% for action in results.actions %}
+    <div class="action-card {% if results.summary and action.name == results.summary.highest_friction_action %}worst{% endif %}">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h3 style="margin: 0;">{{ loop.index }}. {{ action.name }}</h3>
+            <span class="primary-friction">Primær: {{ action.primary_friction }}</span>
+        </div>
+
+        {% for field in ['TRYGHED', 'MENING', 'KAN', 'BESVÆR'] %}
+        {% if field in action.scores %}
+        {% set score = action.scores[field] %}
+        <div class="field-row">
+            <div class="field-label">{{ field }}</div>
+            <div class="field-bar-container">
+                <div class="score-bar score-{{ 'high' if score.percent >= 70 else ('medium' if score.percent >= 50 else 'low') }}"
+                     style="width: {{ score.percent }}%;">
+                </div>
+            </div>
+            <div class="field-value">{{ score.percent|int }}%</div>
+        </div>
+        {% endif %}
+        {% endfor %}
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="card">
+    <div class="info-box">
+        <p>Ingen svar modtaget endnu.</p>
+        <p>Del survey-linket med respondenterne for at indsamle data.</p>
+    </div>
+</div>
+{% endif %}
+
+<!-- Token liste (til debugging/manuel deling) -->
+{% if results.assessment.tokens %}
+<div class="card" style="margin-top: 20px;">
+    <h2>Survey links ({{ results.assessment.tokens|length }})</h2>
+    <p style="color: #6b7280; margin-bottom: 15px;">Disse links kan deles manuelt med respondenterne.</p>
+
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Modtager</th>
+                <th>Link</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for token in results.assessment.tokens[:10] %}
+            <tr>
+                <td>{{ token.recipient_email or 'Anonym' }}</td>
+                <td>
+                    <code style="font-size: 0.8rem;">{{ request.host_url }}situation/{{ token.token }}</code>
+                </td>
+                <td>
+                    {% if token.is_used %}
+                    <span style="color: #10b981;">Besvaret</span>
+                    {% else %}
+                    <span style="color: #6b7280;">Afventer</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+            {% if results.assessment.tokens|length > 10 %}
+            <tr>
+                <td colspan="3" style="text-align: center; color: #6b7280;">
+                    ... og {{ results.assessment.tokens|length - 10 }} flere
+                </td>
+            </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+{% endblock %}
