@@ -298,7 +298,7 @@ http://localhost:5001/admin
 ## 💰 Omkostninger
 
 ### **Software:**
-- Friktionskompasset: Open source (gratis!)
+- Friktionskompasset: Proprietær software (SaaS)
 - Flask + SQLite: Gratis
 - Mailjet: 6.000 emails/måned gratis
 

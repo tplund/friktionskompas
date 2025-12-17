@@ -471,7 +471,7 @@ INITIAL_TRANSLATIONS = {
     'landing.privacy.feature2': {'da': 'Ingen data sendes til vores servere', 'en': 'No data is sent to our servers'},
     'landing.privacy.feature3': {'da': 'Ingen cookies til tracking', 'en': 'No tracking cookies'},
     'landing.privacy.feature4': {'da': 'Du kan eksportere og slette dine data når som helst', 'en': 'You can export and delete your data at any time'},
-    'landing.privacy.feature5': {'da': 'Open source og gennemsigtigt', 'en': 'Open source and transparent'},
+    'landing.privacy.feature5': {'da': 'GDPR-compliant og dansk udviklet', 'en': 'GDPR-compliant and Danish-built'},
 
     'landing.business.title': {'da': 'For virksomheder', 'en': 'For business'},
     'landing.business.subtitle': {'da': 'Friktionskompasset hjælper teams og organisationer med at identificere og fjerne de friktioner der sænker produktiviteten.', 'en': 'Friction Compass helps teams and organizations identify and remove frictions that reduce productivity.'},
