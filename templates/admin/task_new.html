@@ -2,62 +2,283 @@
 
 {% block title %}Opret opgave - Friktionskompasset{% endblock %}
 
+{% block extra_css %}
+<style>
+    .page-header {
+        margin-bottom: 25px;
+    }
+    .page-header h1 {
+        margin: 0 0 8px 0;
+        font-size: 1.75rem;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .page-header .back-link {
+        color: #6b7280;
+        text-decoration: none;
+        font-size: 0.9rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .page-header .back-link:hover {
+        color: #7c3aed;
+    }
+
+    .form-card {
+        background: white;
+        border-radius: 12px;
+        border: 1px solid #e5e7eb;
+        overflow: hidden;
+    }
+    .form-card-header {
+        background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%);
+        color: white;
+        padding: 20px 25px;
+    }
+    .form-card-header h2 {
+        margin: 0;
+        font-size: 1.1rem;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .form-card-body {
+        padding: 25px;
+    }
+
+    .form-group {
+        margin-bottom: 24px;
+    }
+    .form-group label {
+        display: block;
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 8px;
+        font-size: 0.95rem;
+    }
+    .form-group label .required {
+        color: #ef4444;
+    }
+    .form-group input[type="text"],
+    .form-group textarea,
+    .form-group select {
+        width: 100%;
+        padding: 12px 14px;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        font-size: 0.95rem;
+        transition: all 0.2s;
+    }
+    .form-group input:focus,
+    .form-group textarea:focus,
+    .form-group select:focus {
+        outline: none;
+        border-color: #7c3aed;
+        box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+    }
+    .form-group .help-text {
+        margin-top: 6px;
+        font-size: 0.85rem;
+        color: #6b7280;
+    }
+
+    .tip-box {
+        background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
+        border: 1px solid #ddd6fe;
+        border-radius: 10px;
+        padding: 20px;
+        margin-top: 25px;
+    }
+    .tip-box h3 {
+        margin: 0 0 12px 0;
+        color: #5b21b6;
+        font-size: 0.95rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .tip-box ol {
+        margin: 0;
+        padding-left: 20px;
+        color: #6b7280;
+        font-size: 0.9rem;
+    }
+    .tip-box li {
+        margin-bottom: 6px;
+    }
+
+    .form-actions {
+        display: flex;
+        gap: 12px;
+        padding-top: 20px;
+        border-top: 1px solid #e5e7eb;
+        margin-top: 25px;
+    }
+    .btn-primary {
+        background: #7c3aed;
+        color: white;
+        padding: 12px 24px;
+        border: none;
+        border-radius: 8px;
+        font-size: 0.95rem;
+        font-weight: 600;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.2s;
+    }
+    .btn-primary:hover {
+        background: #6d28d9;
+    }
+    .btn-secondary {
+        background: #f3f4f6;
+        color: #4b5563;
+        padding: 12px 24px;
+        border: none;
+        border-radius: 8px;
+        font-size: 0.95rem;
+        font-weight: 500;
+        cursor: pointer;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+    .btn-secondary:hover {
+        background: #e5e7eb;
+    }
+
+    .steps-preview {
+        display: flex;
+        justify-content: center;
+        gap: 40px;
+        margin: 30px 0;
+        padding: 25px;
+        background: #f9fafb;
+        border-radius: 10px;
+    }
+    .step-item {
+        text-align: center;
+        position: relative;
+    }
+    .step-item:not(:last-child)::after {
+        content: '→';
+        position: absolute;
+        right: -30px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #d1d5db;
+        font-size: 1.5rem;
+    }
+    .step-number {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: #7c3aed;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        margin: 0 auto 10px;
+    }
+    .step-item.current .step-number {
+        background: #7c3aed;
+    }
+    .step-item.upcoming .step-number {
+        background: #d1d5db;
+    }
+    .step-label {
+        font-size: 0.85rem;
+        color: #6b7280;
+    }
+    .step-item.current .step-label {
+        color: #7c3aed;
+        font-weight: 600;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="page-header">
-    <h1>Opret ny opgave</h1>
-    <p><a href="{{ url_for('admin_tasks') }}">← Tilbage til oversigt</a></p>
+    <a href="{{ url_for('admin_tasks') }}" class="back-link">← Tilbage til oversigt</a>
+    <h1>📋 Opret ny opgave</h1>
 </div>
 
-<div class="card">
-    <form method="POST" action="{{ url_for('admin_task_new') }}">
-        <div class="form-group">
-            <label for="name">Opgavens navn *</label>
-            <input type="text" id="name" name="name" required
-                   placeholder="Fx 'Sygefraværshåndtering' eller 'Onboarding af nye medarbejdere'">
-            <small style="color: #6b7280;">Vælg et kort, beskrivende navn for opgaven</small>
-        </div>
+<div class="steps-preview">
+    <div class="step-item current">
+        <div class="step-number">1</div>
+        <div class="step-label">Opret opgave</div>
+    </div>
+    <div class="step-item upcoming">
+        <div class="step-number">2</div>
+        <div class="step-label">Tilføj handlinger</div>
+    </div>
+    <div class="step-item upcoming">
+        <div class="step-number">3</div>
+        <div class="step-label">Start måling</div>
+    </div>
+</div>
 
-        <div class="form-group">
-            <label for="description">Beskrivelse</label>
-            <textarea id="description" name="description" rows="2"
-                      placeholder="Kort beskrivelse af opgaven..."></textarea>
-            <small style="color: #6b7280;">Generel beskrivelse af opgaven</small>
-        </div>
+<div class="form-card">
+    <div class="form-card-header">
+        <h2>📝 Opgavedetaljer</h2>
+    </div>
+    <div class="form-card-body">
+        <form method="POST" action="{{ url_for('admin_task_new') }}">
+            <div class="form-group">
+                <label for="name">Opgavens navn <span class="required">*</span></label>
+                <input type="text" id="name" name="name" required
+                       placeholder="Fx 'Sygefraværshåndtering' eller 'Onboarding af nye medarbejdere'">
+                <p class="help-text">Vælg et kort, beskrivende navn for den arbejdsopgave du vil måle friktion i.</p>
+            </div>
 
-        <div class="form-group">
-            <label for="situation">Situation (valgfrit men anbefalet)</label>
-            <textarea id="situation" name="situation" rows="3"
-                      placeholder="Fx 'En medarbejder har været syg i 3 dage og ringer for at melde sig rask...'"></textarea>
-            <small style="color: #6b7280;">Beskriv den konkrete situation handlingerne sker i. Vises til respondenterne før spørgsmålene.</small>
-        </div>
+            <div class="form-group">
+                <label for="description">Beskrivelse</label>
+                <textarea id="description" name="description" rows="2"
+                          placeholder="Kort beskrivelse af hvad opgaven indebærer..."></textarea>
+                <p class="help-text">En generel beskrivelse af opgaven (vises ikke til respondenter).</p>
+            </div>
 
-        <div class="form-group">
-            <label for="unit_id">Organisation (valgfrit)</label>
-            <select id="unit_id" name="unit_id">
-                <option value="">-- Vælg organisation --</option>
-                {% for unit in units %}
-                <option value="{{ unit.id }}">{{ unit.name }}</option>
-                {% endfor %}
-            </select>
-            <small style="color: #6b7280;">Knyt opgaven til en specifik organisation</small>
-        </div>
+            <div class="form-group">
+                <label for="situation">Situation</label>
+                <textarea id="situation" name="situation" rows="3"
+                          placeholder="Fx 'En medarbejder har været syg i 3 dage og ringer for at melde sig rask...'"></textarea>
+                <p class="help-text">Beskriv den konkrete situation handlingerne sker i. Vises til respondenterne før spørgsmålene.</p>
+            </div>
 
-        <div class="info-box" style="margin-top: 20px;">
-            <strong>Næste skridt:</strong> Efter du har oprettet opgaven, skal du tilføje 2-5 konkrete handlinger.
-            <br><br>
-            <strong>Eksempel på handlinger for "Sygefraværshåndtering":</strong>
-            <ol style="margin-top: 10px; margin-bottom: 0;">
-                <li>Ring til medarbejderen på første sygedag</li>
-                <li>Tal om forventet varighed</li>
-                <li>Følg op på dag 5/14</li>
-                <li>Dokumenter samtalen korrekt</li>
-            </ol>
-        </div>
+            <div class="form-group">
+                <label for="unit_id">Organisation</label>
+                <select id="unit_id" name="unit_id">
+                    <option value="">-- Vælg organisation (valgfrit) --</option>
+                    {% for unit in units %}
+                    <option value="{{ unit.id }}">{{ unit.name }}</option>
+                    {% endfor %}
+                </select>
+                <p class="help-text">Knyt opgaven til en specifik organisation for bedre filtrering.</p>
+            </div>
 
-        <div class="form-actions" style="margin-top: 20px;">
-            <button type="submit" class="btn">Opret opgave</button>
-            <a href="{{ url_for('admin_tasks') }}" class="btn btn-secondary">Annuller</a>
-        </div>
-    </form>
+            <div class="tip-box">
+                <h3>💡 Næste skridt</h3>
+                <p style="margin: 0 0 12px 0; color: #6b7280; font-size: 0.9rem;">
+                    Efter du har oprettet opgaven, skal du tilføje 2-5 konkrete handlinger. Eksempel:
+                </p>
+                <ol>
+                    <li>Ring til medarbejderen på første sygedag</li>
+                    <li>Tal om forventet varighed</li>
+                    <li>Følg op på dag 5 eller 14</li>
+                    <li>Dokumenter samtalen korrekt</li>
+                </ol>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn-primary">
+                    Opret opgave →
+                </button>
+                <a href="{{ url_for('admin_tasks') }}" class="btn-secondary">Annuller</a>
+            </div>
+        </form>
+    </div>
 </div>
 {% endblock %}

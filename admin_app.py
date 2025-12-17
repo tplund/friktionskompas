@@ -35,7 +35,8 @@ from db_multitenant import (
     generate_email_code, verify_email_code, find_user_by_email, create_b2c_user,
     get_or_create_b2c_customer, authenticate_by_email_code, reset_password_with_code,
     seed_assessment_types, get_all_assessment_types, get_all_presets,
-    get_customer_assessment_config, set_customer_assessment_types, get_available_assessments
+    get_customer_assessment_config, set_customer_assessment_types, get_available_assessments,
+    hash_password, verify_password
 )
 from csv_upload_hierarchical import (
     validate_csv_format, bulk_upload_from_csv, generate_csv_template
@@ -658,11 +659,73 @@ def admin_my_account():
     for link in linked_accounts:
         link['info'] = get_provider_info(link['provider'])
 
+    # Check if user has password (not OAuth-only)
+    has_password = False
+    if user_details and user_details['password_hash']:
+        pw_hash = user_details['password_hash']
+        has_password = not (pw_hash.startswith('oauth-') or pw_hash.startswith('b2c-'))
+
     return render_template('admin/my_account.html',
                            user_details=dict(user_details) if user_details else {},
                            can_edit_profile=can_edit_profile,
+                           has_password=has_password,
                            linked_accounts=linked_accounts,
                            available_providers=available_providers)
+
+
+@app.route('/admin/change-password', methods=['POST'])
+@login_required
+def admin_change_password():
+    """Change user password"""
+    user = session.get('user')
+    user_id = user.get('id')
+
+    current_password = request.form.get('current_password', '')
+    new_password = request.form.get('new_password', '')
+    confirm_password = request.form.get('confirm_password', '')
+
+    # Validate inputs
+    if not current_password or not new_password or not confirm_password:
+        flash('Alle felter skal udfyldes', 'error')
+        return redirect(url_for('admin_my_account'))
+
+    if new_password != confirm_password:
+        flash('De nye passwords matcher ikke', 'error')
+        return redirect(url_for('admin_my_account'))
+
+    if len(new_password) < 8:
+        flash('Password skal være mindst 8 tegn', 'error')
+        return redirect(url_for('admin_my_account'))
+
+    # Get current password hash
+    with get_db() as conn:
+        user_row = conn.execute("""
+            SELECT password_hash FROM users WHERE id = ?
+        """, (user_id,)).fetchone()
+
+    if not user_row:
+        flash('Bruger ikke fundet', 'error')
+        return redirect(url_for('admin_my_account'))
+
+    # Check if user has OAuth-only login (no password set)
+    if user_row['password_hash'].startswith('oauth-') or user_row['password_hash'].startswith('b2c-'):
+        flash('Du bruger OAuth login og har ikke et password at ændre', 'error')
+        return redirect(url_for('admin_my_account'))
+
+    # Verify current password
+    if not verify_password(current_password, user_row['password_hash']):
+        flash('Nuværende password er forkert', 'error')
+        return redirect(url_for('admin_my_account'))
+
+    # Hash and save new password
+    new_hash = hash_password(new_password)
+    with get_db() as conn:
+        conn.execute("""
+            UPDATE users SET password_hash = ? WHERE id = ?
+        """, (new_hash, user_id))
+
+    flash('Password ændret succesfuldt', 'success')
+    return redirect(url_for('admin_my_account'))
 
 
 @app.route('/admin/link-oauth/<provider>')

@@ -2,157 +2,512 @@
 
 {% block title %}{{ task.name }} - Friktionskompasset{% endblock %}
 
+{% block extra_css %}
+<style>
+    .page-header {
+        margin-bottom: 25px;
+    }
+    .page-header h1 {
+        margin: 0 0 8px 0;
+        font-size: 1.75rem;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .page-header .back-link {
+        color: #6b7280;
+        text-decoration: none;
+        font-size: 0.9rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .page-header .back-link:hover {
+        color: #7c3aed;
+    }
+
+    .task-overview {
+        background: white;
+        border-radius: 12px;
+        border: 1px solid #e5e7eb;
+        overflow: hidden;
+        margin-bottom: 25px;
+    }
+    .task-overview-header {
+        background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%);
+        color: white;
+        padding: 25px;
+    }
+    .task-overview-header h2 {
+        margin: 0 0 8px 0;
+        font-size: 1.3rem;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .task-overview-header p {
+        margin: 0;
+        opacity: 0.9;
+    }
+    .task-overview-body {
+        padding: 20px 25px;
+    }
+    .task-meta {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 20px;
+        margin-bottom: 20px;
+    }
+    .meta-item {
+        text-align: center;
+        padding: 15px;
+        background: #f9fafb;
+        border-radius: 8px;
+    }
+    .meta-item .value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #1f2937;
+    }
+    .meta-item .label {
+        font-size: 0.8rem;
+        color: #6b7280;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .situation-box {
+        background: #eff6ff;
+        padding: 20px;
+        border-radius: 10px;
+        border-left: 4px solid #3b82f6;
+        margin-bottom: 15px;
+    }
+    .situation-box strong {
+        color: #1e40af;
+        display: block;
+        margin-bottom: 8px;
+    }
+    .situation-box em {
+        color: #374151;
+        font-style: italic;
+    }
+    .description-box {
+        background: #f9fafb;
+        padding: 15px 20px;
+        border-radius: 8px;
+        color: #4b5563;
+    }
+
+    .section-card {
+        background: white;
+        border-radius: 12px;
+        border: 1px solid #e5e7eb;
+        overflow: hidden;
+        margin-bottom: 25px;
+    }
+    .section-header {
+        padding: 20px 25px;
+        border-bottom: 1px solid #e5e7eb;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .section-header h3 {
+        margin: 0;
+        font-size: 1.1rem;
+        color: #1f2937;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .section-header .progress-badge {
+        background: #f3f4f6;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        color: #6b7280;
+    }
+    .section-body {
+        padding: 20px 25px;
+    }
+
+    .actions-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+    .action-item {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        padding: 18px 20px;
+        background: #f9fafb;
+        border-radius: 10px;
+        border: 1px solid #e5e7eb;
+        transition: all 0.2s;
+    }
+    .action-item:hover {
+        border-color: #7c3aed;
+        background: #faf5ff;
+    }
+    .action-number {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: #7c3aed;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        flex-shrink: 0;
+    }
+    .action-content {
+        flex: 1;
+    }
+    .action-name {
+        font-weight: 600;
+        color: #1f2937;
+        margin-bottom: 4px;
+    }
+    .action-desc {
+        font-size: 0.9rem;
+        color: #6b7280;
+    }
+    .btn-delete-small {
+        background: #fee2e2;
+        color: #dc2626;
+        border: none;
+        padding: 8px 14px;
+        border-radius: 6px;
+        font-size: 0.8rem;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .btn-delete-small:hover {
+        background: #fecaca;
+    }
+
+    .add-action-form {
+        background: #f9fafb;
+        border-radius: 10px;
+        padding: 20px;
+        margin-top: 15px;
+    }
+    .add-action-form h4 {
+        margin: 0 0 15px 0;
+        color: #374151;
+        font-size: 0.95rem;
+    }
+    .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr auto;
+        gap: 12px;
+        align-items: end;
+    }
+    .form-group {
+        margin: 0;
+    }
+    .form-group label {
+        display: block;
+        font-size: 0.85rem;
+        color: #6b7280;
+        margin-bottom: 6px;
+    }
+    .form-group input {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        font-size: 0.9rem;
+    }
+    .form-group input:focus {
+        outline: none;
+        border-color: #7c3aed;
+        box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+    }
+
+    .assessments-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .assessments-table th {
+        text-align: left;
+        padding: 12px 15px;
+        background: #f9fafb;
+        color: #6b7280;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    .assessments-table td {
+        padding: 15px;
+        border-bottom: 1px solid #f3f4f6;
+    }
+    .assessments-table tr:hover {
+        background: #faf5ff;
+    }
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 500;
+    }
+    .status-badge.waiting {
+        background: #fef3c7;
+        color: #92400e;
+    }
+    .status-badge.in-progress {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+    .status-badge.complete {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 40px 20px;
+        color: #6b7280;
+    }
+    .empty-state .icon {
+        font-size: 2.5rem;
+        margin-bottom: 15px;
+        opacity: 0.4;
+    }
+
+    .warning-box {
+        background: #fef3c7;
+        border: 1px solid #fcd34d;
+        border-radius: 10px;
+        padding: 20px;
+        text-align: center;
+        color: #92400e;
+    }
+
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 18px;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        font-weight: 500;
+        text-decoration: none;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: none;
+    }
+    .btn-primary {
+        background: #7c3aed;
+        color: white;
+    }
+    .btn-primary:hover {
+        background: #6d28d9;
+    }
+    .btn-small {
+        padding: 8px 14px;
+        font-size: 0.85rem;
+    }
+    .btn-danger {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+    .btn-danger:hover {
+        background: #fecaca;
+    }
+
+    .danger-zone {
+        border-top: 1px solid #fecaca;
+        padding-top: 20px;
+        margin-top: 20px;
+    }
+    .danger-zone h4 {
+        color: #dc2626;
+        margin: 0 0 10px 0;
+        font-size: 0.9rem;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="page-header">
-    <h1>{{ task.name }}</h1>
-    <p><a href="{{ url_for('admin_tasks') }}">← Tilbage til oversigt</a></p>
+    <a href="{{ url_for('admin_tasks') }}" class="back-link">← Tilbage til oversigt</a>
+    <h1>📋 {{ task.name }}</h1>
 </div>
 
-<div class="card" style="margin-bottom: 20px;">
-    <h2>Opgavedetaljer</h2>
-
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
-        <div>
-            <strong>Organisation:</strong><br>
-            {{ task.unit_name or 'Ikke knyttet' }}
-        </div>
-        <div>
-            <strong>Oprettet af:</strong><br>
-            {{ task.created_by or '-' }}
-        </div>
-        <div>
-            <strong>Oprettet:</strong><br>
-            {{ task.created_at[:10] if task.created_at else '-' }}
-        </div>
+<div class="task-overview">
+    <div class="task-overview-header">
+        <h2>🎯 Opgaveoversigt</h2>
+        <p>{{ task.unit_name or 'Ingen organisation tilknyttet' }}</p>
     </div>
-
-    {% if task.description %}
-    <div style="background: #f8fafc; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-        <strong>Beskrivelse:</strong><br>
-        {{ task.description }}
-    </div>
-    {% endif %}
-
-    {% if task.situation %}
-    <div style="background: #eff6ff; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #3b82f6;">
-        <strong>Situation:</strong><br>
-        <em>{{ task.situation }}</em>
-    </div>
-    {% endif %}
-
-    <div style="margin-top: 20px;">
-        <form method="POST" action="{{ url_for('admin_delete_task', task_id=task.id) }}"
-              style="display: inline;"
-              onsubmit="return confirm('Er du sikker på at du vil slette denne opgave? Alle handlinger og målinger slettes også.');">
-            <button type="submit" class="btn btn-danger btn-small">Slet opgave</button>
-        </form>
-    </div>
-</div>
-
-<div class="card" style="margin-bottom: 20px;">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-        <h2 style="margin: 0;">Handlinger ({{ task.actions|length }}/5)</h2>
-    </div>
-
-    {% if task.actions %}
-    <div class="actions-list">
-        {% for action in task.actions %}
-        <div class="action-item" style="display: flex; justify-content: space-between; align-items: center; padding: 15px; background: #f8fafc; border-radius: 8px; margin-bottom: 10px;">
-            <div>
-                <strong>{{ loop.index }}. {{ action.name }}</strong>
-                {% if action.description %}
-                <div style="font-size: 0.9rem; color: #6b7280; margin-top: 5px;">{{ action.description }}</div>
-                {% endif %}
+    <div class="task-overview-body">
+        <div class="task-meta">
+            <div class="meta-item">
+                <div class="value">{{ task.actions|length }}</div>
+                <div class="label">Handlinger</div>
             </div>
-            <form method="POST" action="{{ url_for('admin_delete_action', task_id=task.id, action_id=action.id) }}"
-                  style="margin: 0;"
-                  onsubmit="return confirm('Slet denne handling?');">
-                <button type="submit" class="btn btn-danger btn-small">Slet</button>
+            <div class="meta-item">
+                <div class="value">{{ task.assessments|length if task.assessments else 0 }}</div>
+                <div class="label">Målinger</div>
+            </div>
+            <div class="meta-item">
+                <div class="value">{{ task.created_at[:10] if task.created_at else '-' }}</div>
+                <div class="label">Oprettet</div>
+            </div>
+        </div>
+
+        {% if task.situation %}
+        <div class="situation-box">
+            <strong>📖 Situation</strong>
+            <em>{{ task.situation }}</em>
+        </div>
+        {% endif %}
+
+        {% if task.description %}
+        <div class="description-box">
+            {{ task.description }}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Handlinger -->
+<div class="section-card">
+    <div class="section-header">
+        <h3>⚡ Handlinger</h3>
+        <span class="progress-badge">{{ task.actions|length }}/5 tilføjet</span>
+    </div>
+    <div class="section-body">
+        {% if task.actions %}
+        <div class="actions-list">
+            {% for action in task.actions %}
+            <div class="action-item">
+                <div class="action-number">{{ loop.index }}</div>
+                <div class="action-content">
+                    <div class="action-name">{{ action.name }}</div>
+                    {% if action.description %}
+                    <div class="action-desc">{{ action.description }}</div>
+                    {% endif %}
+                </div>
+                <form method="POST" action="{{ url_for('admin_delete_action', task_id=task.id, action_id=action.id) }}"
+                      style="margin: 0;"
+                      onsubmit="return confirm('Slet denne handling?');">
+                    <button type="submit" class="btn-delete-small">Slet</button>
+                </form>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="icon">📝</div>
+            <p>Ingen handlinger tilføjet endnu.<br>Tilføj mindst 2 handlinger for at kunne starte en måling.</p>
+        </div>
+        {% endif %}
+
+        {% if task.actions|length < 5 %}
+        <div class="add-action-form">
+            <h4>+ Tilføj handling</h4>
+            <form method="POST" action="{{ url_for('admin_add_action', task_id=task.id) }}">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="action_name">Handlingens navn *</label>
+                        <input type="text" id="action_name" name="name" required
+                               placeholder="Fx 'Ring til medarbejderen'">
+                    </div>
+                    <div class="form-group">
+                        <label for="action_description">Beskrivelse (valgfrit)</label>
+                        <input type="text" id="action_description" name="description"
+                               placeholder="Kort uddybning">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Tilføj</button>
+                </div>
             </form>
         </div>
-        {% endfor %}
+        {% endif %}
     </div>
-    {% else %}
-    <div class="info-box">
-        <p>Ingen handlinger tilføjet endnu. Tilføj mindst 2 handlinger for at kunne starte en måling.</p>
-    </div>
-    {% endif %}
-
-    {% if task.actions|length < 5 %}
-    <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-        <h3>Tilføj handling</h3>
-        <form method="POST" action="{{ url_for('admin_add_action', task_id=task.id) }}">
-            <div class="form-group">
-                <label for="action_name">Handlingens navn *</label>
-                <input type="text" id="action_name" name="name" required
-                       placeholder="Fx 'Ring til medarbejderen på første sygedag'">
-            </div>
-            <div class="form-group">
-                <label for="action_description">Beskrivelse (valgfrit)</label>
-                <input type="text" id="action_description" name="description"
-                       placeholder="Kort uddybning af handlingen">
-            </div>
-            <button type="submit" class="btn">+ Tilføj handling</button>
-        </form>
-    </div>
-    {% endif %}
 </div>
 
+<!-- Målinger -->
 {% if task.actions|length >= 2 %}
-<div class="card" style="margin-bottom: 20px;">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-        <h2 style="margin: 0;">Målinger</h2>
-        <a href="{{ url_for('admin_situation_assessment_new', task_id=task.id) }}" class="btn">+ Start ny måling</a>
+<div class="section-card">
+    <div class="section-header">
+        <h3>📊 Målinger</h3>
+        <a href="{{ url_for('admin_situation_assessment_new', task_id=task.id) }}" class="btn btn-primary btn-small">
+            + Start ny måling
+        </a>
     </div>
-
-    {% if task.assessments %}
-    <table class="data-table">
-        <thead>
-            <tr>
-                <th>Måling</th>
-                <th>Periode</th>
-                <th>Sendt til</th>
-                <th>Svar</th>
-                <th>Status</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for assessment in task.assessments %}
-            <tr>
-                <td>{{ assessment.name or 'Måling' }}</td>
-                <td>{{ assessment.period or '-' }}</td>
-                <td>{{ assessment.unit_name or '-' }}</td>
-                <td>{{ assessment.response_count }}/{{ assessment.token_count }}</td>
-                <td>
-                    {% if assessment.response_count == 0 %}
-                    <span style="color: #f59e0b;">Afventer svar</span>
-                    {% elif assessment.response_count < assessment.token_count %}
-                    <span style="color: #3b82f6;">{{ ((assessment.response_count / assessment.token_count) * 100)|round|int }}% besvaret</span>
-                    {% else %}
-                    <span style="color: #10b981;">Komplet</span>
-                    {% endif %}
-                </td>
-                <td>
-                    <a href="{{ url_for('admin_situation_assessment_view', assessment_id=assessment.id) }}" class="btn btn-small">Se resultater</a>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-    <div class="info-box">
-        <p>Ingen målinger startet endnu.</p>
-        <p><a href="{{ url_for('admin_situation_assessment_new', task_id=task.id) }}">Start en måling</a> for at indsamle svar fra medarbejderne.</p>
+    <div class="section-body">
+        {% if task.assessments %}
+        <table class="assessments-table">
+            <thead>
+                <tr>
+                    <th>Navn</th>
+                    <th>Periode</th>
+                    <th>Sendt til</th>
+                    <th>Svar</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for assessment in task.assessments %}
+                <tr>
+                    <td><strong>{{ assessment.name or 'Måling' }}</strong></td>
+                    <td>{{ assessment.period or '-' }}</td>
+                    <td>{{ assessment.unit_name or '-' }}</td>
+                    <td>{{ assessment.response_count }}/{{ assessment.token_count }}</td>
+                    <td>
+                        {% if assessment.response_count == 0 %}
+                        <span class="status-badge waiting">⏳ Afventer</span>
+                        {% elif assessment.response_count < assessment.token_count %}
+                        <span class="status-badge in-progress">📈 {{ ((assessment.response_count / assessment.token_count) * 100)|round|int }}%</span>
+                        {% else %}
+                        <span class="status-badge complete">✓ Komplet</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{{ url_for('admin_situation_assessment_view', assessment_id=assessment.id) }}" class="btn btn-small">
+                            Se resultater
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state">
+            <div class="icon">📊</div>
+            <p>Ingen målinger startet endnu.</p>
+            <a href="{{ url_for('admin_situation_assessment_new', task_id=task.id) }}" class="btn btn-primary" style="margin-top: 15px;">
+                Start første måling
+            </a>
+        </div>
+        {% endif %}
     </div>
-    {% endif %}
 </div>
 {% else %}
-<div class="card">
-    <div class="warning">
-        Tilføj mindst 2 handlinger før du kan starte en måling.
-    </div>
+<div class="warning-box">
+    ⚠️ Tilføj mindst 2 handlinger før du kan starte en måling.
 </div>
 {% endif %}
 
+<!-- Danger zone -->
+<div class="section-card">
+    <div class="section-body">
+        <div class="danger-zone">
+            <h4>🗑️ Farezone</h4>
+            <form method="POST" action="{{ url_for('admin_delete_task', task_id=task.id) }}"
+                  style="display: inline;"
+                  onsubmit="return confirm('Er du sikker på at du vil slette denne opgave?\n\nAlle handlinger og målinger slettes også!');">
+                <button type="submit" class="btn btn-danger">Slet opgave permanent</button>
+            </form>
+        </div>
+    </div>
+</div>
 {% endblock %}

@@ -260,6 +260,50 @@
         flex-shrink: 0;
     }
 
+    /* Password change form */
+    .password-form {
+        max-width: 400px;
+    }
+    .password-form .form-group {
+        margin-bottom: 16px;
+    }
+    .password-form .form-group label {
+        display: block;
+        font-weight: 500;
+        color: #374151;
+        margin-bottom: 6px;
+        font-size: 0.9rem;
+    }
+    .password-form .form-group input {
+        width: 100%;
+        padding: 10px 14px;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        font-size: 0.95rem;
+    }
+    .password-form .form-group input:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+    .password-requirements {
+        margin-top: 10px;
+        font-size: 0.8rem;
+        color: #6b7280;
+    }
+    .oauth-only-notice {
+        background: #f3f4f6;
+        border-radius: 8px;
+        padding: 20px;
+        text-align: center;
+        color: #6b7280;
+    }
+    .oauth-only-notice .icon {
+        font-size: 2rem;
+        margin-bottom: 10px;
+        opacity: 0.5;
+    }
+
     .two-columns {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -408,6 +452,40 @@
                         </a>
                     </div>
                     {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Password Change -->
+        <div class="section-card">
+            <div class="section-header">
+                <span class="icon">🔑</span>
+                <h2>Skift password</h2>
+            </div>
+            <div class="section-body">
+                {% if has_password %}
+                <form method="POST" action="{{ url_for('admin_change_password') }}" class="password-form">
+                    <div class="form-group">
+                        <label for="current_password">Nuværende password</label>
+                        <input type="password" id="current_password" name="current_password" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="new_password">Nyt password</label>
+                        <input type="password" id="new_password" name="new_password" required minlength="8">
+                    </div>
+                    <div class="form-group">
+                        <label for="confirm_password">Bekræft nyt password</label>
+                        <input type="password" id="confirm_password" name="confirm_password" required minlength="8">
+                    </div>
+                    <p class="password-requirements">Password skal være mindst 8 tegn</p>
+                    <button type="submit" class="btn-save" style="margin-top: 15px;">Skift password</button>
+                </form>
+                {% else %}
+                <div class="oauth-only-notice">
+                    <div class="icon">🔐</div>
+                    <p>Du logger ind via ekstern konto og har ikke et password at ændre.</p>
+                    <p style="font-size: 0.85rem; margin-top: 8px;">Du kan tilføje email/password login ved at kontakte din administrator.</p>
                 </div>
                 {% endif %}
             </div>
