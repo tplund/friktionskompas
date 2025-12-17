@@ -195,19 +195,21 @@
             background: #f9fafb;
         }
         .oauth-btn.microsoft {
-            border-color: #00a4ef;
-            color: #00a4ef;
+            border-color: #0078d4;
+            color: #1f2937;
+            background: white;
         }
         .oauth-btn.microsoft:hover {
-            background: #00a4ef;
+            background: #0078d4;
             color: white;
         }
         .oauth-btn.google {
-            border-color: #4285f4;
-            color: #4285f4;
+            border-color: #1a73e8;
+            color: #1f2937;
+            background: white;
         }
         .oauth-btn.google:hover {
-            background: #4285f4;
+            background: #1a73e8;
             color: white;
         }
         .oauth-btn.apple {
@@ -235,7 +237,7 @@
             align-items: center;
             text-align: center;
             margin: 25px 0;
-            color: #9ca3af;
+            color: #6b7280;
             font-size: 0.875rem;
         }
         .divider::before,
@@ -252,6 +254,7 @@
 <body>
     {{ gtm_body() }}
 
+    <main>
     <div class="login-container">
         <div class="logo">
             <h1>🏢 Friktionskompasset</h1>
@@ -353,6 +356,7 @@
             <a href="{{ url_for('help_page') }}" style="font-weight: normal;">{{ t('login.need_help', 'Brug for hjælp?') }}</a>
         </div>
     </div>
+    </main>
 
     <script>
     // Form validation for login
