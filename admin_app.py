@@ -6480,13 +6480,12 @@ def admin_tasks():
     """Liste over opgaver (tasks) for situationsmåling"""
     from db_hierarchical import get_tasks
 
-    customer_filter = get_customer_filter()
-    if customer_filter[0]:
-        # Brug customer_id fra filter
-        customer_id = customer_filter[1][0] if customer_filter[1] else None
-        tasks = get_tasks(customer_id)
-    else:
-        tasks = get_tasks()
+    user = get_current_user()
+    where_clause, params = get_customer_filter(user['role'], user['customer_id'], session.get('customer_filter'))
+
+    # Brug customer_id fra params hvis tilgængelig
+    customer_id = params[0] if params else None
+    tasks = get_tasks(customer_id)
 
     return render_template('admin/tasks.html',
                            tasks=tasks,
@@ -6509,9 +6508,11 @@ def admin_task_new():
             return redirect(url_for('admin_task_new'))
 
         # Find customer_id
-        customer_filter = get_customer_filter()
-        if customer_filter[0]:
-            customer_id = customer_filter[1][0]
+        user = get_current_user()
+        where_clause, params = get_customer_filter(user['role'], user['customer_id'], session.get('customer_filter'))
+        if params:
+            # Har customer filter
+            customer_id = params[0]
         else:
             # Superadmin uden filter - brug customer fra valgt unit
             if unit_id:
@@ -6534,12 +6535,10 @@ def admin_task_new():
         return redirect(url_for('admin_task_detail', task_id=task_id))
 
     # GET - vis formular
-    customer_filter = get_customer_filter()
-    if customer_filter[0]:
-        customer_id = customer_filter[1][0]
-        units = get_toplevel_units(customer_id)
-    else:
-        units = get_toplevel_units()
+    user = get_current_user()
+    where_clause, params = get_customer_filter(user['role'], user['customer_id'], session.get('customer_filter'))
+    customer_id = params[0] if params else None
+    units = get_toplevel_units(customer_id)
 
     return render_template('admin/task_new.html',
                            units=units,
@@ -6679,12 +6678,10 @@ def admin_situation_assessment_new(task_id):
         return redirect(url_for('admin_situation_assessment_view', assessment_id=assessment_id))
 
     # GET - vis formular
-    customer_filter = get_customer_filter()
-    if customer_filter[0]:
-        customer_id = customer_filter[1][0]
-        units = get_toplevel_units(customer_id)
-    else:
-        units = get_toplevel_units()
+    user = get_current_user()
+    where_clause, params = get_customer_filter(user['role'], user['customer_id'], session.get('customer_filter'))
+    customer_id = params[0] if params else None
+    units = get_toplevel_units(customer_id)
 
     return render_template('admin/situation_assessment_new.html',
                            task=task,

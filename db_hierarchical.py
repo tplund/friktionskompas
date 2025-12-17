@@ -614,6 +614,31 @@ def create_unit_from_path(path: str, leader_name: str = None,
         return parent_id
 
 
+def get_toplevel_units(customer_id: str = None) -> List[Dict]:
+    """
+    Hent top-level units (uden parent_id).
+    Hvis customer_id angives, kun for den kunde.
+    """
+    with get_db() as conn:
+        if customer_id:
+            rows = conn.execute("""
+                SELECT ou.*, c.name as customer_name
+                FROM organizational_units ou
+                LEFT JOIN customers c ON ou.customer_id = c.id
+                WHERE ou.parent_id IS NULL AND ou.customer_id = ?
+                ORDER BY ou.name
+            """, (customer_id,)).fetchall()
+        else:
+            rows = conn.execute("""
+                SELECT ou.*, c.name as customer_name
+                FROM organizational_units ou
+                LEFT JOIN customers c ON ou.customer_id = c.id
+                WHERE ou.parent_id IS NULL
+                ORDER BY c.name, ou.name
+            """).fetchall()
+        return [dict(row) for row in rows]
+
+
 def get_unit_children(unit_id: str, recursive: bool = False) -> List[Dict]:
     """
     Hent children af en unit
