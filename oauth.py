@@ -36,6 +36,8 @@ def init_oauth(app):
     oauth.init_app(app)
 
     # Register Microsoft OAuth
+    # Note: For multi-tenant apps, we skip issuer validation since tokens
+    # come from different tenant issuers depending on the user's organization
     if os.getenv('MICROSOFT_CLIENT_ID'):
         oauth.register(
             name='microsoft',
@@ -44,6 +46,11 @@ def init_oauth(app):
             server_metadata_url='https://login.microsoftonline.com/common/v2.0/.well-known/openid-configuration',
             client_kwargs={
                 'scope': 'openid email profile'
+            },
+            claims_options={
+                'iss': {
+                    'essential': False  # Skip issuer validation for multi-tenant
+                }
             }
         )
 
