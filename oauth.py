@@ -187,6 +187,39 @@ def link_oauth_to_user(user_id: str, provider: str, provider_user_id: str,
         return False
 
 
+def get_user_oauth_links(user_id: str) -> list:
+    """Get all OAuth links for a user"""
+    try:
+        conn = get_db_connection()
+        rows = conn.execute("""
+            SELECT provider, provider_email, created_at
+            FROM user_oauth_links
+            WHERE user_id = ?
+            ORDER BY created_at DESC
+        """, (user_id,)).fetchall()
+        conn.close()
+        return [dict(row) for row in rows]
+    except Exception as e:
+        print(f"[OAuth] Error getting user OAuth links: {e}")
+        return []
+
+
+def unlink_oauth_from_user(user_id: str, provider: str) -> bool:
+    """Remove an OAuth link from a user"""
+    try:
+        conn = get_db_connection()
+        conn.execute("""
+            DELETE FROM user_oauth_links
+            WHERE user_id = ? AND provider = ?
+        """, (user_id, provider))
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"[OAuth] Error unlinking OAuth: {e}")
+        return False
+
+
 def create_user_from_oauth(provider: str, provider_user_id: str, email: str,
                            name: str, customer_id: str = None) -> Optional[str]:
     """Create a new user from OAuth login"""

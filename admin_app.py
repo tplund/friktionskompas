@@ -55,7 +55,7 @@ from scheduler import start_scheduler, get_scheduled_assessments, cancel_schedul
 from oauth import (
     init_oauth, oauth, get_enabled_providers, get_provider_info,
     handle_oauth_callback, get_auth_providers_for_domain, save_auth_providers,
-    DEFAULT_AUTH_PROVIDERS
+    DEFAULT_AUTH_PROVIDERS, get_user_oauth_links, link_oauth_to_user, unlink_oauth_from_user
 )
 from cache import get_cache_stats, invalidate_all, invalidate_assessment_cache, Pagination
 from audit import log_action, AuditAction, get_audit_logs, get_audit_log_count, get_action_summary, init_audit_tables
@@ -584,6 +584,203 @@ def logout():
     session.pop('user', None)
     flash('Du er nu logget ud', 'success')
     return redirect(url_for('login'))
+
+
+# ========================================
+# ACCOUNT SETTINGS & OAUTH LINKING
+# ========================================
+
+@app.route('/admin/my-account')
+@login_required
+def admin_my_account():
+    """Account settings page - manage linked OAuth accounts"""
+    user = session.get('user')
+    user_id = user.get('id')
+
+    # Get linked OAuth accounts
+    linked_accounts = get_user_oauth_links(user_id)
+    linked_providers = {link['provider'] for link in linked_accounts}
+
+    # Get available providers that are enabled for this domain
+    domain = request.host.split(':')[0].lower()
+    enabled_providers = get_enabled_providers(domain)
+
+    # Filter to only OAuth providers (not email_password)
+    available_providers = []
+    for provider in ['microsoft', 'google']:
+        if provider in enabled_providers and provider not in linked_providers:
+            available_providers.append({
+                'id': provider,
+                'info': get_provider_info(provider)
+            })
+
+    # Add info to linked accounts
+    for link in linked_accounts:
+        link['info'] = get_provider_info(link['provider'])
+
+    return render_template('admin/my_account.html',
+                           linked_accounts=linked_accounts,
+                           available_providers=available_providers)
+
+
+@app.route('/admin/link-oauth/<provider>')
+@login_required
+def admin_link_oauth(provider):
+    """Start OAuth flow to link account"""
+    if provider not in ['microsoft', 'google']:
+        flash('Ukendt login-metode', 'error')
+        return redirect(url_for('admin_my_account'))
+
+    # Check if provider is enabled for this domain
+    domain = request.host.split(':')[0].lower()
+    enabled = get_enabled_providers(domain)
+
+    if provider not in enabled:
+        flash(f'{provider.title()} er ikke aktiveret for dette domæne', 'error')
+        return redirect(url_for('admin_my_account'))
+
+    # Check if already linked
+    user = session.get('user')
+    linked_accounts = get_user_oauth_links(user.get('id'))
+    if any(link['provider'] == provider for link in linked_accounts):
+        flash(f'{provider.title()} er allerede tilknyttet din konto', 'warning')
+        return redirect(url_for('admin_my_account'))
+
+    # Get the OAuth client
+    client = oauth.create_client(provider)
+    if not client:
+        flash(f'{provider.title()} er ikke konfigureret', 'error')
+        return redirect(url_for('admin_my_account'))
+
+    # Store that we're linking (not logging in)
+    session['oauth_linking'] = True
+
+    # Generate redirect URI to the linking callback
+    redirect_uri = url_for('admin_link_oauth_callback', provider=provider, _external=True)
+
+    return client.authorize_redirect(redirect_uri)
+
+
+@app.route('/admin/link-oauth/<provider>/callback')
+@login_required
+def admin_link_oauth_callback(provider):
+    """Handle OAuth callback for account linking"""
+    if provider not in ['microsoft', 'google']:
+        flash('Ukendt login-metode', 'error')
+        return redirect(url_for('admin_my_account'))
+
+    # Check that we initiated linking
+    if not session.pop('oauth_linking', False):
+        flash('Ugyldig linking-anmodning', 'error')
+        return redirect(url_for('admin_my_account'))
+
+    try:
+        client = oauth.create_client(provider)
+        if not client:
+            flash(f'{provider.title()} er ikke konfigureret', 'error')
+            return redirect(url_for('admin_my_account'))
+
+        # Get token
+        token = client.authorize_access_token()
+
+        # Get user info
+        if provider == 'microsoft':
+            userinfo = token.get('userinfo')
+            if not userinfo:
+                resp = client.get('https://graph.microsoft.com/oidc/userinfo')
+                userinfo = resp.json()
+        elif provider == 'google':
+            userinfo = token.get('userinfo')
+            if not userinfo:
+                resp = client.get('https://openidconnect.googleapis.com/v1/userinfo')
+                userinfo = resp.json()
+        else:
+            userinfo = token.get('userinfo', {})
+
+        # Extract provider user ID
+        provider_user_id = userinfo.get('sub') or userinfo.get('oid')
+        provider_email = userinfo.get('email') or userinfo.get('preferred_username')
+
+        if not provider_user_id:
+            flash('Kunne ikke hente bruger-ID fra provider', 'error')
+            return redirect(url_for('admin_my_account'))
+
+        # Link to current user
+        user = session.get('user')
+        success = link_oauth_to_user(
+            user_id=user.get('id'),
+            provider=provider,
+            provider_user_id=provider_user_id,
+            provider_email=provider_email,
+            access_token=token.get('access_token'),
+            refresh_token=token.get('refresh_token')
+        )
+
+        if success:
+            provider_name = get_provider_info(provider).get('name', provider.title())
+            flash(f'{provider_name} er nu tilknyttet din konto', 'success')
+
+            # Log the action
+            log_action(
+                AuditAction.UPDATE,
+                entity_type="user",
+                entity_id=user.get('id'),
+                details=f"Linked {provider} account ({provider_email})"
+            )
+        else:
+            flash('Kunne ikke tilknytte konto', 'error')
+
+    except Exception as e:
+        print(f"[OAuth] Link callback error for {provider}: {e}")
+        flash(f'Fejl ved tilknytning af {provider.title()}', 'error')
+
+    return redirect(url_for('admin_my_account'))
+
+
+@app.route('/admin/unlink-oauth/<provider>', methods=['POST'])
+@login_required
+def admin_unlink_oauth(provider):
+    """Unlink an OAuth account"""
+    user = session.get('user')
+
+    # Check that user has this provider linked
+    linked_accounts = get_user_oauth_links(user.get('id'))
+    if not any(link['provider'] == provider for link in linked_accounts):
+        flash(f'{provider.title()} er ikke tilknyttet din konto', 'warning')
+        return redirect(url_for('admin_my_account'))
+
+    # Don't allow unlinking if it's the only login method
+    # (user must have email/password or another OAuth provider)
+    with get_db() as conn:
+        user_row = conn.execute("""
+            SELECT password_hash FROM users WHERE id = ?
+        """, (user.get('id'),)).fetchone()
+
+    has_password = user_row and user_row['password_hash'] and not user_row['password_hash'].startswith('oauth-')
+    other_oauth_count = len([l for l in linked_accounts if l['provider'] != provider])
+
+    if not has_password and other_oauth_count == 0:
+        flash('Du kan ikke fjerne din eneste login-metode. Tilknyt en anden konto eller opret en adgangskode først.', 'error')
+        return redirect(url_for('admin_my_account'))
+
+    # Unlink
+    success = unlink_oauth_from_user(user.get('id'), provider)
+
+    if success:
+        provider_name = get_provider_info(provider).get('name', provider.title())
+        flash(f'{provider_name} er nu fjernet fra din konto', 'success')
+
+        # Log the action
+        log_action(
+            AuditAction.UPDATE,
+            entity_type="user",
+            entity_id=user.get('id'),
+            details=f"Unlinked {provider} account"
+        )
+    else:
+        flash('Kunne ikke fjerne tilknytning', 'error')
+
+    return redirect(url_for('admin_my_account'))
 
 
 # ========================================

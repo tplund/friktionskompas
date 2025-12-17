@@ -1,0 +1,307 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}Min konto - Friktionskompasset{% endblock %}
+
+{% block extra_css %}
+<style>
+    .account-header {
+        background: linear-gradient(135deg, #1e3a5f 0%, #2d4a6f 100%);
+        color: white;
+        padding: 30px;
+        border-radius: 12px;
+        margin-bottom: 25px;
+        display: flex;
+        align-items: center;
+        gap: 20px;
+    }
+    .account-avatar {
+        width: 80px;
+        height: 80px;
+        background: rgba(255,255,255,0.2);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2.5rem;
+    }
+    .account-info h1 {
+        margin: 0 0 5px 0;
+        font-size: 1.5rem;
+    }
+    .account-info p {
+        margin: 0;
+        opacity: 0.85;
+    }
+    .account-badge {
+        background: rgba(255,255,255,0.2);
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        margin-left: 10px;
+    }
+
+    .section-card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        border: 1px solid #e5e7eb;
+        margin-bottom: 25px;
+        overflow: hidden;
+    }
+    .section-header {
+        padding: 20px 25px;
+        border-bottom: 1px solid #e5e7eb;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .section-header h2 {
+        margin: 0;
+        font-size: 1.1rem;
+        color: #1f2937;
+    }
+    .section-header .icon {
+        font-size: 1.25rem;
+    }
+    .section-body {
+        padding: 25px;
+    }
+    .section-subtitle {
+        color: #6b7280;
+        margin-bottom: 20px;
+        font-size: 0.9rem;
+    }
+
+    .linked-accounts {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+    .linked-account {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        padding: 15px 20px;
+        background: #f9fafb;
+        border-radius: 8px;
+        border: 1px solid #e5e7eb;
+    }
+    .provider-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.25rem;
+    }
+    .provider-icon.microsoft { background: #00a4ef; }
+    .provider-icon.google { background: #4285f4; }
+    .provider-info {
+        flex: 1;
+    }
+    .provider-name {
+        font-weight: 600;
+        color: #1f2937;
+    }
+    .provider-email {
+        font-size: 0.85rem;
+        color: #6b7280;
+    }
+    .provider-date {
+        font-size: 0.8rem;
+        color: #9ca3af;
+    }
+    .btn-unlink {
+        background: #fee2e2;
+        color: #dc2626;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+    .btn-unlink:hover {
+        background: #fecaca;
+    }
+
+    .available-providers {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+    .provider-option {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        padding: 15px 20px;
+        background: white;
+        border-radius: 8px;
+        border: 2px dashed #e5e7eb;
+        transition: all 0.2s;
+    }
+    .provider-option:hover {
+        border-color: #3b82f6;
+        background: #f0f9ff;
+    }
+    .btn-link-provider {
+        background: #3b82f6;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 6px;
+        font-size: 0.9rem;
+        font-weight: 500;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-block;
+        transition: background 0.2s;
+    }
+    .btn-link-provider:hover {
+        background: #2563eb;
+        color: white;
+    }
+
+    .no-providers {
+        text-align: center;
+        padding: 30px;
+        color: #6b7280;
+    }
+    .no-providers .icon {
+        font-size: 3rem;
+        margin-bottom: 15px;
+        opacity: 0.5;
+    }
+
+    .security-note {
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        border-radius: 8px;
+        padding: 15px;
+        margin-top: 20px;
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        font-size: 0.9rem;
+        color: #1e40af;
+    }
+    .security-note .icon {
+        font-size: 1.25rem;
+        flex-shrink: 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="account-header">
+    <div class="account-avatar">
+        {{ session.user.name[0]|upper if session.user.name else '?' }}
+    </div>
+    <div class="account-info">
+        <h1>
+            {{ session.user.name }}
+            <span class="account-badge">{{ session.user.role|upper }}</span>
+        </h1>
+        <p>{{ session.user.email }}</p>
+        {% if session.user.customer_name %}
+        <p style="opacity: 0.7; font-size: 0.9rem; margin-top: 5px;">{{ session.user.customer_name }}</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Linked OAuth Accounts -->
+<div class="section-card">
+    <div class="section-header">
+        <span class="icon">🔗</span>
+        <h2>Tilknyttede login-metoder</h2>
+    </div>
+    <div class="section-body">
+        <p class="section-subtitle">
+            Du kan logge ind med disse konti. Tilknyt flere for at have flere muligheder.
+        </p>
+
+        {% if linked_accounts %}
+        <div class="linked-accounts">
+            {% for link in linked_accounts %}
+            <div class="linked-account">
+                <div class="provider-icon {{ link.provider }}">
+                    {% if link.provider == 'microsoft' %}
+                    <svg width="20" height="20" viewBox="0 0 21 21" fill="currentColor">
+                        <path d="M0 0h10v10H0V0zm11 0h10v10H11V0zM0 11h10v10H0V11zm11 0h10v10H11V11z"/>
+                    </svg>
+                    {% elif link.provider == 'google' %}
+                    G
+                    {% endif %}
+                </div>
+                <div class="provider-info">
+                    <div class="provider-name">{{ link.info.name }}</div>
+                    {% if link.provider_email %}
+                    <div class="provider-email">{{ link.provider_email }}</div>
+                    {% endif %}
+                    <div class="provider-date">Tilknyttet {{ link.created_at[:10] if link.created_at else 'ukendt' }}</div>
+                </div>
+                <form method="POST" action="{{ url_for('admin_unlink_oauth', provider=link.provider) }}"
+                      onsubmit="return confirm('Er du sikker på at du vil fjerne {{ link.info.name }} fra din konto?');">
+                    <button type="submit" class="btn-unlink">Fjern</button>
+                </form>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="no-providers">
+            <div class="icon">🔐</div>
+            <p>Du har ingen tilknyttede login-metoder endnu.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Available Providers to Link -->
+{% if available_providers %}
+<div class="section-card">
+    <div class="section-header">
+        <span class="icon">➕</span>
+        <h2>Tilknyt ny login-metode</h2>
+    </div>
+    <div class="section-body">
+        <p class="section-subtitle">
+            Tilknyt en ekstra login-metode for nemmere adgang og øget sikkerhed.
+        </p>
+
+        <div class="available-providers">
+            {% for provider in available_providers %}
+            <div class="provider-option">
+                <div class="provider-icon {{ provider.id }}">
+                    {% if provider.id == 'microsoft' %}
+                    <svg width="20" height="20" viewBox="0 0 21 21" fill="currentColor">
+                        <path d="M0 0h10v10H0V0zm11 0h10v10H11V0zM0 11h10v10H0V11zm11 0h10v10H11V11z"/>
+                    </svg>
+                    {% elif provider.id == 'google' %}
+                    G
+                    {% endif %}
+                </div>
+                <div class="provider-info" style="flex: 1;">
+                    <div class="provider-name">{{ provider.info.name }}</div>
+                    <div class="provider-email">Log ind med din {{ provider.info.name }}-konto</div>
+                </div>
+                <a href="{{ url_for('admin_link_oauth', provider=provider.id) }}" class="btn-link-provider">
+                    Tilknyt {{ provider.info.name }}
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="security-note">
+            <span class="icon">ℹ️</span>
+            <div>
+                <strong>Hvorfor tilknytte flere login-metoder?</strong><br>
+                Ved at tilknytte Google eller Microsoft kan du logge ind med et enkelt klik - uden at skulle huske en adgangskode.
+                Det er både hurtigere og mere sikkert.
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
