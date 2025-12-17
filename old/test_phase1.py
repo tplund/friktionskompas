@@ -1,10 +1,10 @@
 """
 Test script for Fase 1: Database og grundlæggende backend
-Tester campaign modes og respondent types funktionalitet
+Tester assessment modes og respondent types funktionalitet
 """
 from db_hierarchical import (
-    create_unit, create_campaign_with_modes, generate_tokens_with_respondent_types,
-    get_campaign_info, get_respondent_types, get_campaign_modes,
+    create_unit, create_assessment_with_modes, generate_tokens_with_respondent_types,
+    get_assessment_info, get_respondent_types, get_assessment_modes,
     get_all_leaf_units_under, get_db
 )
 
@@ -17,8 +17,8 @@ def print_section(title):
 
 
 def test_respondent_types_and_modes():
-    """Test at respondent types og campaign modes er oprettet korrekt"""
-    print_section("TEST 1: Respondent Types og Campaign Modes")
+    """Test at respondent types og assessment modes er oprettet korrekt"""
+    print_section("TEST 1: Respondent Types og Assessment Modes")
 
     # Test respondent types
     types = get_respondent_types()
@@ -32,23 +32,23 @@ def test_respondent_types_and_modes():
     assert 'leader_assess' in codes, "Mangler 'leader_assess' type"
     assert 'leader_self' in codes, "Mangler 'leader_self' type"
 
-    # Test campaign modes
-    modes = get_campaign_modes()
-    print(f"\n[INFO] Campaign Modes ({len(modes)}):")
+    # Test assessment modes
+    modes = get_assessment_modes()
+    print(f"\n[INFO] Assessment Modes ({len(modes)}):")
     for m in modes:
         print(f"  - {m['code']}: {m['name_da']}")
 
-    assert len(modes) == 2, "Skal være 2 campaign modes"
+    assert len(modes) == 2, "Skal være 2 assessment modes"
     mode_codes = [m['code'] for m in modes]
     assert 'anonymous' in mode_codes, "Mangler 'anonymous' mode"
     assert 'identified' in mode_codes, "Mangler 'identified' mode"
 
-    print("\n[OK] Respondent types og campaign modes oprettet korrekt!")
+    print("\n[OK] Respondent types og assessment modes oprettet korrekt!")
 
 
-def test_anonymous_campaign_with_leader_perspective():
-    """Test anonymous campaign med leder-perspektiv"""
-    print_section("TEST 2: Anonymous Campaign med Leder-perspektiv")
+def test_anonymous_assessment_with_leader_perspective():
+    """Test anonymous assessment med leder-perspektiv"""
+    print_section("TEST 2: Anonymous Assessment med Leder-perspektiv")
 
     # Opret test organization
     print("\n[INFO] Opretter test organisation...")
@@ -62,35 +62,35 @@ def test_anonymous_campaign_with_leader_perspective():
     )
     print(f"  Unit ID: {unit_id}")
 
-    # Opret anonymous campaign med leder-perspektiv
-    print("\n[INFO] Opretter anonymous campaign med leder-perspektiv...")
-    campaign_id = create_campaign_with_modes(
+    # Opret anonymous assessment med leder-perspektiv
+    print("\n[INFO] Opretter anonymous assessment med leder-perspektiv...")
+    assessment_id = create_assessment_with_modes(
         target_unit_id=unit_id,
-        name="Test Campaign - Anonymous",
+        name="Test Assessment - Anonymous",
         period="2025 Q1",
         mode='anonymous',
         include_leader_assessment=True,
         include_leader_self=True,
         min_responses=5
     )
-    print(f"  Campaign ID: {campaign_id}")
+    print(f"  Assessment ID: {assessment_id}")
 
-    # Verificer campaign info
-    campaign = get_campaign_info(campaign_id)
-    print(f"\n[INFO] Campaign info:")
-    print(f"  Mode: {campaign['mode']}")
-    print(f"  Leader Assessment: {campaign['include_leader_assessment']}")
-    print(f"  Leader Self: {campaign['include_leader_self']}")
-    print(f"  Min Responses: {campaign['min_responses']}")
+    # Verificer assessment info
+    assessment = get_assessment_info(assessment_id)
+    print(f"\n[INFO] Assessment info:")
+    print(f"  Mode: {assessment['mode']}")
+    print(f"  Leader Assessment: {assessment['include_leader_assessment']}")
+    print(f"  Leader Self: {assessment['include_leader_self']}")
+    print(f"  Min Responses: {assessment['min_responses']}")
 
-    assert campaign['mode'] == 'anonymous', "Mode skal være 'anonymous'"
-    assert campaign['include_leader_assessment'] == 1, "Leader assessment skal være enabled"
-    assert campaign['include_leader_self'] == 1, "Leader self skal være enabled"
-    assert campaign['min_responses'] == 5, "Min responses skal være 5"
+    assert assessment['mode'] == 'anonymous', "Mode skal være 'anonymous'"
+    assert assessment['include_leader_assessment'] == 1, "Leader assessment skal være enabled"
+    assert assessment['include_leader_self'] == 1, "Leader self skal være enabled"
+    assert assessment['min_responses'] == 5, "Min responses skal være 5"
 
     # Generer tokens
     print("\n[INFO] Genererer tokens...")
-    tokens = generate_tokens_with_respondent_types(campaign_id)
+    tokens = generate_tokens_with_respondent_types(assessment_id)
 
     print(f"\n[INFO] Tokens genereret for {len(tokens)} unit(s):")
     for uid, token_dict in tokens.items():
@@ -117,20 +117,20 @@ def test_anonymous_campaign_with_leader_perspective():
         token_counts = conn.execute("""
             SELECT respondent_type, COUNT(*) as cnt
             FROM tokens
-            WHERE campaign_id = ?
+            WHERE assessment_id = ?
             GROUP BY respondent_type
-        """, (campaign_id,)).fetchall()
+        """, (assessment_id,)).fetchall()
 
         print(f"\n[INFO] Token counts i database:")
         for row in token_counts:
             print(f"  {row['respondent_type']}: {row['cnt']}")
 
-    print("\n[OK] Anonymous campaign med leder-perspektiv testet succesfuldt!")
+    print("\n[OK] Anonymous assessment med leder-perspektiv testet succesfuldt!")
 
 
-def test_identified_campaign():
-    """Test identified campaign"""
-    print_section("TEST 3: Identified Campaign")
+def test_identified_assessment():
+    """Test identified assessment"""
+    print_section("TEST 3: Identified Assessment")
 
     # Opret test organization
     print("\n[INFO] Opretter test organisation...")
@@ -144,18 +144,18 @@ def test_identified_campaign():
     )
     print(f"  Unit ID: {unit_id}")
 
-    # Opret identified campaign (UDEN leder-perspektiv)
-    print("\n[INFO] Opretter identified campaign...")
-    campaign_id = create_campaign_with_modes(
+    # Opret identified assessment (UDEN leder-perspektiv)
+    print("\n[INFO] Opretter identified assessment...")
+    assessment_id = create_assessment_with_modes(
         target_unit_id=unit_id,
-        name="Test Campaign - Identified",
+        name="Test Assessment - Identified",
         period="2025 Q1",
         mode='identified',
         include_leader_assessment=False,
         include_leader_self=False,
         min_responses=1  # Ikke relevant for identified
     )
-    print(f"  Campaign ID: {campaign_id}")
+    print(f"  Assessment ID: {assessment_id}")
 
     # Generer tokens med navne
     print("\n[INFO] Genererer tokens med navne...")
@@ -163,7 +163,7 @@ def test_identified_campaign():
         unit_id: ['Mette Hansen', 'Jens Nielsen', 'Anne Larsen']
     }
 
-    tokens = generate_tokens_with_respondent_types(campaign_id, respondent_names)
+    tokens = generate_tokens_with_respondent_types(assessment_id, respondent_names)
 
     print(f"\n[INFO] Tokens genereret:")
     for uid, token_dict in tokens.items():
@@ -178,9 +178,9 @@ def test_identified_campaign():
         token_info = conn.execute("""
             SELECT token, respondent_type, respondent_name
             FROM tokens
-            WHERE campaign_id = ?
+            WHERE assessment_id = ?
             ORDER BY respondent_name
-        """, (campaign_id,)).fetchall()
+        """, (assessment_id,)).fetchall()
 
         print(f"\n[INFO] Tokens i database:")
         for row in token_info:
@@ -192,12 +192,12 @@ def test_identified_campaign():
         assert 'Jens Nielsen' in names, "Mangler Jens Nielsen"
         assert 'Anne Larsen' in names, "Mangler Anne Larsen"
 
-    print("\n[OK] Identified campaign testet succesfuldt!")
+    print("\n[OK] Identified assessment testet succesfuldt!")
 
 
-def test_hybrid_campaign():
-    """Test identified campaign MED leder-perspektiv (hybrid)"""
-    print_section("TEST 4: Hybrid Campaign (Identified + Leader Perspective)")
+def test_hybrid_assessment():
+    """Test identified assessment MED leder-perspektiv (hybrid)"""
+    print_section("TEST 4: Hybrid Assessment (Identified + Leader Perspective)")
 
     # Opret test organization
     print("\n[INFO] Opretter test organisation...")
@@ -211,18 +211,18 @@ def test_hybrid_campaign():
     )
     print(f"  Unit ID: {unit_id}")
 
-    # Opret identified campaign MED leder-perspektiv
-    print("\n[INFO] Opretter hybrid campaign...")
-    campaign_id = create_campaign_with_modes(
+    # Opret identified assessment MED leder-perspektiv
+    print("\n[INFO] Opretter hybrid assessment...")
+    assessment_id = create_assessment_with_modes(
         target_unit_id=unit_id,
-        name="Test Campaign - Hybrid",
+        name="Test Assessment - Hybrid",
         period="2025 Q1",
         mode='identified',
         include_leader_assessment=True,  # Leder skal vurdere teamet
         include_leader_self=True,       # Leder skal svare om sig selv
         min_responses=1
     )
-    print(f"  Campaign ID: {campaign_id}")
+    print(f"  Assessment ID: {assessment_id}")
 
     # Generer tokens
     print("\n[INFO] Genererer tokens...")
@@ -230,7 +230,7 @@ def test_hybrid_campaign():
         unit_id: ['Person A', 'Person B']
     }
 
-    tokens = generate_tokens_with_respondent_types(campaign_id, respondent_names)
+    tokens = generate_tokens_with_respondent_types(assessment_id, respondent_names)
 
     print(f"\n[INFO] Tokens genereret:")
     for uid, token_dict in tokens.items():
@@ -254,15 +254,15 @@ def test_hybrid_campaign():
         token_info = conn.execute("""
             SELECT respondent_type, COUNT(*) as cnt
             FROM tokens
-            WHERE campaign_id = ?
+            WHERE assessment_id = ?
             GROUP BY respondent_type
-        """, (campaign_id,)).fetchall()
+        """, (assessment_id,)).fetchall()
 
         print(f"\n[INFO] Token distribution:")
         for row in token_info:
             print(f"  {row['respondent_type']}: {row['cnt']}")
 
-    print("\n[OK] Hybrid campaign testet succesfuldt!")
+    print("\n[OK] Hybrid assessment testet succesfuldt!")
 
 
 def cleanup_test_data():
@@ -270,9 +270,9 @@ def cleanup_test_data():
     print_section("CLEANUP: Sletter testdata")
 
     with get_db() as conn:
-        # Slet alle test campaigns
-        deleted_campaigns = conn.execute("""
-            DELETE FROM campaigns WHERE name LIKE 'Test Campaign%'
+        # Slet alle test assessments
+        deleted_assessments = conn.execute("""
+            DELETE FROM assessments WHERE name LIKE 'Test Assessment%'
         """)
 
         # Slet alle test units (cascade vil slette tokens, responses etc.)
@@ -280,7 +280,7 @@ def cleanup_test_data():
             DELETE FROM organizational_units WHERE name LIKE 'Test%'
         """)
 
-        print(f"[INFO] Slettet test campaigns og units")
+        print(f"[INFO] Slettet test assessments og units")
 
     print("[OK] Cleanup færdig!")
 
@@ -293,9 +293,9 @@ def run_all_tests():
 
     try:
         test_respondent_types_and_modes()
-        test_anonymous_campaign_with_leader_perspective()
-        test_identified_campaign()
-        test_hybrid_campaign()
+        test_anonymous_assessment_with_leader_perspective()
+        test_identified_assessment()
+        test_hybrid_assessment()
 
         print("\n" + "="*60)
         print("  ALLE TESTS BESTÅET!")

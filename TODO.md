@@ -497,6 +497,10 @@ _Ingen kendte bugs pt._
 - [x] Email tracking og templates
 - [x] **GDPR: Render service i EU (Frankfurt)** ✅
 - [x] **Domæner: frictioncompass.com + friktionskompasset.dk** ✅
+- [ ] **Uptime monitoring** - Opsæt uptimerobot.com for alle produktions-sites
+  - friktionskompasset.dk
+  - frictioncompass.com
+  - herning.friktionskompasset.dk (når aktiv)
 
 ---
 

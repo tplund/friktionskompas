@@ -1,20 +1,20 @@
-"""Check campaign statistics"""
+"""Check assessment statistics"""
 from db_hierarchical import get_db
 
 with get_db() as conn:
-    # Get first campaign
-    campaign = conn.execute('SELECT id, name FROM campaigns LIMIT 1').fetchone()
+    # Get first assessment
+    assessment = conn.execute('SELECT id, name FROM assessments LIMIT 1').fetchone()
 
-    if campaign:
-        print(f"Campaign: {campaign['name']}")
-        print(f"ID: {campaign['id']}")
+    if assessment:
+        print(f"Assessment: {assessment['name']}")
+        print(f"ID: {assessment['id']}")
 
         # Check tokens
         tokens = conn.execute('''
             SELECT COUNT(*) as total, SUM(is_used) as used
             FROM tokens
-            WHERE campaign_id = ?
-        ''', (campaign['id'],)).fetchone()
+            WHERE assessment_id = ?
+        ''', (assessment['id'],)).fetchone()
 
         print(f"\nTokens:")
         print(f"  Total sent: {tokens['total']}")
@@ -24,8 +24,8 @@ with get_db() as conn:
         responses = conn.execute('''
             SELECT COUNT(DISTINCT id) as cnt
             FROM responses
-            WHERE campaign_id = ?
-        ''', (campaign['id'],)).fetchone()
+            WHERE assessment_id = ?
+        ''', (assessment['id'],)).fetchone()
 
         print(f"\nResponses: {responses['cnt']}")
 

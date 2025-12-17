@@ -46,3 +46,28 @@ UserExport.csv
 dist/
 build/
 *.egg-info/
+
+# Test coverage
+.coverage
+htmlcov/
+coverage.xml
+
+# Backup files
+*.b64
+*.backup_*
+
+# Export/import data
+*_export.json
+seed_responses.json
+
+# Screenshots and images (not code)
+*.png
+*.jpg
+*.jpeg
+
+# Office documents
+*.docx
+*.xlsx
+
+# Cookies/session data
+cookies.txt

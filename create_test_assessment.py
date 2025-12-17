@@ -2,7 +2,7 @@
 Opret test-kampagne med de nye 22 spørgsmål
 """
 from db_hierarchical import (
-    create_unit, create_campaign_with_modes,
+    create_unit, create_assessment_with_modes,
     generate_tokens_with_respondent_types, get_questions
 )
 
@@ -32,9 +32,9 @@ field_counts = Counter(q['field'] for q in questions)
 for field, count in sorted(field_counts.items()):
     print(f"    - {field}: {count} spørgsmål")
 
-# 3. Opret anonymous campaign med leder-perspektiv
-print(f"\n[3/4] Opretter campaign...")
-campaign_id = create_campaign_with_modes(
+# 3. Opret anonymous assessment med leder-perspektiv
+print(f"\n[3/4] Opretter assessment...")
+assessment_id = create_assessment_with_modes(
     target_unit_id=unit_id,
     name="Test - Nye Spørgsmål med Leder-perspektiv",
     period="2025 Q1 Test",
@@ -43,11 +43,11 @@ campaign_id = create_campaign_with_modes(
     include_leader_self=True,
     min_responses=3
 )
-print(f"  [OK] Campaign oprettet: {campaign_id}")
+print(f"  [OK] Assessment oprettet: {assessment_id}")
 
 # 4. Generer tokens
 print(f"\n[4/4] Genererer tokens...")
-tokens = generate_tokens_with_respondent_types(campaign_id)
+tokens = generate_tokens_with_respondent_types(assessment_id)
 
 for uid, token_dict in tokens.items():
     print(f"\n  Unit: {uid}")
@@ -63,7 +63,7 @@ for uid, token_dict in tokens.items():
 print("\n" + "="*60)
 print("TESTKAMPAGNE OPRETTET!")
 print("="*60)
-print(f"\nCampaign ID: {campaign_id}")
+print(f"\nAssessment ID: {assessment_id}")
 print(f"Unit ID: {unit_id}")
 print(f"\nBrug tokens ovenfor til at teste spørgeskemaet")
 print("="*60)
