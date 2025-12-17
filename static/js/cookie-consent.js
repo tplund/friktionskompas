@@ -336,11 +336,11 @@ const CookieConsent = (function() {
                 outline-offset: 2px;
             }
             .cookie-btn-accept {
-                background: #22c55e;
+                background: #15803d;
                 color: white;
             }
             .cookie-btn-accept:hover {
-                background: #16a34a;
+                background: #166534;
             }
             .cookie-btn-reject {
                 background: #6b7280;

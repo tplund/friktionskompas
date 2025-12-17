@@ -590,12 +590,52 @@ def logout():
 # ACCOUNT SETTINGS & OAUTH LINKING
 # ========================================
 
-@app.route('/admin/my-account')
+@app.route('/admin/my-account', methods=['GET', 'POST'])
 @login_required
 def admin_my_account():
-    """Account settings page - manage linked OAuth accounts"""
+    """Account settings page - manage profile and linked OAuth accounts"""
     user = session.get('user')
     user_id = user.get('id')
+
+    # Get full user details from database
+    with get_db() as conn:
+        user_details = conn.execute("""
+            SELECT u.*, c.name as customer_name, c.allow_profile_edit
+            FROM users u
+            LEFT JOIN customers c ON u.customer_id = c.id
+            WHERE u.id = ?
+        """, (user_id,)).fetchone()
+
+    # Determine if user can edit profile
+    # Superadmin can always edit, otherwise check customer setting
+    effective_role = session.get('simulated_role') or user.get('role')
+    if user_details:
+        allow_edit = user_details['allow_profile_edit']
+        can_edit_profile = (
+            effective_role == 'superadmin' or
+            allow_edit == 1 or
+            allow_edit is None  # Default to true
+        )
+    else:
+        can_edit_profile = effective_role == 'superadmin'
+
+    if request.method == 'POST' and can_edit_profile:
+        name = request.form.get('name', '').strip()
+        recovery_email = request.form.get('recovery_email', '').strip() or None
+
+        if not name:
+            flash('Navn må ikke være tomt', 'error')
+        else:
+            with get_db() as conn:
+                conn.execute("""
+                    UPDATE users SET name = ?, recovery_email = ? WHERE id = ?
+                """, (name, recovery_email, user_id))
+
+            # Update session
+            session['user']['name'] = name
+            flash('Profil opdateret', 'success')
+
+        return redirect(url_for('admin_my_account'))
 
     # Get linked OAuth accounts
     linked_accounts = get_user_oauth_links(user_id)
@@ -619,6 +659,8 @@ def admin_my_account():
         link['info'] = get_provider_info(link['provider'])
 
     return render_template('admin/my_account.html',
+                           user_details=dict(user_details) if user_details else {},
+                           can_edit_profile=can_edit_profile,
                            linked_accounts=linked_accounts,
                            available_providers=available_providers)
 

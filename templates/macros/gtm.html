@@ -12,9 +12,13 @@
     {% set gtm_id = 'GTM-KRM92FXQ' %}
 {% endif %}
 
-<!-- Google Consent Mode v2 - MUST be BEFORE GTM -->
-<script src="/static/js/cookie-consent.js"></script>
-<script>CookieConsent.initConsentMode();</script>
+<!-- Google Consent Mode v2 - Initialize BEFORE GTM (inlined for performance) -->
+<script>
+window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}
+gtag('consent','default',{'ad_storage':'denied','ad_user_data':'denied','ad_personalization':'denied','analytics_storage':'denied','functionality_storage':'denied','personalization_storage':'denied','security_storage':'granted','wait_for_update':500});
+</script>
+<!-- Full cookie consent UI loaded deferred -->
+<script src="/static/js/cookie-consent.js" defer></script>
 
 <!-- Google Tag Manager ({{ gtm_id }}) -->
 <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
@@ -42,7 +46,15 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
 {% macro cookie_consent_init() %}
 <script>
-    const userLang = document.documentElement.lang || 'da';
-    CookieConsent.init(userLang);
+    // Wait for deferred cookie-consent.js to load
+    if (typeof CookieConsent !== 'undefined') {
+        CookieConsent.init(document.documentElement.lang || 'da');
+    } else {
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof CookieConsent !== 'undefined') {
+                CookieConsent.init(document.documentElement.lang || 'da');
+            }
+        });
+    }
 </script>
 {% endmacro %}

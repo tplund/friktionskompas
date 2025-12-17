@@ -171,6 +171,12 @@ def init_multitenant_db():
                 ALTER TABLE customers ADD COLUMN email_from_name TEXT
             """)
 
+        # Tilføj allow_profile_edit til customers (default true for bagudkompatibilitet)
+        if 'allow_profile_edit' not in customer_column_names:
+            conn.execute("""
+                ALTER TABLE customers ADD COLUMN allow_profile_edit INTEGER DEFAULT 1
+            """)
+
         # Tilføj auth_providers kolonne til domains hvis den ikke findes
         domain_columns = conn.execute("PRAGMA table_info(domains)").fetchall()
         domain_column_names = [col['name'] for col in domain_columns]
@@ -187,6 +193,12 @@ def init_multitenant_db():
         if 'language' not in user_column_names:
             conn.execute("""
                 ALTER TABLE users ADD COLUMN language TEXT DEFAULT 'da'
+            """)
+
+        # Tilføj recovery_email til users hvis den ikke findes
+        if 'recovery_email' not in user_column_names:
+            conn.execute("""
+                ALTER TABLE users ADD COLUMN recovery_email TEXT
             """)
 
         # Tilføj text_en kolonne til questions hvis den ikke findes

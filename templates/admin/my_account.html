@@ -72,6 +72,74 @@
         font-size: 0.9rem;
     }
 
+    /* Profile Form */
+    .profile-form {
+        max-width: 500px;
+    }
+    .form-group {
+        margin-bottom: 20px;
+    }
+    .form-group label {
+        display: block;
+        font-weight: 500;
+        color: #374151;
+        margin-bottom: 6px;
+        font-size: 0.9rem;
+    }
+    .form-group input {
+        width: 100%;
+        padding: 10px 14px;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        font-size: 0.95rem;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .form-group input:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+    .form-group input:disabled {
+        background: #f3f4f6;
+        color: #6b7280;
+        cursor: not-allowed;
+    }
+    .form-group .help-text {
+        margin-top: 6px;
+        font-size: 0.8rem;
+        color: #6b7280;
+    }
+    .btn-save {
+        background: #3b82f6;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-size: 0.95rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+    .btn-save:hover {
+        background: #2563eb;
+    }
+    .btn-save:disabled {
+        background: #9ca3af;
+        cursor: not-allowed;
+    }
+    .readonly-notice {
+        background: #fef3c7;
+        border: 1px solid #fcd34d;
+        border-radius: 8px;
+        padding: 12px 16px;
+        margin-bottom: 20px;
+        font-size: 0.9rem;
+        color: #92400e;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
     .linked-accounts {
         display: flex;
         flex-direction: column;
@@ -191,6 +259,17 @@
         font-size: 1.25rem;
         flex-shrink: 0;
     }
+
+    .two-columns {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 25px;
+    }
+    @media (max-width: 900px) {
+        .two-columns {
+            grid-template-columns: 1fr;
+        }
+    }
 </style>
 {% endblock %}
 
@@ -211,97 +290,128 @@
     </div>
 </div>
 
-<!-- Linked OAuth Accounts -->
-<div class="section-card">
-    <div class="section-header">
-        <span class="icon">🔗</span>
-        <h2>Tilknyttede login-metoder</h2>
-    </div>
-    <div class="section-body">
-        <p class="section-subtitle">
-            Du kan logge ind med disse konti. Tilknyt flere for at have flere muligheder.
-        </p>
+<div class="two-columns">
+    <div>
+        <!-- Profile Information -->
+        <div class="section-card">
+            <div class="section-header">
+                <span class="icon">👤</span>
+                <h2>Profilinformation</h2>
+            </div>
+            <div class="section-body">
+                {% if not can_edit_profile %}
+                <div class="readonly-notice">
+                    <span>🔒</span>
+                    <span>Din profil administreres af din organisation og kan ikke redigeres her.</span>
+                </div>
+                {% endif %}
 
-        {% if linked_accounts %}
-        <div class="linked-accounts">
-            {% for link in linked_accounts %}
-            <div class="linked-account">
-                <div class="provider-icon {{ link.provider }}">
-                    {% if link.provider == 'microsoft' %}
-                    <svg width="20" height="20" viewBox="0 0 21 21" fill="currentColor">
-                        <path d="M0 0h10v10H0V0zm11 0h10v10H11V0zM0 11h10v10H0V11zm11 0h10v10H11V11z"/>
-                    </svg>
-                    {% elif link.provider == 'google' %}
-                    G
+                <form method="POST" class="profile-form">
+                    <div class="form-group">
+                        <label for="name">Navn</label>
+                        <input type="text" id="name" name="name"
+                               value="{{ user_details.name or session.user.name }}"
+                               {% if not can_edit_profile %}disabled{% endif %}
+                               required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="email">Email (login)</label>
+                        <input type="email" id="email" name="email"
+                               value="{{ user_details.email or session.user.email }}"
+                               disabled>
+                        <p class="help-text">Email-adressen bruges til at logge ind og kan ikke ændres.</p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="recovery_email">Recovery email (valgfri)</label>
+                        <input type="email" id="recovery_email" name="recovery_email"
+                               value="{{ user_details.recovery_email or '' }}"
+                               {% if not can_edit_profile %}disabled{% endif %}
+                               placeholder="En alternativ email til nulstilling af password">
+                        <p class="help-text">Bruges hvis du mister adgang til din primære email.</p>
+                    </div>
+
+                    {% if can_edit_profile %}
+                    <button type="submit" class="btn-save">Gem ændringer</button>
                     {% endif %}
-                </div>
-                <div class="provider-info">
-                    <div class="provider-name">{{ link.info.name }}</div>
-                    {% if link.provider_email %}
-                    <div class="provider-email">{{ link.provider_email }}</div>
-                    {% endif %}
-                    <div class="provider-date">Tilknyttet {{ link.created_at[:10] if link.created_at else 'ukendt' }}</div>
-                </div>
-                <form method="POST" action="{{ url_for('admin_unlink_oauth', provider=link.provider) }}"
-                      onsubmit="return confirm('Er du sikker på at du vil fjerne {{ link.info.name }} fra din konto?');">
-                    <button type="submit" class="btn-unlink">Fjern</button>
                 </form>
             </div>
-            {% endfor %}
         </div>
-        {% else %}
-        <div class="no-providers">
-            <div class="icon">🔐</div>
-            <p>Du har ingen tilknyttede login-metoder endnu.</p>
+    </div>
+
+    <div>
+        <!-- Linked OAuth Accounts -->
+        <div class="section-card">
+            <div class="section-header">
+                <span class="icon">🔗</span>
+                <h2>Login-metoder</h2>
+            </div>
+            <div class="section-body">
+                <p class="section-subtitle">
+                    Tilknyt flere login-metoder for nemmere adgang.
+                </p>
+
+                {% if linked_accounts %}
+                <div class="linked-accounts">
+                    {% for link in linked_accounts %}
+                    <div class="linked-account">
+                        <div class="provider-icon {{ link.provider }}">
+                            {% if link.provider == 'microsoft' %}
+                            <svg width="20" height="20" viewBox="0 0 21 21" fill="currentColor">
+                                <path d="M0 0h10v10H0V0zm11 0h10v10H11V0zM0 11h10v10H0V11zm11 0h10v10H11V11z"/>
+                            </svg>
+                            {% elif link.provider == 'google' %}
+                            G
+                            {% endif %}
+                        </div>
+                        <div class="provider-info">
+                            <div class="provider-name">{{ link.info.name }}</div>
+                            {% if link.provider_email %}
+                            <div class="provider-email">{{ link.provider_email }}</div>
+                            {% endif %}
+                            <div class="provider-date">Tilknyttet {{ link.created_at[:10] if link.created_at else 'ukendt' }}</div>
+                        </div>
+                        <form method="POST" action="{{ url_for('admin_unlink_oauth', provider=link.provider) }}"
+                              onsubmit="return confirm('Er du sikker på at du vil fjerne {{ link.info.name }} fra din konto?');">
+                            <button type="submit" class="btn-unlink">Fjern</button>
+                        </form>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="no-providers">
+                    <div class="icon">🔐</div>
+                    <p>Du har ingen tilknyttede OAuth-konti.</p>
+                </div>
+                {% endif %}
+
+                {% if available_providers %}
+                <div class="available-providers" style="margin-top: 20px;">
+                    {% for provider in available_providers %}
+                    <div class="provider-option">
+                        <div class="provider-icon {{ provider.id }}">
+                            {% if provider.id == 'microsoft' %}
+                            <svg width="20" height="20" viewBox="0 0 21 21" fill="currentColor">
+                                <path d="M0 0h10v10H0V0zm11 0h10v10H11V0zM0 11h10v10H0V11zm11 0h10v10H11V11z"/>
+                            </svg>
+                            {% elif provider.id == 'google' %}
+                            G
+                            {% endif %}
+                        </div>
+                        <div class="provider-info" style="flex: 1;">
+                            <div class="provider-name">{{ provider.info.name }}</div>
+                            <div class="provider-email">Tilknyt din konto</div>
+                        </div>
+                        <a href="{{ url_for('admin_link_oauth', provider=provider.id) }}" class="btn-link-provider">
+                            Tilknyt
+                        </a>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
         </div>
-        {% endif %}
     </div>
 </div>
-
-<!-- Available Providers to Link -->
-{% if available_providers %}
-<div class="section-card">
-    <div class="section-header">
-        <span class="icon">➕</span>
-        <h2>Tilknyt ny login-metode</h2>
-    </div>
-    <div class="section-body">
-        <p class="section-subtitle">
-            Tilknyt en ekstra login-metode for nemmere adgang og øget sikkerhed.
-        </p>
-
-        <div class="available-providers">
-            {% for provider in available_providers %}
-            <div class="provider-option">
-                <div class="provider-icon {{ provider.id }}">
-                    {% if provider.id == 'microsoft' %}
-                    <svg width="20" height="20" viewBox="0 0 21 21" fill="currentColor">
-                        <path d="M0 0h10v10H0V0zm11 0h10v10H11V0zM0 11h10v10H0V11zm11 0h10v10H11V11z"/>
-                    </svg>
-                    {% elif provider.id == 'google' %}
-                    G
-                    {% endif %}
-                </div>
-                <div class="provider-info" style="flex: 1;">
-                    <div class="provider-name">{{ provider.info.name }}</div>
-                    <div class="provider-email">Log ind med din {{ provider.info.name }}-konto</div>
-                </div>
-                <a href="{{ url_for('admin_link_oauth', provider=provider.id) }}" class="btn-link-provider">
-                    Tilknyt {{ provider.info.name }}
-                </a>
-            </div>
-            {% endfor %}
-        </div>
-
-        <div class="security-note">
-            <span class="icon">ℹ️</span>
-            <div>
-                <strong>Hvorfor tilknytte flere login-metoder?</strong><br>
-                Ved at tilknytte Google eller Microsoft kan du logge ind med et enkelt klik - uden at skulle huske en adgangskode.
-                Det er både hurtigere og mere sikkert.
-            </div>
-        </div>
-    </div>
-</div>
-{% endif %}
 {% endblock %}

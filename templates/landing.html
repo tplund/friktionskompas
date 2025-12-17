@@ -120,11 +120,11 @@
             display: inline-block;
         }
         .btn-primary {
-            background: #22c55e;
+            background: #15803d;
             color: white;
         }
         .btn-primary:hover {
-            background: #16a34a;
+            background: #166534;
             transform: translateY(-2px);
         }
         .btn-secondary {
@@ -319,9 +319,11 @@
             color: white;
             margin-bottom: 15px;
         }
-        .footer h4 {
+        .footer-section-title {
             color: white;
             margin-bottom: 15px;
+            font-size: 1rem;
+            font-weight: 600;
         }
         .footer-links {
             list-style: none;
@@ -511,7 +513,7 @@
                 <p>{{ t('landing.footer.tagline') }}</p>
             </div>
             <div>
-                <h4>{{ t('landing.footer.product') }}</h4>
+                <div class="footer-section-title">{{ t('landing.footer.product') }}</div>
                 <ul class="footer-links">
                     <li><a href="/profil/local">{{ t('landing.footer.free_profile') }}</a></li>
                     <li><a href="/register">{{ t('landing.nav.for_business') }}</a></li>
@@ -519,14 +521,14 @@
                 </ul>
             </div>
             <div>
-                <h4>{{ t('landing.footer.account') }}</h4>
+                <div class="footer-section-title">{{ t('landing.footer.account') }}</div>
                 <ul class="footer-links">
                     <li><a href="/login">{{ t('landing.nav.login') }}</a></li>
                     <li><a href="/register">{{ t('landing.footer.create_account') }}</a></li>
                 </ul>
             </div>
             <div>
-                <h4>{{ t('landing.footer.legal') }}</h4>
+                <div class="footer-section-title">{{ t('landing.footer.legal') }}</div>
                 <ul class="footer-links">
                     <li><a href="#" onclick="CookieConsent.showSettings('{{ get_user_language() }}'); return false;">{{ t('landing.footer.privacy_settings') }}</a></li>
                 </ul>
