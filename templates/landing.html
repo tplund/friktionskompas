@@ -4,27 +4,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Friktionskompasset hjælper dig med at identificere og fjerne friktioner der dræner din energi - på arbejdet og i livet.">
+    <meta name="description" content="{{ t('landing.meta.description') }}">
 
     {{ gtm_head() }}
 
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="{{ request.url if request is defined else '' }}">
-    <meta property="og:title" content="Friktionskompasset - Find og fjern dine friktioner">
-    <meta property="og:description" content="Tag en gratis friktionsprofil og få indsigt i hvad der dræner din energi.">
+    <meta property="og:title" content="{{ t('landing.meta.og_title') }}">
+    <meta property="og:description" content="{{ t('landing.meta.og_description') }}">
     <meta property="og:image" content="{{ request.url_root if request is defined else '/' }}static/og-image.svg">
-    <meta property="og:locale" content="da_DK">
+    <meta property="og:locale" content="{{ 'da_DK' if get_user_language() == 'da' else 'en_US' }}">
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Friktionskompasset - Find og fjern dine friktioner">
-    <meta name="twitter:description" content="Tag en gratis friktionsprofil og få indsigt i hvad der dræner din energi.">
+    <meta name="twitter:title" content="{{ t('landing.meta.og_title') }}">
+    <meta name="twitter:description" content="{{ t('landing.meta.og_description') }}">
     <meta name="twitter:image" content="{{ request.url_root if request is defined else '/' }}static/og-image.svg">
 
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <link rel="canonical" href="{{ request.url if request is defined else '' }}">
-    <title>Friktionskompasset - Find og fjern dine friktioner</title>
+    <title>{{ t('landing.meta.title') }}</title>
 
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -374,54 +374,54 @@
 
     <!-- Navigation -->
     <nav class="nav">
-        <a href="/" class="nav-brand">🧭 Friktionskompasset</a>
+        <a href="/" class="nav-brand">{{ t('landing.brand') }}</a>
         <div class="nav-links">
-            <a href="#hvad-er-friktion">Hvad er friktion?</a>
-            <a href="#sadan-virker-det">Sådan virker det</a>
-            <a href="#for-virksomheder">For virksomheder</a>
-            <a href="/help">Hjælp</a>
-            <a href="/login" class="btn-nav">Log ind</a>
+            <a href="#hvad-er-friktion">{{ t('landing.nav.what_is_friction') }}</a>
+            <a href="#sadan-virker-det">{{ t('landing.nav.how_it_works') }}</a>
+            <a href="#for-virksomheder">{{ t('landing.nav.for_business') }}</a>
+            <a href="/help">{{ t('landing.nav.help') }}</a>
+            <a href="/login" class="btn-nav">{{ t('landing.nav.login') }}</a>
         </div>
     </nav>
 
     <!-- Hero Section -->
     <section class="hero">
-        <div class="hero-badge">🔒 100% privat - data gemmes kun i din browser</div>
-        <h1>Find ud af hvad der dræner din energi</h1>
-        <p>Tag en gratis friktionsprofil på 5 minutter og få indsigt i de små ting der slider på dig - uden at vi gemmer dine data.</p>
+        <div class="hero-badge">{{ t('landing.hero.badge') }}</div>
+        <h1>{{ t('landing.hero.title') }}</h1>
+        <p>{{ t('landing.hero.subtitle') }}</p>
         <div class="hero-buttons">
-            <a href="/profil/local" class="btn btn-primary">Tag gratis profil →</a>
-            <a href="#hvad-er-friktion" class="btn btn-secondary">Læs mere</a>
+            <a href="/profil/local" class="btn btn-primary">{{ t('landing.hero.cta_primary') }}</a>
+            <a href="#hvad-er-friktion" class="btn btn-secondary">{{ t('landing.hero.cta_secondary') }}</a>
         </div>
     </section>
 
     <!-- What is friction -->
     <section class="section" id="hvad-er-friktion">
         <div class="section-header">
-            <h2>Hvad er friktioner?</h2>
-            <p>Friktioner er de små ting der føles bøvlede eller meningsløse - ikke store konflikter, men daglige irritationer der slider.</p>
+            <h2>{{ t('landing.friction.title') }}</h2>
+            <p>{{ t('landing.friction.subtitle') }}</p>
         </div>
 
         <div class="friction-grid">
             <div class="friction-card">
                 <div class="friction-card-icon">😤</div>
-                <h3>Mening</h3>
-                <p>Opgaver der ikke føles umagen værd. Registreringer ingen læser. Møder uden formål.</p>
+                <h3>{{ t('landing.friction.mening.title') }}</h3>
+                <p>{{ t('landing.friction.mening.desc') }}</p>
             </div>
             <div class="friction-card">
                 <div class="friction-card-icon">😰</div>
-                <h3>Tryghed</h3>
-                <p>Usikkerhed om forventninger. Uklare spilleregler. Følelsen af at være på tynd is.</p>
+                <h3>{{ t('landing.friction.tryghed.title') }}</h3>
+                <p>{{ t('landing.friction.tryghed.desc') }}</p>
             </div>
             <div class="friction-card">
                 <div class="friction-card-icon">🤯</div>
-                <h3>Kan</h3>
-                <p>Systemer der er langsomme. Processer der tager unødigt lang tid. For mange bolde i luften.</p>
+                <h3>{{ t('landing.friction.kan.title') }}</h3>
+                <p>{{ t('landing.friction.kan.desc') }}</p>
             </div>
             <div class="friction-card">
                 <div class="friction-card-icon">😩</div>
-                <h3>Besvær</h3>
-                <p>Dobbeltarbejde. Overflødige godkendelser. Omveje for at få tingene gjort.</p>
+                <h3>{{ t('landing.friction.besvaer.title') }}</h3>
+                <p>{{ t('landing.friction.besvaer.desc') }}</p>
             </div>
         </div>
     </section>
@@ -429,30 +429,30 @@
     <!-- How it works -->
     <section class="section" style="background: #f9fafb;" id="sadan-virker-det">
         <div class="section-header">
-            <h2>Sådan virker det</h2>
-            <p>På 5 minutter får du indsigt i dine friktionsmønstre</p>
+            <h2>{{ t('landing.how.title') }}</h2>
+            <p>{{ t('landing.how.subtitle') }}</p>
         </div>
 
         <div class="steps">
             <div class="step">
                 <div class="step-number">1</div>
-                <h3>Besvar spørgsmål</h3>
-                <p>16 korte spørgsmål om hvordan du oplever forskellige situationer i hverdagen.</p>
+                <h3>{{ t('landing.how.step1.title') }}</h3>
+                <p>{{ t('landing.how.step1.desc') }}</p>
             </div>
             <div class="step">
                 <div class="step-number">2</div>
-                <h3>Se din profil</h3>
-                <p>Få et visuelt overblik over hvor friktionerne rammer dig hårdest.</p>
+                <h3>{{ t('landing.how.step2.title') }}</h3>
+                <p>{{ t('landing.how.step2.desc') }}</p>
             </div>
             <div class="step">
                 <div class="step-number">3</div>
-                <h3>Forstå mønstrene</h3>
-                <p>Læs fortolkninger der hjælper dig med at forstå dine reaktioner.</p>
+                <h3>{{ t('landing.how.step3.title') }}</h3>
+                <p>{{ t('landing.how.step3.desc') }}</p>
             </div>
             <div class="step">
                 <div class="step-number">4</div>
-                <h3>Tag action</h3>
-                <p>Brug indsigterne til samtaler med din leder, coach eller bare dig selv.</p>
+                <h3>{{ t('landing.how.step4.title') }}</h3>
+                <p>{{ t('landing.how.step4.desc') }}</p>
             </div>
         </div>
     </section>
@@ -462,16 +462,16 @@
         <div class="privacy-content">
             <div>
                 <div class="privacy-icon">🔒</div>
-                <h2>Privacy by design</h2>
-                <p style="font-size: 1.1rem; margin-top: 15px;">Dine data tilhører dig. Vi har bygget Friktionskompasset så dine svar aldrig forlader din browser.</p>
+                <h2>{{ t('landing.privacy.title') }}</h2>
+                <p style="font-size: 1.1rem; margin-top: 15px;">{{ t('landing.privacy.subtitle') }}</p>
             </div>
             <div>
                 <ul class="privacy-features">
-                    <li>Alt gemmes lokalt i din browser (localStorage)</li>
-                    <li>Ingen data sendes til vores servere</li>
-                    <li>Ingen cookies til tracking</li>
-                    <li>Du kan eksportere og slette dine data når som helst</li>
-                    <li>Open source og gennemsigtigt</li>
+                    <li>{{ t('landing.privacy.feature1') }}</li>
+                    <li>{{ t('landing.privacy.feature2') }}</li>
+                    <li>{{ t('landing.privacy.feature3') }}</li>
+                    <li>{{ t('landing.privacy.feature4') }}</li>
+                    <li>{{ t('landing.privacy.feature5') }}</li>
                 </ul>
             </div>
         </div>
@@ -481,16 +481,16 @@
     <section class="section business-section" id="for-virksomheder">
         <div class="business-content">
             <div>
-                <h2>For virksomheder</h2>
-                <p style="opacity: 0.8; margin-top: 15px; margin-bottom: 30px;">Friktionskompasset hjælper teams og organisationer med at identificere og fjerne de friktioner der sænker produktiviteten.</p>
-                <a href="/register" class="btn btn-primary">Kom i gang →</a>
+                <h2>{{ t('landing.business.title') }}</h2>
+                <p style="opacity: 0.8; margin-top: 15px; margin-bottom: 30px;">{{ t('landing.business.subtitle') }}</p>
+                <a href="/register" class="btn btn-primary">{{ t('landing.business.cta') }}</a>
             </div>
             <div>
                 <ul class="business-features">
-                    <li><strong>Anonyme målinger</strong> - Få ærlige svar uden at kompromittere medarbejdernes privatliv</li>
-                    <li><strong>Team-analyser</strong> - Se mønstre på tværs af afdelinger og teams</li>
-                    <li><strong>Trend-tracking</strong> - Følg udviklingen over tid</li>
-                    <li><strong>Handlingsanbefalinger</strong> - Konkrete forslag baseret på jeres data</li>
+                    <li><strong>{{ t('landing.business.feature1.title') }}</strong> - {{ t('landing.business.feature1.desc') }}</li>
+                    <li><strong>{{ t('landing.business.feature2.title') }}</strong> - {{ t('landing.business.feature2.desc') }}</li>
+                    <li><strong>{{ t('landing.business.feature3.title') }}</strong> - {{ t('landing.business.feature3.desc') }}</li>
+                    <li><strong>{{ t('landing.business.feature4.title') }}</strong> - {{ t('landing.business.feature4.desc') }}</li>
                 </ul>
             </div>
         </div>
@@ -498,43 +498,43 @@
 
     <!-- CTA -->
     <section class="section cta-section">
-        <h2>Klar til at finde dine friktioner?</h2>
-        <p>Det tager kun 5 minutter - og vi gemmer intet.</p>
-        <a href="/profil/local" class="btn btn-primary">Tag gratis profil →</a>
+        <h2>{{ t('landing.cta.title') }}</h2>
+        <p>{{ t('landing.cta.subtitle') }}</p>
+        <a href="/profil/local" class="btn btn-primary">{{ t('landing.hero.cta_primary') }}</a>
     </section>
 
     <!-- Footer -->
     <footer class="footer">
         <div class="footer-content">
             <div>
-                <div class="footer-brand">🧭 Friktionskompasset</div>
-                <p>Et værktøj til at identificere og fjerne friktioner der dræner din energi.</p>
+                <div class="footer-brand">{{ t('landing.brand') }}</div>
+                <p>{{ t('landing.footer.tagline') }}</p>
             </div>
             <div>
-                <h4>Produkt</h4>
+                <h4>{{ t('landing.footer.product') }}</h4>
                 <ul class="footer-links">
-                    <li><a href="/profil/local">Gratis profil</a></li>
-                    <li><a href="/register">For virksomheder</a></li>
-                    <li><a href="/help">Hjælp</a></li>
+                    <li><a href="/profil/local">{{ t('landing.footer.free_profile') }}</a></li>
+                    <li><a href="/register">{{ t('landing.nav.for_business') }}</a></li>
+                    <li><a href="/help">{{ t('landing.nav.help') }}</a></li>
                 </ul>
             </div>
             <div>
-                <h4>Konto</h4>
+                <h4>{{ t('landing.footer.account') }}</h4>
                 <ul class="footer-links">
-                    <li><a href="/login">Log ind</a></li>
-                    <li><a href="/register">Opret konto</a></li>
+                    <li><a href="/login">{{ t('landing.nav.login') }}</a></li>
+                    <li><a href="/register">{{ t('landing.footer.create_account') }}</a></li>
                 </ul>
             </div>
             <div>
-                <h4>Juridisk</h4>
+                <h4>{{ t('landing.footer.legal') }}</h4>
                 <ul class="footer-links">
-                    <li><a href="#" onclick="CookieConsent.showSettings('da'); return false;">Privatlivsindstillinger</a></li>
+                    <li><a href="#" onclick="CookieConsent.showSettings('{{ get_user_language() }}'); return false;">{{ t('landing.footer.privacy_settings') }}</a></li>
                 </ul>
             </div>
         </div>
         <div class="footer-bottom">
-            <span>© 2025 Friktionskompasset</span>
-            <span>Lavet med ❤️ i Danmark</span>
+            <span>{{ t('landing.footer.copyright') }}</span>
+            <span>{{ t('landing.footer.made_with_love') }}</span>
         </div>
     </footer>
 
