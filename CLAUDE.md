@@ -203,16 +203,39 @@ git push
 
 ### Automatiseret Test & CI/CD
 
+#### Git Pre-Push Hook (KRITISK!)
+**En git hook kører tests automatisk FØR push - forhindrer at broken kode pushes!**
+
+Hook lokation: `.git/hooks/pre-push`
+
+**Hvad sker der:**
+1. Du kører `git push`
+2. Hook kører `pytest tests/test_routes.py` automatisk
+3. Hvis tests fejler → push afbrydes med fejlbesked
+4. Hvis tests passerer → push fortsætter
+
+**Bypass (KUN i nødstilfælde):**
+```bash
+git push --no-verify  # Springer hook over - BRUG MED FORSIGTIGHED!
+```
+
+**Hvis hook mangler (ny clone):**
+Hook-filen er i `.git/hooks/` som ikke er i git. Opret manuelt:
+```bash
+# Opret .git/hooks/pre-push med indhold fra CLAUDE.md eller bed Claude om det
+```
+
 #### GitHub Actions (CI)
 - **55 tests kører automatisk** ved hvert push til `main`
 - Se status: https://github.com/tplund/friktionskompas/actions
 - Workflow fil: `.github/workflows/test.yml`
 - Tests kører på Ubuntu med Python 3.10
 - Coverage threshold: 50%
+- **VIGTIGT:** Selvom pre-push hook fanger de fleste fejl, tjek ALTID GitHub Actions efter push!
 
 #### Hvornår køre tests LOKALT
-- **KØR ALTID LOKALT FØR COMMIT** - tests skal være grønne før push
-- Kommando: `python -m pytest tests/ -v --tb=short`
+- Pre-push hook kører tests automatisk - du behøver ikke køre manuelt
+- Men ved store ændringer: `python -m pytest tests/ -v --tb=short`
 - Hvis tests fejler, ret fejlen før commit
 
 #### Hvornår OPDATERE tests
