@@ -213,6 +213,13 @@
             </div>
             {% endif %}
 
+            {% if task_situation %}
+            <div class="task-context" style="background: #eff6ff; border-left: 4px solid #3b82f6;">
+                <h2>Situationen</h2>
+                <p style="font-style: italic;">{{ task_situation }}</p>
+            </div>
+            {% endif %}
+
             <div class="progress-text">
                 <span id="answered">0</span> / <span id="total">{{ actions|length * 4 }}</span> spørgsmål besvaret
             </div>

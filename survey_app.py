@@ -223,6 +223,7 @@ def situation_survey(token):
         token=token,
         task_name=token_data['task_name'],
         task_description=token_data.get('task_description'),
+        task_situation=token_data.get('task_situation'),
         actions=token_data['actions'],
         questions=questions,
         get_field_name=get_field_name

@@ -419,12 +419,19 @@ def init_db():
                 unit_id TEXT,
                 name TEXT NOT NULL,
                 description TEXT,
+                situation TEXT,
                 created_by TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE,
                 FOREIGN KEY (unit_id) REFERENCES organizational_units(id) ON DELETE SET NULL
             )
         """)
+
+        # Migration: Tilføj situation kolonne hvis den mangler
+        try:
+            conn.execute("SELECT situation FROM tasks LIMIT 1")
+        except:
+            conn.execute("ALTER TABLE tasks ADD COLUMN situation TEXT")
 
         # Handlinger (actions) - 2-5 per opgave
         conn.execute("""
@@ -1395,15 +1402,15 @@ def move_unit(unit_id: str, new_parent_id: Optional[str]) -> bool:
 # ========================================
 
 def create_task(customer_id: str, name: str, description: str = None,
-                unit_id: str = None, created_by: str = None) -> str:
+                situation: str = None, unit_id: str = None, created_by: str = None) -> str:
     """Opret ny opgave (task) for situationsmåling"""
     task_id = f"task-{secrets.token_urlsafe(8)}"
 
     with get_db() as conn:
         conn.execute("""
-            INSERT INTO tasks (id, customer_id, unit_id, name, description, created_by)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (task_id, customer_id, unit_id, name, description, created_by))
+            INSERT INTO tasks (id, customer_id, unit_id, name, description, situation, created_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (task_id, customer_id, unit_id, name, description, situation, created_by))
 
     return task_id
 
@@ -1625,7 +1632,8 @@ def validate_situation_token(token: str) -> Optional[Dict]:
     with get_db() as conn:
         token_data = conn.execute("""
             SELECT st.*, sa.task_id, sa.name as assessment_name,
-                   t.name as task_name, t.description as task_description
+                   t.name as task_name, t.description as task_description,
+                   t.situation as task_situation
             FROM situation_tokens st
             JOIN situation_assessments sa ON st.situation_assessment_id = sa.id
             JOIN tasks t ON sa.task_id = t.id

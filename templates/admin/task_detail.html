@@ -27,9 +27,16 @@
     </div>
 
     {% if task.description %}
-    <div style="background: #f8fafc; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+    <div style="background: #f8fafc; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
         <strong>Beskrivelse:</strong><br>
         {{ task.description }}
+    </div>
+    {% endif %}
+
+    {% if task.situation %}
+    <div style="background: #eff6ff; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #3b82f6;">
+        <strong>Situation:</strong><br>
+        <em>{{ task.situation }}</em>
     </div>
     {% endif %}
 

@@ -6501,6 +6501,7 @@ def admin_task_new():
     if request.method == 'POST':
         name = request.form.get('name', '').strip()
         description = request.form.get('description', '').strip()
+        situation = request.form.get('situation', '').strip()
         unit_id = request.form.get('unit_id') or None
 
         if not name:
@@ -6527,6 +6528,7 @@ def admin_task_new():
             customer_id=customer_id,
             name=name,
             description=description,
+            situation=situation or None,
             unit_id=unit_id,
             created_by=session['user'].get('email')
         )
