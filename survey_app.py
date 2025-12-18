@@ -8,6 +8,7 @@ import secrets
 from db_hierarchical import (
     validate_and_use_token, save_response, get_questions, get_db
 )
+from translations import get_user_language
 
 app = Flask(__name__)
 
@@ -217,7 +218,8 @@ def situation_survey(token):
             message='Dette link er ugyldigt eller allerede brugt. Kontakt din administrator hvis du mener dette er en fejl.'
         ), 404
 
-    questions = get_questions('da')  # TODO: Detect language
+    lang = get_user_language()
+    questions = get_questions(lang)
 
     return render_template('situation_survey.html',
         token=token,
@@ -243,7 +245,8 @@ def situation_survey_submit(token):
             message='Dette link er ugyldigt eller allerede brugt.'
         ), 404
 
-    questions = get_questions('da')
+    lang = get_user_language()
+    questions = get_questions(lang)
     responses = []
 
     # Parse svar for hver handling og hvert felt
