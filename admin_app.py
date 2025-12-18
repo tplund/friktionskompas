@@ -2042,6 +2042,7 @@ def analyser():
                         SELECT
                             a.id,
                             a.name,
+                            a.period,
                             a.created_at,
                             AVG(CASE WHEN r.respondent_type = 'employee' THEN
                                 CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as overall,
@@ -2074,6 +2075,22 @@ def analyser():
                                 return round(l_val - f_val, 2)
                             return None
 
+                        # Build assessments list for chart
+                        assessments_for_chart = []
+                        for row in trend_rows:
+                            r = dict(row)
+                            assessments_for_chart.append({
+                                'name': r['name'],
+                                'period': r.get('period') or '',
+                                'date': r['created_at'][:10] if r['created_at'] else '',
+                                'scores': {
+                                    'TRYGHED': round(r['tryghed'] or 0, 2),
+                                    'MENING': round(r['mening'] or 0, 2),
+                                    'KAN': round(r['kan'] or 0, 2),
+                                    'BESVÆR': round(r['besvaer'] or 0, 2),
+                                }
+                            })
+
                         trend_data = {
                             'first_name': first['name'],
                             'last_name': last['name'],
@@ -2085,6 +2102,8 @@ def analyser():
                             'besvaer_change': calc_change('besvaer'),
                             'first_overall': round(first.get('overall') or 0, 2),
                             'last_overall': round(last.get('overall') or 0, 2),
+                            'assessments': assessments_for_chart,
+                            'fields': ['TRYGHED', 'MENING', 'KAN', 'BESVÆR'],
                         }
 
                 query = """

@@ -330,6 +330,11 @@
 
     /* Alerts */
     .alerts-section { margin-top: 20px; }
+    /* Limit analyse per enhed height */
+    #analyseCard .card-content {
+        max-height: 450px;
+        overflow-y: auto;
+    }
     .alert-item {
         display: flex;
         align-items: center;
@@ -491,6 +496,27 @@
             <a href="/admin/units" style="display: block; text-align: center; color: #6366f1; text-decoration: none; font-size: 0.8rem;">Administrer organisationer &rarr;</a>
         </div>
 
+        <!-- Advarsler i sidebar -->
+        {% if alerts %}
+        <div class="sidebar-card" style="border-left: 3px solid #ef4444;">
+            <h3 style="color: #991b1b;">
+                ⚠️ Advarsler ({{ alerts|length }})
+            </h3>
+            <div style="max-height: 200px; overflow-y: auto;">
+            {% for alert in alerts[:5] %}
+            <div class="alert-item" onclick="location.href='/admin/analyser?unit_id={{ alert.unit_id }}'">
+                <span class="icon">{{ alert.icon }}</span>
+                <span class="text">{{ alert.text }}</span>
+                <span class="action">Se &rarr;</span>
+            </div>
+            {% endfor %}
+            </div>
+            {% if alerts|length > 5 %}
+            <a href="/admin/analyser" style="display: block; text-align: center; color: #dc2626; text-decoration: none; font-size: 0.75rem; margin-top: 8px;">Se alle {{ alerts|length }} advarsler &rarr;</a>
+            {% endif %}
+        </div>
+        {% endif %}
+
         <!-- Trend -->
         <div class="sidebar-card">
             <h3>
@@ -551,21 +577,6 @@
     </div>
 </div>
 
-<!-- Advarsler -->
-{% if alerts %}
-<div class="alerts-section">
-    <div class="card" style="padding: 20px;">
-        <h2 style="margin-bottom: 15px;">Advarsler ({{ alerts|length }})</h2>
-        {% for alert in alerts[:5] %}
-        <div class="alert-item" onclick="location.href='/admin/analyser?unit_id={{ alert.unit_id }}'">
-            <span class="icon">{{ alert.icon }}</span>
-            <span class="text">{{ alert.text }}</span>
-            <span class="action">Se &rarr;</span>
-        </div>
-        {% endfor %}
-    </div>
-</div>
-{% endif %}
 {% endblock %}
 
 {% block extra_js %}
