@@ -1264,6 +1264,112 @@ def admin_seed_domains():
     return redirect(request.referrer or url_for('manage_domains'))
 
 
+@app.route('/admin/update-admin-credentials/<secret_key>', methods=['GET', 'POST'])
+def update_admin_credentials(secret_key):
+    """
+    TEMPORARY endpoint to update superadmin credentials.
+    Access: /admin/update-admin-credentials/frik2025adminupdate
+    REMOVE THIS ENDPOINT AFTER USE!
+    """
+    if secret_key != 'frik2025adminupdate':
+        return 'Unauthorized', 403
+
+    if request.method == 'GET':
+        # Show form
+        return '''
+        <!DOCTYPE html>
+        <html>
+        <head><title>Update Admin Credentials</title>
+        <style>
+            body { font-family: Arial, sans-serif; max-width: 500px; margin: 50px auto; padding: 20px; }
+            label { display: block; margin: 15px 0 5px; font-weight: bold; }
+            input { width: 100%; padding: 10px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; }
+            button { margin-top: 20px; padding: 12px 30px; font-size: 16px; background: #7c3aed; color: white; border: none; border-radius: 6px; cursor: pointer; }
+            button:hover { background: #6d28d9; }
+            .warning { background: #fee2e2; padding: 15px; border-radius: 8px; color: #dc2626; margin-bottom: 20px; }
+        </style>
+        </head>
+        <body>
+        <h1>Update Superadmin Credentials</h1>
+        <div class="warning">
+            <strong>⚠️ IMPORTANT:</strong> This endpoint should be removed after use!
+        </div>
+        <form method="POST">
+            <label>Current Username (to find user)</label>
+            <input type="text" name="current_username" value="admin" required>
+
+            <label>New Email (will also be username)</label>
+            <input type="email" name="new_email" required placeholder="tlund@elearningspecialist.com">
+
+            <label>New Name</label>
+            <input type="text" name="new_name" required placeholder="Thomas Lund">
+
+            <label>New Password (min 12 characters)</label>
+            <input type="password" name="new_password" required minlength="12">
+
+            <label>Confirm Password</label>
+            <input type="password" name="confirm_password" required minlength="12">
+
+            <button type="submit">Update Credentials</button>
+        </form>
+        </body>
+        </html>
+        '''
+
+    # Handle POST
+    current_username = request.form.get('current_username', '').strip()
+    new_email = request.form.get('new_email', '').strip().lower()
+    new_name = request.form.get('new_name', '').strip()
+    new_password = request.form.get('new_password', '')
+    confirm_password = request.form.get('confirm_password', '')
+
+    errors = []
+    if not current_username:
+        errors.append('Current username is required')
+    if not new_email or '@' not in new_email:
+        errors.append('Valid email is required')
+    if not new_name:
+        errors.append('Name is required')
+    if len(new_password) < 12:
+        errors.append('Password must be at least 12 characters')
+    if new_password != confirm_password:
+        errors.append('Passwords do not match')
+
+    if errors:
+        return f'<h1>Errors</h1><ul>{"".join(f"<li>{e}</li>" for e in errors)}</ul><a href="javascript:history.back()">Go back</a>'
+
+    # Find and update user
+    with get_db() as conn:
+        user = conn.execute("""
+            SELECT id, username, role FROM users WHERE username = ?
+        """, (current_username,)).fetchone()
+
+        if not user:
+            return f'<h1>Error</h1><p>User "{current_username}" not found</p><a href="javascript:history.back()">Go back</a>'
+
+        if user['role'] != 'superadmin':
+            return f'<h1>Error</h1><p>User is not a superadmin (role: {user["role"]})</p><a href="javascript:history.back()">Go back</a>'
+
+        # Update credentials
+        new_hash = hash_password(new_password)
+        conn.execute("""
+            UPDATE users
+            SET username = ?, email = ?, name = ?, password_hash = ?
+            WHERE id = ?
+        """, (new_email, new_email, new_name, new_hash, user['id']))
+
+    return f'''
+    <h1>✅ Credentials Updated Successfully</h1>
+    <p><strong>User ID:</strong> {user['id']}</p>
+    <p><strong>New Email/Username:</strong> {new_email}</p>
+    <p><strong>New Name:</strong> {new_name}</p>
+    <p><strong>Role:</strong> superadmin</p>
+    <hr>
+    <p style="color: #dc2626;"><strong>⚠️ IMPORTANT:</strong> Delete this endpoint from admin_app.py after use!</p>
+    <p><a href="/login">Go to Login</a></p>
+    '''
+
+
 @app.route('/admin/delete-all-data', methods=['POST'])
 @admin_required
 def delete_all_data():

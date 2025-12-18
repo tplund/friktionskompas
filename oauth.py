@@ -31,18 +31,28 @@ DEFAULT_AUTH_PROVIDERS = {
 }
 
 
-def _microsoft_compliance_fix(client, token, refresh_token=None, access_token=None):
+def _microsoft_token_response_fix(resp):
     """
     Compliance fix for Microsoft OAuth multi-tenant tokens.
     Azure AD returns ID tokens with tenant-specific issuers, but the metadata
-    contains a template. We skip ID token parsing and rely on access token + userinfo.
+    contains a template. We remove the id_token to skip validation.
     """
-    # Remove id_token to prevent authlib from trying to parse/validate it
-    # We'll get user info from Microsoft Graph API instead
-    if 'id_token' in token:
-        # Store it but don't let authlib parse it
-        token['_raw_id_token'] = token.pop('id_token')
-    return token
+    try:
+        data = resp.json()
+        # Remove id_token to prevent authlib from trying to parse/validate it
+        # We'll get user info from Microsoft Graph API instead
+        if 'id_token' in data:
+            data['_raw_id_token'] = data.pop('id_token')
+        # Override the json method to return modified data
+        resp.json = lambda: data
+    except Exception:
+        pass
+    return resp
+
+
+def _microsoft_compliance_fix(client):
+    """Register compliance hooks for Microsoft multi-tenant OAuth"""
+    client.register_compliance_hook('access_token_response', _microsoft_token_response_fix)
 
 
 def init_oauth(app):
@@ -53,7 +63,7 @@ def init_oauth(app):
     # Note: For multi-tenant apps, we must handle issuer validation specially.
     # Azure AD returns issuer with {tenantid} placeholder in metadata, but
     # actual tokens have the real tenant ID, causing validation failures.
-    # Solution: Use compliance_fix to skip ID token parsing entirely
+    # Solution: Use compliance_fix to remove id_token before parsing
     if os.getenv('MICROSOFT_CLIENT_ID'):
         oauth.register(
             name='microsoft',
