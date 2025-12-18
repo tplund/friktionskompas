@@ -2012,6 +2012,7 @@ def analyser():
         enriched_units = []
         selected_unit_name = None
         show_assessments = False  # Whether we're showing individual assessments
+        trend_data = None  # Trend data for units with multiple assessments
 
         if unit_id:
             # Get unit info
@@ -2027,6 +2028,63 @@ def analyser():
             if has_direct_assessments:
                 # MODE 2a: Show individual assessments for this unit (leaf node)
                 show_assessments = True
+
+                # Get trend data if there are multiple assessments
+                trend_data = None
+                assessment_count = conn.execute("""
+                    SELECT COUNT(*) FROM assessments WHERE target_unit_id = ?
+                """, [unit_id]).fetchone()[0]
+
+                if assessment_count >= 2:
+                    # Calculate trend from oldest to newest assessment
+                    trend_query = """
+                        SELECT
+                            a.id,
+                            a.name,
+                            a.created_at,
+                            AVG(CASE WHEN r.respondent_type = 'employee' THEN
+                                CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as overall,
+                            AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'MENING' THEN
+                                CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as mening,
+                            AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'TRYGHED' THEN
+                                CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as tryghed,
+                            AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'KAN' THEN
+                                CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as kan,
+                            AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'BESVÆR' THEN
+                                CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as besvaer
+                        FROM assessments a
+                        JOIN responses r ON a.id = r.assessment_id
+                        JOIN questions q ON r.question_id = q.id
+                        WHERE a.target_unit_id = ?
+                        GROUP BY a.id
+                        ORDER BY a.created_at ASC
+                    """
+                    trend_rows = conn.execute(trend_query, [unit_id]).fetchall()
+
+                    if len(trend_rows) >= 2:
+                        first = dict(trend_rows[0])
+                        last = dict(trend_rows[-1])
+
+                        # Calculate changes
+                        def calc_change(field):
+                            f_val = first.get(field)
+                            l_val = last.get(field)
+                            if f_val and l_val:
+                                return round(l_val - f_val, 2)
+                            return None
+
+                        trend_data = {
+                            'first_name': first['name'],
+                            'last_name': last['name'],
+                            'assessment_count': len(trend_rows),
+                            'overall_change': calc_change('overall'),
+                            'mening_change': calc_change('mening'),
+                            'tryghed_change': calc_change('tryghed'),
+                            'kan_change': calc_change('kan'),
+                            'besvaer_change': calc_change('besvaer'),
+                            'first_overall': round(first.get('overall') or 0, 2),
+                            'last_overall': round(last.get('overall') or 0, 2),
+                        }
 
                 query = """
                     SELECT
@@ -2275,7 +2333,8 @@ def analyser():
                          selected_unit_name=selected_unit_name,
                          show_assessments=show_assessments,
                          sort_by=sort_by,
-                         sort_order=sort_order)
+                         sort_order=sort_order,
+                         trend_data=trend_data)
 
 
 @app.route('/api/debug-analyser/<unit_id>')

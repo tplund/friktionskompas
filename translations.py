@@ -306,6 +306,9 @@ INITIAL_TRANSLATIONS = {
     'analyser.alert_gap': {'da': 'Leder/medarbejder gap (stor forskel i opfattelse)', 'en': 'Leader/employee gap (large difference in perception)'},
     'analyser.alert_blocked': {'da': 'Leder blokeret (lederens egne friktioner kan blokere for hjælp)', 'en': 'Leader blocked (leader\'s own frictions may block their ability to help)'},
 
+    'analyser.trend_title': {'da': 'Udvikling over tid', 'en': 'Trend over time'},
+    'analyser.assessments': {'da': 'målinger', 'en': 'assessments'},
+
     # Dashboard
     'dashboard.org_dashboard': {'da': 'Organisations Dashboard', 'en': 'Organization Dashboard'},
     'dashboard.see_analyses': {'da': 'Se Analyser', 'en': 'View Analyses'},

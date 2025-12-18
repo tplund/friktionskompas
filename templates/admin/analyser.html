@@ -313,6 +313,94 @@
         background: #ffedd5;
         border: 1px solid #fb923c;
     }
+
+    /* Trend card styles */
+    .trend-card {
+        background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+        border: 1px solid #bae6fd;
+        border-radius: 12px;
+        padding: 20px 25px;
+        margin-bottom: 25px;
+    }
+
+    .trend-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 15px;
+    }
+
+    .trend-header h3 {
+        margin: 0;
+        font-size: 1rem;
+        color: #0c4a6e;
+    }
+
+    .trend-header .period-info {
+        color: #0369a1;
+        font-size: 0.85rem;
+    }
+
+    .trend-grid {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 15px;
+    }
+
+    .trend-item {
+        text-align: center;
+        padding: 12px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+
+    .trend-item.overall {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+
+    .trend-item.overall .trend-label {
+        color: rgba(255,255,255,0.85);
+    }
+
+    .trend-label {
+        font-size: 0.75rem;
+        color: #6b7280;
+        text-transform: uppercase;
+        margin-bottom: 5px;
+    }
+
+    .trend-change {
+        font-size: 1.5rem;
+        font-weight: 700;
+    }
+
+    .trend-positive {
+        color: #16a34a;
+    }
+
+    .trend-negative {
+        color: #dc2626;
+    }
+
+    .trend-neutral {
+        color: #6b7280;
+    }
+
+    .trend-arrow {
+        font-size: 0.9rem;
+        margin-right: 2px;
+    }
+
+    @media (max-width: 768px) {
+        .trend-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        .trend-item.overall {
+            grid-column: span 2;
+        }
+    }
 </style>
 {% endblock %}
 
@@ -329,6 +417,65 @@
         </div>
         <a href="/admin/assessment/new" class="btn" style="background: #10b981; color: white; padding: 10px 20px; text-decoration: none; border-radius: 8px; font-weight: 500;">➕ {{ t('analyser.new_analysis') }}</a>
     </div>
+
+    {% if trend_data %}
+    <!-- Trend over time card -->
+    <div class="trend-card">
+        <div class="trend-header">
+            <span>📈</span>
+            <h3>{{ t('analyser.trend_title') }}</h3>
+            <span class="period-info">{{ trend_data.assessment_count }} {{ t('analyser.assessments') }}: {{ trend_data.first_name }} → {{ trend_data.last_name }}</span>
+        </div>
+        <div class="trend-grid">
+            <div class="trend-item overall">
+                <div class="trend-label">{{ t('analyser.total_score') }}</div>
+                <div class="trend-change {% if trend_data.overall_change and trend_data.overall_change > 0 %}trend-positive{% elif trend_data.overall_change and trend_data.overall_change < 0 %}trend-negative{% else %}trend-neutral{% endif %}">
+                    {% if trend_data.overall_change %}
+                        {% if trend_data.overall_change > 0 %}<span class="trend-arrow">↑</span>{% elif trend_data.overall_change < 0 %}<span class="trend-arrow">↓</span>{% endif %}
+                        {{ "%.0f"|format(to_percent(trend_data.last_overall)) }}%
+                    {% else %}
+                        -
+                    {% endif %}
+                </div>
+                {% if trend_data.overall_change %}
+                <div style="font-size: 0.75rem; opacity: 0.85;">{{ "%.0f"|format(to_percent(trend_data.first_overall)) }}% → {{ "%.0f"|format(to_percent(trend_data.last_overall)) }}%</div>
+                {% endif %}
+            </div>
+            <div class="trend-item">
+                <div class="trend-label">{{ t('field.mening') }}</div>
+                <div class="trend-change {% if trend_data.mening_change and trend_data.mening_change > 0 %}trend-positive{% elif trend_data.mening_change and trend_data.mening_change < 0 %}trend-negative{% else %}trend-neutral{% endif %}">
+                    {% if trend_data.mening_change %}
+                        {% if trend_data.mening_change > 0 %}<span class="trend-arrow">↑</span>+{% elif trend_data.mening_change < 0 %}<span class="trend-arrow">↓</span>{% endif %}{{ "%.1f"|format(trend_data.mening_change) }}
+                    {% else %}-{% endif %}
+                </div>
+            </div>
+            <div class="trend-item">
+                <div class="trend-label">{{ t('field.tryghed') }}</div>
+                <div class="trend-change {% if trend_data.tryghed_change and trend_data.tryghed_change > 0 %}trend-positive{% elif trend_data.tryghed_change and trend_data.tryghed_change < 0 %}trend-negative{% else %}trend-neutral{% endif %}">
+                    {% if trend_data.tryghed_change %}
+                        {% if trend_data.tryghed_change > 0 %}<span class="trend-arrow">↑</span>+{% elif trend_data.tryghed_change < 0 %}<span class="trend-arrow">↓</span>{% endif %}{{ "%.1f"|format(trend_data.tryghed_change) }}
+                    {% else %}-{% endif %}
+                </div>
+            </div>
+            <div class="trend-item">
+                <div class="trend-label">{{ t('field.kan') }}</div>
+                <div class="trend-change {% if trend_data.kan_change and trend_data.kan_change > 0 %}trend-positive{% elif trend_data.kan_change and trend_data.kan_change < 0 %}trend-negative{% else %}trend-neutral{% endif %}">
+                    {% if trend_data.kan_change %}
+                        {% if trend_data.kan_change > 0 %}<span class="trend-arrow">↑</span>+{% elif trend_data.kan_change < 0 %}<span class="trend-arrow">↓</span>{% endif %}{{ "%.1f"|format(trend_data.kan_change) }}
+                    {% else %}-{% endif %}
+                </div>
+            </div>
+            <div class="trend-item">
+                <div class="trend-label">{{ t('field.besvaer') }}</div>
+                <div class="trend-change {% if trend_data.besvaer_change and trend_data.besvaer_change > 0 %}trend-positive{% elif trend_data.besvaer_change and trend_data.besvaer_change < 0 %}trend-negative{% else %}trend-neutral{% endif %}">
+                    {% if trend_data.besvaer_change %}
+                        {% if trend_data.besvaer_change > 0 %}<span class="trend-arrow">↑</span>+{% elif trend_data.besvaer_change < 0 %}<span class="trend-arrow">↓</span>{% endif %}{{ "%.1f"|format(trend_data.besvaer_change) }}
+                    {% else %}-{% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
     <!-- Data Table -->
     {% if units %}
