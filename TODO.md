@@ -2,6 +2,49 @@
 
 ## 🔥 Høj Prioritet
 
+### 🔍 GO-LIVE AUDIT (NY - Før lancering!)
+Grundig gennemgang af hele systemet før go-live.
+
+#### 1. Test Coverage
+- [ ] Gennemgå om nye features har tests (situationsmåling, B2C profil, social login)
+- [ ] Tilføj manglende tests
+- [ ] Kør fuld test suite og fix eventuelle fejl
+- [ ] Verificer at CI/CD stadig fungerer
+
+#### 2. Sikkerhed
+- [ ] Gennemgå OWASP Top 10 (SQL injection, XSS, CSRF, etc.)
+- [ ] Tjek at alle endpoints kræver korrekt auth
+- [ ] Verificer customer isolation (multi-tenant sikkerhed)
+- [ ] Tjek for hardcoded secrets eller debug endpoints
+- [ ] Gennemgå rate limiting og brute force beskyttelse
+
+#### 3. Dokumentation
+- [ ] Opdater CLAUDE.md med nye patterns/beslutninger
+- [ ] Opdater /help siden med nye brugerflows
+- [ ] Tjek at TODO.md er konsistent med virkeligheden
+- [ ] Fjern forældet dokumentation
+
+#### 4. UI Konsistens
+- [ ] Strømlin målings-flows (for mange special cases?)
+- [ ] Konsistent terminologi (måling vs. assessment vs. profil)
+- [ ] Konsistent styling på tværs af sider
+- [ ] Mobile responsiveness check
+- [ ] Fejlhåndtering og loading states
+
+#### 5. Kode Kvalitet
+- [ ] Fjern ubrugt kode og dead code
+- [ ] Konsolider duplikeret logik
+- [ ] Tjek for TODO/FIXME kommentarer i koden
+- [ ] Ryd op i midlertidige endpoints/scripts
+
+#### 6. Data & Performance
+- [ ] Tjek database indexes
+- [ ] Verificer at caching virker korrekt
+- [ ] Test med realistisk datamængde
+- [ ] Ryd op i testdata på produktion
+
+**Formål:** Sikre kvalitet og konsistens før lancering. Undgå teknisk gæld fra start.
+
 ### Central Beregningsmotor (friction_engine) ✅ FÆRDIG
 - [x] ~~**Opret `friction_engine.py`** - Samlet motor til alle friktionsberegninger~~
   - `calculate_field_scores(responses)` → {MENING: 3.5, TRYGHED: 2.8, ...}
@@ -502,6 +545,12 @@ _Ingen kendte bugs pt._
   - friktionskompasset.dk
   - frictioncompass.com
   - herning.friktionskompasset.dk (når aktiv)
+- [ ] **Python 3.12+ opgradering** - Nuværende 3.10 EOL oktober 2026
+  - Lokal: Installer Python 3.12 eller 3.13
+  - Render: Opdater `runtime.txt` til `python-3.12.x`
+  - Test alle dependencies med ny version
+  - Opdater GitHub Actions workflow
+  - Bemærk: 3.13 har bedre performance, 3.12 er mere stabil
 
 ---
 
