@@ -5343,6 +5343,109 @@ def vary_testdata():
     return redirect(url_for('dev_tools'))
 
 
+@app.route('/api/vary-testdata/<secret_key>')
+def api_vary_testdata(secret_key):
+    """Midlertidigt API endpoint til at køre vary_testdata - FJERN FØR PRODUKTION"""
+    if secret_key != 'frik2025vary':
+        return "Unauthorized", 401
+
+    import random
+
+    # Samme profiler som vary_testdata()
+    PROFILES = {
+        'Birk Skole': {
+            'MENING': (4.0, 0.8, 0.08), 'TRYGHED': (3.8, 0.9, 0.06),
+            'KAN': (2.5, 1.0, 0.10), 'BESVÆR': (3.3, 0.8, 0.05)
+        },
+        'Gødstrup Skole': {
+            'MENING': (2.3, 1.0, 0.12), 'TRYGHED': (2.8, 0.9, 0.08),
+            'KAN': (3.0, 0.8, 0.05), 'BESVÆR': (2.2, 1.1, 0.15)
+        },
+        'Hammerum Skole': {
+            'MENING': (4.3, 0.7, 0.10), 'TRYGHED': (4.5, 0.6, 0.12),
+            'KAN': (3.8, 0.8, 0.08), 'BESVÆR': (4.1, 0.7, 0.10)
+        },
+        'Snejbjerg Skole': {
+            'MENING': (3.3, 0.9, 0.06), 'TRYGHED': (2.3, 1.0, 0.10),
+            'KAN': (3.5, 0.8, 0.06), 'BESVÆR': (3.3, 0.9, 0.05)
+        },
+        'Aktivitetscentret Midt': {
+            'MENING': (3.8, 0.9, 0.08), 'TRYGHED': (3.3, 1.0, 0.07),
+            'KAN': (2.0, 1.1, 0.15), 'BESVÆR': (1.8, 1.0, 0.18)
+        },
+        'Bofællesskabet Åparken': {
+            'MENING': (4.5, 0.6, 0.15), 'TRYGHED': (4.0, 0.8, 0.10),
+            'KAN': (3.3, 0.9, 0.06), 'BESVÆR': (2.8, 1.0, 0.08)
+        },
+        'Støttecentret Vestergade': {
+            'MENING': (2.5, 1.0, 0.10), 'TRYGHED': (3.8, 0.8, 0.06),
+            'KAN': (4.3, 0.7, 0.12), 'BESVÆR': (3.8, 0.8, 0.08)
+        },
+    }
+    DEFAULT = {'MENING': (3.0, 1.0, 0.08), 'TRYGHED': (3.0, 1.0, 0.08), 'KAN': (3.0, 1.0, 0.08), 'BESVÆR': (3.0, 1.0, 0.08)}
+
+    def get_score(profile, field):
+        mean, std, extreme_chance = profile.get(field, DEFAULT[field])
+        if random.random() < extreme_chance:
+            return 5 if mean > 3.0 else 1
+        score = random.gauss(mean, std)
+        return max(1, min(5, round(score)))
+
+    random.seed(42)
+    count = 0
+
+    with get_db() as conn:
+        # Employee responses
+        responses = conn.execute("""
+            SELECT r.id, ou.name as unit_name, q.field, q.reverse_scored
+            FROM responses r
+            JOIN organizational_units ou ON r.unit_id = ou.id
+            JOIN questions q ON r.question_id = q.id
+            WHERE r.respondent_type = 'employee'
+        """).fetchall()
+
+        for r in responses:
+            profile = next((PROFILES[k] for k in PROFILES if k in r['unit_name']), DEFAULT)
+            target_score = get_score(profile, r['field'])
+            if r['reverse_scored'] == 1:
+                new_score = 6 - target_score
+            else:
+                new_score = target_score
+            conn.execute("UPDATE responses SET score = ? WHERE id = ?", (new_score, r['id']))
+            count += 1
+
+        # Leader assess
+        leader_responses = conn.execute("""
+            SELECT r.id, ou.name as unit_name, q.field, q.reverse_scored
+            FROM responses r
+            JOIN organizational_units ou ON r.unit_id = ou.id
+            JOIN questions q ON r.question_id = q.id
+            WHERE r.respondent_type = 'leader_assess'
+        """).fetchall()
+
+        for r in leader_responses:
+            profile = next((PROFILES[k] for k in PROFILES if k in r['unit_name']), DEFAULT)
+            mean, std, extreme_chance = profile.get(r['field'], DEFAULT[r['field']])
+            leader_profile = {r['field']: (min(5, mean + 0.4), std * 0.9, extreme_chance * 0.8)}
+            target_score = get_score(leader_profile, r['field'])
+            if r['reverse_scored'] == 1:
+                new_score = 6 - target_score
+            else:
+                new_score = target_score
+            conn.execute("UPDATE responses SET score = ? WHERE id = ?", (new_score, r['id']))
+            count += 1
+
+        # Leader self
+        leader_self = conn.execute("SELECT id FROM responses WHERE respondent_type = 'leader_self'").fetchall()
+        for r in leader_self:
+            new_score = random.choice([2, 3, 3, 4, 4, 4, 5])
+            conn.execute("UPDATE responses SET score = ? WHERE id = ?", (new_score, r['id']))
+            count += 1
+
+    invalidate_all()
+    return f"Opdateret {count} responses med realistisk variation"
+
+
 @app.route('/admin/fix-missing-leader-data', methods=['POST'])
 @admin_required
 def fix_missing_leader_data():
