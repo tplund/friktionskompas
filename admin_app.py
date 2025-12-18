@@ -5478,7 +5478,7 @@ def api_fix_testdata_trends(secret_key):
     results = []
 
     with get_db() as conn:
-        # 0. Change B2C assessments to 'individuel_profil' type (exclude from trend)
+        # 0a. Change B2C assessments to 'individuel_profil' type (exclude from trend)
         b2c_updated = conn.execute("""
             UPDATE assessments SET assessment_type_id = 'individuel_profil'
             WHERE name LIKE 'B2C%'
@@ -5486,21 +5486,29 @@ def api_fix_testdata_trends(secret_key):
         if b2c_updated.rowcount > 0:
             results.append(f"B2C type ændret: {b2c_updated.rowcount} rows")
 
-        # 1. Delete duplicate November assessments for units that have Q1-Q4 data
+        # 0b. Change Edge Case Tests to 'edge_case_test' type (exclude from trend)
+        edge_updated = conn.execute("""
+            UPDATE assessments SET assessment_type_id = 'edge_case_test'
+            WHERE name LIKE '%Test -%' OR name LIKE 'Gap Test%' OR name LIKE 'Krise Test%'
+               OR name LIKE 'Succes Test%' OR name LIKE 'Spredning Test%' OR name LIKE 'Tryghed Test%'
+        """)
+        if edge_updated.rowcount > 0:
+            results.append(f"Edge Case Tests type ændret: {edge_updated.rowcount} rows")
+
+        # 1. Delete duplicate November assessments - those with "Q1 2025" in name but November date
         duplicates = conn.execute("""
             SELECT a.id, a.name, ou.name as unit_name
             FROM assessments a
             JOIN organizational_units ou ON a.target_unit_id = ou.id
-            WHERE a.name LIKE 'Friktionsmåling %'
-            AND a.created_at LIKE '2025-11-%'
-            AND ou.name IN ('Birk Skole', 'Aktivitetscentret Midt', 'Gødstrup Skole', 'Bofællesskabet Åparken')
+            WHERE a.created_at LIKE '2025-11-%'
+            AND a.name LIKE 'Q1 2025%'
         """).fetchall()
 
         for d in duplicates:
             conn.execute("DELETE FROM responses WHERE assessment_id = ?", [d['id']])
             conn.execute("DELETE FROM tokens WHERE assessment_id = ?", [d['id']])
             conn.execute("DELETE FROM assessments WHERE id = ?", [d['id']])
-            results.append(f"Slettet: {d['name']}")
+            results.append(f"Slettet duplikat: {d['name']}")
 
         # 1b. Update remaining November assessments to correct period
         period_updated = conn.execute("""
