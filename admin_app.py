@@ -5462,6 +5462,8 @@ def backup_restore():
 
 
 @app.route('/admin/restore-db-from-backup', methods=['GET', 'POST'])
+@csrf.exempt  # API uses X-Admin-API-Key header for auth
+@api_or_admin_required
 def restore_db_from_backup():
     """Restore database fra git-pushed db_backup.b64 fil.
 
@@ -5469,7 +5471,7 @@ def restore_db_from_backup():
     1. Lokalt: python -c "import base64; open('db_backup.b64','w').write(base64.b64encode(open('friktionskompas_v3.db','rb').read()).decode())"
     2. git add db_backup.b64 && git commit -m "DB sync" && git push
     3. Vent på deployment
-    4. curl -X POST https://friktionskompasset.dk/admin/restore-db-from-backup
+    4. curl -X POST https://friktionskompasset.dk/admin/restore-db-from-backup -H "X-Admin-API-Key: YOUR_KEY"
     """
     import base64
     import shutil
