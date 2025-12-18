@@ -471,9 +471,11 @@
                     <td>{{ customer.assessment_count }}</td>
                     <td>
                         <form method="POST" action="{{ url_for('admin_gdpr_delete_customer', customer_id=customer.id) }}"
-                              style="margin: 0;"
-                              onsubmit="return confirm('ADVARSEL: Du er ved at slette AL data for {{ customer.name }}.\n\nDette inkluderer:\n- Alle brugere\n- Alle organisationer\n- Alle målinger og svar\n\nDette kan IKKE fortrydes!\n\nSkriv kundens navn for at bekræfte:') && prompt('Skriv kundenavnet for at bekræfte sletning:') === '{{ customer.name }}';">
-                            <button type="submit" class="btn-danger-small">Slet data</button>
+                              style="margin: 0;" id="delete-form-{{ customer.id }}">
+                            <button type="button" class="btn-danger-small"
+                                    onclick="confirmDeleteCustomer('{{ customer.id }}', '{{ customer.name }}', {{ customer.user_count }}, {{ customer.unit_count }}, {{ customer.assessment_count }})">
+                                Slet data
+                            </button>
                         </form>
                     </td>
                 </tr>
@@ -519,4 +521,29 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function confirmDeleteCustomer(customerId, customerName, userCount, unitCount, assessmentCount) {
+    const confirmed = await ModalUtils.confirmWithInput({
+        title: 'Slet kundedata permanent',
+        message: `Du er ved at slette <strong>AL data</strong> for <strong>${customerName}</strong>.<br><br>
+                  Dette inkluderer:<br>
+                  • ${userCount} bruger${userCount !== 1 ? 'e' : ''}<br>
+                  • ${unitCount} organisation${unitCount !== 1 ? 'er' : ''}<br>
+                  • ${assessmentCount} måling${assessmentCount !== 1 ? 'er' : ''} og alle tilhørende svar<br><br>
+                  <strong>Dette kan IKKE fortrydes!</strong>`,
+        confirmText: customerName,
+        confirmLabel: 'Skriv kundenavnet for at bekræfte sletning',
+        confirmButton: 'Slet permanent',
+        cancelButton: 'Annuller',
+        danger: true
+    });
+
+    if (confirmed) {
+        document.getElementById('delete-form-' + customerId).submit();
+    }
+}
+</script>
 {% endblock %}
