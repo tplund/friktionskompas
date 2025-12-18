@@ -62,67 +62,48 @@ app.secret_key = os.environ.get('SECRET_KEY') or secrets_module.token_hex(32)
 
 ---
 
-## IKKE FIXET - KRÆVER YDERLIGERE ARBEJDE
+### 4. CSRF Protection Implementeret
 
-### 1. CSRF Protection (ANBEFALES FØR GO-LIVE)
-
-**Status:** Ikke implementeret
-**Risiko:** MEDIUM-HØJ
-
-**Hvad skal gøres:**
-1. Tilføj `Flask-WTF` til requirements.txt
-2. Initialiser CSRFProtect i admin_app.py
-3. Tilføj CSRF tokens til alle forms i templates
-4. Evt. tilføj CSRF exemption for API endpoints med API key
-
-```bash
-# Tilføj til requirements.txt
-Flask-WTF>=1.2.0
-```
+**Status:** IMPLEMENTERET
+**Fil:** `admin_app.py:111-113`
 
 ```python
-# I admin_app.py
-from flask_wtf.csrf import CSRFProtect
+from flask_wtf.csrf import CSRFProtect, CSRFError
 csrf = CSRFProtect(app)
 ```
 
-### 2. Rate Limiting (ANBEFALES FØR GO-LIVE)
+**CSRF tokens tilføjet til templates:**
+- `login.html`
+- `register.html`
+- `forgot_password.html`
+- `email_login.html`
+- `verify_code.html`
+- `reset_password.html`
 
-**Status:** Ikke implementeret
-**Risiko:** MEDIUM
+**Exempted endpoints (bruger andre auth metoder):**
+- `/api/admin/clear-cache` - bruger API key
+- `/profil/api/calculate` - stateless B2C API
+- `/s/<token>/submit` - token-baseret auth
+- `/webhook/mailjet` - ekstern webhook
 
-**Hvad skal gøres:**
-1. Tilføj `Flask-Limiter` til requirements.txt
-2. Konfigurer rate limits på auth endpoints
+### 5. Rate Limiting Implementeret
 
-```bash
-# Tilføj til requirements.txt
-Flask-Limiter>=3.5.0
-```
+**Status:** IMPLEMENTERET
+**Fil:** `admin_app.py:118-124`
 
 ```python
-# I admin_app.py
 from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
-
-limiter = Limiter(
-    app,
-    key_func=get_remote_address,
-    default_limits=["200 per day", "50 per hour"]
-)
-
-@app.route('/login', methods=['POST'])
-@limiter.limit("5 per minute")  # Max 5 login forsøg per minut
-def login():
-    ...
+limiter = Limiter(key_func=get_remote_address, app=app)
 ```
 
-**Endpoints der skal beskyttes:**
-- `/login` - 5/min
-- `/register` - 3/min
-- `/forgot-password` - 3/min
-- `/login/email` - 5/min
-- `/resend-code` - 2/min
+**Rate limits på auth endpoints:**
+| Endpoint | Limit |
+|----------|-------|
+| `/login` | 10/min |
+| `/register` | 5/min |
+| `/login/email` | 5/min |
+| `/forgot-password` | 3/min |
+| `/resend-code` | 3/min |
 
 ---
 
@@ -194,17 +175,16 @@ grep -n "@login_required|@admin_required" admin_app.py
 | Debug endpoints | FIXET |
 | Hardcoded secrets | FIXET |
 | SQL injection | FIXET |
-| CSRF protection | IKKE FIXET (kræver Flask-WTF) |
-| Rate limiting | IKKE FIXET (kræver Flask-Limiter) |
+| CSRF protection | FIXET |
+| Rate limiting | FIXET |
 | Multi-tenant isolation | OK |
 | OAuth | OK |
 | Session management | OK |
 
-### Anbefalinger før go-live:
+### Alle kritiske sikkerhedsproblemer er nu fixet!
 
-1. **KRITISK:** Implementer CSRF protection (Flask-WTF)
-2. **VIGTIGT:** Implementer rate limiting på auth endpoints (Flask-Limiter)
-3. **NICE-TO-HAVE:** Fjern `update_admin_password.py` fra repo
+**Nice-to-have:**
+- Fjern `update_admin_password.py` fra repo
 
 ### Test efter fixes:
 

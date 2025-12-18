@@ -108,6 +108,30 @@ app.config['SESSION_REFRESH_EACH_REQUEST'] = True  # Refresh timeout ved aktivit
 # Initialize OAuth
 init_oauth(app)
 
+# CSRF Protection (tilføjet i go-live security audit 2025-12-18)
+from flask_wtf.csrf import CSRFProtect, CSRFError
+csrf = CSRFProtect(app)
+
+# WTF_CSRF_CHECK_DEFAULT = True by default, så alle POST requests kræver CSRF
+# Vi exempterer specifikke endpoints nedenfor med @csrf.exempt decorator
+
+# Rate Limiting (tilføjet i go-live security audit 2025-12-18)
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+
+limiter = Limiter(
+    key_func=get_remote_address,
+    app=app,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://",  # In-memory storage (reset on restart)
+)
+
+# CSRF error handler
+@app.errorhandler(CSRFError)
+def handle_csrf_error(e):
+    flash('Sessionen er udløbet. Prøv igen.', 'error')
+    return redirect(request.referrer or url_for('login'))
+
 # Register Friktionsprofil Blueprint
 from friktionsprofil_routes import friktionsprofil
 app.register_blueprint(friktionsprofil)
@@ -394,6 +418,7 @@ def api_admin_status():
 
 
 @app.route('/api/admin/clear-cache', methods=['POST'])
+@csrf.exempt  # API uses X-Admin-API-Key header for auth
 @api_or_admin_required
 def api_admin_clear_cache():
     """Clear all caches.
@@ -445,6 +470,7 @@ def zoho_domain_verify():
 
 
 @app.route('/login', methods=['GET', 'POST'])
+@limiter.limit("10 per minute", methods=["POST"])  # Rate limit login attempts
 def login():
     """Login side"""
     if request.method == 'POST':
@@ -894,6 +920,7 @@ def admin_unlink_oauth(provider):
 # ========================================
 
 @app.route('/register', methods=['GET', 'POST'])
+@limiter.limit("5 per minute", methods=["POST"])  # Rate limit registration
 def register():
     """Registreringsside for B2C brugere"""
     if request.method == 'POST':
@@ -978,6 +1005,7 @@ def verify_registration():
 
 
 @app.route('/login/email', methods=['GET', 'POST'])
+@limiter.limit("5 per minute", methods=["POST"])  # Rate limit email login
 def email_login():
     """Passwordless login med email-kode"""
     if request.method == 'POST':
@@ -1040,6 +1068,7 @@ def verify_email_login():
 
 
 @app.route('/forgot-password', methods=['GET', 'POST'])
+@limiter.limit("3 per minute", methods=["POST"])  # Rate limit password reset
 def forgot_password():
     """Glemt password - send reset kode"""
     if request.method == 'POST':
@@ -1092,6 +1121,7 @@ def reset_password():
 
 
 @app.route('/resend-code', methods=['POST'])
+@limiter.limit("3 per minute")  # Rate limit code resend
 def resend_code():
     """Gensend verifikationskode"""
     code_type = request.form.get('type', 'login')
@@ -4172,6 +4202,7 @@ def profil_api_questions():
 
 
 @app.route('/profil/api/calculate', methods=['POST'])
+@csrf.exempt  # Stateless B2C API - no session
 def profil_api_calculate():
     """
     Beregn profil-analyse fra responses (stateless - gemmer INTET)
@@ -4371,6 +4402,7 @@ def survey(token):
 
 
 @app.route('/s/<token>/submit', methods=['POST'])
+@csrf.exempt  # Survey uses token-based auth
 def survey_submit(token):
     """Save survey responses and mark token as used"""
     if not token:
@@ -4529,6 +4561,7 @@ def api_email_stats():
 
 
 @app.route('/webhook/mailjet', methods=['POST'])
+@csrf.exempt  # External webhook from Mailjet
 def mailjet_webhook():
     """Webhook endpoint for Mailjet events (delivery, open, click, bounce)"""
     events = request.get_json()

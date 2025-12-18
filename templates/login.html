@@ -324,6 +324,7 @@
 
         {% if show_email_password is not defined or show_email_password %}
         <form method="POST" aria-label="Login formular">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="form-group">
                 <label for="username">{{ t('login.username') }}</label>
                 <input type="text" id="username" name="username" required autofocus

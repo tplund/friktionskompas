@@ -204,6 +204,7 @@
         </div>
 
         <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="form-group">
                 <label for="name">{{ t('register.name', 'Dit navn') }}</label>
                 <input type="text" id="name" name="name" required autofocus placeholder="{{ t('register.name_placeholder', 'Indtast dit navn') }}">
