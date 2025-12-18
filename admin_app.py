@@ -5627,6 +5627,27 @@ def api_fix_testdata_trends(secret_key):
     return "<br>".join(results) if results else "Ingen ændringer"
 
 
+@app.route('/api/list-assessments/<secret_key>')
+def api_list_assessments(secret_key):
+    """Debug: List all assessments with their types"""
+    if secret_key != 'frik2025list':
+        return "Unauthorized", 401
+
+    with get_db() as conn:
+        rows = conn.execute("""
+            SELECT a.name, a.period, a.created_at, a.assessment_type_id, ou.name as unit_name
+            FROM assessments a
+            JOIN organizational_units ou ON a.target_unit_id = ou.id
+            ORDER BY a.created_at
+        """).fetchall()
+
+        result = []
+        for r in rows:
+            result.append(f"{r['created_at'][:10]} | {r['assessment_type_id']} | {r['unit_name']} | {r['name']}")
+
+        return "<br>".join(result)
+
+
 @app.route('/admin/fix-missing-leader-data', methods=['POST'])
 @admin_required
 def fix_missing_leader_data():
