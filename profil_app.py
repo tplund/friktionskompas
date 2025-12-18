@@ -19,8 +19,12 @@ from analysis_profil import (
     compare_profiles
 )
 
+import os
+import secrets as secrets_module
+
 app = Flask(__name__)
-app.secret_key = 'friktionsprofil-secret-key-change-in-production'
+# Sikker secret key fra miljøvariabel (fallback til autogeneret i development)
+app.secret_key = os.environ.get('SECRET_KEY') or secrets_module.token_hex(32)
 
 # Initialiser database ved opstart
 init_profil_tables()

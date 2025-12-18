@@ -2357,146 +2357,9 @@ def analyser():
                          trend_data=trend_data)
 
 
-@app.route('/api/debug-analyser/<unit_id>')
-def debug_analyser(unit_id):
-    """Debug endpoint - viser raw data for analyser beregning"""
-    from flask import jsonify
-
-    with get_db() as conn:
-        # Først: tjek reverse_scored statistik i denne database
-        reverse_stats = conn.execute("""
-            SELECT
-                COUNT(*) as total_questions,
-                SUM(CASE WHEN reverse_scored = 1 THEN 1 ELSE 0 END) as reverse_questions,
-                SUM(CASE WHEN reverse_scored = 0 THEN 1 ELSE 0 END) as normal_questions
-            FROM questions
-            WHERE is_default = 1
-        """).fetchone()
-
-        # Tjek specifikt for denne unit's responses
-        response_check = conn.execute("""
-            SELECT
-                q.reverse_scored,
-                COUNT(*) as count,
-                AVG(r.score) as raw_avg,
-                AVG(CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END) as adj_avg
-            FROM responses r
-            JOIN questions q ON r.question_id = q.id
-            JOIN assessments a ON r.assessment_id = a.id
-            WHERE a.target_unit_id = ?
-              AND r.respondent_type = 'employee'
-            GROUP BY q.reverse_scored
-        """, [unit_id]).fetchall()
-
-        # Tjek for responses der IKKE matcher questions (orphan responses)
-        orphan_check = conn.execute("""
-            SELECT
-                COUNT(*) as orphan_count,
-                GROUP_CONCAT(DISTINCT r.question_id) as orphan_question_ids
-            FROM responses r
-            LEFT JOIN questions q ON r.question_id = q.id
-            JOIN assessments a ON r.assessment_id = a.id
-            WHERE a.target_unit_id = ?
-              AND r.respondent_type = 'employee'
-              AND q.id IS NULL
-        """, [unit_id]).fetchone()
-
-        # List alle unikke question_ids i responses
-        response_question_ids = conn.execute("""
-            SELECT DISTINCT r.question_id, q.id as q_found, q.reverse_scored
-            FROM responses r
-            LEFT JOIN questions q ON r.question_id = q.id
-            JOIN assessments a ON r.assessment_id = a.id
-            WHERE a.target_unit_id = ?
-              AND r.respondent_type = 'employee'
-            ORDER BY r.question_id
-        """, [unit_id]).fetchall()
-
-        # Samme query som analyser endpoint
-        query = """
-            SELECT
-                ou.id,
-                ou.name,
-                c.id as assessment_id,
-                c.name as assessment_name,
-                COUNT(DISTINCT r.id) as total_responses,
-
-                AVG(CASE WHEN r.respondent_type = 'employee' THEN
-                    CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_overall,
-                AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'MENING' THEN
-                    CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_mening,
-                AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'TRYGHED' THEN
-                    CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_tryghed,
-                AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'KAN' THEN
-                    CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_kan,
-                AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'BESVÆR' THEN
-                    CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_besvaer
-
-            FROM organizational_units ou
-            JOIN assessments c ON c.target_unit_id = ou.id
-            JOIN responses r ON c.id = r.assessment_id
-            JOIN questions q ON r.question_id = q.id
-            WHERE ou.id = ?
-            GROUP BY ou.id, c.id
-        """
-
-        result = conn.execute(query, [unit_id]).fetchone()
-
-        if not result:
-            return jsonify({'error': 'No data found', 'unit_id': unit_id})
-
-        def to_percent(score):
-            if score is None:
-                return None
-            return round(((score - 1) / 4) * 100, 1)
-
-        return jsonify({
-            'unit_id': result['id'],
-            'unit_name': result['name'],
-            'assessment_id': result['assessment_id'],
-            'assessment_name': result['assessment_name'],
-            'total_responses': result['total_responses'],
-            'database_check': {
-                'total_default_questions': reverse_stats['total_questions'],
-                'reverse_scored_questions': reverse_stats['reverse_questions'],
-                'normal_questions': reverse_stats['normal_questions'],
-            },
-            'response_breakdown': [
-                {
-                    'reverse_scored': row['reverse_scored'],
-                    'count': row['count'],
-                    'raw_avg': round(row['raw_avg'], 2) if row['raw_avg'] else None,
-                    'adjusted_avg': round(row['adj_avg'], 2) if row['adj_avg'] else None,
-                }
-                for row in response_check
-            ],
-            'orphan_responses': {
-                'count': orphan_check['orphan_count'],
-                'question_ids': orphan_check['orphan_question_ids'],
-            },
-            'question_id_mapping': [
-                {
-                    'response_question_id': row['question_id'],
-                    'found_in_questions': row['q_found'],
-                    'reverse_scored': row['reverse_scored'],
-                }
-                for row in response_question_ids
-            ],
-            'raw_scores': {
-                'employee_overall': round(result['employee_overall'], 2) if result['employee_overall'] else None,
-                'employee_mening': round(result['employee_mening'], 2) if result['employee_mening'] else None,
-                'employee_tryghed': round(result['employee_tryghed'], 2) if result['employee_tryghed'] else None,
-                'employee_kan': round(result['employee_kan'], 2) if result['employee_kan'] else None,
-                'employee_besvaer': round(result['employee_besvaer'], 2) if result['employee_besvaer'] else None,
-            },
-            'percentages': {
-                'employee_overall': to_percent(result['employee_overall']),
-                'employee_mening': to_percent(result['employee_mening']),
-                'employee_tryghed': to_percent(result['employee_tryghed']),
-                'employee_kan': to_percent(result['employee_kan']),
-                'employee_besvaer': to_percent(result['employee_besvaer']),
-            }
-        })
+# REMOVED: Debug endpoint /api/debug-analyser/<unit_id>
+# Fjernet i go-live security audit 2025-12-18
+# Endpoint eksponerede database data uden autentifikation
 
 
 @app.route('/admin/bulk-upload', methods=['GET', 'POST'])
@@ -3899,93 +3762,9 @@ def assessment_detailed_analysis(assessment_id):
         return f"<h1>Fejl i assessment_detailed_analysis</h1><pre>{error_details}</pre>", 500
 
 
-# DEVELOPMENT ONLY - TEST ENDPOINT (REMOVE BEFORE PRODUCTION!)
-@app.route('/test/assessment/<assessment_id>/detailed')
-def assessment_detailed_test(assessment_id):
-    """TEST ENDPOINT - Detaljeret analyse UDEN login krav.
-    VIGTIGT: Fjern denne endpoint før produktion!"""
-    import traceback
-
-    try:
-        with get_db() as conn:
-            # Hent assessment uden adgangskontrol
-            assessment = conn.execute("""
-                SELECT c.*, ou.customer_id FROM assessments c
-                JOIN organizational_units ou ON c.target_unit_id = ou.id
-                WHERE c.id = ?
-            """, [assessment_id]).fetchone()
-
-            if not assessment:
-                return f"<h1>Måling ikke fundet: {assessment_id}</h1>", 404
-
-        target_unit_id = assessment['target_unit_id']
-        assessment_customer_id = assessment['customer_id']
-
-        # Check anonymity
-        anonymity = check_anonymity_threshold(assessment_id, target_unit_id)
-
-        if not anonymity.get('can_show_results'):
-            return f"<h1>Ikke nok svar endnu</h1><p>{anonymity.get('response_count', 0)} af {anonymity.get('min_required', 5)} modtaget.</p>", 400
-
-        # Get detailed breakdown
-        breakdown = get_detailed_breakdown(target_unit_id, assessment_id, include_children=True)
-
-        # Calculate substitution (tid-bias)
-        substitution = calculate_substitution_db(target_unit_id, assessment_id, 'employee')
-        substitution['has_substitution'] = substitution.get('flagged', False) and substitution.get('flagged_count', 0) > 0
-        substitution['count'] = substitution.get('flagged_count', 0)
-
-        # Get free text comments
-        free_text_comments = get_free_text_comments(target_unit_id, assessment_id, include_children=True)
-
-        # Get KKC recommendations
-        employee_stats = breakdown.get('employee', {})
-        comparison = breakdown.get('comparison', {})
-        kkc_recommendations = get_kkc_recommendations(employee_stats, comparison)
-        start_here = get_start_here_recommendation(kkc_recommendations)
-
-        # Get alerts and findings
-        from analysis import get_alerts_and_findings
-        alerts = get_alerts_and_findings(breakdown, comparison, substitution)
-
-        # Get individual scores for radar chart
-        individual_scores = get_individual_scores(target_unit_id, assessment_id)
-
-        # Breadcrumbs
-        breadcrumbs = get_unit_path(target_unit_id)
-
-        # Get last response date
-        with get_db() as conn:
-            last_response = conn.execute("""
-                SELECT MAX(created_at) as last_date
-                FROM responses
-                WHERE assessment_id = ? AND created_at IS NOT NULL
-            """, [assessment_id]).fetchone()
-
-            last_response_date = None
-            if last_response and last_response['last_date']:
-                from datetime import datetime
-                dt = datetime.fromisoformat(last_response['last_date'])
-                last_response_date = dt.strftime('%d-%m-%Y')
-
-        return render_template('admin/assessment_detailed.html',
-            assessment=dict(assessment),
-            target_breadcrumbs=breadcrumbs,
-            breakdown=breakdown,
-            anonymity=anonymity,
-            substitution=substitution,
-            free_text_comments=free_text_comments,
-            kkc_recommendations=kkc_recommendations,
-            start_here=start_here,
-            alerts=alerts,
-            last_response_date=last_response_date,
-            current_customer_id=assessment_customer_id,
-            individual_scores=individual_scores
-        )
-    except Exception as e:
-        import traceback
-        error_details = traceback.format_exc()
-        return f"<h1>Fejl i assessment_detailed_test</h1><pre>{error_details}</pre>", 500
+# REMOVED: Test endpoint /test/assessment/<assessment_id>/detailed
+# Fjernet i go-live security audit 2025-12-18
+# Endpoint gav fuld adgang til assessment data uden autentifikation
 
 
 @app.route('/admin/assessment/<assessment_id>/pdf')
@@ -4255,8 +4034,9 @@ def profil_compare(session1, session2):
 
 
 @app.route('/profil/generate-test-data')
+@admin_required  # Tilføjet i go-live security audit 2025-12-18
 def profil_generate_test():
-    """Generer testprofiler"""
+    """Generer testprofiler - KUN for admins"""
     sessions = generate_test_profiles()
     flash(f'Oprettet {len(sessions)} testprofiler', 'success')
     return redirect(url_for('profil_admin_list'))
@@ -5194,13 +4974,9 @@ def clear_cache():
     return redirect(url_for('dev_tools'))
 
 
-@app.route('/api/clear-cache/<secret>')
-def clear_cache_api(secret):
-    """Midlertidigt endpoint til cache rydning - FJERN EFTER BRUG"""
-    if secret != 'frik2025cache':
-        return {'error': 'Invalid secret'}, 403
-    count = invalidate_all()
-    return {'success': True, 'cleared': count}
+# REMOVED: /api/clear-cache/<secret> endpoint
+# Fjernet i go-live security audit 2025-12-18
+# Brugte hardcoded secret - brug /api/admin/clear-cache med API key i stedet
 
 
 @app.route('/admin/rename-assessments', methods=['POST'])
@@ -5363,297 +5139,18 @@ def vary_testdata():
     return redirect(url_for('dev_tools'))
 
 
-@app.route('/api/vary-testdata/<secret_key>')
-def api_vary_testdata(secret_key):
-    """Midlertidigt API endpoint til at køre vary_testdata - FJERN FØR PRODUKTION"""
-    if secret_key != 'frik2025vary':
-        return "Unauthorized", 401
-
-    import random
-
-    # Samme profiler som vary_testdata()
-    PROFILES = {
-        'Birk Skole': {
-            'MENING': (4.0, 0.8, 0.08), 'TRYGHED': (3.8, 0.9, 0.06),
-            'KAN': (2.5, 1.0, 0.10), 'BESVÆR': (3.3, 0.8, 0.05)
-        },
-        'Gødstrup Skole': {
-            'MENING': (2.3, 1.0, 0.12), 'TRYGHED': (2.8, 0.9, 0.08),
-            'KAN': (3.0, 0.8, 0.05), 'BESVÆR': (2.2, 1.1, 0.15)
-        },
-        'Hammerum Skole': {
-            'MENING': (4.3, 0.7, 0.10), 'TRYGHED': (4.5, 0.6, 0.12),
-            'KAN': (3.8, 0.8, 0.08), 'BESVÆR': (4.1, 0.7, 0.10)
-        },
-        'Snejbjerg Skole': {
-            'MENING': (3.3, 0.9, 0.06), 'TRYGHED': (2.3, 1.0, 0.10),
-            'KAN': (3.5, 0.8, 0.06), 'BESVÆR': (3.3, 0.9, 0.05)
-        },
-        'Aktivitetscentret Midt': {
-            'MENING': (3.8, 0.9, 0.08), 'TRYGHED': (3.3, 1.0, 0.07),
-            'KAN': (2.0, 1.1, 0.15), 'BESVÆR': (1.8, 1.0, 0.18)
-        },
-        'Bofællesskabet Åparken': {
-            'MENING': (4.5, 0.6, 0.15), 'TRYGHED': (4.0, 0.8, 0.10),
-            'KAN': (3.3, 0.9, 0.06), 'BESVÆR': (2.8, 1.0, 0.08)
-        },
-        'Støttecentret Vestergade': {
-            'MENING': (2.5, 1.0, 0.10), 'TRYGHED': (3.8, 0.8, 0.06),
-            'KAN': (4.3, 0.7, 0.12), 'BESVÆR': (3.8, 0.8, 0.08)
-        },
-    }
-    DEFAULT = {'MENING': (3.0, 1.0, 0.08), 'TRYGHED': (3.0, 1.0, 0.08), 'KAN': (3.0, 1.0, 0.08), 'BESVÆR': (3.0, 1.0, 0.08)}
-
-    def get_score(profile, field):
-        mean, std, extreme_chance = profile.get(field, DEFAULT[field])
-        if random.random() < extreme_chance:
-            return 5 if mean > 3.0 else 1
-        score = random.gauss(mean, std)
-        return max(1, min(5, round(score)))
-
-    random.seed(42)
-    count = 0
-
-    with get_db() as conn:
-        # Employee responses
-        responses = conn.execute("""
-            SELECT r.id, ou.name as unit_name, q.field, q.reverse_scored
-            FROM responses r
-            JOIN organizational_units ou ON r.unit_id = ou.id
-            JOIN questions q ON r.question_id = q.id
-            WHERE r.respondent_type = 'employee'
-        """).fetchall()
-
-        for r in responses:
-            profile = next((PROFILES[k] for k in PROFILES if k in r['unit_name']), DEFAULT)
-            target_score = get_score(profile, r['field'])
-            if r['reverse_scored'] == 1:
-                new_score = 6 - target_score
-            else:
-                new_score = target_score
-            conn.execute("UPDATE responses SET score = ? WHERE id = ?", (new_score, r['id']))
-            count += 1
-
-        # Leader assess
-        leader_responses = conn.execute("""
-            SELECT r.id, ou.name as unit_name, q.field, q.reverse_scored
-            FROM responses r
-            JOIN organizational_units ou ON r.unit_id = ou.id
-            JOIN questions q ON r.question_id = q.id
-            WHERE r.respondent_type = 'leader_assess'
-        """).fetchall()
-
-        for r in leader_responses:
-            profile = next((PROFILES[k] for k in PROFILES if k in r['unit_name']), DEFAULT)
-            mean, std, extreme_chance = profile.get(r['field'], DEFAULT[r['field']])
-            leader_profile = {r['field']: (min(5, mean + 0.4), std * 0.9, extreme_chance * 0.8)}
-            target_score = get_score(leader_profile, r['field'])
-            if r['reverse_scored'] == 1:
-                new_score = 6 - target_score
-            else:
-                new_score = target_score
-            conn.execute("UPDATE responses SET score = ? WHERE id = ?", (new_score, r['id']))
-            count += 1
-
-        # Leader self
-        leader_self = conn.execute("SELECT id FROM responses WHERE respondent_type = 'leader_self'").fetchall()
-        for r in leader_self:
-            new_score = random.choice([2, 3, 3, 4, 4, 4, 5])
-            conn.execute("UPDATE responses SET score = ? WHERE id = ?", (new_score, r['id']))
-            count += 1
-
-    invalidate_all()
-    return f"Opdateret {count} responses med realistisk variation"
+# REMOVED: /api/vary-testdata/<secret_key> endpoint
+# Fjernet i go-live security audit 2025-12-18
+# Brugte hardcoded secret - brug /admin/vary-testdata med login i stedet
 
 
-@app.route('/api/fix-testdata-trends/<secret_key>')
-def api_fix_testdata_trends(secret_key):
-    """Midlertidigt API endpoint til at fikse trend-data - FJERN FØR PRODUKTION"""
-    if secret_key != 'frik2025trends':
-        return "Unauthorized", 401
+# REMOVED: /api/fix-testdata-trends/<secret_key> endpoint
+# Fjernet i go-live security audit 2025-12-18
+# Brugte hardcoded secret - denne funktionalitet er kun til development
 
-    import random
-    import uuid as uuid_module
-
-    results = []
-
-    with get_db() as conn:
-        # 0a. Change B2C assessments to 'individuel_profil' type (exclude from trend)
-        b2c_updated = conn.execute("""
-            UPDATE assessments SET assessment_type_id = 'individuel_profil'
-            WHERE name LIKE 'B2C%'
-        """)
-        if b2c_updated.rowcount > 0:
-            results.append(f"B2C type ændret: {b2c_updated.rowcount} rows")
-
-        # 0b. Change Edge Case Tests to 'edge_case_test' type (exclude from trend)
-        edge_updated = conn.execute("""
-            UPDATE assessments SET assessment_type_id = 'edge_case_test'
-            WHERE name LIKE '%Test -%' OR name LIKE 'Gap Test%' OR name LIKE 'Krise Test%'
-               OR name LIKE 'Succes Test%' OR name LIKE 'Spredning Test%' OR name LIKE 'Tryghed Test%'
-        """)
-        if edge_updated.rowcount > 0:
-            results.append(f"Edge Case Tests type ændret: {edge_updated.rowcount} rows")
-
-        # 1. Delete duplicate November assessments - those with "Q1 2025" in name but November date
-        duplicates = conn.execute("""
-            SELECT a.id, a.name, ou.name as unit_name
-            FROM assessments a
-            JOIN organizational_units ou ON a.target_unit_id = ou.id
-            WHERE a.created_at LIKE '2025-11-%'
-            AND a.name LIKE 'Q1 2025%'
-        """).fetchall()
-
-        for d in duplicates:
-            conn.execute("DELETE FROM responses WHERE assessment_id = ?", [d['id']])
-            conn.execute("DELETE FROM tokens WHERE assessment_id = ?", [d['id']])
-            conn.execute("DELETE FROM assessments WHERE id = ?", [d['id']])
-            results.append(f"Slettet duplikat: {d['name']}")
-
-        # 1b. Update remaining November assessments to correct period
-        period_updated = conn.execute("""
-            UPDATE assessments SET period = 'November 2025'
-            WHERE created_at LIKE '2025-11-%' AND period = 'Q1 2025'
-        """)
-        if period_updated.rowcount > 0:
-            results.append(f"Periode rettet til November 2025: {period_updated.rowcount} rows")
-
-        # 2. Get questions
-        questions = conn.execute("""
-            SELECT id, field, reverse_scored FROM questions WHERE is_default = 1
-        """).fetchall()
-
-        # 3. Create Q2-Q4 for Åparken and Gødstrup
-        profiles = {
-            'Bofællesskabet Åparken': {
-                'Q2': {'TRYGHED': 3.6, 'MENING': 4.1, 'KAN': 3.2, 'BESVÆR': 3.4},
-                'Q3': {'TRYGHED': 3.4, 'MENING': 3.9, 'KAN': 3.0, 'BESVÆR': 3.2},
-                'Q4': {'TRYGHED': 3.8, 'MENING': 4.2, 'KAN': 3.4, 'BESVÆR': 3.6},
-            },
-            'Gødstrup Skole': {
-                'Q2': {'TRYGHED': 2.9, 'MENING': 2.7, 'KAN': 3.1, 'BESVÆR': 2.9},
-                'Q3': {'TRYGHED': 3.3, 'MENING': 3.2, 'KAN': 3.4, 'BESVÆR': 3.2},
-                'Q4': {'TRYGHED': 3.6, 'MENING': 3.5, 'KAN': 3.7, 'BESVÆR': 3.5},
-            },
-        }
-
-        quarters = [('Q2 2025', '2025-04-15'), ('Q3 2025', '2025-07-15'), ('Q4 2025', '2025-10-15')]
-
-        for unit_name, quarter_profiles in profiles.items():
-            unit = conn.execute("SELECT id FROM organizational_units WHERE name = ?", [unit_name]).fetchone()
-            if not unit:
-                results.append(f"Unit ikke fundet: {unit_name}")
-                continue
-
-            for period, date in quarters:
-                quarter_key = period.split()[0]
-                target_scores = quarter_profiles.get(quarter_key, {})
-                if not target_scores:
-                    continue
-
-                existing = conn.execute("""
-                    SELECT id FROM assessments WHERE target_unit_id = ? AND period = ?
-                """, [unit['id'], period]).fetchone()
-                if existing:
-                    continue
-
-                assessment_id = f"assess-{uuid_module.uuid4().hex[:12]}"
-                conn.execute("""
-                    INSERT INTO assessments (id, target_unit_id, name, period, assessment_type_id, status, created_at)
-                    VALUES (?, ?, ?, ?, 'gruppe_friktion', 'completed', ?)
-                """, [assessment_id, unit['id'], f"{unit_name} - {period}", period, date])
-
-                for resp_type, count in [('employee', 8), ('leader_assess', 2), ('leader_self', 1)]:
-                    for _ in range(count):
-                        token = f"tok-{uuid_module.uuid4().hex[:16]}"
-                        conn.execute("""
-                            INSERT INTO tokens (token, assessment_id, unit_id, respondent_type, is_used, used_at)
-                            VALUES (?, ?, ?, ?, 1, ?)
-                        """, [token, assessment_id, unit['id'], resp_type, date])
-
-                        for q in questions:
-                            target = target_scores.get(q['field'], 3.5)
-                            variation = random.gauss(0, 0.5)
-                            score = target + variation
-                            if q['reverse_scored']:
-                                score = 6 - score
-                            score = max(1, min(5, round(score)))
-                            conn.execute("""
-                                INSERT INTO responses (assessment_id, unit_id, question_id, respondent_type, score, created_at)
-                                VALUES (?, ?, ?, ?, ?, ?)
-                            """, [assessment_id, unit['id'], q['id'], resp_type, score, date])
-
-                results.append(f"Oprettet: {unit_name} - {period}")
-
-        # 4. Update variation for existing units
-        update_profiles = {
-            'Birk Skole': {
-                'Q1 2025': {'TRYGHED': 3.9, 'MENING': 4.2, 'KAN': 3.8, 'BESVÆR': 3.7},
-                'Q2 2025': {'TRYGHED': 4.0, 'MENING': 4.1, 'KAN': 3.9, 'BESVÆR': 3.8},
-                'Q3 2025': {'TRYGHED': 3.8, 'MENING': 3.4, 'KAN': 3.7, 'BESVÆR': 3.5},
-                'Q4 2025': {'TRYGHED': 3.9, 'MENING': 3.7, 'KAN': 3.8, 'BESVÆR': 3.7},
-            },
-            'Aktivitetscentret Midt': {
-                'Q1 2025': {'TRYGHED': 3.3, 'MENING': 4.0, 'KAN': 2.2, 'BESVÆR': 3.2},
-                'Q2 2025': {'TRYGHED': 3.4, 'MENING': 3.9, 'KAN': 2.8, 'BESVÆR': 3.3},
-                'Q3 2025': {'TRYGHED': 3.5, 'MENING': 3.8, 'KAN': 3.3, 'BESVÆR': 3.4},
-                'Q4 2025': {'TRYGHED': 3.6, 'MENING': 3.9, 'KAN': 3.6, 'BESVÆR': 3.5},
-            },
-        }
-
-        for unit_name, periods in update_profiles.items():
-            unit = conn.execute("SELECT id FROM organizational_units WHERE name = ?", [unit_name]).fetchone()
-            if not unit:
-                continue
-
-            for period, target_scores in periods.items():
-                assessment = conn.execute("""
-                    SELECT id FROM assessments WHERE target_unit_id = ? AND period = ?
-                """, [unit['id'], period]).fetchone()
-                if not assessment:
-                    continue
-
-                responses = conn.execute("""
-                    SELECT r.id, q.field, q.reverse_scored
-                    FROM responses r
-                    JOIN questions q ON r.question_id = q.id
-                    WHERE r.assessment_id = ?
-                """, [assessment['id']]).fetchall()
-
-                for r in responses:
-                    target = target_scores.get(r['field'], 3.5)
-                    variation = random.gauss(0, 0.5)
-                    score = target + variation
-                    if r['reverse_scored']:
-                        score = 6 - score
-                    score = max(1, min(5, round(score)))
-                    conn.execute("UPDATE responses SET score = ? WHERE id = ?", [score, r['id']])
-
-                results.append(f"Opdateret: {unit_name} - {period}")
-
-    invalidate_all()
-    return "<br>".join(results) if results else "Ingen ændringer"
-
-
-@app.route('/api/list-assessments/<secret_key>')
-def api_list_assessments(secret_key):
-    """Debug: List all assessments with their types"""
-    if secret_key != 'frik2025list':
-        return "Unauthorized", 401
-
-    with get_db() as conn:
-        rows = conn.execute("""
-            SELECT a.name, a.period, a.created_at, a.assessment_type_id, ou.name as unit_name
-            FROM assessments a
-            JOIN organizational_units ou ON a.target_unit_id = ou.id
-            ORDER BY a.created_at
-        """).fetchall()
-
-        result = []
-        for r in rows:
-            result.append(f"{r['created_at'][:10]} | {r['assessment_type_id']} | {r['unit_name']} | {r['name']}")
-
-        return "<br>".join(result)
+# REMOVED: /api/list-assessments/<secret_key> endpoint
+# Fjernet i go-live security audit 2025-12-18
+# Brugte hardcoded secret - brug admin UI til at se assessments
 
 
 @app.route('/admin/fix-missing-leader-data', methods=['POST'])
@@ -5878,6 +5375,14 @@ def backup_restore():
         restore_order = ['customers', 'users', 'organizational_units', 'contacts',
                         'assessments', 'tokens', 'responses', 'questions', 'translations']
 
+        # SQL injection protection: Validér kolonne-navne (tilføjet i go-live audit 2025-12-18)
+        import re
+        SAFE_COLUMN_PATTERN = re.compile(r'^[a-zA-Z_][a-zA-Z0-9_]*$')
+
+        def validate_column_names(columns):
+            """Returnerer True hvis alle kolonne-navne er sikre"""
+            return all(SAFE_COLUMN_PATTERN.match(col) for col in columns)
+
         for table in restore_order:
             if table not in backup_data['tables']:
                 continue
@@ -5888,6 +5393,11 @@ def backup_restore():
 
             for row in table_data:
                 try:
+                    # SQL injection protection: Validér kolonne-navne
+                    if not validate_column_names(row.keys()):
+                        stats['errors'] += 1
+                        continue  # Skip rows with suspicious column names
+
                     # Check om row allerede eksisterer (baseret på id)
                     if 'id' in row:
                         existing = conn.execute(f"SELECT id FROM {table} WHERE id = ?", (row['id'],)).fetchone()
@@ -5895,7 +5405,7 @@ def backup_restore():
                             stats['skipped'] += 1
                             continue
 
-                    # Insert row
+                    # Insert row (kolonne-navne er nu valideret)
                     columns = ', '.join(row.keys())
                     placeholders = ', '.join(['?' for _ in row])
                     conn.execute(f"INSERT OR REPLACE INTO {table} ({columns}) VALUES ({placeholders})",
