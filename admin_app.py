@@ -5478,14 +5478,22 @@ def api_fix_testdata_trends(secret_key):
     results = []
 
     with get_db() as conn:
-        # 1. Delete duplicate November assessments
+        # 0. Change B2C assessments to 'individuel_profil' type (exclude from trend)
+        b2c_updated = conn.execute("""
+            UPDATE assessments SET assessment_type_id = 'individuel_profil'
+            WHERE name LIKE 'B2C%'
+        """)
+        if b2c_updated.rowcount > 0:
+            results.append(f"B2C type ændret: {b2c_updated.rowcount} rows")
+
+        # 1. Delete duplicate November assessments for units that have Q1-Q4 data
         duplicates = conn.execute("""
             SELECT a.id, a.name, ou.name as unit_name
             FROM assessments a
             JOIN organizational_units ou ON a.target_unit_id = ou.id
             WHERE a.name LIKE 'Friktionsmåling %'
             AND a.created_at LIKE '2025-11-%'
-            AND ou.name IN ('Birk Skole', 'Aktivitetscentret Midt')
+            AND ou.name IN ('Birk Skole', 'Aktivitetscentret Midt', 'Gødstrup Skole', 'Bofællesskabet Åparken')
         """).fetchall()
 
         for d in duplicates:
@@ -5493,6 +5501,14 @@ def api_fix_testdata_trends(secret_key):
             conn.execute("DELETE FROM tokens WHERE assessment_id = ?", [d['id']])
             conn.execute("DELETE FROM assessments WHERE id = ?", [d['id']])
             results.append(f"Slettet: {d['name']}")
+
+        # 1b. Update remaining November assessments to correct period
+        period_updated = conn.execute("""
+            UPDATE assessments SET period = 'November 2025'
+            WHERE created_at LIKE '2025-11-%' AND period = 'Q1 2025'
+        """)
+        if period_updated.rowcount > 0:
+            results.append(f"Periode rettet til November 2025: {period_updated.rowcount} rows")
 
         # 2. Get questions
         questions = conn.execute("""
