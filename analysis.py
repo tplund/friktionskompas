@@ -997,6 +997,9 @@ def get_trend_data(unit_id: str = None, customer_id: str = None) -> Dict:
             filters.append("ou.customer_id = ?")
             params.append(customer_id)
 
+        # Only include group measurements (gruppe_friktion) in trend
+        filters.append("c.assessment_type_id = 'gruppe_friktion'")
+
         where_clause = " AND ".join(filters) if filters else "1=1"
 
         # Get assessments with response counts

@@ -2029,14 +2029,15 @@ def analyser():
                 # MODE 2a: Show individual assessments for this unit (leaf node)
                 show_assessments = True
 
-                # Get trend data if there are multiple assessments
+                # Get trend data if there are multiple group assessments
                 trend_data = None
                 assessment_count = conn.execute("""
-                    SELECT COUNT(*) FROM assessments WHERE target_unit_id = ?
+                    SELECT COUNT(*) FROM assessments
+                    WHERE target_unit_id = ? AND assessment_type_id = 'gruppe_friktion'
                 """, [unit_id]).fetchone()[0]
 
                 if assessment_count >= 2:
-                    # Calculate trend from oldest to newest assessment
+                    # Calculate trend from oldest to newest assessment (only gruppe_friktion)
                     trend_query = """
                         SELECT
                             a.id,
@@ -2055,7 +2056,7 @@ def analyser():
                         FROM assessments a
                         JOIN responses r ON a.id = r.assessment_id
                         JOIN questions q ON r.question_id = q.id
-                        WHERE a.target_unit_id = ?
+                        WHERE a.target_unit_id = ? AND a.assessment_type_id = 'gruppe_friktion'
                         GROUP BY a.id
                         ORDER BY a.created_at ASC
                     """
