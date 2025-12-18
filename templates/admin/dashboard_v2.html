@@ -427,8 +427,8 @@
         <div class="score-headers">
             <span style="width: 20px;"></span>
             <span class="spacer">Enhed</span>
-            <span class="header-item">M</span>
             <span class="header-item">T</span>
+            <span class="header-item">M</span>
             <span class="header-item">K</span>
             <span class="header-item">B</span>
             <span class="responses-header">Svar</span>
@@ -449,7 +449,7 @@
                     <div class="unit-meta">{{ unit.assessment_count }} måling{{ 'er' if unit.assessment_count != 1 else '' }}</div>
                 </div>
                 <div class="unit-scores">
-                    {% for field in ['employee_mening', 'employee_tryghed', 'employee_kan', 'employee_besvaer'] %}
+                    {% for field in ['employee_tryghed', 'employee_mening', 'employee_kan', 'employee_besvaer'] %}
                     {% if unit[field] %}
                         {% set score = unit[field] %}
                         {% set score_class = 'low' if score < 2.5 else ('medium' if score < 3.5 else 'high') %}
@@ -509,8 +509,8 @@
                 <canvas id="trendChart"></canvas>
             </div>
             <div class="trend-legend">
-                <span class="trend-legend-item"><span class="dot" style="background: #8b5cf6;"></span> MENING</span>
                 <span class="trend-legend-item"><span class="dot" style="background: #22c55e;"></span> TRYGHED</span>
+                <span class="trend-legend-item"><span class="dot" style="background: #8b5cf6;"></span> MENING</span>
                 <span class="trend-legend-item"><span class="dot" style="background: #3b82f6;"></span> KAN</span>
                 <span class="trend-legend-item"><span class="dot" style="background: #ef4444;"></span> BESVÆR</span>
             </div>

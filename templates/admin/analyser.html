@@ -442,18 +442,18 @@
                 {% endif %}
             </div>
             <div class="trend-item">
-                <div class="trend-label">{{ t('field.mening') }}</div>
-                <div class="trend-change {% if trend_data.mening_change and trend_data.mening_change > 0 %}trend-positive{% elif trend_data.mening_change and trend_data.mening_change < 0 %}trend-negative{% else %}trend-neutral{% endif %}">
-                    {% if trend_data.mening_change %}
-                        {% if trend_data.mening_change > 0 %}<span class="trend-arrow">↑</span>+{% elif trend_data.mening_change < 0 %}<span class="trend-arrow">↓</span>{% endif %}{{ "%.1f"|format(trend_data.mening_change) }}
-                    {% else %}-{% endif %}
-                </div>
-            </div>
-            <div class="trend-item">
                 <div class="trend-label">{{ t('field.tryghed') }}</div>
                 <div class="trend-change {% if trend_data.tryghed_change and trend_data.tryghed_change > 0 %}trend-positive{% elif trend_data.tryghed_change and trend_data.tryghed_change < 0 %}trend-negative{% else %}trend-neutral{% endif %}">
                     {% if trend_data.tryghed_change %}
                         {% if trend_data.tryghed_change > 0 %}<span class="trend-arrow">↑</span>+{% elif trend_data.tryghed_change < 0 %}<span class="trend-arrow">↓</span>{% endif %}{{ "%.1f"|format(trend_data.tryghed_change) }}
+                    {% else %}-{% endif %}
+                </div>
+            </div>
+            <div class="trend-item">
+                <div class="trend-label">{{ t('field.mening') }}</div>
+                <div class="trend-change {% if trend_data.mening_change and trend_data.mening_change > 0 %}trend-positive{% elif trend_data.mening_change and trend_data.mening_change < 0 %}trend-negative{% else %}trend-neutral{% endif %}">
+                    {% if trend_data.mening_change %}
+                        {% if trend_data.mening_change > 0 %}<span class="trend-arrow">↑</span>+{% elif trend_data.mening_change < 0 %}<span class="trend-arrow">↓</span>{% endif %}{{ "%.1f"|format(trend_data.mening_change) }}
                     {% else %}-{% endif %}
                 </div>
             </div>
@@ -505,13 +505,13 @@
                         <div class="field-header">{{ t('analyser.total_score') }}</div>
                         <div style="font-size: 0.65rem; font-weight: 400;">{{ t('analyser.employees') }}</div>
                     </th>
-                    <th class="sortable {% if sort_by == 'mening' %}sorted-{{ sort_order }}{% endif %}"
-                        onclick="sortTable('mening')">
-                        <div class="field-header">{{ t('field.mening') }}</div>
-                    </th>
                     <th class="sortable {% if sort_by == 'tryghed' %}sorted-{{ sort_order }}{% endif %}"
                         onclick="sortTable('tryghed')">
                         <div class="field-header">{{ t('field.tryghed') }}</div>
+                    </th>
+                    <th class="sortable {% if sort_by == 'mening' %}sorted-{{ sort_order }}{% endif %}"
+                        onclick="sortTable('mening')">
+                        <div class="field-header">{{ t('field.mening') }}</div>
                     </th>
                     <th class="sortable {% if sort_by == 'kan' %}sorted-{{ sort_order }}{% endif %}"
                         onclick="sortTable('kan')">
@@ -575,16 +575,16 @@
                             <span class="score-none">-</span>
                         {% endif %}
                     </td>
-                    <td class="score-cell {{ get_percent_class(unit.employee_mening) }}">
-                        {% if unit.employee_mening %}
-                            {{ "%.0f"|format(to_percent(unit.employee_mening)) }}%
+                    <td class="score-cell {{ get_percent_class(unit.employee_tryghed) }}">
+                        {% if unit.employee_tryghed %}
+                            {{ "%.0f"|format(to_percent(unit.employee_tryghed)) }}%
                         {% else %}
                             <span class="score-none">-</span>
                         {% endif %}
                     </td>
-                    <td class="score-cell {{ get_percent_class(unit.employee_tryghed) }}">
-                        {% if unit.employee_tryghed %}
-                            {{ "%.0f"|format(to_percent(unit.employee_tryghed)) }}%
+                    <td class="score-cell {{ get_percent_class(unit.employee_mening) }}">
+                        {% if unit.employee_mening %}
+                            {{ "%.0f"|format(to_percent(unit.employee_mening)) }}%
                         {% else %}
                             <span class="score-none">-</span>
                         {% endif %}

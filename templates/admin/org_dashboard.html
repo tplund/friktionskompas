@@ -385,15 +385,15 @@
             <div class="summary-value">{{ "%.0f"|format((agg_scores.avg_score / 5) * 100) }}%</div>
         </div>
         <div class="summary-card">
-            <div class="summary-label">{{ t('field.mening') }}</div>
-            <div class="summary-value {% if agg_scores.mening %}{{ get_percent_class(agg_scores.mening) }}{% endif %}">
-                {% if agg_scores.mening %}{{ "%.0f"|format((agg_scores.mening / 5) * 100) }}%{% else %}-{% endif %}
-            </div>
-        </div>
-        <div class="summary-card">
             <div class="summary-label">{{ t('field.tryghed') }}</div>
             <div class="summary-value {% if agg_scores.tryghed %}{{ get_percent_class(agg_scores.tryghed) }}{% endif %}">
                 {% if agg_scores.tryghed %}{{ "%.0f"|format((agg_scores.tryghed / 5) * 100) }}%{% else %}-{% endif %}
+            </div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-label">{{ t('field.mening') }}</div>
+            <div class="summary-value {% if agg_scores.mening %}{{ get_percent_class(agg_scores.mening) }}{% endif %}">
+                {% if agg_scores.mening %}{{ "%.0f"|format((agg_scores.mening / 5) * 100) }}%{% else %}-{% endif %}
             </div>
         </div>
         <div class="summary-card">
@@ -454,15 +454,15 @@
             {% if item.avg_score %}
             <div class="mini-scores">
                 <div class="mini-score">
-                    <div class="mini-score-label">{{ t('field.mening') }}</div>
-                    <div class="mini-score-value {% if item.score_mening %}{{ get_percent_class(item.score_mening) }}{% else %}score-none{% endif %}">
-                        {% if item.score_mening %}{{ "%.0f"|format((item.score_mening / 5) * 100) }}%{% else %}-{% endif %}
-                    </div>
-                </div>
-                <div class="mini-score">
                     <div class="mini-score-label">{{ t('field.tryghed') }}</div>
                     <div class="mini-score-value {% if item.score_tryghed %}{{ get_percent_class(item.score_tryghed) }}{% else %}score-none{% endif %}">
                         {% if item.score_tryghed %}{{ "%.0f"|format((item.score_tryghed / 5) * 100) }}%{% else %}-{% endif %}
+                    </div>
+                </div>
+                <div class="mini-score">
+                    <div class="mini-score-label">{{ t('field.mening') }}</div>
+                    <div class="mini-score-value {% if item.score_mening %}{{ get_percent_class(item.score_mening) }}{% else %}score-none{% endif %}">
+                        {% if item.score_mening %}{{ "%.0f"|format((item.score_mening / 5) * 100) }}%{% else %}-{% endif %}
                     </div>
                 </div>
                 <div class="mini-score">
