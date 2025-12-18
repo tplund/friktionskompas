@@ -145,6 +145,7 @@ INITIAL_TRANSLATIONS = {
     'nav.kunder_brugere': {'da': 'Kunder & Brugere', 'en': 'Customers & Users'},
     'nav.indstillinger': {'da': 'Indstillinger', 'en': 'Settings'},
     'nav.logout': {'da': 'Log ud', 'en': 'Log out'},
+    'nav.my_account': {'da': 'Min konto', 'en': 'My account'},
     'nav.trend': {'da': 'Trend', 'en': 'Trend'},
 
     # Navigation - Dropdown groups
