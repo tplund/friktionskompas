@@ -680,7 +680,11 @@ new Chart(document.getElementById('trendChart'), {
                 callbacks: {
                     title: function(context) {
                         const idx = context[0].dataIndex;
-                        return assessments[idx].name;
+                        const a = assessments[idx];
+                        if (a.unit_count > 1) {
+                            return a.period + ' (gennemsnit af ' + a.unit_count + ' enheder)';
+                        }
+                        return a.period || a.name;
                     }
                 }
             }

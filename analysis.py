@@ -1064,15 +1064,50 @@ def get_trend_data(unit_id: str = None, customer_id: str = None) -> Dict:
                 'scores': scores
             })
 
+        # Aggregate by period for cleaner trend visualization
+        period_data = {}
+        for a in assessments:
+            period = a['period'] or a['date']
+            if period not in period_data:
+                period_data[period] = {
+                    'period': period,
+                    'date': a['date'],
+                    'scores': {f: [] for f in ['TRYGHED', 'MENING', 'KAN', 'BESVÆR']},
+                    'unit_count': 0,
+                    'units': []
+                }
+            period_data[period]['unit_count'] += 1
+            period_data[period]['units'].append(a['unit_name'])
+            for field, score in a.get('scores', {}).items():
+                if score is not None:
+                    period_data[period]['scores'][field].append(score)
+
+        # Calculate averages per period
+        aggregated = []
+        for period, data in sorted(period_data.items(), key=lambda x: x[1]['date'] or ''):
+            avg_scores = {}
+            for field, scores in data['scores'].items():
+                if scores:
+                    avg_scores[field] = round(sum(scores) / len(scores), 2)
+            aggregated.append({
+                'period': data['period'],
+                'date': data['date'],
+                'scores': avg_scores,
+                'unit_count': data['unit_count'],
+                'units': data['units']
+            })
+
         # Calculate summary
         dates = [c['date'] for c in assessments if c['date']]
         date_range = f"{min(dates)} til {max(dates)}" if dates else "-"
 
         return {
-            'assessments': assessments,
+            'assessments': aggregated,  # Now aggregated by period
+            'raw_assessments': assessments,  # Keep raw data if needed
             'fields': ['TRYGHED', 'MENING', 'KAN', 'BESVÆR'],
             'summary': {
                 'total_assessments': len(assessments),
+                'total_periods': len(aggregated),
                 'date_range': date_range
             }
         }
