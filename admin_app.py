@@ -5466,6 +5466,151 @@ def api_vary_testdata(secret_key):
     return f"Opdateret {count} responses med realistisk variation"
 
 
+@app.route('/api/fix-testdata-trends/<secret_key>')
+def api_fix_testdata_trends(secret_key):
+    """Midlertidigt API endpoint til at fikse trend-data - FJERN FØR PRODUKTION"""
+    if secret_key != 'frik2025trends':
+        return "Unauthorized", 401
+
+    import random
+    import uuid as uuid_module
+
+    results = []
+
+    with get_db() as conn:
+        # 1. Delete duplicate November assessments
+        duplicates = conn.execute("""
+            SELECT a.id, a.name, ou.name as unit_name
+            FROM assessments a
+            JOIN organizational_units ou ON a.target_unit_id = ou.id
+            WHERE a.name LIKE 'Friktionsmåling %'
+            AND a.created_at LIKE '2025-11-%'
+            AND ou.name IN ('Birk Skole', 'Aktivitetscentret Midt')
+        """).fetchall()
+
+        for d in duplicates:
+            conn.execute("DELETE FROM responses WHERE assessment_id = ?", [d['id']])
+            conn.execute("DELETE FROM tokens WHERE assessment_id = ?", [d['id']])
+            conn.execute("DELETE FROM assessments WHERE id = ?", [d['id']])
+            results.append(f"Slettet: {d['name']}")
+
+        # 2. Get questions
+        questions = conn.execute("""
+            SELECT id, field, reverse_scored FROM questions WHERE is_default = 1
+        """).fetchall()
+
+        # 3. Create Q2-Q4 for Åparken and Gødstrup
+        profiles = {
+            'Bofællesskabet Åparken': {
+                'Q2': {'TRYGHED': 3.6, 'MENING': 4.1, 'KAN': 3.2, 'BESVÆR': 3.4},
+                'Q3': {'TRYGHED': 3.4, 'MENING': 3.9, 'KAN': 3.0, 'BESVÆR': 3.2},
+                'Q4': {'TRYGHED': 3.8, 'MENING': 4.2, 'KAN': 3.4, 'BESVÆR': 3.6},
+            },
+            'Gødstrup Skole': {
+                'Q2': {'TRYGHED': 2.9, 'MENING': 2.7, 'KAN': 3.1, 'BESVÆR': 2.9},
+                'Q3': {'TRYGHED': 3.3, 'MENING': 3.2, 'KAN': 3.4, 'BESVÆR': 3.2},
+                'Q4': {'TRYGHED': 3.6, 'MENING': 3.5, 'KAN': 3.7, 'BESVÆR': 3.5},
+            },
+        }
+
+        quarters = [('Q2 2025', '2025-04-15'), ('Q3 2025', '2025-07-15'), ('Q4 2025', '2025-10-15')]
+
+        for unit_name, quarter_profiles in profiles.items():
+            unit = conn.execute("SELECT id FROM organizational_units WHERE name = ?", [unit_name]).fetchone()
+            if not unit:
+                results.append(f"Unit ikke fundet: {unit_name}")
+                continue
+
+            for period, date in quarters:
+                quarter_key = period.split()[0]
+                target_scores = quarter_profiles.get(quarter_key, {})
+                if not target_scores:
+                    continue
+
+                existing = conn.execute("""
+                    SELECT id FROM assessments WHERE target_unit_id = ? AND period = ?
+                """, [unit['id'], period]).fetchone()
+                if existing:
+                    continue
+
+                assessment_id = f"assess-{uuid_module.uuid4().hex[:12]}"
+                conn.execute("""
+                    INSERT INTO assessments (id, target_unit_id, name, period, assessment_type_id, status, created_at)
+                    VALUES (?, ?, ?, ?, 'gruppe_friktion', 'completed', ?)
+                """, [assessment_id, unit['id'], f"{unit_name} - {period}", period, date])
+
+                for resp_type, count in [('employee', 8), ('leader_assess', 2), ('leader_self', 1)]:
+                    for _ in range(count):
+                        token = f"tok-{uuid_module.uuid4().hex[:16]}"
+                        conn.execute("""
+                            INSERT INTO tokens (token, assessment_id, unit_id, respondent_type, is_used, used_at)
+                            VALUES (?, ?, ?, ?, 1, ?)
+                        """, [token, assessment_id, unit['id'], resp_type, date])
+
+                        for q in questions:
+                            target = target_scores.get(q['field'], 3.5)
+                            variation = random.gauss(0, 0.5)
+                            score = target + variation
+                            if q['reverse_scored']:
+                                score = 6 - score
+                            score = max(1, min(5, round(score)))
+                            conn.execute("""
+                                INSERT INTO responses (assessment_id, unit_id, question_id, respondent_type, score, created_at)
+                                VALUES (?, ?, ?, ?, ?, ?)
+                            """, [assessment_id, unit['id'], q['id'], resp_type, score, date])
+
+                results.append(f"Oprettet: {unit_name} - {period}")
+
+        # 4. Update variation for existing units
+        update_profiles = {
+            'Birk Skole': {
+                'Q1 2025': {'TRYGHED': 3.9, 'MENING': 4.2, 'KAN': 3.8, 'BESVÆR': 3.7},
+                'Q2 2025': {'TRYGHED': 4.0, 'MENING': 4.1, 'KAN': 3.9, 'BESVÆR': 3.8},
+                'Q3 2025': {'TRYGHED': 3.8, 'MENING': 3.4, 'KAN': 3.7, 'BESVÆR': 3.5},
+                'Q4 2025': {'TRYGHED': 3.9, 'MENING': 3.7, 'KAN': 3.8, 'BESVÆR': 3.7},
+            },
+            'Aktivitetscentret Midt': {
+                'Q1 2025': {'TRYGHED': 3.3, 'MENING': 4.0, 'KAN': 2.2, 'BESVÆR': 3.2},
+                'Q2 2025': {'TRYGHED': 3.4, 'MENING': 3.9, 'KAN': 2.8, 'BESVÆR': 3.3},
+                'Q3 2025': {'TRYGHED': 3.5, 'MENING': 3.8, 'KAN': 3.3, 'BESVÆR': 3.4},
+                'Q4 2025': {'TRYGHED': 3.6, 'MENING': 3.9, 'KAN': 3.6, 'BESVÆR': 3.5},
+            },
+        }
+
+        for unit_name, periods in update_profiles.items():
+            unit = conn.execute("SELECT id FROM organizational_units WHERE name = ?", [unit_name]).fetchone()
+            if not unit:
+                continue
+
+            for period, target_scores in periods.items():
+                assessment = conn.execute("""
+                    SELECT id FROM assessments WHERE target_unit_id = ? AND period = ?
+                """, [unit['id'], period]).fetchone()
+                if not assessment:
+                    continue
+
+                responses = conn.execute("""
+                    SELECT r.id, q.field, q.reverse_scored
+                    FROM responses r
+                    JOIN questions q ON r.question_id = q.id
+                    WHERE r.assessment_id = ?
+                """, [assessment['id']]).fetchall()
+
+                for r in responses:
+                    target = target_scores.get(r['field'], 3.5)
+                    variation = random.gauss(0, 0.5)
+                    score = target + variation
+                    if r['reverse_scored']:
+                        score = 6 - score
+                    score = max(1, min(5, round(score)))
+                    conn.execute("UPDATE responses SET score = ? WHERE id = ?", [score, r['id']])
+
+                results.append(f"Opdateret: {unit_name} - {period}")
+
+    invalidate_all()
+    return "<br>".join(results) if results else "Ingen ændringer"
+
+
 @app.route('/admin/fix-missing-leader-data', methods=['POST'])
 @admin_required
 def fix_missing_leader_data():
