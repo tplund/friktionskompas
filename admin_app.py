@@ -5231,21 +5231,49 @@ def vary_testdata():
     """Tilføj realistisk variation til testdata - forskellige organisationer får forskellige profiler"""
     import random
 
-    # Profiler for forskellige organisationstyper
+    # Profiler for forskellige organisationstyper - med bredere ranges for mere variation
+    # Hvert felt har: (target_mean, std_dev, extreme_chance)
+    # extreme_chance = sandsynlighed for at producere 1 eller 5 i stedet
     PROFILES = {
-        'Birk Skole': {'MENING': (3.8, 4.5), 'TRYGHED': (3.5, 4.2), 'KAN': (2.2, 3.0), 'BESVÆR': (3.0, 3.8)},
-        'Gødstrup Skole': {'MENING': (2.0, 2.8), 'TRYGHED': (2.5, 3.2), 'KAN': (2.8, 3.5), 'BESVÆR': (2.0, 2.8)},
-        'Hammerum Skole': {'MENING': (4.0, 4.8), 'TRYGHED': (4.2, 4.8), 'KAN': (3.5, 4.2), 'BESVÆR': (3.8, 4.5)},
-        'Snejbjerg Skole': {'MENING': (3.0, 3.8), 'TRYGHED': (2.0, 2.8), 'KAN': (3.2, 4.0), 'BESVÆR': (3.0, 3.8)},
-        'Aktivitetscentret Midt': {'MENING': (3.5, 4.2), 'TRYGHED': (3.0, 3.8), 'KAN': (1.8, 2.5), 'BESVÆR': (1.5, 2.3)},
-        'Bofællesskabet Åparken': {'MENING': (4.2, 4.8), 'TRYGHED': (3.8, 4.5), 'KAN': (3.0, 3.8), 'BESVÆR': (2.5, 3.2)},
-        'Støttecentret Vestergade': {'MENING': (2.2, 3.0), 'TRYGHED': (3.5, 4.2), 'KAN': (4.0, 4.8), 'BESVÆR': (3.5, 4.2)},
+        'Birk Skole': {
+            'MENING': (4.0, 0.8, 0.08), 'TRYGHED': (3.8, 0.9, 0.06),
+            'KAN': (2.5, 1.0, 0.10), 'BESVÆR': (3.3, 0.8, 0.05)
+        },
+        'Gødstrup Skole': {
+            'MENING': (2.3, 1.0, 0.12), 'TRYGHED': (2.8, 0.9, 0.08),
+            'KAN': (3.0, 0.8, 0.05), 'BESVÆR': (2.2, 1.1, 0.15)
+        },
+        'Hammerum Skole': {
+            'MENING': (4.3, 0.7, 0.10), 'TRYGHED': (4.5, 0.6, 0.12),
+            'KAN': (3.8, 0.8, 0.08), 'BESVÆR': (4.1, 0.7, 0.10)
+        },
+        'Snejbjerg Skole': {
+            'MENING': (3.3, 0.9, 0.06), 'TRYGHED': (2.3, 1.0, 0.10),
+            'KAN': (3.5, 0.8, 0.06), 'BESVÆR': (3.3, 0.9, 0.05)
+        },
+        'Aktivitetscentret Midt': {
+            'MENING': (3.8, 0.9, 0.08), 'TRYGHED': (3.3, 1.0, 0.07),
+            'KAN': (2.0, 1.1, 0.15), 'BESVÆR': (1.8, 1.0, 0.18)
+        },
+        'Bofællesskabet Åparken': {
+            'MENING': (4.5, 0.6, 0.15), 'TRYGHED': (4.0, 0.8, 0.10),
+            'KAN': (3.3, 0.9, 0.06), 'BESVÆR': (2.8, 1.0, 0.08)
+        },
+        'Støttecentret Vestergade': {
+            'MENING': (2.5, 1.0, 0.10), 'TRYGHED': (3.8, 0.8, 0.06),
+            'KAN': (4.3, 0.7, 0.12), 'BESVÆR': (3.8, 0.8, 0.08)
+        },
     }
-    DEFAULT = {'MENING': (2.8, 3.8), 'TRYGHED': (2.8, 3.8), 'KAN': (2.8, 3.8), 'BESVÆR': (2.8, 3.8)}
+    DEFAULT = {'MENING': (3.0, 1.0, 0.08), 'TRYGHED': (3.0, 1.0, 0.08), 'KAN': (3.0, 1.0, 0.08), 'BESVÆR': (3.0, 1.0, 0.08)}
 
     def get_score(profile, field):
-        low, high = profile.get(field, DEFAULT[field])
-        return max(1, min(5, round(random.triangular(low, high, (low+high)/2))))
+        mean, std, extreme_chance = profile.get(field, DEFAULT[field])
+        # Chance for ekstreme scores (1 eller 5)
+        if random.random() < extreme_chance:
+            return 5 if mean > 3.0 else 1
+        # Normal distribution med bredere spredning
+        score = random.gauss(mean, std)
+        return max(1, min(5, round(score)))
 
     random.seed(42)
     count = 0
@@ -5275,7 +5303,7 @@ def vary_testdata():
             conn.execute("UPDATE responses SET score = ? WHERE id = ?", (new_score, r['id']))
             count += 1
 
-        # Opdater leader_assess (lidt højere scores)
+        # Opdater leader_assess (lidt højere scores - leder-bias)
         leader_responses = conn.execute("""
             SELECT r.id, ou.name as unit_name, q.field, q.reverse_scored
             FROM responses r
@@ -5286,8 +5314,9 @@ def vary_testdata():
 
         for r in leader_responses:
             profile = next((PROFILES[k] for k in PROFILES if k in r['unit_name']), DEFAULT)
-            low, high = profile.get(r['field'], DEFAULT[r['field']])
-            leader_profile = {r['field']: (min(5, low + 0.5), min(5, high + 0.8))}
+            mean, std, extreme_chance = profile.get(r['field'], DEFAULT[r['field']])
+            # Ledere vurderer typisk 0.4 point højere (positiv bias)
+            leader_profile = {r['field']: (min(5, mean + 0.4), std * 0.9, extreme_chance * 0.8)}
             target_score = get_score(leader_profile, r['field'])
             # For reverse_scored spørgsmål: invert scoren
             if r['reverse_scored'] == 1:
