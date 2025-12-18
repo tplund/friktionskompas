@@ -526,52 +526,80 @@ Domæner konfigureres i `admin_seed_domains()` i `admin_app.py`:
 - Features: Rate limiting, audit logging, SQL validation
 - Config: `.mcp.json`
 
-## Testdata: Herning Kommune (Kanonisk Test-Kunde)
+## Testdata Strategi: To Kunder
 
-### Hvorfor Herning Kommune?
-Herning Kommune (`cust-0nlG8ldxSYU`) er den kanoniske test-kunde med komplet testdata for alle scenarier.
-Al ny testdata skal tilføjes til Herning Kommune for at sikre konsistens.
+### Oversigt
+| Kunde | Formål | Data |
+|-------|--------|------|
+| **Herning Kommune** | Demo/showcase | Meget data, kan ændres frit |
+| **Esbjerg Kommune** | Kanonisk test | STABIL data, MÅ IKKE ændres! |
 
-### Testdata Scenarier
-| Scenarie | Unit | Formål |
-|----------|------|--------|
-| **Normal B2B** | Birk Skole, Aktivitetscentret Midt | Trend-data (Q1-Q4 2025) |
-| **B2C** | Individuel Screening, Par-profiler, Karrierevejledning | Uden leder-vurdering |
-| **Edge Cases** | Se nedenfor | Test af advarsels-scenarier |
+---
 
-### Edge Case Tests (under "Edge Case Tests" unit)
-| Test | Formål | Karakteristik |
-|------|--------|---------------|
-| Gap Test - Kritisk Forskel | Stort gap mellem medarbejder og leder | Medarbejdere ~2.5, Ledere ~4.0 |
-| Krise Test - Alt er Galt | Alle scores kritisk lave | Alle felter < 2.0 |
-| Succes Test - Høj Trivsel | Alle scores høje | Alle felter > 4.0 |
-| Spredning Test - Stor Uenighed | Høj varians i svar | Std.dev > 1.2 |
-| Tryghed Test - Kun Psykologisk Sikkerhed | Ét felt markant lavere | TRYGHED ~2.0, andre ~4.0 |
+### Esbjerg Kommune - Kanonisk Testdata (KRITISK!)
+**ID:** `cust-SHKIi10cOe8`
+**Dokumentation:** `ESBJERG_TESTDATA.md`
 
-### Realistiske Profil-Arketyper
-| Arketype | MENING | TRYGHED | KAN | BESVÆR | Beskrivelse |
-|----------|--------|---------|-----|--------|-------------|
-| Travlt Team | 3.8 | 3.2 | 4.2 | 2.0 | Høj kapacitet, lav besvær |
-| Demotiveret Team | 2.2 | 3.5 | 3.0 | 3.2 | Lav mening, OK tryghed |
-| Siloed Team | 3.5 | 2.0 | 4.0 | 3.5 | Lav tryghed, høj kunnen |
-| Overbelastet Team | 3.0 | 2.8 | 2.3 | 1.5 | Lav kapacitet og besvær |
-| Balanceret Team | 3.5 | 3.5 | 3.5 | 3.5 | Jævn profil |
+**REGLER:**
+1. **ALDRIG** ændr Esbjerg-data uden at opdatere ESBJERG_TESTDATA.md
+2. **ALTID** kør `pytest tests/test_esbjerg_canonical.py` efter ændringer
+3. Esbjerg-data er designet til at fange specifikke bugs
 
-### Seed Scripts
+**Esbjerg Test-Scenarier:**
+| Unit | Test Case | Forventet Resultat |
+|------|-----------|-------------------|
+| Birkebo | Normal scores (~3.5) | Grøn/gul indikatorer |
+| Skovbrynet | Høje scores (>4.0) | Grønne indikatorer |
+| Solhjem | Krise scores (<2.5) | Røde indikatorer |
+| Strandparken | Leader gap (>1.5) | Gap-advarsel ikon |
+| Handicapområdet | Tom enhed | Ingen crash, "-" vises |
+| Individuel Profil | B2C, 1 respondent | Korrekt visning |
+| Minimal Data | Identiske scores | Ingen division-by-zero |
+| Substitution Test | Kahneman pattern | Substitution-ikon |
+
+**Seed Esbjerg:**
 ```bash
-# Lokalt: Regenerer al testdata
-python seed_herning_testdata.py
-python seed_edge_cases.py
-
-# Render: Seed assessments fra JSON
-curl https://friktionskompasset.dk/admin/seed-assessments
+python seed_esbjerg_canonical.py
+pytest tests/test_esbjerg_canonical.py -v
 ```
 
-### Data Flow (under udvikling)
-1. **Lokal udvikling** → Data i `seed_*.py` scripts
-2. **Eksporter** → `python -c "..."` (se nedenfor)
-3. **Git** → `seed_assessments.json` + responses
-4. **Render** → `/admin/seed-assessments` endpoint
+---
+
+### Herning Kommune - Demo Data
+**ID:** `cust-0nlG8ldxSYU`
+
+Herning Kommune bruges til demo og showcase. Data kan ændres frit.
+
+**Demo Scenarier:**
+| Scenarie | Unit | Formål |
+|----------|------|--------|
+| **Trend Data** | Birk Skole, Aktivitetscentret Midt | Q1-Q4 2025 |
+| **B2C** | Individuel Screening, Par-profiler | Uden leder |
+| **Edge Cases** | Edge Case Tests unit | Advarsels-scenarier |
+
+**Seed Herning:**
+```bash
+python seed_herning_testdata.py
+python seed_edge_cases.py
+```
+
+---
+
+### Synkronisering til Render
+```bash
+# 1. Eksporter database
+python -c "import base64; open('db_backup.b64','w').write(base64.b64encode(open('friktionskompas_v3.db','rb').read()).decode())"
+
+# 2. Push til git
+git add db_backup.b64 && git commit -m "DB sync" && git push
+
+# 3. Vent på deployment, derefter restore
+curl -X POST https://friktionskompasset.dk/admin/restore-db-from-backup \
+     -H "X-Admin-API-Key: w_r0xNlJAzAm7XSKARbo2T4GkKCePxiqXroB2w0o29s"
+
+# 4. Fjern backup fra git
+git rm db_backup.b64 && git commit -m "Remove backup" && git push
+```
 
 ## Deploy Checklist
 1. ~~Test lokalt først~~ (CI klarer det nu, medmindre store ændringer)
