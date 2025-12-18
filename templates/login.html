@@ -429,7 +429,25 @@
                 // Focus first error field
                 var firstError = form.querySelector('.form-group.has-error input');
                 if (firstError) firstError.focus();
+            } else {
+                // Track login attempt
+                if (typeof Analytics !== 'undefined') {
+                    Analytics.login('email');
+                }
             }
+        });
+
+        // Track OAuth button clicks
+        document.querySelectorAll('.oauth-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var method = this.classList.contains('google') ? 'google' :
+                            this.classList.contains('microsoft') ? 'microsoft' :
+                            this.classList.contains('apple') ? 'apple' :
+                            this.classList.contains('facebook') ? 'facebook' : 'oauth';
+                if (typeof Analytics !== 'undefined') {
+                    Analytics.login(method);
+                }
+            });
         });
     });
     </script>

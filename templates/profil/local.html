@@ -734,6 +734,12 @@
         document.getElementById('start-btn').addEventListener('click', async () => {
             const context = document.getElementById('context-select').value;
 
+            // Track profile start
+            if (typeof Analytics !== 'undefined') {
+                Analytics.profileStart('screening', 'direct');
+            }
+            window._profileStartTime = Date.now();
+
             // Start session
             ProfilStorage.startSession(context);
 
@@ -863,6 +869,13 @@
 
                 // Save result
                 ProfilStorage.completeSession(result);
+
+                // Track profile completion
+                if (typeof Analytics !== 'undefined') {
+                    const duration = window._profileStartTime ?
+                        Math.round((Date.now() - window._profileStartTime) / 1000) : null;
+                    Analytics.profileComplete('screening', duration, result.summary);
+                }
 
                 // Show result
                 loadingScreen.classList.add('hidden');
