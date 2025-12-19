@@ -20,10 +20,33 @@ from db_multitenant import (
 )
 
 
+@pytest.fixture
+def api_key_tracker():
+    """Fixture that tracks API keys and cleans them up after each test."""
+    created_keys = []
+
+    def create_key(customer_id, name="Test Key", permissions=None):
+        """Create an API key and track it for cleanup."""
+        if permissions is None:
+            permissions = {"read": True, "write": False}
+        full_key, key_id = generate_customer_api_key(customer_id, name, permissions)
+        created_keys.append(key_id)
+        return full_key, key_id
+
+    yield create_key
+
+    # Cleanup after test
+    for key_id in created_keys:
+        try:
+            delete_customer_api_key(key_id)
+        except Exception:
+            pass  # Ignore errors during cleanup
+
+
 class TestAPIKeyManagement:
     """Tests for API key CRUD operations."""
 
-    def test_generate_api_key(self, app):
+    def test_generate_api_key(self, app, api_key_tracker):
         """Test generating a new API key."""
         # Use existing test customer
         with app.app_context():
@@ -35,14 +58,14 @@ class TestAPIKeyManagement:
                 customer_id = customer['id']
 
             # Generate key
-            full_key, key_id = generate_customer_api_key(customer_id, "Test Key")
+            full_key, key_id = api_key_tracker(customer_id, "Test Key")
 
             # Verify key format
             assert full_key.startswith('fk_')
             assert len(full_key) > 20
             assert key_id > 0
 
-    def test_validate_api_key(self, app):
+    def test_validate_api_key(self, app, api_key_tracker):
         """Test validating an API key."""
         with app.app_context():
             from db_multitenant import get_db
@@ -52,7 +75,7 @@ class TestAPIKeyManagement:
                     pytest.skip("No customers in test database")
 
             # Generate and validate
-            full_key, key_id = generate_customer_api_key(customer['id'], "Validation Test")
+            full_key, key_id = api_key_tracker(customer['id'], "Validation Test")
             result = validate_customer_api_key(full_key)
 
             assert result is not None
@@ -68,7 +91,7 @@ class TestAPIKeyManagement:
             assert validate_customer_api_key('fk_invalid_key') is None
             assert validate_customer_api_key('fk_abc_wrongsecret') is None
 
-    def test_revoke_api_key(self, app):
+    def test_revoke_api_key(self, app, api_key_tracker):
         """Test revoking an API key."""
         with app.app_context():
             from db_multitenant import get_db
@@ -78,7 +101,7 @@ class TestAPIKeyManagement:
                     pytest.skip("No customers in test database")
 
             # Generate key
-            full_key, key_id = generate_customer_api_key(customer['id'], "Revoke Test")
+            full_key, key_id = api_key_tracker(customer['id'], "Revoke Test")
 
             # Verify it works
             assert validate_customer_api_key(full_key) is not None
@@ -89,7 +112,7 @@ class TestAPIKeyManagement:
             # Verify it no longer works
             assert validate_customer_api_key(full_key) is None
 
-    def test_list_api_keys(self, app):
+    def test_list_api_keys(self, app, api_key_tracker):
         """Test listing API keys for a customer."""
         with app.app_context():
             from db_multitenant import get_db
@@ -99,7 +122,7 @@ class TestAPIKeyManagement:
                     pytest.skip("No customers in test database")
 
             # Generate a key
-            generate_customer_api_key(customer['id'], "List Test Key")
+            api_key_tracker(customer['id'], "List Test Key")
 
             # List keys
             keys = list_customer_api_keys(customer['id'])
@@ -112,7 +135,7 @@ class TestAPIKeyManagement:
             assert 'permissions' in key
             assert 'key_hash' not in key  # Should not expose hash
 
-    def test_api_key_permissions(self, app):
+    def test_api_key_permissions(self, app, api_key_tracker):
         """Test that permissions are stored correctly."""
         with app.app_context():
             from db_multitenant import get_db
@@ -122,7 +145,7 @@ class TestAPIKeyManagement:
                     pytest.skip("No customers in test database")
 
             # Create key with write permission
-            full_key, key_id = generate_customer_api_key(
+            full_key, key_id = api_key_tracker(
                 customer['id'],
                 "Write Test",
                 permissions={'read': True, 'write': True}
@@ -155,7 +178,7 @@ class TestCustomerAPIAuth:
 class TestListAssessments:
     """Tests for GET /api/v1/assessments."""
 
-    def test_list_assessments_success(self, app, client):
+    def test_list_assessments_success(self, app, client, api_key_tracker):
         """Test listing assessments with valid API key."""
         with app.app_context():
             from db_multitenant import get_db
@@ -164,7 +187,7 @@ class TestListAssessments:
                 if not customer:
                     pytest.skip("No customers in test database")
 
-            full_key, _ = generate_customer_api_key(customer['id'], "List Test")
+            full_key, _ = api_key_tracker(customer['id'], "List Test")
 
             response = client.get('/api/v1/assessments', headers={
                 'X-API-Key': full_key
@@ -176,7 +199,7 @@ class TestListAssessments:
             assert 'meta' in data
             assert isinstance(data['data'], list)
 
-    def test_list_assessments_pagination(self, app, client):
+    def test_list_assessments_pagination(self, app, client, api_key_tracker):
         """Test pagination parameters."""
         with app.app_context():
             from db_multitenant import get_db
@@ -185,7 +208,7 @@ class TestListAssessments:
                 if not customer:
                     pytest.skip("No customers in test database")
 
-            full_key, _ = generate_customer_api_key(customer['id'], "Pagination Test")
+            full_key, _ = api_key_tracker(customer['id'], "Pagination Test")
 
             response = client.get('/api/v1/assessments?limit=10&offset=0', headers={
                 'X-API-Key': full_key
@@ -200,7 +223,7 @@ class TestListAssessments:
 class TestGetAssessment:
     """Tests for GET /api/v1/assessments/{id}."""
 
-    def test_get_assessment_not_found(self, app, client):
+    def test_get_assessment_not_found(self, app, client, api_key_tracker):
         """Test 404 for non-existent assessment."""
         with app.app_context():
             from db_multitenant import get_db
@@ -209,7 +232,7 @@ class TestGetAssessment:
                 if not customer:
                     pytest.skip("No customers in test database")
 
-            full_key, _ = generate_customer_api_key(customer['id'], "Get Test")
+            full_key, _ = api_key_tracker(customer['id'], "Get Test")
 
             response = client.get('/api/v1/assessments/nonexistent-id', headers={
                 'X-API-Key': full_key
@@ -223,7 +246,7 @@ class TestGetAssessment:
 class TestGetResults:
     """Tests for GET /api/v1/assessments/{id}/results."""
 
-    def test_get_results_not_found(self, app, client):
+    def test_get_results_not_found(self, app, client, api_key_tracker):
         """Test 404 for non-existent assessment results."""
         with app.app_context():
             from db_multitenant import get_db
@@ -232,7 +255,7 @@ class TestGetResults:
                 if not customer:
                     pytest.skip("No customers in test database")
 
-            full_key, _ = generate_customer_api_key(customer['id'], "Results Test")
+            full_key, _ = api_key_tracker(customer['id'], "Results Test")
 
             response = client.get('/api/v1/assessments/nonexistent-id/results', headers={
                 'X-API-Key': full_key
@@ -244,7 +267,7 @@ class TestGetResults:
 class TestListUnits:
     """Tests for GET /api/v1/units."""
 
-    def test_list_units_success(self, app, client):
+    def test_list_units_success(self, app, client, api_key_tracker):
         """Test listing units with valid API key."""
         with app.app_context():
             from db_multitenant import get_db
@@ -253,7 +276,7 @@ class TestListUnits:
                 if not customer:
                     pytest.skip("No customers in test database")
 
-            full_key, _ = generate_customer_api_key(customer['id'], "Units Test")
+            full_key, _ = api_key_tracker(customer['id'], "Units Test")
 
             response = client.get('/api/v1/units', headers={
                 'X-API-Key': full_key
@@ -264,7 +287,7 @@ class TestListUnits:
             assert 'data' in data
             assert 'meta' in data
 
-    def test_list_units_flat_mode(self, app, client):
+    def test_list_units_flat_mode(self, app, client, api_key_tracker):
         """Test flat mode for units."""
         with app.app_context():
             from db_multitenant import get_db
@@ -273,7 +296,7 @@ class TestListUnits:
                 if not customer:
                     pytest.skip("No customers in test database")
 
-            full_key, _ = generate_customer_api_key(customer['id'], "Flat Test")
+            full_key, _ = api_key_tracker(customer['id'], "Flat Test")
 
             response = client.get('/api/v1/units?flat=true', headers={
                 'X-API-Key': full_key
@@ -287,7 +310,7 @@ class TestListUnits:
 class TestCreateAssessment:
     """Tests for POST /api/v1/assessments."""
 
-    def test_create_assessment_requires_write_permission(self, app, client):
+    def test_create_assessment_requires_write_permission(self, app, client, api_key_tracker):
         """Test that creating assessment requires write permission."""
         with app.app_context():
             from db_multitenant import get_db
@@ -297,7 +320,7 @@ class TestCreateAssessment:
                     pytest.skip("No customers in test database")
 
             # Create key with read-only (default)
-            full_key, _ = generate_customer_api_key(customer['id'], "Read Only Key")
+            full_key, _ = api_key_tracker(customer['id'], "Read Only Key")
 
             response = client.post('/api/v1/assessments',
                 headers={'X-API-Key': full_key, 'Content-Type': 'application/json'},
@@ -308,7 +331,7 @@ class TestCreateAssessment:
             data = response.get_json()
             assert data['code'] == 'FORBIDDEN'
 
-    def test_create_assessment_validation(self, app, client):
+    def test_create_assessment_validation(self, app, client, api_key_tracker):
         """Test validation of required fields."""
         with app.app_context():
             from db_multitenant import get_db
@@ -318,7 +341,7 @@ class TestCreateAssessment:
                     pytest.skip("No customers in test database")
 
             # Create key with write permission
-            full_key, _ = generate_customer_api_key(
+            full_key, _ = api_key_tracker(
                 customer['id'],
                 "Write Key",
                 permissions={'read': True, 'write': True}
@@ -339,7 +362,7 @@ class TestCreateAssessment:
 class TestDataIsolation:
     """Tests to verify customers can only see their own data."""
 
-    def test_customer_cannot_see_other_customer_assessments(self, app, client):
+    def test_customer_cannot_see_other_customer_assessments(self, app, client, api_key_tracker):
         """Test that a customer's API key only shows their assessments."""
         with app.app_context():
             from db_multitenant import get_db
@@ -349,8 +372,8 @@ class TestDataIsolation:
                     pytest.skip("Need at least 2 customers for isolation test")
 
             # Create keys for both customers
-            key1, _ = generate_customer_api_key(customers[0]['id'], "Customer 1")
-            key2, _ = generate_customer_api_key(customers[1]['id'], "Customer 2")
+            key1, _ = api_key_tracker(customers[0]['id'], "Customer 1")
+            key2, _ = api_key_tracker(customers[1]['id'], "Customer 2")
 
             # Get assessments for each
             resp1 = client.get('/api/v1/assessments', headers={'X-API-Key': key1})

@@ -9,17 +9,24 @@ from contextlib import contextmanager
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 
-# Use persistent disk on Render, local file otherwise
-RENDER_DISK_PATH = "/var/data"
-if os.path.exists(RENDER_DISK_PATH):
-    DB_PATH = os.path.join(RENDER_DISK_PATH, "friktionskompas_v3.db")
-else:
-    DB_PATH = "friktionskompas_v3.db"
+# Use DB_PATH from environment, or persistent disk on Render, or local file
+def _get_db_path():
+    """Determine database path, respecting environment variable."""
+    if 'DB_PATH' in os.environ:
+        return os.environ['DB_PATH']
+    RENDER_DISK_PATH = "/var/data"
+    if os.path.exists(RENDER_DISK_PATH):
+        return os.path.join(RENDER_DISK_PATH, "friktionskompas_v3.db")
+    return "friktionskompas_v3.db"
+
+DB_PATH = _get_db_path()
 
 @contextmanager
 def get_db():
     """Context manager for database connection"""
-    conn = sqlite3.connect(DB_PATH, timeout=30.0)
+    # Check environment at runtime for test support
+    db_path = os.environ.get('DB_PATH', DB_PATH)
+    conn = sqlite3.connect(db_path, timeout=30.0)
     conn.row_factory = sqlite3.Row
     # Enable foreign keys for CASCADE DELETE to work
     conn.execute("PRAGMA foreign_keys=ON")
