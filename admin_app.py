@@ -5461,6 +5461,22 @@ def backup_restore():
     return redirect(url_for('backup_page'))
 
 
+# TEMPORARY: Fix user role endpoint - REMOVE AFTER USE
+@app.route('/admin/fix-user-role/<email>/<role>')
+@csrf.exempt
+@api_or_admin_required
+def fix_user_role(email, role):
+    """Temporary endpoint to fix user role. REMOVE AFTER USE."""
+    if role not in ['superadmin', 'admin', 'manager', 'viewer']:
+        return jsonify({'success': False, 'error': 'Invalid role'}), 400
+    db = get_db()
+    result = db.execute('UPDATE users SET role = ? WHERE email = ?', [role, email])
+    db.commit()
+    if result.rowcount > 0:
+        return jsonify({'success': True, 'message': f'Updated {email} to {role}'})
+    return jsonify({'success': False, 'error': f'User {email} not found'}), 404
+
+
 @app.route('/admin/restore-db-from-backup', methods=['GET', 'POST'])
 @csrf.exempt  # API uses X-Admin-API-Key header for auth
 @api_or_admin_required
