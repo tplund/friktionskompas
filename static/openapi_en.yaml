@@ -1,0 +1,678 @@
+openapi: 3.0.3
+info:
+  title: Friction Compass Customer API
+  description: |
+    REST API for enterprise customers to integrate with HR systems, Power BI, and other systems.
+
+    ## Authentication
+    All endpoints require an API key in the `X-API-Key` header.
+
+    API keys are created in the admin panel under **Settings → API Keys**.
+
+    ```bash
+    curl https://frictioncompass.com/api/v1/assessments \
+         -H "X-API-Key: fk_xxx_xxxx_your_secret_key"
+    ```
+
+    ## Permissions
+    - **Read**: All GET endpoints (default)
+    - **Write**: POST endpoints (must be enabled when creating the key)
+
+    ## Rate Limiting
+    - 100 requests per minute per API key
+    - HTTP 429 is returned when exceeded
+
+    ## Data Isolation
+    Each API key is linked to one customer and can only access that customer's data.
+
+  version: 1.0.0
+  contact:
+    name: Friction Compass Support
+    email: support@frictioncompass.com
+
+servers:
+  - url: https://frictioncompass.com
+    description: Production (English)
+  - url: https://friktionskompasset.dk
+    description: Production (Danish)
+
+tags:
+  - name: Assessments
+    description: Measurements and results
+  - name: Units
+    description: Organizational structure
+
+security:
+  - ApiKeyAuth: []
+
+paths:
+  /api/v1/assessments:
+    get:
+      tags:
+        - Assessments
+      summary: List assessments
+      description: |
+        Get a list of all assessments for your organization.
+
+        Results are paginated and sorted by creation date (newest first).
+      parameters:
+        - name: status
+          in: query
+          description: Filter by status
+          schema:
+            type: string
+            enum: [draft, sent, completed, scheduled]
+        - name: limit
+          in: query
+          description: Max number of results (default 50, max 100)
+          schema:
+            type: integer
+            default: 50
+            maximum: 100
+        - name: offset
+          in: query
+          description: Pagination offset
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: List of assessments
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AssessmentSummary'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+              example:
+                data:
+                  - id: "assess-abc123"
+                    name: "Team Friction Q1 2025"
+                    period: "2025 Q1"
+                    status: "completed"
+                    type: "gruppe_friktion"
+                    unit:
+                      id: "unit-xyz789"
+                      name: "Engineering"
+                      path: "Company//Engineering"
+                    tokens_sent: 25
+                    tokens_used: 22
+                    response_rate: 88.0
+                    include_leader: true
+                    created_at: "2025-01-15T10:30:00"
+                    sent_at: "2025-01-16T08:00:00"
+                meta:
+                  limit: 50
+                  offset: 0
+                  total: 12
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+    post:
+      tags:
+        - Assessments
+      summary: Create assessment
+      description: |
+        Create a new assessment.
+
+        **Requires write permission** on the API key.
+
+        The assessment is created with status `draft` and must be activated separately.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAssessmentRequest'
+            example:
+              name: "Team Friction Q2 2025"
+              period: "2025 Q2"
+              target_unit_id: "unit-xyz789"
+              type: "gruppe_friktion"
+              include_leader_assessment: true
+              min_responses: 5
+      responses:
+        '201':
+          description: Assessment created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AssessmentCreated'
+                  message:
+                    type: string
+              example:
+                data:
+                  id: "assess-new123"
+                  name: "Team Friction Q2 2025"
+                  period: "2025 Q2"
+                  target_unit_id: "unit-xyz789"
+                  status: "draft"
+                message: "Assessment created successfully"
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/assessments/{assessment_id}:
+    get:
+      tags:
+        - Assessments
+      summary: Get assessment details
+      description: Get detailed information about a specific assessment.
+      parameters:
+        - name: assessment_id
+          in: path
+          required: true
+          description: Assessment ID
+          schema:
+            type: string
+          example: "assess-abc123"
+      responses:
+        '200':
+          description: Assessment details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AssessmentDetail'
+              example:
+                data:
+                  id: "assess-abc123"
+                  name: "Team Friction Q1 2025"
+                  period: "2025 Q1"
+                  status: "completed"
+                  type: "gruppe_friktion"
+                  unit:
+                    id: "unit-xyz789"
+                    name: "Engineering"
+                    path: "Company//Engineering"
+                  settings:
+                    min_responses: 5
+                    mode: "anonymous"
+                    include_leader_assessment: true
+                    include_leader_self: false
+                  tokens:
+                    sent: 25
+                    used: 22
+                  response_count: 528
+                  created_at: "2025-01-15T10:30:00"
+                  sent_at: "2025-01-16T08:00:00"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/assessments/{assessment_id}/results:
+    get:
+      tags:
+        - Assessments
+      summary: Get assessment results
+      description: |
+        Get friction scores for an assessment.
+
+        Returns aggregated scores for the four dimensions:
+        - **TRYGHED** (Safety) - Psychological safety
+        - **MENING** (Meaning) - Sense of meaning in work
+        - **KAN** (Capacity) - Capacity and resources
+        - **BESVÆR** (Hassle) - Experience of bureaucracy and obstacles
+
+        Scores are on a scale of 1-5, where higher is better (except BESVÆR where lower is better).
+      parameters:
+        - name: assessment_id
+          in: path
+          required: true
+          description: Assessment ID
+          schema:
+            type: string
+        - name: include_units
+          in: query
+          description: Include per-unit breakdown
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Results with scores
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AssessmentResults'
+              example:
+                data:
+                  assessment:
+                    id: "assess-abc123"
+                    name: "Team Friction Q1 2025"
+                    period: "2025 Q1"
+                    unit_name: "Engineering"
+                  scores:
+                    TRYGHED:
+                      score: 3.85
+                      percent: 77.0
+                      severity: "LOW"
+                      response_count: 132
+                    MENING:
+                      score: 3.42
+                      percent: 68.4
+                      severity: "MEDIUM"
+                      response_count: 132
+                    KAN:
+                      score: 3.91
+                      percent: 78.2
+                      severity: "LOW"
+                      response_count: 132
+                    BESVÆR:
+                      score: 2.78
+                      percent: 55.6
+                      severity: "MEDIUM"
+                      response_count: 132
+                  response_count: 132
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/units:
+    get:
+      tags:
+        - Units
+      summary: Get organizational structure
+      description: |
+        Get the organizational structure for your customer.
+
+        Can be returned as:
+        - **Hierarchical** (default): Tree structure with `children` arrays
+        - **Flat**: List sorted by path
+      parameters:
+        - name: flat
+          in: query
+          description: Return flat list instead of hierarchy
+          schema:
+            type: boolean
+            default: false
+        - name: parent_id
+          in: query
+          description: Filter to children of a specific unit
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Organizational structure
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/OrganizationalUnit'
+                  meta:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                      mode:
+                        type: string
+                        enum: [flat, hierarchical]
+              example:
+                data:
+                  - id: "unit-root"
+                    name: "Company Inc"
+                    path: "Company Inc"
+                    level: 0
+                    parent_id: null
+                    leader:
+                      name: "HR Department"
+                      email: "hr@company.com"
+                    employee_count: 450
+                    child_count: 3
+                    children:
+                      - id: "unit-eng"
+                        name: "Engineering"
+                        path: "Company Inc//Engineering"
+                        level: 1
+                        parent_id: "unit-root"
+                        employee_count: 200
+                        child_count: 5
+                        children: []
+                meta:
+                  total: 15
+                  mode: "hierarchical"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: |
+        API key created in the admin panel.
+
+        Format: `fk_xxxxxxxx_xxxx_secret`
+
+  schemas:
+    AssessmentSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique assessment ID
+        name:
+          type: string
+          description: Assessment name
+        period:
+          type: string
+          description: Period (e.g., "2025 Q1")
+        status:
+          type: string
+          enum: [draft, sent, completed, scheduled]
+        type:
+          type: string
+          description: Assessment type
+        unit:
+          type: object
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+            path:
+              type: string
+        tokens_sent:
+          type: integer
+          description: Number of invitations sent
+        tokens_used:
+          type: integer
+          description: Number of responses
+        response_rate:
+          type: number
+          description: Response percentage
+        include_leader:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        sent_at:
+          type: string
+          format: date-time
+          nullable: true
+        scheduled_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    AssessmentDetail:
+      allOf:
+        - $ref: '#/components/schemas/AssessmentSummary'
+        - type: object
+          properties:
+            settings:
+              type: object
+              properties:
+                min_responses:
+                  type: integer
+                mode:
+                  type: string
+                include_leader_assessment:
+                  type: boolean
+                include_leader_self:
+                  type: boolean
+            tokens:
+              type: object
+              properties:
+                sent:
+                  type: integer
+                used:
+                  type: integer
+            response_count:
+              type: integer
+
+    AssessmentResults:
+      type: object
+      properties:
+        assessment:
+          type: object
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+            period:
+              type: string
+            unit_name:
+              type: string
+        scores:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/ScoreData'
+        response_count:
+          type: integer
+        unit_breakdown:
+          type: array
+          items:
+            $ref: '#/components/schemas/UnitScore'
+
+    ScoreData:
+      type: object
+      properties:
+        score:
+          type: number
+          description: Score on scale 1-5
+          nullable: true
+        percent:
+          type: number
+          description: Score as percentage (0-100)
+          nullable: true
+        severity:
+          type: string
+          enum: [LOW, MEDIUM, HIGH]
+          description: |
+            Severity level:
+            - HIGH: < 2.5 (critical)
+            - MEDIUM: 2.5-3.5 (attention required)
+            - LOW: > 3.5 (acceptable)
+          nullable: true
+        response_count:
+          type: integer
+
+    UnitScore:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        path:
+          type: string
+        tokens_sent:
+          type: integer
+        tokens_used:
+          type: integer
+        besvær_score:
+          type: number
+          nullable: true
+
+    OrganizationalUnit:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        path:
+          type: string
+          description: Full path with // as separator
+        level:
+          type: integer
+          description: Level in hierarchy (0 = root)
+        parent_id:
+          type: string
+          nullable: true
+        leader:
+          type: object
+          nullable: true
+          properties:
+            name:
+              type: string
+            email:
+              type: string
+        employee_count:
+          type: integer
+        sick_leave_percent:
+          type: number
+          nullable: true
+        child_count:
+          type: integer
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrganizationalUnit'
+        created_at:
+          type: string
+          format: date-time
+
+    CreateAssessmentRequest:
+      type: object
+      required:
+        - name
+        - period
+        - target_unit_id
+      properties:
+        name:
+          type: string
+          description: Assessment name
+        period:
+          type: string
+          description: Period (e.g., "2025 Q2")
+        target_unit_id:
+          type: string
+          description: Target unit ID
+        type:
+          type: string
+          description: Assessment type
+          default: "gruppe_friktion"
+        include_leader_assessment:
+          type: boolean
+          default: false
+        min_responses:
+          type: integer
+          default: 5
+
+    AssessmentCreated:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        period:
+          type: string
+        target_unit_id:
+          type: string
+        status:
+          type: string
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Human-readable error message
+        code:
+          type: string
+          description: Machine-readable error code
+        hint:
+          type: string
+          description: Help for resolving the problem
+
+    PaginationMeta:
+      type: object
+      properties:
+        limit:
+          type: integer
+        offset:
+          type: integer
+        total:
+          type: integer
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid API key
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            missing:
+              summary: Missing API key
+              value:
+                error: "API key required"
+                code: "AUTH_MISSING"
+                hint: "Include X-API-Key header with your API key"
+            invalid:
+              summary: Invalid API key
+              value:
+                error: "Invalid or inactive API key"
+                code: "AUTH_INVALID"
+
+    Forbidden:
+      description: Insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Write permission required"
+            code: "FORBIDDEN"
+            hint: "This API key only has read access"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Assessment not found"
+            code: "NOT_FOUND"
+
+    ValidationError:
+      description: Invalid input
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Missing required fields: period, target_unit_id"
+            code: "VALIDATION_ERROR"
+
+    RateLimited:
+      description: Too many requests
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Rate limit exceeded"
+            code: "RATE_LIMITED"
