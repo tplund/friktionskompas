@@ -2,6 +2,10 @@
 UI/UX tests using Playwright.
 Tests user interactions and visual flows.
 """
+import os
+# CRITICAL: Set env vars before ANY imports to disable rate limiting
+os.environ['RATELIMIT_ENABLED'] = 'false'
+
 import pytest
 import threading
 import time
@@ -138,14 +142,20 @@ class TestOrganisationTree:
             logged_in_page.wait_for_timeout(300)
 
     def test_tree_node_clickable(self, logged_in_page: Page, live_server):
-        """Test that tree nodes/rows can be clicked on dashboard."""
+        """Test that tree nodes/rows exist on dashboard (may be collapsed by default)."""
         logged_in_page.goto(f"{live_server}/admin")
 
-        # Dashboard v2 has clickable unit rows
+        # Dashboard v2 has unit rows - they may be collapsed by default
+        # Just verify the tree structure exists in the DOM
         unit_rows = logged_in_page.locator('.unit-row')
-        if unit_rows.count() > 0:
-            # Just verify units are present
-            expect(unit_rows.first).to_be_visible()
+        # Tree should have at least some unit rows (even if collapsed/hidden)
+        row_count = unit_rows.count()
+        assert row_count > 0, "Expected tree to have unit rows"
+
+        # Verify customer/root level is visible (expandable headers)
+        customer_headers = logged_in_page.locator('.customer-name, .tree-header, [data-level="0"]')
+        if customer_headers.count() > 0:
+            expect(customer_headers.first).to_be_visible()
 
 
 class TestAssessmentOverview:

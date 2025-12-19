@@ -322,9 +322,20 @@ def init_multitenant_db():
                 is_active INTEGER DEFAULT 1,
                 sequence INTEGER DEFAULT 0,
                 icon TEXT,
+                storage_mode TEXT DEFAULT 'server' CHECK(storage_mode IN ('local', 'server', 'both')),
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+
+        # Migration: Tilføj storage_mode kolonne til assessment_types hvis den ikke findes
+        at_columns = conn.execute("PRAGMA table_info(assessment_types)").fetchall()
+        at_column_names = [col['name'] for col in at_columns]
+
+        if 'storage_mode' not in at_column_names:
+            conn.execute("""
+                ALTER TABLE assessment_types ADD COLUMN storage_mode TEXT DEFAULT 'server'
+            """)
+            print("[Migration] assessment_types.storage_mode tilføjet!")
 
         # Customer assessment types - hvilke typer er tilgængelige per kunde
         conn.execute("""
@@ -966,7 +977,8 @@ INITIAL_ASSESSMENT_TYPES = [
         'duration_minutes': 2,
         'is_individual': 1,
         'sequence': 1,
-        'icon': '⚡'
+        'icon': '⚡',
+        'storage_mode': 'local'  # B2C - data stays in browser
     },
     {
         'id': 'profil_fuld',
@@ -978,7 +990,8 @@ INITIAL_ASSESSMENT_TYPES = [
         'duration_minutes': 15,
         'is_individual': 1,
         'sequence': 2,
-        'icon': '🧠'
+        'icon': '🧠',
+        'storage_mode': 'local'  # B2C - data stays in browser
     },
     {
         'id': 'profil_situation',
@@ -990,7 +1003,8 @@ INITIAL_ASSESSMENT_TYPES = [
         'duration_minutes': 15,
         'is_individual': 1,
         'sequence': 3,
-        'icon': '🎯'
+        'icon': '🎯',
+        'storage_mode': 'local'  # B2C - data stays in browser
     },
     {
         'id': 'gruppe_friktion',
@@ -1002,7 +1016,8 @@ INITIAL_ASSESSMENT_TYPES = [
         'duration_minutes': 10,
         'is_individual': 0,
         'sequence': 4,
-        'icon': '👥'
+        'icon': '👥',
+        'storage_mode': 'server'  # B2B - data stored on server
     },
     {
         'id': 'gruppe_leder',
@@ -1014,7 +1029,8 @@ INITIAL_ASSESSMENT_TYPES = [
         'duration_minutes': 12,
         'is_individual': 0,
         'sequence': 5,
-        'icon': '👔'
+        'icon': '👔',
+        'storage_mode': 'server'  # B2B - data stored on server
     },
     {
         'id': 'kapacitet',
@@ -1026,7 +1042,8 @@ INITIAL_ASSESSMENT_TYPES = [
         'duration_minutes': 4,
         'is_individual': 1,
         'sequence': 6,
-        'icon': '💪'
+        'icon': '💪',
+        'storage_mode': 'local'  # B2C - data stays in browser
     },
     {
         'id': 'baandbredde',
@@ -1038,7 +1055,8 @@ INITIAL_ASSESSMENT_TYPES = [
         'duration_minutes': 1,
         'is_individual': 1,
         'sequence': 7,
-        'icon': '📊'
+        'icon': '📊',
+        'storage_mode': 'server'  # B2B - data stored on server
     }
 ]
 
@@ -1079,12 +1097,17 @@ def seed_assessment_types():
                 conn.execute("""
                     INSERT INTO assessment_types
                     (id, name_da, name_en, description_da, description_en,
-                     question_count, duration_minutes, is_individual, sequence, icon)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     question_count, duration_minutes, is_individual, sequence, icon, storage_mode)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (at['id'], at['name_da'], at['name_en'], at['description_da'],
                       at['description_en'], at['question_count'], at['duration_minutes'],
-                      at['is_individual'], at['sequence'], at['icon']))
+                      at['is_individual'], at['sequence'], at['icon'], at.get('storage_mode', 'server')))
                 print(f"  Tilføjet assessment type: {at['id']}")
+            else:
+                # Update storage_mode if column exists
+                conn.execute("""
+                    UPDATE assessment_types SET storage_mode = ? WHERE id = ?
+                """, (at.get('storage_mode', 'server'), at['id']))
 
         # Seed presets
         for preset in INITIAL_PRESETS:
@@ -1140,7 +1163,7 @@ def get_available_assessments(customer_id: str = None, domain_id: str = None, la
             domain_types = conn.execute(f'''
                 SELECT at.id, at.{name_col} as name, at.{desc_col} as description,
                        at.question_count, at.duration_minutes, at.is_individual,
-                       at.icon, at.sequence
+                       at.icon, at.sequence, at.storage_mode
                 FROM assessment_types at
                 JOIN domain_assessment_types dat ON at.id = dat.assessment_type_id
                 WHERE dat.domain_id = ? AND dat.is_enabled = 1 AND at.is_active = 1
@@ -1156,7 +1179,7 @@ def get_available_assessments(customer_id: str = None, domain_id: str = None, la
                        COALESCE(cat.custom_name_da, at.{name_col}) as name,
                        at.{desc_col} as description,
                        at.question_count, at.duration_minutes, at.is_individual,
-                       at.icon, at.sequence
+                       at.icon, at.sequence, at.storage_mode
                 FROM assessment_types at
                 JOIN customer_assessment_types cat ON at.id = cat.assessment_type_id
                 WHERE cat.customer_id = ? AND cat.is_enabled = 1 AND at.is_active = 1
@@ -1169,7 +1192,7 @@ def get_available_assessments(customer_id: str = None, domain_id: str = None, la
         default_types = conn.execute(f'''
             SELECT at.id, at.{name_col} as name, at.{desc_col} as description,
                    at.question_count, at.duration_minutes, at.is_individual,
-                   at.icon, at.sequence
+                   at.icon, at.sequence, at.storage_mode
             FROM assessment_types at
             JOIN preset_assessment_types pat ON at.id = pat.assessment_type_id
             JOIN assessment_presets ap ON pat.preset_id = ap.id
@@ -1182,7 +1205,7 @@ def get_available_assessments(customer_id: str = None, domain_id: str = None, la
         # Fallback: all active types
         all_types = conn.execute(f'''
             SELECT id, {name_col} as name, {desc_col} as description,
-                   question_count, duration_minutes, is_individual, icon, sequence
+                   question_count, duration_minutes, is_individual, icon, sequence, storage_mode
             FROM assessment_types WHERE is_active = 1
             ORDER BY sequence
         ''').fetchall()
@@ -1199,7 +1222,7 @@ def get_all_assessment_types(lang: str = 'da') -> list:
             SELECT id, name_da, name_en, {name_col} as name,
                    description_da, description_en, {desc_col} as description,
                    question_count, duration_minutes, is_individual, is_active,
-                   icon, sequence
+                   icon, sequence, storage_mode
             FROM assessment_types
             ORDER BY sequence
         ''').fetchall()

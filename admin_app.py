@@ -119,11 +119,15 @@ csrf = CSRFProtect(app)
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
+# Disable rate limiting in tests (env set in conftest.py)
+_ratelimit_enabled = os.environ.get('RATELIMIT_ENABLED', 'true').lower() != 'false'
+
 limiter = Limiter(
     key_func=get_remote_address,
     app=app,
     default_limits=["200 per day", "50 per hour"],
     storage_uri="memory://",  # In-memory storage (reset on restart)
+    enabled=_ratelimit_enabled,
 )
 
 # CSRF error handler

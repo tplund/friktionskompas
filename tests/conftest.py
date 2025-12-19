@@ -1,9 +1,14 @@
 """
 Pytest fixtures for Friktionskompasset tests.
 """
+import os
+
+# CRITICAL: Disable rate limiting BEFORE any other imports
+# This must be set before admin_app is imported anywhere
+os.environ['RATELIMIT_ENABLED'] = 'false'
+
 import pytest
 import tempfile
-import os
 import sys
 import sqlite3
 
@@ -181,6 +186,7 @@ def app():
 
     # Set environment BEFORE importing app
     os.environ['DB_PATH'] = db_path
+    os.environ['RATELIMIT_ENABLED'] = 'false'  # Disable rate limiting in tests
 
     # Initialize the test database with schema BEFORE importing app
     _init_test_db(db_path)
