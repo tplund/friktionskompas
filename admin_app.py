@@ -5467,13 +5467,14 @@ def backup_restore():
 @api_or_admin_required
 def fix_user_role(email, role):
     """Temporary endpoint to fix user role. REMOVE AFTER USE."""
+    from db_hierarchical import get_db
     if role not in ['superadmin', 'admin', 'manager', 'viewer']:
         return jsonify({'success': False, 'error': 'Invalid role'}), 400
-    db = get_db()
-    result = db.execute('UPDATE users SET role = ? WHERE email = ?', [role, email])
-    db.commit()
-    if result.rowcount > 0:
-        return jsonify({'success': True, 'message': f'Updated {email} to {role}'})
+    with get_db() as conn:
+        result = conn.execute('UPDATE users SET role = ? WHERE email = ?', [role, email])
+        conn.commit()
+        if result.rowcount > 0:
+            return jsonify({'success': True, 'message': f'Updated {email} to {role}'})
     return jsonify({'success': False, 'error': f'User {email} not found'}), 404
 
 
@@ -5491,10 +5492,13 @@ def export_db_backup():
     python -c "import base64; open('friktionskompas_v3.db','wb').write(base64.b64decode(open('db_from_render.b64').read()))"
     """
     import base64
-    db_path = app.config.get('DB_PATH', DB_PATH)
+    from db_hierarchical import DB_PATH as HIER_DB_PATH
+
+    # Use the actual DB path from environment or default
+    db_path = os.environ.get('DB_PATH', HIER_DB_PATH)
 
     if not os.path.exists(db_path):
-        return jsonify({'success': False, 'error': 'Database not found'}), 404
+        return jsonify({'success': False, 'error': f'Database not found at {db_path}'}), 404
 
     with open(db_path, 'rb') as f:
         db_bytes = f.read()
