@@ -379,6 +379,82 @@ def is_role_simulated():
     return user.get('role') == 'superadmin' and 'simulated_role' in session
 
 
+# ========================================
+# CUSTOMER API AUTHENTICATION
+# ========================================
+
+def customer_api_required(f):
+    """
+    Decorator for Customer API endpoints.
+
+    Validates X-API-Key header and sets:
+    - g.api_customer_id: The customer's ID
+    - g.api_permissions: Dict with read/write permissions
+    - g.api_rate_limit: Rate limit for this key
+
+    Usage:
+        @app.route('/api/v1/assessments')
+        @csrf.exempt
+        @customer_api_required
+        def api_v1_assessments():
+            customer_id = g.api_customer_id
+            ...
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        from db_multitenant import validate_customer_api_key
+
+        api_key = request.headers.get('X-API-Key')
+        if not api_key:
+            return jsonify({
+                'error': 'API key required',
+                'code': 'AUTH_MISSING',
+                'hint': 'Include X-API-Key header with your API key'
+            }), 401
+
+        auth = validate_customer_api_key(api_key)
+        if not auth:
+            return jsonify({
+                'error': 'Invalid or inactive API key',
+                'code': 'AUTH_INVALID'
+            }), 401
+
+        # Store auth info in Flask g object for endpoint use
+        g.api_customer_id = auth['customer_id']
+        g.api_customer_name = auth['customer_name']
+        g.api_permissions = auth['permissions']
+        g.api_rate_limit = auth['rate_limit']
+        g.api_key_name = auth['key_name']
+
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+def customer_api_write_required(f):
+    """
+    Decorator that requires write permission.
+    Must be used AFTER @customer_api_required.
+
+    Usage:
+        @app.route('/api/v1/assessments', methods=['POST'])
+        @csrf.exempt
+        @customer_api_required
+        @customer_api_write_required
+        def create_assessment():
+            ...
+    """
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not g.get('api_permissions', {}).get('write', False):
+            return jsonify({
+                'error': 'Write permission required',
+                'code': 'FORBIDDEN',
+                'hint': 'This API key only has read access'
+            }), 403
+        return f(*args, **kwargs)
+    return decorated_function
+
+
 @app.route('/')
 def index():
     """Root route - show landing page or redirect to admin if logged in"""
@@ -446,6 +522,438 @@ def api_admin_clear_cache():
     clear_translation_cache()
     invalidate_all()
     return jsonify({'success': True, 'message': 'All caches cleared'})
+
+
+# ========================================
+# CUSTOMER API v1 - REST API for Enterprise
+# ========================================
+
+@app.route('/api/v1/assessments', methods=['GET'])
+@csrf.exempt
+@customer_api_required
+def api_v1_list_assessments():
+    """
+    List assessments for customer.
+
+    Query params:
+        - status: Filter by status (sent, completed, scheduled)
+        - limit: Max results (default 50, max 100)
+        - offset: Pagination offset
+
+    API Usage:
+        curl https://friktionskompasset.dk/api/v1/assessments \
+             -H "X-API-Key: YOUR_KEY"
+
+    Returns:
+        {
+            "data": [...],
+            "meta": {"limit": 50, "offset": 0, "total": 123}
+        }
+    """
+    from db_hierarchical import get_db
+
+    customer_id = g.api_customer_id
+
+    # Parse query params
+    status_filter = request.args.get('status')
+    try:
+        limit = min(int(request.args.get('limit', 50)), 100)
+        offset = int(request.args.get('offset', 0))
+    except ValueError:
+        return jsonify({'error': 'Invalid limit or offset', 'code': 'VALIDATION_ERROR'}), 400
+
+    with get_db() as conn:
+        # Build status filter
+        status_clause = ""
+        params = [customer_id]
+        if status_filter:
+            status_clause = "AND a.status = ?"
+            params.append(status_filter)
+
+        # Get total count
+        total = conn.execute(f"""
+            SELECT COUNT(*) as cnt FROM assessments a
+            JOIN organizational_units ou ON a.target_unit_id = ou.id
+            WHERE ou.customer_id = ? {status_clause}
+        """, params).fetchone()['cnt']
+
+        # Get assessments with stats
+        assessments = conn.execute(f"""
+            SELECT a.id, a.name, a.period, a.status, a.assessment_type_id,
+                   a.created_at, a.sent_at, a.scheduled_at,
+                   ou.id as unit_id, ou.name as unit_name, ou.full_path,
+                   a.include_leader_assessment,
+                   COUNT(DISTINCT t.token) as tokens_sent,
+                   COUNT(DISTINCT CASE WHEN t.is_used = 1 THEN t.token END) as tokens_used
+            FROM assessments a
+            JOIN organizational_units ou ON a.target_unit_id = ou.id
+            LEFT JOIN tokens t ON t.assessment_id = a.id
+            WHERE ou.customer_id = ? {status_clause}
+            GROUP BY a.id
+            ORDER BY a.created_at DESC
+            LIMIT ? OFFSET ?
+        """, params + [limit, offset]).fetchall()
+
+        data = []
+        for a in assessments:
+            data.append({
+                'id': a['id'],
+                'name': a['name'],
+                'period': a['period'],
+                'status': a['status'],
+                'type': a['assessment_type_id'],
+                'unit': {
+                    'id': a['unit_id'],
+                    'name': a['unit_name'],
+                    'path': a['full_path']
+                },
+                'tokens_sent': a['tokens_sent'],
+                'tokens_used': a['tokens_used'],
+                'response_rate': round(a['tokens_used'] / a['tokens_sent'] * 100, 1) if a['tokens_sent'] > 0 else 0,
+                'include_leader': bool(a['include_leader_assessment']),
+                'created_at': a['created_at'],
+                'sent_at': a['sent_at'],
+                'scheduled_at': a['scheduled_at']
+            })
+
+    return jsonify({
+        'data': data,
+        'meta': {
+            'limit': limit,
+            'offset': offset,
+            'total': total
+        }
+    })
+
+
+@app.route('/api/v1/assessments/<assessment_id>', methods=['GET'])
+@csrf.exempt
+@customer_api_required
+def api_v1_get_assessment(assessment_id):
+    """
+    Get single assessment details.
+
+    API Usage:
+        curl https://friktionskompasset.dk/api/v1/assessments/assess-xxx \
+             -H "X-API-Key: YOUR_KEY"
+    """
+    from db_hierarchical import get_db
+
+    customer_id = g.api_customer_id
+
+    with get_db() as conn:
+        # Get assessment with access check
+        assessment = conn.execute("""
+            SELECT a.*, ou.name as unit_name, ou.full_path, ou.customer_id
+            FROM assessments a
+            JOIN organizational_units ou ON a.target_unit_id = ou.id
+            WHERE a.id = ? AND ou.customer_id = ?
+        """, (assessment_id, customer_id)).fetchone()
+
+        if not assessment:
+            return jsonify({'error': 'Assessment not found', 'code': 'NOT_FOUND'}), 404
+
+        # Get token stats
+        token_stats = conn.execute("""
+            SELECT
+                COUNT(*) as total,
+                SUM(CASE WHEN is_used = 1 THEN 1 ELSE 0 END) as used
+            FROM tokens WHERE assessment_id = ?
+        """, (assessment_id,)).fetchone()
+
+        # Get response count
+        response_count = conn.execute("""
+            SELECT COUNT(DISTINCT id) as cnt FROM responses WHERE assessment_id = ?
+        """, (assessment_id,)).fetchone()['cnt']
+
+    return jsonify({
+        'data': {
+            'id': assessment['id'],
+            'name': assessment['name'],
+            'period': assessment['period'],
+            'status': assessment['status'],
+            'type': assessment['assessment_type_id'],
+            'unit': {
+                'id': assessment['target_unit_id'],
+                'name': assessment['unit_name'],
+                'path': assessment['full_path']
+            },
+            'settings': {
+                'min_responses': assessment['min_responses'],
+                'mode': assessment['mode'],
+                'include_leader_assessment': bool(assessment['include_leader_assessment']),
+                'include_leader_self': bool(assessment['include_leader_self'])
+            },
+            'tokens': {
+                'sent': token_stats['total'] or 0,
+                'used': token_stats['used'] or 0
+            },
+            'response_count': response_count,
+            'created_at': assessment['created_at'],
+            'sent_at': assessment['sent_at'],
+            'scheduled_at': assessment['scheduled_at']
+        }
+    })
+
+
+@app.route('/api/v1/assessments/<assessment_id>/results', methods=['GET'])
+@csrf.exempt
+@customer_api_required
+def api_v1_get_assessment_results(assessment_id):
+    """
+    Get assessment results with friction scores.
+
+    Query params:
+        - include_units: Include per-unit breakdown (default false)
+
+    API Usage:
+        curl https://friktionskompasset.dk/api/v1/assessments/assess-xxx/results \
+             -H "X-API-Key: YOUR_KEY"
+
+    Returns:
+        {
+            "data": {
+                "assessment": {...},
+                "scores": {
+                    "TRYGHED": {"score": 3.5, "percent": 70.0, "severity": "LOW"},
+                    ...
+                },
+                "response_count": 45,
+                "unit_breakdown": [...] // if include_units=true
+            }
+        }
+    """
+    from db_hierarchical import get_db, get_unit_stats
+    from friction_engine import score_to_percent, get_severity, Severity
+
+    customer_id = g.api_customer_id
+    include_units = request.args.get('include_units', 'false').lower() == 'true'
+
+    with get_db() as conn:
+        # Verify access
+        assessment = conn.execute("""
+            SELECT a.*, ou.name as unit_name, ou.full_path, ou.customer_id
+            FROM assessments a
+            JOIN organizational_units ou ON a.target_unit_id = ou.id
+            WHERE a.id = ? AND ou.customer_id = ?
+        """, (assessment_id, customer_id)).fetchone()
+
+        if not assessment:
+            return jsonify({'error': 'Assessment not found', 'code': 'NOT_FOUND'}), 404
+
+        # Get aggregated scores
+        stats = get_unit_stats(assessment['target_unit_id'], assessment_id, include_children=True)
+
+        # Build scores response
+        scores = {}
+        response_count = 0
+        for field in ['TRYGHED', 'MENING', 'KAN', 'BESVÆR']:
+            field_data = next((s for s in stats if s['field'] == field), None)
+            if field_data:
+                score = field_data['avg_score']
+                severity = get_severity(score)
+                scores[field] = {
+                    'score': round(score, 2) if score else None,
+                    'percent': score_to_percent(score) if score else None,
+                    'severity': severity.name if score else None,
+                    'response_count': field_data['response_count']
+                }
+                response_count = max(response_count, field_data['response_count'])
+            else:
+                scores[field] = {'score': None, 'percent': None, 'severity': None, 'response_count': 0}
+
+        result = {
+            'assessment': {
+                'id': assessment['id'],
+                'name': assessment['name'],
+                'period': assessment['period'],
+                'unit_name': assessment['unit_name']
+            },
+            'scores': scores,
+            'response_count': response_count
+        }
+
+        # Optionally include per-unit breakdown
+        if include_units:
+            from db_hierarchical import get_assessment_overview
+            unit_overview = get_assessment_overview(assessment_id)
+            result['unit_breakdown'] = [
+                {
+                    'id': u['id'],
+                    'name': u['name'],
+                    'path': u['full_path'],
+                    'tokens_sent': u['tokens_sent'],
+                    'tokens_used': u['tokens_used'],
+                    'besvær_score': round(u['besvær_score'], 2) if u['besvær_score'] else None
+                }
+                for u in unit_overview
+            ]
+
+    return jsonify({'data': result})
+
+
+@app.route('/api/v1/units', methods=['GET'])
+@csrf.exempt
+@customer_api_required
+def api_v1_list_units():
+    """
+    Get organizational structure for customer.
+
+    Query params:
+        - flat: Return flat list (default false = hierarchical)
+        - parent_id: Filter by parent unit
+
+    API Usage:
+        curl https://friktionskompasset.dk/api/v1/units \
+             -H "X-API-Key: YOUR_KEY"
+    """
+    from db_hierarchical import get_db
+
+    customer_id = g.api_customer_id
+    flat_mode = request.args.get('flat', 'false').lower() == 'true'
+    parent_id = request.args.get('parent_id')
+
+    with get_db() as conn:
+        # Build filter
+        where_clause = "ou.customer_id = ?"
+        params = [customer_id]
+
+        if parent_id:
+            where_clause += " AND ou.parent_id = ?"
+            params.append(parent_id)
+
+        units = conn.execute(f"""
+            SELECT ou.id, ou.name, ou.full_path, ou.level, ou.parent_id,
+                   ou.leader_name, ou.leader_email, ou.employee_count,
+                   ou.sick_leave_percent, ou.created_at,
+                   (SELECT COUNT(*) FROM organizational_units sub WHERE sub.parent_id = ou.id) as child_count
+            FROM organizational_units ou
+            WHERE {where_clause}
+            ORDER BY ou.full_path
+        """, params).fetchall()
+
+        data = []
+        for u in units:
+            data.append({
+                'id': u['id'],
+                'name': u['name'],
+                'path': u['full_path'],
+                'level': u['level'],
+                'parent_id': u['parent_id'],
+                'leader': {
+                    'name': u['leader_name'],
+                    'email': u['leader_email']
+                } if u['leader_name'] else None,
+                'employee_count': u['employee_count'],
+                'sick_leave_percent': u['sick_leave_percent'],
+                'child_count': u['child_count'],
+                'created_at': u['created_at']
+            })
+
+        # Build hierarchical structure if not flat mode
+        if not flat_mode and not parent_id:
+            # Build tree from flat list
+            units_by_id = {u['id']: u for u in data}
+            roots = []
+            for u in data:
+                u['children'] = []
+            for u in data:
+                if u['parent_id'] and u['parent_id'] in units_by_id:
+                    units_by_id[u['parent_id']]['children'].append(u)
+                else:
+                    roots.append(u)
+            data = roots
+
+    return jsonify({
+        'data': data,
+        'meta': {
+            'total': len(units) if flat_mode else len(data),
+            'mode': 'flat' if flat_mode else 'hierarchical'
+        }
+    })
+
+
+@app.route('/api/v1/assessments', methods=['POST'])
+@csrf.exempt
+@customer_api_required
+@customer_api_write_required
+def api_v1_create_assessment():
+    """
+    Create a new assessment.
+
+    Request body (JSON):
+        {
+            "name": "Q1 2025 Måling",
+            "period": "2025 Q1",
+            "target_unit_id": "unit-xxx",
+            "type": "gruppe_friktion",  // optional, default: gruppe_friktion
+            "include_leader_assessment": false,  // optional
+            "min_responses": 5  // optional
+        }
+
+    API Usage:
+        curl -X POST https://friktionskompasset.dk/api/v1/assessments \
+             -H "X-API-Key: YOUR_KEY" \
+             -H "Content-Type: application/json" \
+             -d '{"name": "Q1 2025", "period": "2025 Q1", "target_unit_id": "unit-xxx"}'
+    """
+    from db_hierarchical import get_db
+
+    customer_id = g.api_customer_id
+    data = request.get_json()
+
+    if not data:
+        return jsonify({'error': 'JSON body required', 'code': 'VALIDATION_ERROR'}), 400
+
+    # Validate required fields
+    required = ['name', 'period', 'target_unit_id']
+    missing = [f for f in required if not data.get(f)]
+    if missing:
+        return jsonify({
+            'error': f'Missing required fields: {", ".join(missing)}',
+            'code': 'VALIDATION_ERROR'
+        }), 400
+
+    with get_db() as conn:
+        # Verify target_unit belongs to customer
+        unit = conn.execute("""
+            SELECT id, name FROM organizational_units
+            WHERE id = ? AND customer_id = ?
+        """, (data['target_unit_id'], customer_id)).fetchone()
+
+        if not unit:
+            return jsonify({
+                'error': 'Target unit not found or not accessible',
+                'code': 'NOT_FOUND'
+            }), 404
+
+        # Create assessment
+        assessment_id = f"assess-{secrets.token_urlsafe(8)}"
+
+        conn.execute("""
+            INSERT INTO assessments (id, name, period, target_unit_id, assessment_type_id,
+                                    include_leader_assessment, min_responses, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'draft')
+        """, (
+            assessment_id,
+            data['name'],
+            data['period'],
+            data['target_unit_id'],
+            data.get('type', 'gruppe_friktion'),
+            1 if data.get('include_leader_assessment') else 0,
+            data.get('min_responses', 5)
+        ))
+
+    return jsonify({
+        'data': {
+            'id': assessment_id,
+            'name': data['name'],
+            'period': data['period'],
+            'target_unit_id': data['target_unit_id'],
+            'status': 'draft'
+        },
+        'message': 'Assessment created successfully'
+    }), 201
 
 
 @app.route('/sitemap.xml')
@@ -3179,6 +3687,113 @@ def delete_domain_route(domain_id):
     delete_domain(domain_id)
     flash('Domain slettet!', 'success')
     return redirect(url_for('manage_domains'))
+
+
+# ========================================
+# API KEY MANAGEMENT (Admin UI)
+# ========================================
+
+@app.route('/admin/api-keys')
+@admin_required
+def admin_api_keys():
+    """API Key management page"""
+    from db_multitenant import list_customer_api_keys, list_customers, get_customer
+
+    user = get_current_user()
+    new_key = request.args.get('new_key')
+
+    # Determine which customer(s) to show keys for
+    if user['role'] == 'superadmin':
+        customer_filter = session.get('customer_filter')
+        if customer_filter:
+            customer = get_customer(customer_filter)
+            api_keys = list_customer_api_keys(customer_filter)
+            customers = None
+        else:
+            # Show all customers' keys
+            customer = None
+            customers = list_customers()
+            api_keys = []
+            for c in customers:
+                keys = list_customer_api_keys(c['id'])
+                for k in keys:
+                    k['customer_name'] = c['name']
+                api_keys.extend(keys)
+    else:
+        # Admin/manager sees only their customer
+        customer = get_customer(user['customer_id'])
+        api_keys = list_customer_api_keys(user['customer_id'])
+        customers = None
+
+    return render_template('admin/api_keys.html',
+                         api_keys=api_keys,
+                         customer=customer,
+                         customers=customers,
+                         new_key=new_key)
+
+
+@app.route('/admin/api-keys', methods=['POST'])
+@admin_required
+def admin_create_api_key():
+    """Create new API key"""
+    from db_multitenant import generate_customer_api_key, get_customer
+
+    user = get_current_user()
+
+    # Get customer_id from form or user's customer
+    customer_id = request.form.get('customer_id')
+    if not customer_id:
+        customer_id = user.get('customer_id')
+
+    # Verify access - superadmin can create for any, others only for their customer
+    if user['role'] != 'superadmin' and customer_id != user.get('customer_id'):
+        flash('Du kan kun oprette API-nøgler for din egen kunde', 'error')
+        return redirect(url_for('admin_api_keys'))
+
+    if not customer_id:
+        flash('Vælg en kunde', 'error')
+        return redirect(url_for('admin_api_keys'))
+
+    # Get form data
+    name = request.form.get('name', 'API Key').strip()
+    permissions = {
+        'read': True,
+        'write': 'perm_write' in request.form
+    }
+
+    # Generate key
+    full_key, key_id = generate_customer_api_key(customer_id, name, permissions)
+
+    flash('API-nøgle oprettet! Kopier nøglen nu - den vises kun denne ene gang.', 'success')
+    return redirect(url_for('admin_api_keys', new_key=full_key))
+
+
+@app.route('/admin/api-keys/<int:key_id>/revoke', methods=['POST'])
+@admin_required
+def admin_revoke_api_key(key_id):
+    """Revoke (deactivate) an API key"""
+    from db_multitenant import revoke_customer_api_key
+
+    if revoke_customer_api_key(key_id):
+        flash('API-nøgle deaktiveret', 'success')
+    else:
+        flash('Kunne ikke deaktivere nøglen', 'error')
+
+    return redirect(url_for('admin_api_keys'))
+
+
+@app.route('/admin/api-keys/<int:key_id>/delete', methods=['POST'])
+@admin_required
+def admin_delete_api_key(key_id):
+    """Permanently delete an API key"""
+    from db_multitenant import delete_customer_api_key
+
+    if delete_customer_api_key(key_id):
+        flash('API-nøgle slettet permanent', 'success')
+    else:
+        flash('Kunne ikke slette nøglen', 'error')
+
+    return redirect(url_for('admin_api_keys'))
 
 
 @app.route('/admin/customer/new', methods=['POST'])

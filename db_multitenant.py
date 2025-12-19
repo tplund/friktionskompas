@@ -87,6 +87,35 @@ def init_multitenant_db():
             ON translations(key, language)
         """)
 
+        # Customer API Keys tabel for REST API access
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS customer_api_keys (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                customer_id TEXT NOT NULL,
+                key_hash TEXT NOT NULL,
+                key_prefix TEXT NOT NULL UNIQUE,
+                name TEXT DEFAULT 'API Key',
+                permissions TEXT DEFAULT '{"read": true, "write": false}',
+                rate_limit INTEGER DEFAULT 100,
+                is_active INTEGER DEFAULT 1,
+                last_used_at TIMESTAMP,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+            )
+        """)
+
+        # Index for fast API key lookup by prefix
+        conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_api_keys_prefix
+            ON customer_api_keys(key_prefix)
+        """)
+
+        # Index for listing keys by customer
+        conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_api_keys_customer
+            ON customer_api_keys(customer_id)
+        """)
+
         # Domains tabel for multi-domain support
         conn.execute("""
             CREATE TABLE IF NOT EXISTS domains (
@@ -412,6 +441,168 @@ def verify_password(password: str, password_hash: str) -> bool:
     except (ValueError, AttributeError):
         # Håndter forkert format gracefully
         return False
+
+
+# ========================================
+# CUSTOMER API KEY FUNCTIONS
+# ========================================
+
+def generate_customer_api_key(customer_id: str, name: str = None, permissions: dict = None) -> tuple:
+    """
+    Generér ny API key for kunde.
+
+    Args:
+        customer_id: Kunde ID
+        name: Valgfrit navn til key (f.eks. "Production", "Testing")
+        permissions: Dict med permissions {"read": true, "write": false}
+
+    Returns:
+        (full_key, key_id) - full_key vises KUN én gang!
+    """
+    import json
+
+    # Generate key parts - include unique suffix in prefix for multiple keys per customer
+    customer_short = customer_id.replace('cust-', '')[:8]
+    key_suffix = secrets.token_urlsafe(4)[:4]  # Short unique suffix for prefix
+    random_secret = secrets.token_urlsafe(24)
+    full_key = f"fk_{customer_short}_{key_suffix}_{random_secret}"
+    key_prefix = f"fk_{customer_short}_{key_suffix}"  # Unique per key, not per customer
+
+    # Hash the full key for storage
+    key_hash = hash_password(full_key)
+
+    # Default permissions
+    if permissions is None:
+        permissions = {"read": True, "write": False}
+
+    with get_db() as conn:
+        cursor = conn.execute("""
+            INSERT INTO customer_api_keys (customer_id, key_hash, key_prefix, name, permissions)
+            VALUES (?, ?, ?, ?, ?)
+        """, (customer_id, key_hash, key_prefix, name or 'API Key', json.dumps(permissions)))
+
+        key_id = cursor.lastrowid
+
+    return (full_key, key_id)
+
+
+def validate_customer_api_key(api_key: str) -> Optional[Dict]:
+    """
+    Validér API key og returner customer info.
+
+    Args:
+        api_key: Den fulde API key fra request header
+
+    Returns:
+        Dict med customer_id, customer_name, permissions - eller None hvis ugyldig
+    """
+    import json
+
+    if not api_key or not api_key.startswith('fk_'):
+        return None
+
+    # Extract prefix (first three parts: fk_abc12345_wxyz)
+    parts = api_key.split('_')
+    if len(parts) < 4:
+        return None
+
+    key_prefix = f"{parts[0]}_{parts[1]}_{parts[2]}"
+
+    with get_db() as conn:
+        # Find key by prefix
+        row = conn.execute("""
+            SELECT cak.*, c.name as customer_name
+            FROM customer_api_keys cak
+            JOIN customers c ON cak.customer_id = c.id
+            WHERE cak.key_prefix = ? AND cak.is_active = 1 AND c.is_active = 1
+        """, (key_prefix,)).fetchone()
+
+        if not row:
+            return None
+
+        # Verify bcrypt hash
+        if not verify_password(api_key, row['key_hash']):
+            return None
+
+        # Update last_used_at
+        conn.execute("""
+            UPDATE customer_api_keys
+            SET last_used_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+        """, (row['id'],))
+
+        # Parse permissions
+        try:
+            permissions = json.loads(row['permissions']) if row['permissions'] else {"read": True, "write": False}
+        except json.JSONDecodeError:
+            permissions = {"read": True, "write": False}
+
+        return {
+            'key_id': row['id'],
+            'customer_id': row['customer_id'],
+            'customer_name': row['customer_name'],
+            'key_name': row['name'],
+            'permissions': permissions,
+            'rate_limit': row['rate_limit']
+        }
+
+
+def revoke_customer_api_key(key_id: int) -> bool:
+    """Deaktivér en API key"""
+    with get_db() as conn:
+        result = conn.execute("""
+            UPDATE customer_api_keys
+            SET is_active = 0
+            WHERE id = ?
+        """, (key_id,))
+        return result.rowcount > 0
+
+
+def list_customer_api_keys(customer_id: str) -> list:
+    """
+    Liste alle API keys for en kunde.
+
+    Returns:
+        List af dicts med key info (IKKE den faktiske key - kun prefix og metadata)
+    """
+    import json
+
+    with get_db() as conn:
+        rows = conn.execute("""
+            SELECT id, key_prefix, name, permissions, rate_limit, is_active, last_used_at, created_at
+            FROM customer_api_keys
+            WHERE customer_id = ?
+            ORDER BY created_at DESC
+        """, (customer_id,)).fetchall()
+
+        result = []
+        for row in rows:
+            try:
+                permissions = json.loads(row['permissions']) if row['permissions'] else {}
+            except json.JSONDecodeError:
+                permissions = {}
+
+            result.append({
+                'id': row['id'],
+                'key_prefix': row['key_prefix'],
+                'name': row['name'],
+                'permissions': permissions,
+                'rate_limit': row['rate_limit'],
+                'is_active': bool(row['is_active']),
+                'last_used_at': row['last_used_at'],
+                'created_at': row['created_at']
+            })
+
+        return result
+
+
+def delete_customer_api_key(key_id: int) -> bool:
+    """Slet en API key permanent"""
+    with get_db() as conn:
+        result = conn.execute("""
+            DELETE FROM customer_api_keys WHERE id = ?
+        """, (key_id,))
+        return result.rowcount > 0
 
 
 # ========================================

@@ -1,0 +1,428 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}API Keys{% endblock %}
+
+{% block extra_css %}
+<style>
+    .card {
+        background: white;
+        border-radius: 12px;
+        padding: 30px;
+        margin-bottom: 20px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .card h2 {
+        margin-bottom: 20px;
+        color: #1f2937;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+    }
+    th, td {
+        text-align: left;
+        padding: 12px;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    th {
+        background: #f9fafb;
+        font-weight: 600;
+        color: #1f2937;
+    }
+    tr:hover {
+        background: #f9fafb;
+    }
+
+    .btn {
+        background: #3b82f6;
+        color: white;
+        padding: 12px 24px;
+        text-decoration: none;
+        border-radius: 8px;
+        display: inline-block;
+        font-weight: 500;
+        border: none;
+        cursor: pointer;
+        font-size: 0.875rem;
+    }
+    .btn:hover {
+        background: #2563eb;
+    }
+    .btn-sm {
+        padding: 6px 12px;
+        font-size: 0.75rem;
+    }
+    .btn-danger {
+        background: #ef4444;
+    }
+    .btn-danger:hover {
+        background: #dc2626;
+    }
+    .btn-secondary {
+        background: #6b7280;
+    }
+    .btn-secondary:hover {
+        background: #4b5563;
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+    .badge-success {
+        background: #d1fae5;
+        color: #065f46;
+    }
+    .badge-danger {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+    .badge-info {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .permissions {
+        display: flex;
+        gap: 8px;
+    }
+
+    /* Modal */
+    .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+    .modal.active {
+        display: flex;
+    }
+    .modal-content {
+        background: white;
+        border-radius: 12px;
+        padding: 30px;
+        max-width: 500px;
+        width: 90%;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+    }
+    .modal-header h3 {
+        margin: 0;
+        color: #1f2937;
+    }
+    .modal-close {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: #6b7280;
+    }
+
+    .form-group {
+        margin-bottom: 15px;
+    }
+    .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: 600;
+        color: #1f2937;
+        font-size: 0.875rem;
+    }
+    .form-group input, .form-group select {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        font-size: 0.875rem;
+    }
+    .form-group input:focus, .form-group select:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .checkbox-group {
+        display: flex;
+        gap: 20px;
+        margin-top: 10px;
+    }
+    .checkbox-group label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: normal;
+    }
+    .checkbox-group input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+    }
+
+    /* New key display */
+    .new-key-display {
+        background: #f0fdf4;
+        border: 2px solid #22c55e;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    .new-key-display h4 {
+        margin: 0 0 10px 0;
+        color: #166534;
+    }
+    .new-key-display .warning {
+        color: #dc2626;
+        font-weight: 500;
+        margin-bottom: 10px;
+    }
+    .key-value {
+        background: #1f2937;
+        color: #22c55e;
+        font-family: monospace;
+        padding: 15px;
+        border-radius: 6px;
+        word-break: break-all;
+        margin-bottom: 10px;
+    }
+    .copy-btn {
+        background: #3b82f6;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.875rem;
+    }
+    .copy-btn:hover {
+        background: #2563eb;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 40px;
+        color: #6b7280;
+    }
+    .empty-state svg {
+        width: 64px;
+        height: 64px;
+        margin-bottom: 16px;
+        opacity: 0.5;
+    }
+
+    .info-box {
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+    .info-box h4 {
+        margin: 0 0 10px 0;
+        color: #1e40af;
+    }
+    .info-box p {
+        margin: 0;
+        color: #1e40af;
+        font-size: 0.875rem;
+    }
+    .info-box code {
+        background: #dbeafe;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-family: monospace;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>API Keys</h1>
+    <p>Administrer API-nøgler til integration med eksterne systemer som Power BI, HR-systemer, etc.</p>
+
+    {% if new_key %}
+    <div class="new-key-display">
+        <h4>Din nye API-nøgle er oprettet!</h4>
+        <p class="warning">Vigtigt: Denne nøgle vises KUN denne ene gang. Kopier den nu!</p>
+        <div class="key-value" id="newKeyValue">{{ new_key }}</div>
+        <button class="copy-btn" onclick="copyKey()">Kopier nøgle</button>
+    </div>
+    {% endif %}
+
+    <div class="info-box">
+        <h4>API Dokumentation</h4>
+        <p>Brug API-nøglen i <code>X-API-Key</code> headeren. Endpoints:</p>
+        <ul style="margin: 10px 0 0 20px; font-size: 0.875rem;">
+            <li><code>GET /api/v1/assessments</code> - Liste målinger</li>
+            <li><code>GET /api/v1/assessments/{'{id}'}/results</code> - Hent resultater</li>
+            <li><code>GET /api/v1/units</code> - Organisationsstruktur</li>
+        </ul>
+    </div>
+
+    <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2 style="margin: 0;">API Keys for {{ customer.name if customer else 'Alle kunder' }}</h2>
+            <button class="btn" onclick="openCreateModal()">+ Opret ny nøgle</button>
+        </div>
+
+        {% if api_keys %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Navn</th>
+                    <th>Key Prefix</th>
+                    <th>Rettigheder</th>
+                    <th>Status</th>
+                    <th>Sidst brugt</th>
+                    <th>Oprettet</th>
+                    <th>Handlinger</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for key in api_keys %}
+                <tr>
+                    <td>{{ key.name }}</td>
+                    <td><code>{{ key.key_prefix }}...</code></td>
+                    <td>
+                        <div class="permissions">
+                            <span class="badge badge-info">Read</span>
+                            {% if key.permissions.get('write') %}
+                            <span class="badge badge-info">Write</span>
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td>
+                        {% if key.is_active %}
+                        <span class="badge badge-success">Aktiv</span>
+                        {% else %}
+                        <span class="badge badge-danger">Deaktiveret</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ key.last_used_at or 'Aldrig' }}</td>
+                    <td>{{ key.created_at[:10] if key.created_at else '-' }}</td>
+                    <td>
+                        {% if key.is_active %}
+                        <form method="POST" action="{{ url_for('admin_revoke_api_key', key_id=key.id) }}" style="display: inline;" onsubmit="return confirm('Er du sikker på at du vil deaktivere denne nøgle?')">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-sm btn-danger">Deaktiver</button>
+                        </form>
+                        {% else %}
+                        <form method="POST" action="{{ url_for('admin_delete_api_key', key_id=key.id) }}" style="display: inline;" onsubmit="return confirm('Slet denne nøgle permanent?')">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-sm btn-secondary">Slet</button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+            </svg>
+            <p>Ingen API-nøgler oprettet endnu</p>
+            <p style="font-size: 0.875rem;">Klik "Opret ny nøgle" for at komme i gang</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Create Modal -->
+<div class="modal" id="createModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Opret ny API-nøgle</h3>
+            <button class="modal-close" onclick="closeCreateModal()">&times;</button>
+        </div>
+        <form method="POST" action="{{ url_for('admin_create_api_key') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="form-group">
+                <label for="keyName">Navn</label>
+                <input type="text" id="keyName" name="name" placeholder="f.eks. Power BI Integration" required>
+            </div>
+
+            {% if not customer and customers %}
+            <div class="form-group">
+                <label for="customerId">Kunde</label>
+                <select id="customerId" name="customer_id" required>
+                    <option value="">Vælg kunde...</option>
+                    {% for c in customers %}
+                    <option value="{{ c.id }}">{{ c.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% elif customer %}
+            <input type="hidden" name="customer_id" value="{{ customer.id }}">
+            {% endif %}
+
+            <div class="form-group">
+                <label>Rettigheder</label>
+                <div class="checkbox-group">
+                    <label>
+                        <input type="checkbox" name="perm_read" checked disabled>
+                        Læse data (altid aktiveret)
+                    </label>
+                    <label>
+                        <input type="checkbox" name="perm_write">
+                        Oprette målinger
+                    </label>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button type="submit" class="btn">Opret nøgle</button>
+                <button type="button" class="btn btn-secondary" onclick="closeCreateModal()">Annuller</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openCreateModal() {
+    document.getElementById('createModal').classList.add('active');
+}
+
+function closeCreateModal() {
+    document.getElementById('createModal').classList.remove('active');
+}
+
+function copyKey() {
+    const keyValue = document.getElementById('newKeyValue').textContent;
+    navigator.clipboard.writeText(keyValue).then(function() {
+        alert('API-nøgle kopieret til udklipsholder!');
+    });
+}
+
+// Close modal on escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeCreateModal();
+    }
+});
+
+// Close modal on backdrop click
+document.getElementById('createModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeCreateModal();
+    }
+});
+</script>
+{% endblock %}
