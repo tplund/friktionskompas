@@ -351,6 +351,7 @@
                 {% endif %}
 
                 <form method="POST" class="profile-form">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="form-group">
                         <label for="name">Navn</label>
                         <input type="text" id="name" name="name"
@@ -418,6 +419,7 @@
                         </div>
                         <form method="POST" action="{{ url_for('admin_unlink_oauth', provider=link.provider) }}"
                               onsubmit="return confirm('Er du sikker på at du vil fjerne {{ link.info.name }} fra din konto?');">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button type="submit" class="btn-unlink">Fjern</button>
                         </form>
                     </div>
@@ -466,6 +468,7 @@
             <div class="section-body">
                 {% if has_password %}
                 <form method="POST" action="{{ url_for('admin_change_password') }}" class="password-form">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="form-group">
                         <label for="current_password">Nuværende password</label>
                         <input type="password" id="current_password" name="current_password" required>

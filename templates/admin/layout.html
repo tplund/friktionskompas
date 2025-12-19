@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <title>{% block title %}Admin{% endblock %} - {{ domain_config.branding_company_name or 'Friktionskompasset' }}</title>
     <style>
@@ -1136,6 +1137,25 @@
     });
     </script>
     <script src="{{ url_for('static', filename='js/modal-utils.js') }}"></script>
+    <script>
+    // Auto-inject CSRF tokens into all POST forms
+    (function() {
+        var csrfToken = document.querySelector('meta[name="csrf-token"]');
+        if (!csrfToken) return;
+
+        var token = csrfToken.getAttribute('content');
+        document.querySelectorAll('form[method="POST"], form[method="post"]').forEach(function(form) {
+            // Skip if already has CSRF token
+            if (form.querySelector('input[name="csrf_token"]')) return;
+
+            var input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'csrf_token';
+            input.value = token;
+            form.insertBefore(input, form.firstChild);
+        });
+    })();
+    </script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>
