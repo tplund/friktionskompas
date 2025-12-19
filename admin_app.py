@@ -5477,6 +5477,34 @@ def fix_user_role(email, role):
     return jsonify({'success': False, 'error': f'User {email} not found'}), 404
 
 
+@app.route('/admin/export-db-backup')
+@csrf.exempt
+@api_or_admin_required
+def export_db_backup():
+    """Export database as base64 for reverse sync (production -> local).
+
+    Usage:
+    curl -s "https://friktionskompasset.dk/admin/export-db-backup" \
+        -H "X-Admin-API-Key: YOUR_KEY" > db_from_render.b64
+
+    Then locally:
+    python -c "import base64; open('friktionskompas_v3.db','wb').write(base64.b64decode(open('db_from_render.b64').read()))"
+    """
+    import base64
+    db_path = app.config.get('DB_PATH', DB_PATH)
+
+    if not os.path.exists(db_path):
+        return jsonify({'success': False, 'error': 'Database not found'}), 404
+
+    with open(db_path, 'rb') as f:
+        db_bytes = f.read()
+
+    db_b64 = base64.b64encode(db_bytes).decode('utf-8')
+
+    # Return as plain text for easy download
+    return db_b64, 200, {'Content-Type': 'text/plain'}
+
+
 @app.route('/admin/restore-db-from-backup', methods=['GET', 'POST'])
 @csrf.exempt  # API uses X-Admin-API-Key header for auth
 @api_or_admin_required
