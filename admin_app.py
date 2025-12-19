@@ -956,6 +956,94 @@ def api_v1_create_assessment():
     }), 201
 
 
+# ========================================
+# API DOCUMENTATION (Swagger UI)
+# ========================================
+
+@app.route('/api/docs')
+def api_docs():
+    """
+    Swagger UI for Customer API documentation.
+
+    Renders interactive API documentation using Swagger UI.
+    """
+    return '''<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Friktionskompasset API Documentation</title>
+    <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5.9.0/swagger-ui.css">
+    <style>
+        body { margin: 0; padding: 0; }
+        .swagger-ui .topbar { display: none; }
+        .swagger-ui .info { margin: 20px 0; }
+        .swagger-ui .info .title { font-size: 2rem; }
+        .header-bar {
+            background: #1f2937;
+            color: white;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header-bar h1 { margin: 0; font-size: 1.25rem; font-weight: 500; }
+        .header-bar a {
+            color: #60a5fa;
+            text-decoration: none;
+            font-size: 0.875rem;
+        }
+        .header-bar a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="header-bar">
+        <h1>Friktionskompasset API</h1>
+        <div>
+            <a href="/admin/api-keys">Administrer API Keys</a>
+            &nbsp;|&nbsp;
+            <a href="/api/docs/openapi.yaml">Download OpenAPI Spec</a>
+        </div>
+    </div>
+    <div id="swagger-ui"></div>
+    <script src="https://unpkg.com/swagger-ui-dist@5.9.0/swagger-ui-bundle.js"></script>
+    <script>
+        window.onload = function() {
+            SwaggerUIBundle({
+                url: "/api/docs/openapi.yaml",
+                dom_id: '#swagger-ui',
+                presets: [
+                    SwaggerUIBundle.presets.apis,
+                    SwaggerUIBundle.SwaggerUIStandalonePreset
+                ],
+                layout: "BaseLayout",
+                deepLinking: true,
+                showExtensions: true,
+                showCommonExtensions: true
+            });
+        };
+    </script>
+</body>
+</html>'''
+
+
+@app.route('/api/docs/openapi.yaml')
+def api_docs_openapi_yaml():
+    """Serve the OpenAPI specification as YAML."""
+    return send_from_directory('static', 'openapi.yaml', mimetype='text/yaml')
+
+
+@app.route('/api/docs/openapi.json')
+def api_docs_openapi_json():
+    """Serve the OpenAPI specification as JSON."""
+    import yaml
+
+    yaml_path = os.path.join(app.root_path, 'static', 'openapi.yaml')
+    with open(yaml_path, 'r', encoding='utf-8') as f:
+        spec = yaml.safe_load(f)
+    return jsonify(spec)
+
+
 @app.route('/sitemap.xml')
 def sitemap_xml():
     """Generate dynamic sitemap.xml"""

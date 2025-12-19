@@ -1,0 +1,678 @@
+openapi: 3.0.3
+info:
+  title: Friktionskompasset Customer API
+  description: |
+    REST API til enterprise-kunder for integration med HR-systemer, Power BI, og andre systemer.
+
+    ## Authentication
+    Alle endpoints kræver en API-nøgle i `X-API-Key` headeren.
+
+    API-nøgler oprettes i admin-panelet under **Indstillinger → API Keys**.
+
+    ```bash
+    curl https://friktionskompasset.dk/api/v1/assessments \
+         -H "X-API-Key: fk_xxx_xxxx_your_secret_key"
+    ```
+
+    ## Permissions
+    - **Read**: Alle GET endpoints (standard)
+    - **Write**: POST endpoints (skal aktiveres ved oprettelse af nøgle)
+
+    ## Rate Limiting
+    - 100 requests per minut per API-nøgle
+    - Ved overskridelse returneres HTTP 429
+
+    ## Data Isolation
+    Hver API-nøgle er knyttet til én kunde og kan kun tilgå den kundes data.
+
+  version: 1.0.0
+  contact:
+    name: Friktionskompasset Support
+    email: support@friktionskompasset.dk
+
+servers:
+  - url: https://friktionskompasset.dk
+    description: Production
+  - url: https://frictioncompass.com
+    description: Production (English)
+
+tags:
+  - name: Assessments
+    description: Målinger og resultater
+  - name: Units
+    description: Organisationsstruktur
+
+security:
+  - ApiKeyAuth: []
+
+paths:
+  /api/v1/assessments:
+    get:
+      tags:
+        - Assessments
+      summary: List assessments
+      description: |
+        Hent liste over alle målinger for din organisation.
+
+        Resultater er pagineret og sorteret efter oprettelsesdato (nyeste først).
+      parameters:
+        - name: status
+          in: query
+          description: Filtrer på status
+          schema:
+            type: string
+            enum: [draft, sent, completed, scheduled]
+        - name: limit
+          in: query
+          description: Max antal resultater (default 50, max 100)
+          schema:
+            type: integer
+            default: 50
+            maximum: 100
+        - name: offset
+          in: query
+          description: Pagination offset
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Liste af målinger
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AssessmentSummary'
+                  meta:
+                    $ref: '#/components/schemas/PaginationMeta'
+              example:
+                data:
+                  - id: "assess-abc123"
+                    name: "Gruppe-friktion Q1 2025"
+                    period: "2025 Q1"
+                    status: "completed"
+                    type: "gruppe_friktion"
+                    unit:
+                      id: "unit-xyz789"
+                      name: "Birk Skole"
+                      path: "Herning Kommune//Skoler//Birk Skole"
+                    tokens_sent: 25
+                    tokens_used: 22
+                    response_rate: 88.0
+                    include_leader: true
+                    created_at: "2025-01-15T10:30:00"
+                    sent_at: "2025-01-16T08:00:00"
+                meta:
+                  limit: 50
+                  offset: 0
+                  total: 12
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+
+    post:
+      tags:
+        - Assessments
+      summary: Create assessment
+      description: |
+        Opret en ny måling.
+
+        **Kræver write permission** på API-nøglen.
+
+        Målingen oprettes med status `draft` og skal aktiveres separat.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAssessmentRequest'
+            example:
+              name: "Gruppe-friktion Q2 2025"
+              period: "2025 Q2"
+              target_unit_id: "unit-xyz789"
+              type: "gruppe_friktion"
+              include_leader_assessment: true
+              min_responses: 5
+      responses:
+        '201':
+          description: Måling oprettet
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AssessmentCreated'
+                  message:
+                    type: string
+              example:
+                data:
+                  id: "assess-new123"
+                  name: "Gruppe-friktion Q2 2025"
+                  period: "2025 Q2"
+                  target_unit_id: "unit-xyz789"
+                  status: "draft"
+                message: "Assessment created successfully"
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/assessments/{assessment_id}:
+    get:
+      tags:
+        - Assessments
+      summary: Get assessment details
+      description: Hent detaljeret information om en specifik måling.
+      parameters:
+        - name: assessment_id
+          in: path
+          required: true
+          description: Målingens ID
+          schema:
+            type: string
+          example: "assess-abc123"
+      responses:
+        '200':
+          description: Måling detaljer
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AssessmentDetail'
+              example:
+                data:
+                  id: "assess-abc123"
+                  name: "Gruppe-friktion Q1 2025"
+                  period: "2025 Q1"
+                  status: "completed"
+                  type: "gruppe_friktion"
+                  unit:
+                    id: "unit-xyz789"
+                    name: "Birk Skole"
+                    path: "Herning Kommune//Skoler//Birk Skole"
+                  settings:
+                    min_responses: 5
+                    mode: "anonymous"
+                    include_leader_assessment: true
+                    include_leader_self: false
+                  tokens:
+                    sent: 25
+                    used: 22
+                  response_count: 528
+                  created_at: "2025-01-15T10:30:00"
+                  sent_at: "2025-01-16T08:00:00"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/assessments/{assessment_id}/results:
+    get:
+      tags:
+        - Assessments
+      summary: Get assessment results
+      description: |
+        Hent friktions-scores for en måling.
+
+        Returnerer aggregerede scores for de fire dimensioner:
+        - **TRYGHED** - Psykologisk sikkerhed
+        - **MENING** - Oplevelse af mening i arbejdet
+        - **KAN** - Kapacitet og ressourcer
+        - **BESVÆR** - Oplevelse af bureaukrati og forhindringer
+
+        Scores er på skala 1-5, hvor højere er bedre (undtagen BESVÆR hvor lavere er bedre).
+      parameters:
+        - name: assessment_id
+          in: path
+          required: true
+          description: Målingens ID
+          schema:
+            type: string
+        - name: include_units
+          in: query
+          description: Inkluder per-enhed breakdown
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Resultater med scores
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AssessmentResults'
+              example:
+                data:
+                  assessment:
+                    id: "assess-abc123"
+                    name: "Gruppe-friktion Q1 2025"
+                    period: "2025 Q1"
+                    unit_name: "Birk Skole"
+                  scores:
+                    TRYGHED:
+                      score: 3.85
+                      percent: 77.0
+                      severity: "LOW"
+                      response_count: 132
+                    MENING:
+                      score: 3.42
+                      percent: 68.4
+                      severity: "MEDIUM"
+                      response_count: 132
+                    KAN:
+                      score: 3.91
+                      percent: 78.2
+                      severity: "LOW"
+                      response_count: 132
+                    BESVÆR:
+                      score: 2.78
+                      percent: 55.6
+                      severity: "MEDIUM"
+                      response_count: 132
+                  response_count: 132
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/v1/units:
+    get:
+      tags:
+        - Units
+      summary: Get organizational structure
+      description: |
+        Hent organisationsstrukturen for din kunde.
+
+        Kan returneres som:
+        - **Hierarkisk** (default): Træstruktur med `children` arrays
+        - **Flat**: Liste sorteret efter sti
+      parameters:
+        - name: flat
+          in: query
+          description: Returner flad liste i stedet for hierarki
+          schema:
+            type: boolean
+            default: false
+        - name: parent_id
+          in: query
+          description: Filtrer til børn af specifik enhed
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Organisationsstruktur
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/OrganizationalUnit'
+                  meta:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                      mode:
+                        type: string
+                        enum: [flat, hierarchical]
+              example:
+                data:
+                  - id: "unit-root"
+                    name: "Herning Kommune"
+                    path: "Herning Kommune"
+                    level: 0
+                    parent_id: null
+                    leader:
+                      name: "HR Afdelingen"
+                      email: "hr@herning.dk"
+                    employee_count: 450
+                    child_count: 3
+                    children:
+                      - id: "unit-skoler"
+                        name: "Skoler"
+                        path: "Herning Kommune//Skoler"
+                        level: 1
+                        parent_id: "unit-root"
+                        employee_count: 200
+                        child_count: 5
+                        children: []
+                meta:
+                  total: 15
+                  mode: "hierarchical"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: |
+        API-nøgle oprettet i admin-panelet.
+
+        Format: `fk_xxxxxxxx_xxxx_secret`
+
+  schemas:
+    AssessmentSummary:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unik ID for målingen
+        name:
+          type: string
+          description: Navn på målingen
+        period:
+          type: string
+          description: Periode (fx "2025 Q1")
+        status:
+          type: string
+          enum: [draft, sent, completed, scheduled]
+        type:
+          type: string
+          description: Målingstype
+        unit:
+          type: object
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+            path:
+              type: string
+        tokens_sent:
+          type: integer
+          description: Antal udsendte invitationer
+        tokens_used:
+          type: integer
+          description: Antal besvarelser
+        response_rate:
+          type: number
+          description: Svarprocent
+        include_leader:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        sent_at:
+          type: string
+          format: date-time
+          nullable: true
+        scheduled_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    AssessmentDetail:
+      allOf:
+        - $ref: '#/components/schemas/AssessmentSummary'
+        - type: object
+          properties:
+            settings:
+              type: object
+              properties:
+                min_responses:
+                  type: integer
+                mode:
+                  type: string
+                include_leader_assessment:
+                  type: boolean
+                include_leader_self:
+                  type: boolean
+            tokens:
+              type: object
+              properties:
+                sent:
+                  type: integer
+                used:
+                  type: integer
+            response_count:
+              type: integer
+
+    AssessmentResults:
+      type: object
+      properties:
+        assessment:
+          type: object
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+            period:
+              type: string
+            unit_name:
+              type: string
+        scores:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/ScoreData'
+        response_count:
+          type: integer
+        unit_breakdown:
+          type: array
+          items:
+            $ref: '#/components/schemas/UnitScore'
+
+    ScoreData:
+      type: object
+      properties:
+        score:
+          type: number
+          description: Score på skala 1-5
+          nullable: true
+        percent:
+          type: number
+          description: Score som procent (0-100)
+          nullable: true
+        severity:
+          type: string
+          enum: [LOW, MEDIUM, HIGH]
+          description: |
+            Alvorlighedsgrad:
+            - HIGH: < 2.5 (kritisk)
+            - MEDIUM: 2.5-3.5 (opmærksomhed påkrævet)
+            - LOW: > 3.5 (acceptabelt)
+          nullable: true
+        response_count:
+          type: integer
+
+    UnitScore:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        path:
+          type: string
+        tokens_sent:
+          type: integer
+        tokens_used:
+          type: integer
+        besvær_score:
+          type: number
+          nullable: true
+
+    OrganizationalUnit:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        path:
+          type: string
+          description: Fuld sti med // som separator
+        level:
+          type: integer
+          description: Niveau i hierarkiet (0 = rod)
+        parent_id:
+          type: string
+          nullable: true
+        leader:
+          type: object
+          nullable: true
+          properties:
+            name:
+              type: string
+            email:
+              type: string
+        employee_count:
+          type: integer
+        sick_leave_percent:
+          type: number
+          nullable: true
+        child_count:
+          type: integer
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrganizationalUnit'
+        created_at:
+          type: string
+          format: date-time
+
+    CreateAssessmentRequest:
+      type: object
+      required:
+        - name
+        - period
+        - target_unit_id
+      properties:
+        name:
+          type: string
+          description: Navn på målingen
+        period:
+          type: string
+          description: Periode (fx "2025 Q2")
+        target_unit_id:
+          type: string
+          description: ID på målenheden
+        type:
+          type: string
+          description: Målingstype
+          default: "gruppe_friktion"
+        include_leader_assessment:
+          type: boolean
+          default: false
+        min_responses:
+          type: integer
+          default: 5
+
+    AssessmentCreated:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        period:
+          type: string
+        target_unit_id:
+          type: string
+        status:
+          type: string
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Menneskelæselig fejlbesked
+        code:
+          type: string
+          description: Maskinlæselig fejlkode
+        hint:
+          type: string
+          description: Hjælp til at løse problemet
+
+    PaginationMeta:
+      type: object
+      properties:
+        limit:
+          type: integer
+        offset:
+          type: integer
+        total:
+          type: integer
+
+  responses:
+    Unauthorized:
+      description: Manglende eller ugyldig API-nøgle
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          examples:
+            missing:
+              summary: Manglende API-nøgle
+              value:
+                error: "API key required"
+                code: "AUTH_MISSING"
+                hint: "Include X-API-Key header with your API key"
+            invalid:
+              summary: Ugyldig API-nøgle
+              value:
+                error: "Invalid or inactive API key"
+                code: "AUTH_INVALID"
+
+    Forbidden:
+      description: Manglende rettigheder
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Write permission required"
+            code: "FORBIDDEN"
+            hint: "This API key only has read access"
+
+    NotFound:
+      description: Ressource ikke fundet
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Assessment not found"
+            code: "NOT_FOUND"
+
+    ValidationError:
+      description: Ugyldig input
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Missing required fields: period, target_unit_id"
+            code: "VALIDATION_ERROR"
+
+    RateLimited:
+      description: For mange requests
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Rate limit exceeded"
+            code: "RATE_LIMITED"
