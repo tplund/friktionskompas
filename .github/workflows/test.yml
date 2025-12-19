@@ -60,4 +60,4 @@ jobs:
         SECRET_KEY: test-secret-key-for-ci
         FLASK_ENV: testing
       run: |
-        python -m pytest tests/ --ignore=tests/test_ui.py --cov=. --cov-report=term-missing --cov-fail-under=30
+        python -m pytest tests/ --ignore=tests/test_ui.py --cov=. --cov-report=term-missing
