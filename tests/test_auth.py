@@ -73,3 +73,68 @@ class TestAuthorization:
         response = authenticated_client.get('/admin', follow_redirects=False)
         assert response.status_code == 302
         assert '/login' in response.location
+
+
+class TestUserRole:
+    """Test B2C user role permissions."""
+
+    def test_user_can_access_user_home(self, user_client):
+        """Test that user role can access /user home page."""
+        response = user_client.get('/user')
+        assert response.status_code == 200
+        assert b'Velkommen' in response.data or b'velkommen' in response.data
+
+    def test_user_cannot_access_admin_home(self, user_client):
+        """Test that user role is redirected from admin pages."""
+        response = user_client.get('/admin', follow_redirects=False)
+        assert response.status_code == 302
+        # Should redirect to user home, not admin home
+        assert '/user' in response.location or '/login' in response.location
+
+    def test_user_cannot_access_customers(self, user_client):
+        """Test that user role cannot access /admin/customers."""
+        response = user_client.get('/admin/customers', follow_redirects=False)
+        assert response.status_code == 302
+        # Should redirect to user home
+        assert '/user' in response.location
+
+    def test_user_cannot_access_domains(self, user_client):
+        """Test that user role cannot access /admin/domains."""
+        response = user_client.get('/admin/domains', follow_redirects=False)
+        assert response.status_code == 302
+
+    def test_user_can_access_help_page(self, user_client):
+        """Test that user role can access /help."""
+        response = user_client.get('/help')
+        assert response.status_code == 200
+
+    def test_user_can_access_profil_pages(self, user_client):
+        """Test that user role can access profile pages."""
+        # Local profile page should be accessible
+        response = user_client.get('/profil/local')
+        assert response.status_code == 200
+
+
+class TestRoleHierarchy:
+    """Test that role hierarchy works correctly."""
+
+    def test_superadmin_can_access_all(self, superadmin_client):
+        """Test superadmin has access to everything."""
+        assert superadmin_client.get('/admin').status_code == 200
+        assert superadmin_client.get('/admin/customers').status_code == 200
+        assert superadmin_client.get('/admin/domains').status_code == 200
+
+    def test_admin_can_access_admin_pages(self, authenticated_client):
+        """Test admin can access admin pages."""
+        assert authenticated_client.get('/admin').status_code == 200
+        assert authenticated_client.get('/admin/customers').status_code == 200
+
+    def test_manager_limited_access(self, manager_client):
+        """Test manager has limited access."""
+        # Manager can access admin home
+        response = manager_client.get('/admin')
+        assert response.status_code == 200
+
+        # Manager cannot access superadmin-only pages like domains
+        response = manager_client.get('/admin/domains', follow_redirects=False)
+        assert response.status_code == 302

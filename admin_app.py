@@ -271,8 +271,12 @@ def admin_required(f):
         if 'user' not in session:
             flash('Du skal være logget ind', 'error')
             return redirect(url_for('login'))
-        if session['user']['role'] not in ('admin', 'superadmin'):
+        role = session['user']['role']
+        if role not in ('admin', 'superadmin'):
             flash('Kun admin har adgang til denne side', 'error')
+            # User rolle sendes til user_home, andre til admin_home
+            if role == 'user':
+                return redirect(url_for('user_home'))
             return redirect(url_for('admin_home'))
         return f(*args, **kwargs)
     return decorated_function
@@ -285,8 +289,12 @@ def superadmin_required(f):
         if 'user' not in session:
             flash('Du skal være logget ind', 'error')
             return redirect(url_for('login'))
-        if session['user']['role'] != 'superadmin':
+        role = session['user']['role']
+        if role != 'superadmin':
             flash('Kun system administrator har adgang til denne side', 'error')
+            # User rolle sendes til user_home, andre til admin_home
+            if role == 'user':
+                return redirect(url_for('user_home'))
             return redirect(url_for('admin_home'))
         return f(*args, **kwargs)
     return decorated_function
@@ -330,10 +338,14 @@ def api_or_admin_required(f):
                 return jsonify({'error': 'Authentication required'}), 401
             flash('Du skal være logget ind', 'error')
             return redirect(url_for('login'))
-        if session['user']['role'] not in ('admin', 'superadmin'):
+        role = session['user']['role']
+        if role not in ('admin', 'superadmin'):
             if is_api_request():
                 return jsonify({'error': 'Admin access required'}), 403
             flash('Kun admin har adgang til denne side', 'error')
+            # User rolle sendes til user_home, andre til admin_home
+            if role == 'user':
+                return redirect(url_for('user_home'))
             return redirect(url_for('admin_home'))
         return f(*args, **kwargs)
     return decorated_function
@@ -1422,6 +1434,11 @@ Niels;Olsen;niels@techcorp.dk;+4512345017;TechCorp//Sales//DACH"""
 def admin_home():
     """Dashboard v2 - kombineret oversigt med KPIs, trend, og analyser"""
     user = get_current_user()
+
+    # User rolle skal bruge user_home, ikke admin
+    if user.get('role') == 'user':
+        return redirect(url_for('user_home'))
+
     customer_filter = session.get('customer_filter') or user.get('customer_id')
     unit_id = request.args.get('unit_id')  # For trend filter
 

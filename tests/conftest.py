@@ -270,3 +270,18 @@ def superadmin_with_customer_filter(client):
         }
         sess['customer_filter'] = 1  # Set customer filter to Test Kunde
     return client
+
+
+@pytest.fixture
+def user_client(client):
+    """Create an authenticated test client (as B2C user)."""
+    with client.session_transaction() as sess:
+        sess['user'] = {
+            'id': 4,
+            'email': 'user@test.com',
+            'name': 'Test User',
+            'role': 'user',
+            'customer_id': 1,
+            'customer_name': 'Test Kunde'
+        }
+    return client
