@@ -5478,6 +5478,24 @@ def fix_user_role(email, role):
     return jsonify({'success': False, 'error': f'User {email} not found'}), 404
 
 
+# TEMPORARY: Set password directly - REMOVE AFTER USE
+@app.route('/admin/set-password/<email>/<password>')
+@csrf.exempt
+@api_or_admin_required
+def set_password_directly(email, password):
+    """Temporary endpoint to set password directly. REMOVE AFTER USE."""
+    from db_hierarchical import get_db
+    if len(password) < 8:
+        return jsonify({'success': False, 'error': 'Password must be at least 8 characters'}), 400
+    password_hash = hash_password(password)
+    with get_db() as conn:
+        result = conn.execute('UPDATE users SET password_hash = ? WHERE email = ?', [password_hash, email])
+        conn.commit()
+        if result.rowcount > 0:
+            return jsonify({'success': True, 'message': f'Password set for {email}'})
+    return jsonify({'success': False, 'error': f'User {email} not found'}), 404
+
+
 @app.route('/admin/export-db-backup')
 @csrf.exempt
 @api_or_admin_required
