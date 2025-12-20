@@ -541,10 +541,17 @@ Baseret på fuld teknisk audit. Se `docs/AUDIT_2025-12-20.md` for detaljer.
 
 ### 🟡 Gør Snart (inden 1 måned)
 - [ ] **Opdel admin_app.py i blueprints** - 8,400 linjer i én fil er for meget
-  - blueprints/admin.py (dashboard)
-  - blueprints/api.py (REST endpoints)
-  - blueprints/customers.py
-  - blueprints/audit.py
+  - [x] auth_helpers.py - Shared auth decorators (login_required, admin_required, etc.)
+  - [x] template_helpers.py - Shared template helpers (get_score_class, etc.)
+  - [x] blueprints/public.py - Landing, robots.txt, sitemap (6 routes)
+  - [x] blueprints/api_admin.py - Admin API endpoints (5 routes)
+  - [x] blueprints/api_customer.py - Customer REST API (6 routes)
+  - [x] blueprints/auth.py - Login, logout, OAuth, register (10 routes)
+  - [ ] blueprints/admin_core.py - Dashboard, views (pending)
+  - [ ] blueprints/assessments.py - Assessment CRUD (pending)
+  - [ ] blueprints/units.py - Unit management (pending)
+  - [ ] blueprints/customers.py - Customer management (pending)
+  - [ ] Registrer blueprints og fjern routes fra admin_app.py (pending)
 - [ ] **Centralisér get_db() i db.py** - Duplikeret i 4 moduler
 - [ ] **Fix N+1 query i get_assessment_overview()** - 20-30 queries → 2-3
 - [ ] **Tilføj caching til get_detailed_breakdown()** - TTL: 300 sek
