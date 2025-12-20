@@ -978,16 +978,39 @@
         document.body.style.overflow = menu.classList.contains('active') ? 'hidden' : '';
     }
 
+    // Close mobile menu
+    function closeMobileMenu() {
+        var menu = document.getElementById('mobileMenu');
+        var btn = document.querySelector('.hamburger-btn');
+        if (menu && menu.classList.contains('active')) {
+            menu.classList.remove('active');
+            btn.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+    }
+
+    // Close menu when clicking a link (before navigation)
+    document.addEventListener('DOMContentLoaded', function() {
+        var mobileMenu = document.getElementById('mobileMenu');
+        if (mobileMenu) {
+            mobileMenu.querySelectorAll('a').forEach(function(link) {
+                link.addEventListener('click', function() {
+                    closeMobileMenu();
+                });
+            });
+        }
+    });
+
+    // Close menu when page is shown (handles back button)
+    window.addEventListener('pageshow', function(event) {
+        // Always close menu when page is shown (including from bfcache)
+        closeMobileMenu();
+    });
+
     // Close mobile menu on resize to desktop
     window.addEventListener('resize', function() {
         if (window.innerWidth > 767) {
-            var menu = document.getElementById('mobileMenu');
-            var btn = document.querySelector('.hamburger-btn');
-            if (menu && menu.classList.contains('active')) {
-                menu.classList.remove('active');
-                btn.classList.remove('active');
-                document.body.style.overflow = '';
-            }
+            closeMobileMenu();
         }
     });
 
