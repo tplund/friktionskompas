@@ -111,6 +111,83 @@
         margin-bottom: 20px;
         opacity: 0.5;
     }
+
+    /* Mobile responsive styles */
+    @media (max-width: 767px) {
+        .card {
+            padding: 15px;
+        }
+
+        .card > div:first-child {
+            flex-direction: column;
+            gap: 12px;
+            align-items: stretch !important;
+        }
+
+        .card > div:first-child h2 {
+            font-size: 1.1rem;
+        }
+
+        .card > div:first-child .btn {
+            text-align: center;
+        }
+
+        .assessment-card {
+            padding: 15px;
+        }
+
+        .assessment-header {
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .assessment-title {
+            font-size: 1.1rem;
+        }
+
+        .assessment-meta {
+            font-size: 0.8rem;
+        }
+
+        .assessment-actions {
+            width: 100%;
+            justify-content: flex-start;
+        }
+
+        .assessment-actions .btn {
+            flex: 1;
+            text-align: center;
+        }
+
+        .assessment-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 8px;
+            background: #f9fafb;
+            border-radius: 6px;
+        }
+
+        .stat-label {
+            font-size: 0.7rem;
+        }
+
+        .stat-value {
+            font-size: 1.1rem;
+        }
+
+        .empty-state {
+            padding: 40px 15px;
+        }
+
+        .empty-state-icon {
+            font-size: 3rem;
+        }
+    }
 </style>
 {% endblock %}
 

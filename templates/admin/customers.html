@@ -133,6 +133,67 @@
     summary:hover {
         color: #3b82f6;
     }
+
+    /* Mobile responsive styles */
+    @media (max-width: 767px) {
+        .card {
+            padding: 15px;
+        }
+
+        .card h2 {
+            font-size: 1.1rem;
+        }
+
+        details {
+            padding: 12px;
+        }
+
+        .form-row {
+            grid-template-columns: 1fr;
+            gap: 12px;
+        }
+
+        .btn {
+            width: 100%;
+            text-align: center;
+            padding: 10px 20px;
+        }
+
+        /* Make tables scroll horizontally */
+        table {
+            display: block;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        th, td {
+            padding: 10px 8px;
+            font-size: 0.85rem;
+            white-space: nowrap;
+        }
+
+        .badge {
+            padding: 3px 8px;
+            font-size: 0.7rem;
+        }
+
+        .view-as-btn {
+            padding: 5px 8px;
+            font-size: 0.7rem;
+            margin-left: 0 !important;
+            margin-top: 4px;
+            display: inline-block;
+        }
+
+        /* Stack action buttons vertically in table */
+        td:last-child {
+            white-space: normal !important;
+        }
+
+        .empty {
+            padding: 30px 15px;
+        }
+    }
 </style>
 {% endblock %}
 

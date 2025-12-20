@@ -2,6 +2,97 @@
 
 {% block title %}Friktionsmåling - {{ assessment.name }}{% endblock %}
 
+{% block extra_css %}
+<style>
+    /* Mobile responsive styles */
+    @media (max-width: 767px) {
+        .container-fluid {
+            padding: 0;
+        }
+
+        h1.h2 {
+            font-size: 1.25rem;
+        }
+
+        /* Header stacking */
+        div[style*="justify-content: space-between"] {
+            flex-direction: column !important;
+            gap: 12px;
+        }
+
+        /* Tables scroll horizontally */
+        table {
+            display: block;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            font-size: 0.85rem;
+        }
+
+        table th, table td {
+            padding: 10px 8px !important;
+            white-space: nowrap;
+        }
+
+        .score-display {
+            font-size: 1.2rem !important;
+        }
+
+        td .score-display {
+            font-size: 1.1rem !important;
+        }
+
+        .field-card {
+            padding: 15px !important;
+        }
+
+        .field-header {
+            font-size: 1.2rem !important;
+        }
+
+        /* Alert badges */
+        .alert-badge {
+            font-size: 0.65rem !important;
+            padding: 3px 6px !important;
+        }
+
+        /* SVG charts scale well, but legend needs adjustment */
+        div[style*="display: flex"][style*="justify-content: center"][style*="gap: 30px"] {
+            flex-direction: column !important;
+            gap: 10px !important;
+            align-items: flex-start !important;
+        }
+
+        /* Recommendations */
+        .kkc-badge, .severity-badge {
+            font-size: 0.7rem !important;
+            padding: 4px 8px !important;
+        }
+
+        /* PDF button */
+        a[data-loading="Genererer PDF..."] {
+            width: 100%;
+            text-align: center;
+            display: block !important;
+        }
+
+        /* Alert cards */
+        div[style*="border-left: 4px solid"] {
+            padding: 12px !important;
+        }
+
+        /* Recommendations grid */
+        div[style*="display: grid"][style*="gap: 20px"] {
+            gap: 15px !important;
+        }
+
+        /* Legend row */
+        div[style*="display: flex"][style*="gap: 20px"][style*="flex-wrap: wrap"] {
+            gap: 12px !important;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid">
     <!-- Header -->

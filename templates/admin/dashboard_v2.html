@@ -387,6 +387,146 @@
         width: 50px;
         text-align: right;
     }
+
+    /* Mobile responsiveness */
+    @media (max-width: 767px) {
+        .friction-hero {
+            padding: 15px;
+        }
+        .friction-bars {
+            grid-template-columns: 1fr;
+            gap: 12px;
+        }
+        .friction-item {
+            padding: 12px;
+        }
+        .friction-item .field-score {
+            font-size: 1.2rem;
+        }
+
+        .main-layout {
+            gap: 15px;
+        }
+
+        .card {
+            padding: 15px;
+        }
+
+        /* Hide score headers on mobile - we'll show scores inline */
+        .score-headers {
+            display: none;
+        }
+
+        /* Stack unit rows vertically on mobile */
+        .unit-row {
+            flex-wrap: wrap;
+            padding: 10px 12px;
+            gap: 8px;
+        }
+        .unit-row.level-1 { padding-left: 25px; }
+        .unit-row.level-2 { padding-left: 35px; }
+        .unit-row.level-3 { padding-left: 45px; }
+
+        .unit-info {
+            flex: 1 1 auto;
+            min-width: calc(100% - 50px);
+        }
+
+        .unit-scores {
+            width: 100%;
+            order: 3;
+            justify-content: flex-start;
+            gap: 6px;
+            margin-top: 4px;
+        }
+
+        .score-badge {
+            padding: 2px 6px;
+            font-size: 0.7rem;
+            min-width: 28px;
+        }
+        /* Add labels to score badges on mobile */
+        .score-badge::before {
+            font-weight: normal;
+            font-size: 0.6rem;
+            margin-right: 2px;
+        }
+        .unit-scores .score-badge:nth-child(1)::before { content: "T "; }
+        .unit-scores .score-badge:nth-child(2)::before { content: "M "; }
+        .unit-scores .score-badge:nth-child(3)::before { content: "K "; }
+        .unit-scores .score-badge:nth-child(4)::before { content: "B "; }
+
+        .unit-responses {
+            position: absolute;
+            right: 45px;
+            top: 12px;
+            width: auto;
+        }
+
+        .unit-action {
+            position: absolute;
+            right: 10px;
+            top: 10px;
+        }
+
+        .unit-row {
+            position: relative;
+        }
+
+        /* Sidebar adjustments */
+        .sidebar-card {
+            padding: 15px;
+        }
+
+        .mini-stats {
+            gap: 6px;
+        }
+        .mini-stat {
+            padding: 10px 6px;
+        }
+        .mini-stat .value {
+            font-size: 1.1rem;
+        }
+        .mini-stat .label {
+            font-size: 0.65rem;
+        }
+
+        .chart-container {
+            height: 160px;
+        }
+
+        .filter-select {
+            max-width: 120px;
+            font-size: 0.7rem;
+        }
+
+        .alert-item {
+            font-size: 0.8rem;
+            padding: 8px 10px;
+        }
+
+        .recent-item .name {
+            font-size: 0.8rem;
+        }
+    }
+
+    /* Extra small screens */
+    @media (max-width: 400px) {
+        .friction-hero h2,
+        .card h2 {
+            font-size: 1rem;
+        }
+
+        .unit-name {
+            font-size: 0.85rem;
+        }
+
+        .score-badge {
+            padding: 2px 4px;
+            min-width: 24px;
+            font-size: 0.65rem;
+        }
+    }
 </style>
 {% endblock %}
 

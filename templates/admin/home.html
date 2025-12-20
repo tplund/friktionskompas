@@ -336,6 +336,110 @@
         color: white;
         border-color: #3b82f6;
     }
+
+    /* Mobile responsive styles */
+    @media (max-width: 767px) {
+        .card {
+            padding: 15px;
+        }
+
+        .card h2 {
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+        }
+
+        .stats {
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .stat-box {
+            padding: 12px;
+        }
+
+        .stat-box .value {
+            font-size: 1.25rem;
+        }
+
+        /* Reduce tree indentation on mobile */
+        .tree-node.level-1 { margin-left: 15px; }
+        .tree-node.level-2 { margin-left: 30px; }
+        .tree-node.level-3 { margin-left: 45px; }
+
+        .tree-node {
+            padding: 10px 12px;
+        }
+
+        .tree-node-header {
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .tree-node-title {
+            font-size: 0.9rem;
+        }
+
+        .tree-node-actions {
+            width: 100%;
+            justify-content: flex-start;
+            margin-left: 0;
+            margin-top: 8px;
+        }
+
+        /* Action buttons stack */
+        .card > div[style*="justify-content: space-between"] {
+            flex-direction: column;
+            gap: 12px;
+            align-items: stretch !important;
+        }
+
+        .action-buttons {
+            justify-content: flex-start;
+        }
+
+        .action-buttons .btn {
+            flex: 1;
+            text-align: center;
+            padding: 8px 12px;
+        }
+
+        /* Bulk controls */
+        .bulk-controls {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 10px;
+        }
+
+        .bulk-controls .select-btns {
+            width: 100%;
+            justify-content: space-between;
+        }
+
+        .bulk-controls .select-btns button {
+            flex: 1;
+        }
+
+        /* Customer header */
+        div[style*="background: #f9fafb"][style*="display: flex"] {
+            flex-direction: column;
+            gap: 8px;
+            align-items: flex-start !important;
+        }
+
+        /* Drop zone */
+        .drop-zone-toplevel {
+            padding: 12px;
+            font-size: 0.85rem;
+        }
+
+        /* Expand/collapse buttons */
+        .expand-all-btn,
+        .bulk-mode-toggle,
+        .drag-mode-toggle {
+            padding: 8px 10px;
+            font-size: 0.75rem;
+        }
+    }
 </style>
 {% endblock %}
 
