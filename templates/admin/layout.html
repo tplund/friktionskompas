@@ -1024,26 +1024,42 @@
         }, 150);
     });
 
-    // Handle orientation change - force immediate layout recalculation
-    window.addEventListener('orientationchange', function() {
-        // Hide and show to force complete relayout
-        document.body.style.display = 'none';
-        document.body.offsetHeight; // Trigger reflow
-        document.body.style.display = '';
+    // Handle orientation change - multiple methods for iOS compatibility
+    // Method 1: orientationchange event
+    window.addEventListener('orientationchange', forceLayoutRefresh);
 
-        // Trigger resize after browser viewport adjusts
+    // Method 2: matchMedia for orientation (more reliable on iOS)
+    var orientationQuery = window.matchMedia('(orientation: portrait)');
+    orientationQuery.addEventListener('change', forceLayoutRefresh);
+
+    // Method 3: Also detect significant resize (orientation changes window size)
+    var lastWidth = window.innerWidth;
+    var lastHeight = window.innerHeight;
+    setInterval(function() {
+        if (Math.abs(window.innerWidth - lastWidth) > 100 || Math.abs(window.innerHeight - lastHeight) > 100) {
+            lastWidth = window.innerWidth;
+            lastHeight = window.innerHeight;
+            forceLayoutRefresh();
+        }
+    }, 250);
+
+    function forceLayoutRefresh() {
+        // Scroll trick - forces iOS to recalculate
+        var scrollPos = window.scrollY;
+        window.scrollTo(0, scrollPos + 1);
+
         setTimeout(function() {
+            window.scrollTo(0, scrollPos);
+
+            // Force reflow
+            document.body.style.display = 'none';
+            document.body.offsetHeight;
+            document.body.style.display = '';
+
+            // Trigger resize
             window.dispatchEvent(new Event('resize'));
-        }, 100);
-
-        // Second pass for stubborn browsers
-        setTimeout(function() {
-            document.body.style.opacity = '0.999';
-            requestAnimationFrame(function() {
-                document.body.style.opacity = '';
-            });
-        }, 300);
-    });
+        }, 50);
+    }
 
     function switchCustomer(customerId) {
         // Get current path to return to after switching
