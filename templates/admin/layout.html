@@ -342,106 +342,141 @@
            MOBILE RESPONSIVE STYLES
            ======================================== */
 
-        /* Mobile menu toggle button */
-        .mobile-menu-toggle {
+        /* Hamburger menu button */
+        .hamburger-btn {
             display: none;
             background: none;
             border: none;
             color: white;
             font-size: 1.5rem;
             cursor: pointer;
-            padding: 10px;
+            padding: 8px;
+            line-height: 1;
+        }
+        .hamburger-btn span {
+            display: block;
+            width: 22px;
+            height: 2px;
+            background: white;
+            margin: 5px 0;
+            transition: 0.3s;
+        }
+        .hamburger-btn.active span:nth-child(1) {
+            transform: rotate(45deg) translate(5px, 5px);
+        }
+        .hamburger-btn.active span:nth-child(2) {
+            opacity: 0;
+        }
+        .hamburger-btn.active span:nth-child(3) {
+            transform: rotate(-45deg) translate(5px, -5px);
+        }
+
+        /* Mobile menu overlay */
+        .mobile-menu {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #1f2937;
+            z-index: 9999;
+            overflow-y: auto;
+            padding: 60px 20px 20px;
+        }
+        .mobile-menu.active {
+            display: block;
+        }
+        .mobile-menu-close {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: none;
+            border: none;
+            color: white;
+            font-size: 2rem;
+            cursor: pointer;
+            padding: 5px 10px;
+        }
+        .mobile-menu-section {
+            margin-bottom: 25px;
+        }
+        .mobile-menu-section-title {
+            color: rgba(255,255,255,0.5);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+            padding-left: 10px;
+        }
+        .mobile-menu a {
+            display: block;
+            color: white;
+            text-decoration: none;
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin-bottom: 4px;
+            transition: background 0.2s;
+        }
+        .mobile-menu a:hover,
+        .mobile-menu a.active {
+            background: rgba(59, 130, 246, 0.3);
+        }
+        .mobile-menu select {
+            width: 100%;
+            padding: 12px 15px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.1);
+            color: white;
+            font-size: 1rem;
+            margin-bottom: 10px;
+        }
+        .mobile-menu select option {
+            background: #1f2937;
+            color: white;
+        }
+        .mobile-user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 15px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .mobile-user-info .user-badge {
+            background: #3b82f6;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.7rem;
         }
 
         /* Mobile: < 768px */
         @media (max-width: 767px) {
             .nav-container {
-                flex-wrap: wrap;
                 padding: 10px 15px;
             }
 
             .nav-brand {
-                font-size: 1rem;
-                padding: 10px 0;
+                font-size: 0.95rem;
+                padding: 5px 0;
             }
 
-            .mobile-menu-toggle {
+            /* Show hamburger, hide everything else in nav */
+            .hamburger-btn {
                 display: block;
             }
-
-            /* Hide view switcher on mobile */
-            .view-switcher {
-                display: none;
-                width: 100%;
-                flex-direction: column;
-                margin-top: 10px;
-            }
-            .view-switcher.show {
-                display: flex;
-            }
-            .view-switcher a {
-                padding: 12px 15px;
-                text-align: center;
-            }
-
-            /* Customer/role switchers stack */
+            .view-switcher,
             .customer-switcher,
-            .role-switcher {
-                margin: 10px 0 0 0 !important;
-                width: 100%;
-            }
-            .customer-switcher select,
-            .role-switcher select {
-                width: 100%;
-            }
-
-            /* Nav user info */
+            .role-switcher,
             .nav-user {
-                width: 100%;
-                flex-wrap: wrap;
-                justify-content: center;
-                padding: 10px 0;
-                font-size: 0.8rem;
-                gap: 5px;
+                display: none !important;
             }
-            .nav-user-info {
-                width: 100%;
-                justify-content: center;
-                flex-wrap: wrap;
-            }
-            .nav-divider {
+
+            /* Hide entire submenu on mobile - use hamburger instead */
+            .submenu {
                 display: none;
-            }
-            .nav-actions {
-                width: 100%;
-                justify-content: center;
-                margin-top: 5px;
-            }
-
-            /* Submenu horizontal scroll */
-            .submenu-container {
-                padding: 0 10px;
-                overflow-x: auto;
-                -webkit-overflow-scrolling: touch;
-            }
-            .submenu-links {
-                flex-wrap: nowrap;
-                min-width: max-content;
-            }
-            .submenu-links a {
-                padding: 10px 12px;
-                font-size: 0.8rem;
-                white-space: nowrap;
-            }
-
-            /* Dropdown menu in submenu */
-            .submenu-dropdown .dropdown-menu {
-                position: fixed;
-                left: 10px;
-                right: 10px;
-                width: auto;
-                max-height: 60vh;
-                overflow-y: auto;
             }
 
             /* Main content */
@@ -671,8 +706,81 @@
                     </a>
                 </div>
             </div>
+
+            <!-- Hamburger button (mobile only) -->
+            <button class="hamburger-btn" onclick="toggleMobileMenu()" aria-label="Menu">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
         </div>
     </nav>
+
+    <!-- Mobile Menu Overlay -->
+    <div id="mobileMenu" class="mobile-menu">
+        <button class="mobile-menu-close" onclick="toggleMobileMenu()">×</button>
+
+        <!-- User info -->
+        <div class="mobile-user-info">
+            <span>{{ session.user.name }}</span>
+            {% if is_simulating %}
+            <span class="user-badge" style="background: #f59e0b;">{{ simulated_role|upper }}</span>
+            {% else %}
+            <span class="user-badge">{{ session.user.role|upper }}</span>
+            {% endif %}
+        </div>
+
+        {% if session.user.role == 'superadmin' %}
+        <!-- Superadmin controls -->
+        <div class="mobile-menu-section">
+            <div class="mobile-menu-section-title">Superadmin</div>
+            <select onchange="switchCustomer(this.value)">
+                <option value="">🌍 Alle kunder</option>
+                {% for customer in customers %}
+                <option value="{{ customer.id }}" {% if session.customer_filter == customer.id %}selected{% endif %}>
+                    {{ customer.name }}
+                </option>
+                {% endfor %}
+            </select>
+            <select onchange="switchRole(this.value)">
+                <option value="" {% if not session.simulated_role %}selected{% endif %}>👑 Superadmin</option>
+                <option value="admin" {% if session.simulated_role == 'admin' %}selected{% endif %}>🔧 Admin</option>
+                <option value="manager" {% if session.simulated_role == 'manager' %}selected{% endif %}>👔 Manager</option>
+            </select>
+        </div>
+        {% endif %}
+
+        <!-- Navigation -->
+        <div class="mobile-menu-section">
+            <div class="mobile-menu-section-title">Navigation</div>
+            <a href="/admin" {% if request.path == '/admin' %}class="active"{% endif %}>🏠 Dashboard</a>
+            <a href="/admin/assessments-overview">📋 Målinger</a>
+            <a href="/admin/analyser">📊 Analyser</a>
+            <a href="/admin/tasks">🎯 Situationsmålinger</a>
+            <a href="/admin/profiler">🧠 Friktionsprofil</a>
+            <a href="/admin/units">🌳 Organisationer</a>
+            <a href="/admin/customers">👥 Kunder & Brugere</a>
+        </div>
+
+        <!-- Settings -->
+        <div class="mobile-menu-section">
+            <div class="mobile-menu-section-title">Indstillinger</div>
+            <a href="/admin/my-branding">🎨 Branding</a>
+            <a href="/admin/email-stats">📧 Email Status</a>
+            <a href="/admin/backup">💾 Backup</a>
+            <a href="/admin/dev-tools">🔧 Dev Tools</a>
+        </div>
+
+        <!-- Account -->
+        <div class="mobile-menu-section">
+            <div class="mobile-menu-section-title">Konto</div>
+            <a href="/set-language/{{ 'en' if get_user_language() == 'da' else 'da' }}">
+                {% if get_user_language() == 'da' %}🇬🇧 English{% else %}🇩🇰 Dansk{% endif %}
+            </a>
+            <a href="/admin/my-account">👤 Min konto</a>
+            <a href="/logout" style="color: #f87171;">🚪 Log ud</a>
+        </div>
+    </div>
 
     <!-- Submenu baseret på view mode -->
     <div class="submenu">
@@ -834,6 +942,37 @@
     </style>
 
     <script>
+    // Mobile menu toggle
+    function toggleMobileMenu() {
+        var menu = document.getElementById('mobileMenu');
+        var btn = document.querySelector('.hamburger-btn');
+        menu.classList.toggle('active');
+        btn.classList.toggle('active');
+        // Prevent body scroll when menu is open
+        document.body.style.overflow = menu.classList.contains('active') ? 'hidden' : '';
+    }
+
+    // Close mobile menu on resize to desktop
+    window.addEventListener('resize', function() {
+        if (window.innerWidth > 767) {
+            var menu = document.getElementById('mobileMenu');
+            var btn = document.querySelector('.hamburger-btn');
+            if (menu && menu.classList.contains('active')) {
+                menu.classList.remove('active');
+                btn.classList.remove('active');
+                document.body.style.overflow = '';
+            }
+        }
+    });
+
+    // Handle orientation change
+    window.addEventListener('orientationchange', function() {
+        // Small delay to let the browser adjust
+        setTimeout(function() {
+            window.dispatchEvent(new Event('resize'));
+        }, 100);
+    });
+
     function switchCustomer(customerId) {
         // Get current path to return to after switching
         var currentPath = window.location.pathname;
