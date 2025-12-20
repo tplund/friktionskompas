@@ -119,11 +119,12 @@ Grundig gennemgang af hele systemet før go-live.
   - Glemt password
   - FAQ sektion
 
-### Brugerrettet Dokumentation
+### Brugerrettet Dokumentation ✅ FÆRDIG
 - [x] ~~**Hjælpeside oprettet** - `/help` med vejledning til oprettelse, login, glemt password~~
-- [ ] **Admin dokumentation** - Vejledning til admin-brugere (målinger, organisationer, analyser)
-- [ ] **Manager dokumentation** - Vejledning til managers (resultater, rapporter)
-- [ ] **Friktionsprofil dokumentation** - Forklaring af tests og resultater til slutbrugere
+- [x] ~~**Admin dokumentation** - Vejledning til admin-brugere~~ (`docs/ADMIN_VEJLEDNING.md`)
+- [x] ~~**Manager dokumentation** - Vejledning til managers~~ (`docs/MANAGER_VEJLEDNING.md`)
+- [x] ~~**Friktionsprofil dokumentation** - Forklaring af tests og resultater~~ (`FRIKTIONSPROFIL_V2.md`)
+- [x] ~~**MCP Server dokumentation** - Dokumentation af Claude Code integration~~ (`MCP_SERVER.md`)
 
 ### Multi-tenant & Auth
 - [x] ~~Implementer kunde/tenant isolation i database~~
@@ -152,17 +153,17 @@ Grundig gennemgang af hele systemet før go-live.
   - Audit logging af alle API kald
   - IP whitelist option for enterprise
 
-### Kunde API (Planlagt)
-- [ ] **Kunde-facing REST API** - Giv enterprise-kunder mulighed for at integrere med egne systemer
+### Kunde API ✅ FÆRDIG
+- [x] ~~**Kunde-facing REST API** - Giv enterprise-kunder mulighed for at integrere med egne systemer~~
   - Autentifikation via API keys per kunde
   - GET `/api/v1/assessments` - Liste over målinger
+  - GET `/api/v1/assessments/{id}` - Enkelt måling
   - GET `/api/v1/assessments/{id}/results` - Resultater for en måling
   - GET `/api/v1/units` - Organisationsoversigt
   - POST `/api/v1/assessments` - Opret ny måling
-  - Rate limiting per kunde
-  - Webhook support til notifikationer
-- [ ] **API dokumentation** - OpenAPI/Swagger spec
-- [ ] **API key management** - Admin UI til oprettelse/rotation af API keys
+- [x] ~~**API key management** - Admin UI til oprettelse/rotation af API keys~~ (`/admin/api-keys`)
+- [ ] **API dokumentation** - OpenAPI/Swagger spec (fremtidig)
+- [ ] **Webhook support** - Notifikationer ved events (fremtidig)
 
 **Formål:** Enterprise-kunder kan integrere Friktionskompasset med deres HR-systemer, Power BI dashboards, etc.
 
@@ -185,34 +186,34 @@ Bruges til udvikling af e-læring, kommunikation og adfærdsdesign.
 
 **Formål:** Målrettet udvikling af læring og kommunikation. Svar på "hvad skal adresseres først?"
 
-### Data Import/Export & Research (NY)
+### Data Import/Export & Research ✅ DELVIST FÆRDIG (2025-12-20)
 Bulk data håndtering til forskning, analyse og integration.
 
-- [ ] **Bulk eksport** - JSON/CSV med fuld metadata
+- [x] ~~**Bulk eksport** - JSON/CSV med fuld metadata~~ (`/admin/bulk-export`)
   - Måledata (svar, scores, timestamps)
-  - Spørgeskema-definition (versioneret)
+  - Spørgeskema-definition
   - Felt-mapping (TRYGHED, MENING, KAN, BESVÆR)
-- [ ] **Anonymisering** - Irreversibel anonymisering til research
-- [ ] **Pseudonymisering** - Respondent-UUID som default
-- [ ] **Import** - Mapping-interface for eksterne data (Excel, Qualtrics, etc.)
-- [ ] **Research mode** - Særlig datatilstand uden personhenførbarhed
+  - Organisationsstruktur (valgfrit)
+- [x] ~~**Anonymisering** - Irreversibel anonymisering til research~~ (fuld, pseudonymiseret, ingen)
+- [x] ~~**Pseudonymisering** - Respondent-UUID som default~~ (SHA256-baseret UUID)
+- [x] ~~**API eksport** - `/api/v1/export` for programmatisk adgang~~
+- [ ] **Import** - Mapping-interface for eksterne data (Excel, Qualtrics, etc.) (fremtidig)
+- [ ] **Research mode** - Særlig datatilstand uden personhenførbarhed (fremtidig)
 
 **Formål:** Muliggør forskning, benchmarking og brug af data uden lock-in.
 
-### GDPR & DPO-overblik (NY)
+### GDPR & DPO-overblik ✅ DELVIST FÆRDIG
 Compliance-features der gør det nemt for kunder at dokumentere.
 
-- [ ] **Auto-DPA** - Generer databehandleraftale med kundeinfo
-  - Versioneret
-  - Download PDF / digital accept
-- [ ] **Underdatabehandlere** - Live liste med formål, datatyper, region
-- [ ] **DPO Dashboard** - Samlet overblik for Data Protection Officers
-  - Aktive aftaler
-  - Datatilstande (hvad gemmes, hvad anonymiseres)
-  - Retention-regler
-  - Dataoversigt (antal målinger, respondenter)
-- [ ] **Sletning som feature** - Bruger-initieret sletning med eksport først
-- [ ] **Retention-regler** - Auto-sletning efter X måneder (kundevalg)
+- [x] ~~**DPO Dashboard** - Samlet overblik for Data Protection Officers~~ (`/admin/gdpr`)
+  - Dataoversigt (antal kunder, brugere, målinger, respondenter)
+  - Data per kunde visning
+  - Datatyper og formål
+- [x] ~~**Sletning som feature** - Admin kan slette kundedata komplet~~ (GDPR sletning)
+- [ ] **Auto-DPA** - Generer databehandleraftale med kundeinfo (fremtidig)
+- [ ] **Underdatabehandlere** - Live liste med formål, datatyper, region (fremtidig)
+- [ ] **Retention-regler** - Auto-sletning efter X måneder (fremtidig)
+- [ ] **Bruger-initieret sletning** - Self-service sletning med eksport (fremtidig)
 
 **Formål:** Compliance uden friktion. DPO'er kan dokumentere alt på 5 minutter.
 

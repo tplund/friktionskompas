@@ -1,0 +1,415 @@
+{% extends "admin/layout.html" %}
+
+{% block title %}Bulk Data Eksport{% endblock %}
+
+{% block extra_css %}
+<style>
+    .card {
+        background: white;
+        border-radius: 8px;
+        padding: 25px;
+        margin-bottom: 20px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        border: 1px solid #e5e7eb;
+    }
+    .card h2 {
+        margin-bottom: 20px;
+        color: #374151;
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+
+    .section {
+        margin-bottom: 25px;
+        padding-bottom: 25px;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    .section:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+        padding-bottom: 0;
+    }
+    .section h3 {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 10px;
+    }
+    .section p {
+        color: #6b7280;
+        font-size: 0.9rem;
+        margin-bottom: 15px;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+    .form-group label {
+        display: block;
+        font-weight: 500;
+        color: #374151;
+        margin-bottom: 8px;
+    }
+    .form-group select,
+    .form-group input[type="text"] {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        font-size: 0.9rem;
+    }
+    .form-group select:focus,
+    .form-group input:focus {
+        outline: none;
+        border-color: #4f46e5;
+        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+    }
+
+    .checkbox-group {
+        margin: 15px 0;
+    }
+    .checkbox-group label {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        cursor: pointer;
+        margin-bottom: 12px;
+        padding: 12px;
+        background: #f9fafb;
+        border-radius: 6px;
+        border: 1px solid #e5e7eb;
+        transition: all 0.15s;
+    }
+    .checkbox-group label:hover {
+        background: #f3f4f6;
+        border-color: #d1d5db;
+    }
+    .checkbox-group input[type="checkbox"],
+    .checkbox-group input[type="radio"] {
+        margin-top: 2px;
+        width: 18px;
+        height: 18px;
+        flex-shrink: 0;
+    }
+    .checkbox-group .option-content {
+        flex: 1;
+    }
+    .checkbox-group .option-title {
+        font-weight: 500;
+        color: #374151;
+    }
+    .checkbox-group .option-desc {
+        font-size: 0.8rem;
+        color: #6b7280;
+        margin-top: 2px;
+    }
+
+    .btn {
+        padding: 12px 24px;
+        border-radius: 6px;
+        font-weight: 500;
+        text-decoration: none;
+        display: inline-block;
+        cursor: pointer;
+        border: none;
+        font-size: 0.9rem;
+        transition: all 0.15s;
+    }
+    .btn-primary {
+        background: #4f46e5;
+        color: white;
+    }
+    .btn-primary:hover {
+        background: #4338ca;
+    }
+    .btn-secondary {
+        background: #6b7280;
+        color: white;
+    }
+    .btn-secondary:hover {
+        background: #4b5563;
+    }
+    .btn-group {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .info-box {
+        background: #eff6ff;
+        border: 1px solid #3b82f6;
+        border-radius: 6px;
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+    .info-box p {
+        margin: 0;
+        color: #1e40af;
+        font-size: 0.85rem;
+    }
+    .info-box code {
+        background: rgba(59, 130, 246, 0.1);
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-family: monospace;
+    }
+
+    .warning-box {
+        background: #fef3c7;
+        border: 1px solid #f59e0b;
+        border-radius: 6px;
+        padding: 15px;
+        margin-bottom: 15px;
+    }
+    .warning-box p {
+        margin: 0;
+        color: #92400e;
+        font-size: 0.85rem;
+    }
+
+    .stats-preview {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+        gap: 10px;
+        margin-top: 15px;
+        padding: 15px;
+        background: #f9fafb;
+        border-radius: 6px;
+    }
+    .stat-item {
+        text-align: center;
+    }
+    .stat-item .value {
+        font-size: 1.3rem;
+        font-weight: 600;
+        color: #374151;
+    }
+    .stat-item .label {
+        font-size: 0.75rem;
+        color: #6b7280;
+        text-transform: uppercase;
+    }
+
+    .format-badges {
+        display: flex;
+        gap: 8px;
+        margin-top: 10px;
+    }
+    .format-badge {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+    .format-badge.json {
+        background: #fef3c7;
+        color: #92400e;
+    }
+    .format-badge.csv {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    @media (max-width: 767px) {
+        .card {
+            padding: 15px;
+        }
+        .btn-group {
+            flex-direction: column;
+        }
+        .btn {
+            width: 100%;
+            text-align: center;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>Bulk Data Eksport</h2>
+
+    <div class="info-box">
+        <p><strong>Formål:</strong> Eksporter måledata til forskning, analyse eller integration med andre systemer. Data kan anonymiseres for GDPR-compliance.</p>
+    </div>
+
+    <form method="POST" action="/admin/bulk-export/download" id="exportForm">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <div class="section">
+            <h3>1. Vælg data at eksportere</h3>
+
+            {% if current_user.role == 'superadmin' %}
+            <div class="form-group">
+                <label for="customer_id">Kunde</label>
+                <select name="customer_id" id="customer_id" onchange="updateStats()">
+                    <option value="">Alle kunder</option>
+                    {% for customer in customers %}
+                    <option value="{{ customer.id }}" {% if selected_customer_id == customer.id %}selected{% endif %}>
+                        {{ customer.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% else %}
+            <input type="hidden" name="customer_id" value="{{ current_user.customer_id }}">
+            {% endif %}
+
+            <div class="form-group">
+                <label for="assessment_id">Måling (valgfrit)</label>
+                <select name="assessment_id" id="assessment_id">
+                    <option value="">Alle målinger</option>
+                    {% for assessment in assessments %}
+                    <option value="{{ assessment.id }}">
+                        {{ assessment.name }} ({{ assessment.period or 'Ingen periode' }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="stats-preview" id="statsPreview">
+                <div class="stat-item">
+                    <div class="value" id="statAssessments">{{ stats.assessments }}</div>
+                    <div class="label">Målinger</div>
+                </div>
+                <div class="stat-item">
+                    <div class="value" id="statResponses">{{ stats.responses }}</div>
+                    <div class="label">Svar</div>
+                </div>
+                <div class="stat-item">
+                    <div class="value" id="statUnits">{{ stats.units }}</div>
+                    <div class="label">Enheder</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>2. Inkluder data</h3>
+
+            <div class="checkbox-group">
+                <label>
+                    <input type="checkbox" name="include_responses" value="1" checked>
+                    <div class="option-content">
+                        <div class="option-title">Individuelle svar</div>
+                        <div class="option-desc">Alle svar med spørgsmåls-ID, score, timestamp</div>
+                    </div>
+                </label>
+
+                <label>
+                    <input type="checkbox" name="include_scores" value="1" checked>
+                    <div class="option-content">
+                        <div class="option-title">Aggregerede scores</div>
+                        <div class="option-desc">TRYGHED, MENING, KAN, BESVÆR scores per enhed/måling</div>
+                    </div>
+                </label>
+
+                <label>
+                    <input type="checkbox" name="include_questions" value="1" checked>
+                    <div class="option-content">
+                        <div class="option-title">Spørgsmålsmetadata</div>
+                        <div class="option-desc">Spørgsmålstekster, felt-mapping, reverse_scored</div>
+                    </div>
+                </label>
+
+                <label>
+                    <input type="checkbox" name="include_units" value="1">
+                    <div class="option-content">
+                        <div class="option-title">Organisationsstruktur</div>
+                        <div class="option-desc">Enhedshierarki med navne og stier</div>
+                    </div>
+                </label>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>3. Anonymisering</h3>
+
+            <div class="warning-box">
+                <p><strong>GDPR:</strong> Vælg anonymisering ved eksport til forskning eller tredjeparter. Fuld eksport indeholder personhenførbare data.</p>
+            </div>
+
+            <div class="checkbox-group">
+                <label>
+                    <input type="radio" name="anonymization" value="none">
+                    <div class="option-content">
+                        <div class="option-title">Ingen anonymisering</div>
+                        <div class="option-desc">Fuld data inkl. emails og enheds-navne (kun til backup/intern brug)</div>
+                    </div>
+                </label>
+
+                <label>
+                    <input type="radio" name="anonymization" value="pseudonymized" checked>
+                    <div class="option-content">
+                        <div class="option-title">Pseudonymiseret (anbefalet)</div>
+                        <div class="option-desc">Emails erstattes med UUID'er, enheds-navne bevares</div>
+                    </div>
+                </label>
+
+                <label>
+                    <input type="radio" name="anonymization" value="full">
+                    <div class="option-content">
+                        <div class="option-title">Fuld anonymisering</div>
+                        <div class="option-desc">Ingen persondata, enheds-ID'er i stedet for navne</div>
+                    </div>
+                </label>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>4. Format</h3>
+
+            <div class="checkbox-group">
+                <label>
+                    <input type="radio" name="format" value="json" checked>
+                    <div class="option-content">
+                        <div class="option-title">JSON</div>
+                        <div class="option-desc">Struktureret format til programmering og API-integration</div>
+                    </div>
+                </label>
+
+                <label>
+                    <input type="radio" name="format" value="csv">
+                    <div class="option-content">
+                        <div class="option-title">CSV</div>
+                        <div class="option-desc">Flad fil til Excel, SPSS, R, Python/pandas</div>
+                    </div>
+                </label>
+            </div>
+
+            <div class="format-badges">
+                <span class="format-badge json">JSON: Nested struktur</span>
+                <span class="format-badge csv">CSV: Excel-kompatibel</span>
+            </div>
+        </div>
+
+        <div class="btn-group">
+            <button type="submit" class="btn btn-primary">Download eksport</button>
+            <a href="/admin/backup" class="btn btn-secondary">Fuld database backup</a>
+        </div>
+    </form>
+</div>
+
+{% if current_user.role == 'superadmin' %}
+<div class="card">
+    <h2>API Adgang</h2>
+    <p style="color: #6b7280; font-size: 0.9rem;">Enterprise-kunder kan også bruge API til programmatisk eksport:</p>
+    <pre style="background: #1f2937; color: #e5e7eb; padding: 15px; border-radius: 6px; overflow-x: auto; font-size: 0.85rem;"><code>curl "https://friktionskompasset.dk/api/v1/export?format=json&anonymization=pseudonymized" \
+     -H "X-API-Key: YOUR_CUSTOMER_API_KEY"</code></pre>
+</div>
+{% endif %}
+
+<script>
+function updateStats() {
+    // Could make AJAX call to update stats based on selection
+    // For now, just visual feedback
+    const customerId = document.getElementById('customer_id')?.value;
+    const assessmentId = document.getElementById('assessment_id')?.value;
+
+    // Visual indication that selection changed
+    document.getElementById('statsPreview').style.opacity = '0.6';
+    setTimeout(() => {
+        document.getElementById('statsPreview').style.opacity = '1';
+    }, 300);
+}
+</script>
+{% endblock %}

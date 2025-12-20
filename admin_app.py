@@ -6037,6 +6037,508 @@ def fix_missing_leader_data():
     return redirect(url_for('dev_tools'))
 
 
+# =============================================================================
+# BULK DATA EXPORT
+# =============================================================================
+
+@app.route('/admin/bulk-export')
+@admin_required
+def bulk_export_page():
+    """Bulk data export page with options for anonymization and format."""
+    from db_hierarchical import get_db
+
+    user = get_current_user()
+    where_clause, params = get_customer_filter(user['role'], user['customer_id'], session.get('customer_filter'))
+
+    with get_db() as conn:
+        # Get customers for dropdown (superadmin only)
+        customers = []
+        if user['role'] == 'superadmin':
+            customers = conn.execute("""
+                SELECT id, name FROM customers ORDER BY name
+            """).fetchall()
+
+        # Get assessments
+        if user['role'] == 'superadmin':
+            assessments = conn.execute("""
+                SELECT a.id, a.name, a.period, c.name as customer_name
+                FROM assessments a
+                JOIN organizational_units ou ON a.target_unit_id = ou.id
+                JOIN customers c ON ou.customer_id = c.id
+                ORDER BY a.created_at DESC
+                LIMIT 100
+            """).fetchall()
+        else:
+            assessments = conn.execute(f"""
+                SELECT a.id, a.name, a.period
+                FROM assessments a
+                JOIN organizational_units ou ON a.target_unit_id = ou.id
+                WHERE {where_clause}
+                ORDER BY a.created_at DESC
+                LIMIT 100
+            """, params).fetchall()
+
+        # Get stats
+        if user['role'] == 'superadmin':
+            stats = {
+                'assessments': conn.execute("SELECT COUNT(*) FROM assessments").fetchone()[0],
+                'responses': conn.execute("SELECT COUNT(*) FROM responses").fetchone()[0],
+                'units': conn.execute("SELECT COUNT(*) FROM organizational_units").fetchone()[0],
+            }
+        else:
+            stats = {
+                'assessments': conn.execute(f"""
+                    SELECT COUNT(*) FROM assessments a
+                    JOIN organizational_units ou ON a.target_unit_id = ou.id
+                    WHERE {where_clause}
+                """, params).fetchone()[0],
+                'responses': conn.execute(f"""
+                    SELECT COUNT(*) FROM responses r
+                    JOIN assessments a ON r.assessment_id = a.id
+                    JOIN organizational_units ou ON a.target_unit_id = ou.id
+                    WHERE {where_clause}
+                """, params).fetchone()[0],
+                'units': conn.execute(f"""
+                    SELECT COUNT(*) FROM organizational_units WHERE {where_clause}
+                """, params).fetchone()[0],
+            }
+
+    return render_template('admin/bulk_export.html',
+        customers=customers,
+        assessments=assessments,
+        stats=stats,
+        selected_customer_id=request.args.get('customer_id'),
+        current_user=user
+    )
+
+
+@app.route('/admin/bulk-export/download', methods=['POST'])
+@admin_required
+def bulk_export_download():
+    """Download bulk export with specified options."""
+    import hashlib
+    import uuid
+    import json
+    from db_hierarchical import get_db
+
+    user = get_current_user()
+
+    # Parse options
+    customer_id = request.form.get('customer_id') or None
+    assessment_id = request.form.get('assessment_id') or None
+    export_format = request.form.get('format', 'json')
+    anonymization = request.form.get('anonymization', 'pseudonymized')
+
+    include_responses = request.form.get('include_responses') == '1'
+    include_scores = request.form.get('include_scores') == '1'
+    include_questions = request.form.get('include_questions') == '1'
+    include_units = request.form.get('include_units') == '1'
+
+    # Security: non-superadmin can only export own customer data
+    if user['role'] != 'superadmin':
+        customer_id = user['customer_id']
+
+    # Helper for anonymization
+    def anonymize_email(email, level):
+        if level == 'none':
+            return email
+        elif level == 'pseudonymized':
+            # Consistent hash-based UUID
+            hash_bytes = hashlib.sha256(email.encode()).digest()[:16]
+            return str(uuid.UUID(bytes=hash_bytes))
+        else:  # full
+            return None
+
+    def anonymize_unit_name(name, unit_id, level):
+        if level == 'full':
+            return f"unit_{unit_id}"
+        return name
+
+    with get_db() as conn:
+        export_data = {
+            'export_date': datetime.now().isoformat(),
+            'export_version': '1.0',
+            'anonymization_level': anonymization,
+            'filters': {
+                'customer_id': customer_id,
+                'assessment_id': assessment_id
+            }
+        }
+
+        # Build WHERE clause based on filters
+        where_conditions = []
+        params = []
+
+        if customer_id:
+            where_conditions.append("ou.customer_id = ?")
+            params.append(customer_id)
+        elif user['role'] != 'superadmin':
+            where_conditions.append("ou.customer_id = ?")
+            params.append(user['customer_id'])
+
+        if assessment_id:
+            where_conditions.append("a.id = ?")
+            params.append(assessment_id)
+
+        where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
+
+        # Export responses
+        if include_responses:
+            responses = conn.execute(f"""
+                SELECT
+                    r.id as response_id,
+                    r.question_id,
+                    r.score,
+                    r.created_at as response_date,
+                    r.respondent_name,
+                    r.respondent_type,
+                    a.id as assessment_id,
+                    a.name as assessment_name,
+                    a.period,
+                    ou.id as unit_id,
+                    ou.name as unit_name,
+                    ou.full_path
+                FROM responses r
+                JOIN assessments a ON r.assessment_id = a.id
+                JOIN organizational_units ou ON r.unit_id = ou.id
+                WHERE {where_clause}
+                ORDER BY r.created_at
+            """, params).fetchall()
+
+            export_data['responses'] = [
+                {
+                    'response_id': r['response_id'],
+                    'question_id': r['question_id'],
+                    'score': r['score'],
+                    'response_date': r['response_date'],
+                    'respondent_id': anonymize_email(r['respondent_name'] or '', anonymization) if r['respondent_name'] else None,
+                    'is_leader': r['respondent_type'] == 'leader',
+                    'assessment_id': r['assessment_id'],
+                    'assessment_name': r['assessment_name'] if anonymization != 'full' else None,
+                    'period': r['period'],
+                    'unit_id': r['unit_id'],
+                    'unit_name': anonymize_unit_name(r['unit_name'], r['unit_id'], anonymization),
+                }
+                for r in responses
+            ]
+
+        # Export aggregated scores
+        if include_scores:
+            # Get scores per assessment/unit
+            scores_query = f"""
+                SELECT
+                    a.id as assessment_id,
+                    a.name as assessment_name,
+                    a.period,
+                    ou.id as unit_id,
+                    ou.name as unit_name,
+                    q.field,
+                    AVG(CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END) as avg_score,
+                    COUNT(DISTINCT r.respondent_name) as response_count
+                FROM responses r
+                JOIN assessments a ON r.assessment_id = a.id
+                JOIN organizational_units ou ON r.unit_id = ou.id
+                JOIN questions q ON r.question_id = q.id
+                WHERE {where_clause}
+                GROUP BY a.id, ou.id, q.field
+            """
+            scores = conn.execute(scores_query, params).fetchall()
+
+            export_data['aggregated_scores'] = [
+                {
+                    'assessment_id': s['assessment_id'],
+                    'assessment_name': s['assessment_name'] if anonymization != 'full' else None,
+                    'period': s['period'],
+                    'unit_id': s['unit_id'],
+                    'unit_name': anonymize_unit_name(s['unit_name'], s['unit_id'], anonymization),
+                    'field': s['field'],
+                    'score': round(s['avg_score'], 2) if s['avg_score'] else None,
+                    'percent': round(score_to_percent(s['avg_score']), 1) if s['avg_score'] else None,
+                    'response_count': s['response_count']
+                }
+                for s in scores
+            ]
+
+        # Export questions metadata
+        if include_questions:
+            questions = conn.execute("""
+                SELECT id, sequence, field, text_da, text_en, reverse_scored, is_default
+                FROM questions
+                WHERE is_default = 1
+                ORDER BY sequence
+            """).fetchall()
+
+            export_data['questions'] = [
+                {
+                    'id': q['id'],
+                    'sequence': q['sequence'],
+                    'field': q['field'],
+                    'text_da': q['text_da'],
+                    'text_en': q['text_en'],
+                    'reverse_scored': bool(q['reverse_scored'])
+                }
+                for q in questions
+            ]
+
+        # Export organizational units
+        if include_units:
+            units_query = f"""
+                SELECT ou.id, ou.name, ou.full_path, ou.parent_id, ou.level, c.name as customer_name
+                FROM organizational_units ou
+                JOIN customers c ON ou.customer_id = c.id
+                WHERE {where_clause.replace('a.id = ?', '1=1').replace('t.assessment_id = ?', '1=1')}
+            """
+            # Remove assessment filter for units
+            units_params = [p for p in params if p != assessment_id]
+            units = conn.execute(units_query, units_params if units_params else []).fetchall()
+
+            export_data['units'] = [
+                {
+                    'id': u['id'],
+                    'name': anonymize_unit_name(u['name'], u['id'], anonymization),
+                    'path': u['full_path'] if anonymization != 'full' else None,
+                    'parent_id': u['parent_id'],
+                    'level': u['level'],
+                    'customer': u['customer_name'] if anonymization == 'none' else None
+                }
+                for u in units
+            ]
+
+    # Audit log
+    log_action(
+        AuditAction.DATA_EXPORTED,
+        entity_type="bulk_export",
+        details=f"Bulk export: format={export_format}, anonymization={anonymization}, "
+                f"customer={customer_id}, assessment={assessment_id}"
+    )
+
+    # Return in requested format
+    if export_format == 'csv':
+        # Flatten to CSV - primarily responses data
+        output = io.StringIO()
+        writer = csv.writer(output, delimiter=';')
+
+        if include_responses and 'responses' in export_data:
+            # Header
+            writer.writerow([
+                'response_id', 'question_id', 'score', 'response_date',
+                'respondent_id', 'is_leader', 'assessment_id', 'assessment_name',
+                'period', 'unit_id', 'unit_name'
+            ])
+            # Data
+            for r in export_data['responses']:
+                writer.writerow([
+                    r['response_id'], r['question_id'], r['score'], r['response_date'],
+                    r['respondent_id'], r['is_leader'], r['assessment_id'], r['assessment_name'],
+                    r['period'], r['unit_id'], r['unit_name']
+                ])
+
+        csv_content = output.getvalue()
+        filename = f"friktionskompas_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+
+        return Response(
+            '\ufeff' + csv_content,  # BOM for Excel
+            mimetype='text/csv; charset=utf-8',
+            headers={'Content-Disposition': f'attachment; filename={filename}'}
+        )
+    else:
+        # JSON format
+        json_str = json.dumps(export_data, ensure_ascii=False, indent=2, default=str)
+        filename = f"friktionskompas_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+
+        return Response(
+            json_str,
+            mimetype='application/json',
+            headers={'Content-Disposition': f'attachment; filename={filename}'}
+        )
+
+
+@app.route('/api/v1/export', methods=['GET'])
+@csrf.exempt
+@customer_api_required
+def api_v1_export():
+    """
+    API endpoint for bulk data export.
+
+    Query params:
+        - format: json (default) or csv
+        - anonymization: none, pseudonymized (default), or full
+        - assessment_id: Optional filter to specific assessment
+        - include_responses: true/false (default true)
+        - include_scores: true/false (default true)
+        - include_questions: true/false (default true)
+        - include_units: true/false (default false)
+
+    API Usage:
+        curl "https://friktionskompasset.dk/api/v1/export?format=json&anonymization=pseudonymized" \
+             -H "X-API-Key: YOUR_KEY"
+    """
+    import hashlib
+    import uuid
+    from db_hierarchical import get_db
+
+    customer_id = g.api_customer_id
+    export_format = request.args.get('format', 'json')
+    anonymization = request.args.get('anonymization', 'pseudonymized')
+    assessment_id = request.args.get('assessment_id')
+
+    include_responses = request.args.get('include_responses', 'true').lower() == 'true'
+    include_scores = request.args.get('include_scores', 'true').lower() == 'true'
+    include_questions = request.args.get('include_questions', 'true').lower() == 'true'
+    include_units = request.args.get('include_units', 'false').lower() == 'true'
+
+    # Validate anonymization level
+    if anonymization not in ['none', 'pseudonymized', 'full']:
+        return jsonify({'error': 'Invalid anonymization level', 'code': 'INVALID_PARAM'}), 400
+
+    # Helper for anonymization
+    def anonymize_email(email, level):
+        if level == 'none':
+            return email
+        elif level == 'pseudonymized':
+            hash_bytes = hashlib.sha256(email.encode()).digest()[:16]
+            return str(uuid.UUID(bytes=hash_bytes))
+        else:
+            return None
+
+    def anonymize_unit_name(name, unit_id, level):
+        if level == 'full':
+            return f"unit_{unit_id}"
+        return name
+
+    with get_db() as conn:
+        export_data = {
+            'export_date': datetime.now().isoformat(),
+            'export_version': '1.0',
+            'anonymization_level': anonymization
+        }
+
+        # Build WHERE clause
+        where_conditions = ["ou.customer_id = ?"]
+        params = [customer_id]
+
+        if assessment_id:
+            where_conditions.append("a.id = ?")
+            params.append(assessment_id)
+
+        where_clause = " AND ".join(where_conditions)
+
+        # Export responses
+        if include_responses:
+            responses = conn.execute(f"""
+                SELECT
+                    r.id as response_id,
+                    r.question_id,
+                    r.score,
+                    r.created_at as response_date,
+                    r.respondent_name,
+                    r.respondent_type,
+                    a.id as assessment_id,
+                    a.name as assessment_name,
+                    a.period,
+                    ou.id as unit_id,
+                    ou.name as unit_name
+                FROM responses r
+                JOIN assessments a ON r.assessment_id = a.id
+                JOIN organizational_units ou ON r.unit_id = ou.id
+                WHERE {where_clause}
+                ORDER BY r.created_at
+            """, params).fetchall()
+
+            export_data['responses'] = [
+                {
+                    'response_id': r['response_id'],
+                    'question_id': r['question_id'],
+                    'score': r['score'],
+                    'response_date': r['response_date'],
+                    'respondent_id': anonymize_email(r['respondent_name'] or '', anonymization) if r['respondent_name'] else None,
+                    'is_leader': r['respondent_type'] == 'leader',
+                    'assessment_id': r['assessment_id'],
+                    'unit_id': r['unit_id'],
+                    'unit_name': anonymize_unit_name(r['unit_name'], r['unit_id'], anonymization),
+                }
+                for r in responses
+            ]
+
+        # Export aggregated scores
+        if include_scores:
+            scores = conn.execute(f"""
+                SELECT
+                    a.id as assessment_id,
+                    ou.id as unit_id,
+                    ou.name as unit_name,
+                    q.field,
+                    AVG(CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END) as avg_score,
+                    COUNT(DISTINCT r.respondent_name) as response_count
+                FROM responses r
+                JOIN assessments a ON r.assessment_id = a.id
+                JOIN organizational_units ou ON r.unit_id = ou.id
+                JOIN questions q ON r.question_id = q.id
+                WHERE {where_clause}
+                GROUP BY a.id, ou.id, q.field
+            """, params).fetchall()
+
+            export_data['aggregated_scores'] = [
+                {
+                    'assessment_id': s['assessment_id'],
+                    'unit_id': s['unit_id'],
+                    'unit_name': anonymize_unit_name(s['unit_name'], s['unit_id'], anonymization),
+                    'field': s['field'],
+                    'score': round(s['avg_score'], 2) if s['avg_score'] else None,
+                    'percent': round(score_to_percent(s['avg_score']), 1) if s['avg_score'] else None,
+                    'response_count': s['response_count']
+                }
+                for s in scores
+            ]
+
+        # Export questions metadata
+        if include_questions:
+            questions = conn.execute("""
+                SELECT id, sequence, field, text_da, text_en, reverse_scored
+                FROM questions WHERE is_default = 1 ORDER BY sequence
+            """).fetchall()
+
+            export_data['questions'] = [dict(q) for q in questions]
+
+        # Export units
+        if include_units:
+            units = conn.execute("""
+                SELECT id, name, full_path, parent_id, level
+                FROM organizational_units WHERE customer_id = ?
+            """, (customer_id,)).fetchall()
+
+            export_data['units'] = [
+                {
+                    'id': u['id'],
+                    'name': anonymize_unit_name(u['name'], u['id'], anonymization),
+                    'path': u['full_path'] if anonymization != 'full' else None,
+                    'parent_id': u['parent_id'],
+                    'level': u['level']
+                }
+                for u in units
+            ]
+
+    # Return response
+    if export_format == 'csv':
+        output = io.StringIO()
+        writer = csv.writer(output, delimiter=';')
+
+        if include_responses and 'responses' in export_data:
+            writer.writerow(['response_id', 'question_id', 'score', 'response_date',
+                           'respondent_id', 'is_leader', 'assessment_id', 'unit_id', 'unit_name'])
+            for r in export_data['responses']:
+                writer.writerow([r['response_id'], r['question_id'], r['score'], r['response_date'],
+                               r['respondent_id'], r['is_leader'], r['assessment_id'], r['unit_id'], r['unit_name']])
+
+        return Response(
+            '\ufeff' + output.getvalue(),
+            mimetype='text/csv; charset=utf-8',
+            headers={'Content-Disposition': 'attachment; filename=export.csv'}
+        )
+
+    return jsonify({'data': export_data})
+
+
 @app.route('/admin/backup')
 @admin_required
 def backup_page():

@@ -794,6 +794,7 @@
             <a href="/admin/my-branding">🎨 Branding</a>
             <a href="/admin/email-stats">📧 Email Status</a>
             <a href="/admin/backup">💾 Backup</a>
+            <a href="/admin/bulk-export">📊 Bulk Eksport</a>
             <a href="/admin/dev-tools">🔧 Dev Tools</a>
         </div>
 
@@ -895,6 +896,7 @@
                         {% endif %}
                         <li style="border-top: 1px solid rgba(255,255,255,0.1); margin: 5px 0;"></li>
                         <li><a href="/admin/backup" {% if 'backup' in request.path %}class="active"{% endif %}>💾 {{ t('nav.backup', 'Backup & Restore') }}</a></li>
+                        <li><a href="/admin/bulk-export" {% if 'bulk-export' in request.path %}class="active"{% endif %}>📊 {{ t('nav.bulk_export', 'Bulk Eksport') }}</a></li>
                         <li><a href="/admin/audit-log" {% if 'audit-log' in request.path %}class="active"{% endif %}>📋 {{ t('nav.audit_log', 'Audit Log') }}</a></li>
                         <li><a href="/admin/gdpr" {% if 'gdpr' in request.path %}class="active"{% endif %}>🔒 GDPR & Data</a></li>
                         <li><a href="/admin/dev-tools" {% if 'dev-tools' in request.path %}class="active"{% endif %}>🔧 {{ t('nav.dev_tools', 'Dev Tools') }}</a></li>

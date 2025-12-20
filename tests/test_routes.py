@@ -336,6 +336,40 @@ class TestDeleteOperations:
         assert 'tables' in data
         assert 'backup_date' in data
 
+    def test_bulk_export_page(self, authenticated_client):
+        """Test bulk export page loads."""
+        response = authenticated_client.get('/admin/bulk-export')
+        assert response.status_code == 200
+        html = response.data.decode('utf-8')
+        assert 'Bulk' in html or 'Eksport' in html
+
+    def test_bulk_export_download_json(self, authenticated_client):
+        """Test bulk export download returns valid JSON."""
+        import json
+        response = authenticated_client.post('/admin/bulk-export/download', data={
+            'format': 'json',
+            'anonymization': 'pseudonymized',
+            'include_responses': '1',
+            'include_scores': '1',
+            'include_questions': '1'
+        })
+        assert response.status_code == 200
+        assert 'application/json' in response.content_type
+        data = json.loads(response.data)
+        assert 'export_date' in data
+        assert 'export_version' in data
+        assert 'anonymization_level' in data
+
+    def test_bulk_export_download_csv(self, authenticated_client):
+        """Test bulk export download returns valid CSV."""
+        response = authenticated_client.post('/admin/bulk-export/download', data={
+            'format': 'csv',
+            'anonymization': 'full',
+            'include_responses': '1'
+        })
+        assert response.status_code == 200
+        assert 'text/csv' in response.content_type
+
     def test_delete_assessment(self, authenticated_client, app):
         """Test deleting a assessment."""
         from db_multitenant import get_db
