@@ -194,15 +194,15 @@ def call_tool(name: str, args: dict) -> Any:
                 try:
                     count = conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
                     result[table] = count
-                except:
+                except Exception:
                     result[table] = "table not found"
 
             # Check respondent_name
             try:
                 with_name = conn.execute("SELECT COUNT(*) FROM responses WHERE respondent_name IS NOT NULL").fetchone()[0]
                 result["responses_with_name"] = with_name
-            except:
-                pass
+            except Exception:
+                pass  # Column may not exist in older schema
 
             return result
 

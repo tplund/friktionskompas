@@ -491,8 +491,8 @@ def api_admin_status():
             try:
                 count = conn.execute(f'SELECT COUNT(*) FROM {table}').fetchone()[0]
                 counts[table] = count
-            except:
-                counts[table] = 'N/A'
+            except Exception:
+                counts[table] = 'N/A'  # Table may not exist
 
         domains = conn.execute('SELECT domain, default_language FROM domains WHERE is_active = 1').fetchall()
 
@@ -3482,7 +3482,7 @@ def bulk_delete_units():
     unit_ids_json = request.form.get('unit_ids', '[]')
     try:
         unit_ids = json.loads(unit_ids_json)
-    except:
+    except (json.JSONDecodeError, ValueError):
         flash('Ugyldige unit IDs', 'error')
         return redirect(url_for('admin_home'))
 
@@ -5427,8 +5427,8 @@ def get_profil_intro_texts():
             """)
             rows = conn.execute("SELECT key, value FROM profil_settings WHERE key LIKE '%intro' OR key LIKE '%outro'").fetchall()
             return {row['key']: row['value'] for row in rows}
-    except:
-        return {}
+    except Exception:
+        return {}  # Return empty dict if table doesn't exist or query fails
 
 
 def save_profil_intro_texts(texts: dict):
@@ -6652,8 +6652,8 @@ def backup_restore():
             for table in delete_order:
                 try:
                     conn.execute(f"DELETE FROM {table}")
-                except:
-                    pass
+                except Exception:
+                    pass  # Table may not exist - continue with others
 
         # Restore tabeller i rigtig rækkefølge (parents før children)
         restore_order = ['customers', 'users', 'organizational_units', 'contacts',
@@ -6869,7 +6869,7 @@ def db_status():
         try:
             questions_count = conn.execute("SELECT COUNT(*) FROM questions WHERE is_default = 1").fetchone()[0]
             questions_total = conn.execute("SELECT COUNT(*) FROM questions").fetchone()[0]
-        except:
+        except Exception:
             questions_count = 0
             questions_total = 0
 
@@ -7748,13 +7748,13 @@ def auth_config():
     for customer in customers:
         try:
             customer['auth_providers_parsed'] = json.loads(customer.get('auth_providers') or '{}')
-        except:
+        except (json.JSONDecodeError, ValueError, TypeError):
             customer['auth_providers_parsed'] = {}
 
     for domain in domains:
         try:
             domain['auth_providers_parsed'] = json.loads(domain.get('auth_providers') or '{}')
-        except:
+        except (json.JSONDecodeError, ValueError, TypeError):
             domain['auth_providers_parsed'] = {}
 
     return render_template('admin/auth_config.html',

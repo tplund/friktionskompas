@@ -317,14 +317,14 @@ def audit_logged(action: str, entity_type: str = None,
             if get_entity_id:
                 try:
                     entity_id = get_entity_id(args, kwargs)
-                except:
-                    pass
+                except Exception:
+                    pass  # Silently ignore - audit decorator should not break app
 
             if get_details:
                 try:
                     details = get_details(args, kwargs)
-                except:
-                    pass
+                except Exception:
+                    pass  # Silently ignore - audit decorator should not break app
 
             log_action(action, entity_type=entity_type, entity_id=entity_id,
                       details=details)

@@ -273,36 +273,36 @@ def init_db():
         # Tilføj kolonner hvis de mangler (migration)
         try:
             conn.execute("ALTER TABLE assessments ADD COLUMN min_responses INTEGER DEFAULT 5")
-        except:
-            pass
+        except sqlite3.OperationalError:
+            pass  # Column already exists
         try:
             conn.execute("ALTER TABLE assessments ADD COLUMN mode TEXT DEFAULT 'anonymous'")
-        except:
-            pass
+        except sqlite3.OperationalError:
+            pass  # Column already exists
         try:
             conn.execute("ALTER TABLE assessments ADD COLUMN include_leader_assessment INTEGER DEFAULT 0")
-        except:
-            pass
+        except sqlite3.OperationalError:
+            pass  # Column already exists
         try:
             conn.execute("ALTER TABLE assessments ADD COLUMN include_leader_self INTEGER DEFAULT 0")
-        except:
-            pass
+        except sqlite3.OperationalError:
+            pass  # Column already exists
         try:
             conn.execute("ALTER TABLE assessments ADD COLUMN scheduled_at TIMESTAMP")
-        except:
-            pass
+        except sqlite3.OperationalError:
+            pass  # Column already exists
         try:
             conn.execute("ALTER TABLE assessments ADD COLUMN status TEXT DEFAULT 'sent'")
-        except:
-            pass
+        except sqlite3.OperationalError:
+            pass  # Column already exists
         try:
             conn.execute("ALTER TABLE assessments ADD COLUMN sender_name TEXT DEFAULT 'HR'")
-        except:
-            pass
+        except sqlite3.OperationalError:
+            pass  # Column already exists
         try:
             conn.execute("ALTER TABLE assessments ADD COLUMN assessment_type_id TEXT DEFAULT 'gruppe_friktion'")
-        except:
-            pass
+        except sqlite3.OperationalError:
+            pass  # Column already exists
 
         # Tokens (genereres per leaf-unit)
         conn.execute("""
@@ -377,6 +377,18 @@ def init_db():
             ON responses(assessment_id, unit_id)
         """)
 
+        # Composite index for N+1 query optimization (audit 2025-12-20)
+        conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_responses_unit_assess_type
+            ON responses(unit_id, assessment_id, respondent_type)
+        """)
+
+        # Index for respondent_type filtering
+        conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_responses_respondent_type
+            ON responses(respondent_type)
+        """)
+
         # Email logs for delivery tracking
         conn.execute("""
             CREATE TABLE IF NOT EXISTS email_logs (
@@ -437,7 +449,7 @@ def init_db():
         # Migration: Tilføj situation kolonne hvis den mangler
         try:
             conn.execute("SELECT situation FROM tasks LIMIT 1")
-        except:
+        except sqlite3.OperationalError:
             conn.execute("ALTER TABLE tasks ADD COLUMN situation TEXT")
 
         # Handlinger (actions) - 2-5 per opgave

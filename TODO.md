@@ -530,6 +530,38 @@ Sikre at spørgsmålene præcist måler det teorien beskriver.
 
 ---
 
+## 🔧 Teknisk Gæld (Audit 2025-12-20)
+
+Baseret på fuld teknisk audit. Se `docs/AUDIT_2025-12-20.md` for detaljer.
+
+### ✅ Kritisk - Fikset
+- [x] ~~**23 bare except-klausuler** - Tilføjet specifik exception handling~~ (fikset 2025-12-20)
+- [x] ~~**Manglende database indexes** - Tilføjet composite index på responses~~ (fikset 2025-12-20)
+- [x] ~~**survey_app.py dead code** - Fjernet ubrugt fil~~ (fikset 2025-12-20)
+
+### 🟡 Gør Snart (inden 1 måned)
+- [ ] **Opdel admin_app.py i blueprints** - 8,400 linjer i én fil er for meget
+  - blueprints/admin.py (dashboard)
+  - blueprints/api.py (REST endpoints)
+  - blueprints/customers.py
+  - blueprints/audit.py
+- [ ] **Centralisér get_db() i db.py** - Duplikeret i 4 moduler
+- [ ] **Fix N+1 query i get_assessment_overview()** - 20-30 queries → 2-3
+- [ ] **Tilføj caching til get_detailed_breakdown()** - TTL: 300 sek
+- [ ] **Opret DEPLOYMENT_GUIDE.md** - Trin-for-trin Render deployment
+- [ ] **Opret API_DOCUMENTATION.md** - Alle endpoints med request/response
+- [ ] **Erstat xhtml2pdf med WeasyPrint** - xhtml2pdf er deprecated
+
+### 🟢 Kan Vente (inden 3 måneder)
+- [ ] **Implementér struktureret logging** - Python logging modul med levels
+- [ ] **Konsolidér profil-systemer** - db_profil.py + db_friktionsprofil.py → én fil
+- [ ] **App factory pattern** - Centralisér Flask app creation
+- [ ] **Øg test coverage til 60%** - Fokus: mailjet_integration.py, scheduler.py, oauth.py
+- [ ] **Opret DATABASE_SCHEMA.md** - ER-diagram og tabelbeskrivelser
+- [ ] **Planlæg Python 3.11 upgrade** - 3.10 end-of-life jan 2026
+
+---
+
 ## 🐛 Bugs & Issues
 
 _Ingen kendte bugs pt._

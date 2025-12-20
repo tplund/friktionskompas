@@ -50,12 +50,12 @@ def init_profil_tables():
         # Tilføj nye kolonner hvis de mangler (migration)
         try:
             conn.execute("ALTER TABLE profil_questions ADD COLUMN state_text_da TEXT")
-        except:
-            pass
+        except sqlite3.OperationalError:
+            pass  # Column already exists
         try:
             conn.execute("ALTER TABLE profil_questions ADD COLUMN question_type TEXT DEFAULT 'sensitivity'")
-        except:
-            pass
+        except sqlite3.OperationalError:
+            pass  # Column already exists
 
         # Friktionsprofil sessioner (udvidet med målingstype)
         conn.execute("""
@@ -84,12 +84,12 @@ def init_profil_tables():
         # Tilføj nye kolonner hvis de mangler (migration)
         try:
             conn.execute("ALTER TABLE profil_sessions ADD COLUMN measurement_type TEXT DEFAULT 'profile'")
-        except:
-            pass
+        except sqlite3.OperationalError:
+            pass  # Column already exists
         try:
             conn.execute("ALTER TABLE profil_sessions ADD COLUMN situation_context TEXT")
-        except:
-            pass
+        except sqlite3.OperationalError:
+            pass  # Column already exists
 
         # Friktionsprofil svar
         conn.execute("""
