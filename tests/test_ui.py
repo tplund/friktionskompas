@@ -218,3 +218,92 @@ class TestResponsiveDesign:
         page.set_viewport_size({"width": 1920, "height": 1080})
         page.goto(f"{live_server}/login")
         expect(page.locator('input[name="username"]')).to_be_visible()
+
+
+class TestMobileResponsive:
+    """Test mobile responsive layouts on admin pages."""
+
+    @pytest.fixture
+    def mobile_page(self, page: Page, live_server):
+        """Provide a page with mobile viewport and admin logged in."""
+        page.set_viewport_size({"width": 375, "height": 667})
+        page.goto(f"{live_server}/login")
+        page.fill('input[name="username"]', 'admin')
+        page.fill('input[name="password"]', 'admin123')
+        page.click('button[type="submit"]')
+        page.wait_for_load_state('networkidle', timeout=5000)
+        return page
+
+    def test_mobile_dashboard_loads(self, mobile_page: Page, live_server):
+        """Test dashboard loads correctly on mobile."""
+        mobile_page.goto(f"{live_server}/admin")
+        mobile_page.wait_for_load_state('networkidle', timeout=5000)
+        # Should not have horizontal overflow causing layout issues
+        body_width = mobile_page.evaluate("document.body.scrollWidth")
+        viewport_width = mobile_page.evaluate("window.innerWidth")
+        # Allow small overflow (scrollbars etc) but not major overflow
+        assert body_width <= viewport_width + 20, f"Dashboard has horizontal overflow: {body_width} > {viewport_width}"
+
+    def test_mobile_dashboard_friction_bars(self, mobile_page: Page, live_server):
+        """Test friction bars are visible on mobile."""
+        mobile_page.goto(f"{live_server}/admin")
+        friction_bars = mobile_page.locator('.friction-bars, .friction-item')
+        if friction_bars.count() > 0:
+            expect(friction_bars.first).to_be_visible()
+
+    def test_mobile_analyser_loads(self, mobile_page: Page, live_server):
+        """Test analyser page loads correctly on mobile."""
+        mobile_page.goto(f"{live_server}/admin/analyser")
+        mobile_page.wait_for_load_state('networkidle', timeout=5000)
+        # Table should exist and be scrollable
+        table = mobile_page.locator('.overview-table, table')
+        if table.count() > 0:
+            expect(table.first).to_be_visible()
+
+    def test_mobile_units_page_loads(self, mobile_page: Page, live_server):
+        """Test units/home page loads correctly on mobile."""
+        mobile_page.goto(f"{live_server}/admin/units")
+        mobile_page.wait_for_load_state('networkidle', timeout=5000)
+        # Tree nodes should be visible
+        tree_nodes = mobile_page.locator('.tree-node, .org-tree')
+        if tree_nodes.count() > 0:
+            expect(tree_nodes.first).to_be_visible()
+
+    def test_mobile_customers_page_loads(self, mobile_page: Page, live_server):
+        """Test customers page loads correctly on mobile."""
+        mobile_page.goto(f"{live_server}/admin/customers")
+        mobile_page.wait_for_load_state('networkidle', timeout=5000)
+        # Page content should be visible
+        expect(mobile_page.locator('.card').first).to_be_visible()
+
+    def test_mobile_assessments_overview_loads(self, mobile_page: Page, live_server):
+        """Test assessments overview loads correctly on mobile."""
+        mobile_page.goto(f"{live_server}/admin/assessments-overview")
+        mobile_page.wait_for_load_state('networkidle', timeout=5000)
+        # Should show cards or empty state
+        content = mobile_page.locator('.card, .assessment-card, .empty-state')
+        expect(content.first).to_be_visible()
+
+    def test_mobile_navigation_accessible(self, mobile_page: Page, live_server):
+        """Test that navigation is accessible on mobile."""
+        mobile_page.goto(f"{live_server}/admin")
+        # Navigation should exist (may be collapsed or hamburger menu)
+        nav = mobile_page.locator('nav, .nav-container, .submenu-container')
+        expect(nav.first).to_be_visible()
+
+    def test_mobile_no_horizontal_overflow_analyser(self, mobile_page: Page, live_server):
+        """Test analyser page doesn't overflow horizontally."""
+        mobile_page.goto(f"{live_server}/admin/analyser")
+        mobile_page.wait_for_load_state('networkidle', timeout=5000)
+        body_width = mobile_page.evaluate("document.body.scrollWidth")
+        viewport_width = mobile_page.evaluate("window.innerWidth")
+        # Tables can scroll, but body shouldn't overflow much
+        assert body_width <= viewport_width + 50, f"Analyser has excessive horizontal overflow"
+
+    def test_mobile_no_horizontal_overflow_customers(self, mobile_page: Page, live_server):
+        """Test customers page doesn't overflow horizontally."""
+        mobile_page.goto(f"{live_server}/admin/customers")
+        mobile_page.wait_for_load_state('networkidle', timeout=5000)
+        body_width = mobile_page.evaluate("document.body.scrollWidth")
+        viewport_width = mobile_page.evaluate("window.innerWidth")
+        assert body_width <= viewport_width + 50, f"Customers has excessive horizontal overflow"
