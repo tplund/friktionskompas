@@ -1007,19 +1007,42 @@
         closeMobileMenu();
     });
 
-    // Close mobile menu on resize to desktop
+    // Handle resize - close mobile menu and force layout update
+    var resizeTimeout;
     window.addEventListener('resize', function() {
+        // Close mobile menu if resizing to desktop
         if (window.innerWidth > 767) {
             closeMobileMenu();
         }
+
+        // Debounced layout force (for orientation changes)
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(function() {
+            document.documentElement.style.overflow = 'hidden';
+            document.documentElement.offsetHeight; // Force reflow
+            document.documentElement.style.overflow = '';
+        }, 150);
     });
 
-    // Handle orientation change
+    // Handle orientation change - force immediate layout recalculation
     window.addEventListener('orientationchange', function() {
-        // Small delay to let the browser adjust
+        // Hide and show to force complete relayout
+        document.body.style.display = 'none';
+        document.body.offsetHeight; // Trigger reflow
+        document.body.style.display = '';
+
+        // Trigger resize after browser viewport adjusts
         setTimeout(function() {
             window.dispatchEvent(new Event('resize'));
         }, 100);
+
+        // Second pass for stubborn browsers
+        setTimeout(function() {
+            document.body.style.opacity = '0.999';
+            requestAnimationFrame(function() {
+                document.body.style.opacity = '';
+            });
+        }, 300);
     });
 
     function switchCustomer(customerId) {
