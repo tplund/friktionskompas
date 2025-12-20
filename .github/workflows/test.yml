@@ -46,7 +46,7 @@ jobs:
         SECRET_KEY: test-secret-key-for-ci
         FLASK_ENV: testing
       run: |
-        python -m pytest tests/ -v --tb=short --ignore=tests/test_ui.py --cov=. --cov-report=term-missing --cov-fail-under=20 2>&1 | tee test_output.txt
+        python -m pytest tests/ -v --tb=short --ignore=tests/test_ui.py --cov=. --cov-report=term-missing --cov-fail-under=30 2>&1 | tee test_output.txt
 
     - name: Upload test results on failure
       if: failure()
