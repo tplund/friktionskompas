@@ -4,6 +4,75 @@
 
 {% block extra_css %}
 <style>
+    /* Mobile LANDSCAPE - when rotated sideways */
+    @media (max-width: 896px) and (orientation: landscape) {
+        .container-fluid {
+            padding: 10px;
+        }
+
+        h1.h2 {
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+        }
+
+        .field-card {
+            padding: 12px !important;
+            margin-bottom: 12px;
+        }
+
+        .field-header {
+            font-size: 1rem !important;
+            margin-bottom: 12px;
+        }
+
+        /* Make table more compact in landscape */
+        table th, table td {
+            padding: 6px 4px !important;
+            font-size: 0.75rem;
+        }
+
+        .score-display {
+            font-size: 1rem !important;
+        }
+
+        td .score-display {
+            font-size: 0.9rem !important;
+        }
+
+        /* Smaller alert badges */
+        .alert-badge {
+            font-size: 0.6rem !important;
+            padding: 2px 4px !important;
+        }
+
+        /* Compact SVG charts */
+        svg {
+            max-height: 250px;
+        }
+
+        /* Reduce legend spacing */
+        div[style*="gap: 30px"] {
+            gap: 15px !important;
+        }
+
+        /* Compact recommendation cards */
+        .kkc-badge, .severity-badge {
+            font-size: 0.65rem !important;
+            padding: 3px 6px !important;
+        }
+
+        /* PDF button smaller */
+        a[data-loading="Genererer PDF..."] {
+            padding: 8px 15px !important;
+            font-size: 0.8rem !important;
+        }
+
+        /* Row margins */
+        .row.mb-4 {
+            margin-bottom: 12px !important;
+        }
+    }
+
     /* Mobile responsive styles */
     @media (max-width: 767px) {
         .container-fluid {

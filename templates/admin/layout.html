@@ -492,6 +492,32 @@
             }
         }
 
+        /* Mobile LANDSCAPE - more compact layout */
+        @media (max-width: 896px) and (orientation: landscape) {
+            .nav-container {
+                padding: 5px 15px;
+            }
+            .nav-brand {
+                font-size: 0.9rem;
+                padding: 3px 0;
+            }
+            .nav {
+                min-height: auto;
+            }
+            .container {
+                padding: 10px;
+            }
+            /* Smaller hamburger in landscape */
+            .hamburger-btn {
+                padding: 5px;
+            }
+            .hamburger-btn span {
+                width: 18px;
+                height: 2px;
+                margin: 4px 0;
+            }
+        }
+
         /* Tablet: 768px - 1024px */
         @media (min-width: 768px) and (max-width: 1024px) {
             .nav-container {
