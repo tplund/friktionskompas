@@ -41,12 +41,12 @@ jobs:
         python -c "from xhtml2pdf import pisa; print('xhtml2pdf OK')"
         python -c "import admin_app; print('admin_app OK')"
 
-    - name: Run tests
+    - name: Run tests with coverage
       env:
         SECRET_KEY: test-secret-key-for-ci
         FLASK_ENV: testing
       run: |
-        python -m pytest tests/ -v --tb=long --ignore=tests/test_ui.py 2>&1 | tee test_output.txt
+        python -m pytest tests/ -v --tb=short --ignore=tests/test_ui.py --cov=. --cov-report=term-missing --cov-fail-under=20 2>&1 | tee test_output.txt
 
     - name: Upload test results on failure
       if: failure()
@@ -54,10 +54,3 @@ jobs:
       with:
         name: test-failure-log
         path: test_output.txt
-
-    - name: Run tests with coverage
-      env:
-        SECRET_KEY: test-secret-key-for-ci
-        FLASK_ENV: testing
-      run: |
-        python -m pytest tests/ --ignore=tests/test_ui.py --cov=. --cov-report=term-missing --cov-fail-under=20
