@@ -190,11 +190,29 @@ git push
 - Brug midlertidige endpoints til engangskørsler på Render
 - Vær proaktiv - gør tingene selv i stedet for at bede brugeren
 
-### TODO.md Vedligeholdelse
-- **ALTID** opdater `TODO.md` når nye opgaver identificeres
-- **ALTID** marker opgaver som færdige når de er implementeret
-- Hold TODO.md som den centrale kilde til projektets status
-- Nye features, bugs, og teknisk gæld skal tilføjes til TODO.md
+### TODO.md Vedligeholdelse (KRITISK!)
+**TODO.md er den autoritative kilde til projektets status!**
+
+**Ved feature-completion:**
+- **ALTID** marker opgaver som ✅ FÆRDIG i TODO.md STRAKS de er implementeret og testet
+- **ALTID** tilføj dato for completion (fx "✅ FÆRDIG (2025-01-15)")
+- **ALTID** opdater TODO.md INDEN sessionen afsluttes
+- Ved delvist færdige features: Marker som "✅ DELVIST FÆRDIG" og beskriv hvad der mangler
+
+**Ved session-start:**
+- **ALTID** verificer at TODO.md matcher virkeligheden
+- Tjek om features markeret som "pending" faktisk allerede er implementeret
+- Ret eventuelle uoverensstemmelser FØR du starter nyt arbejde
+
+**Ved nye opgaver:**
+- **ALTID** tilføj nye features/bugs til TODO.md MED DET SAMME
+- Brug konsistent formatering: `- [ ]` for pending, `- [x]` eller ✅ for færdig
+- Inkluder prioritet hvis relevant (fx "🔴 KRITISK", "🟡 VIGTIG", "🟢 NICE-TO-HAVE")
+
+**Typiske fejl at undgå:**
+- ❌ Implementere en feature uden at opdatere TODO.md bagefter
+- ❌ Starte en session uden at verificere TODO.md er korrekt
+- ❌ Antage at TODO.md er opdateret - TJEK det altid
 
 ### UI Navigation
 - **ALTID** tilføj links til nye sider i admin navigation (`templates/admin/layout.html`)
