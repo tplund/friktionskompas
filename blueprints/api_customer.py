@@ -18,7 +18,7 @@ import io
 from datetime import datetime
 from flask import Blueprint, jsonify, request, g, Response
 
-from extensions import csrf
+from extensions import csrf, limiter
 from auth_helpers import customer_api_required, customer_api_write_required
 from db_hierarchical import get_db, get_unit_stats, get_assessment_overview
 from friction_engine import score_to_percent, get_severity
@@ -28,6 +28,7 @@ api_customer_bp = Blueprint('api_customer', __name__, url_prefix='/api/v1')
 
 @api_customer_bp.route('/assessments', methods=['GET'])
 @csrf.exempt
+@limiter.limit("100 per minute")
 @customer_api_required
 def api_v1_list_assessments():
     """
@@ -109,6 +110,7 @@ def api_v1_list_assessments():
 
 @api_customer_bp.route('/assessments/<assessment_id>', methods=['GET'])
 @csrf.exempt
+@limiter.limit("100 per minute")
 @customer_api_required
 def api_v1_get_assessment(assessment_id):
     """Get single assessment details."""
@@ -167,6 +169,7 @@ def api_v1_get_assessment(assessment_id):
 
 @api_customer_bp.route('/assessments/<assessment_id>/results', methods=['GET'])
 @csrf.exempt
+@limiter.limit("100 per minute")
 @customer_api_required
 def api_v1_get_assessment_results(assessment_id):
     """Get assessment results with friction scores."""
@@ -233,6 +236,7 @@ def api_v1_get_assessment_results(assessment_id):
 
 @api_customer_bp.route('/units', methods=['GET'])
 @csrf.exempt
+@limiter.limit("100 per minute")
 @customer_api_required
 def api_v1_list_units():
     """Get organizational structure for customer."""
@@ -299,6 +303,7 @@ def api_v1_list_units():
 
 @api_customer_bp.route('/assessments', methods=['POST'])
 @csrf.exempt
+@limiter.limit("20 per minute")
 @customer_api_required
 @customer_api_write_required
 def api_v1_create_assessment():
@@ -359,6 +364,7 @@ def api_v1_create_assessment():
 
 @api_customer_bp.route('/export', methods=['GET'])
 @csrf.exempt
+@limiter.limit("10 per hour")
 @customer_api_required
 def api_v1_export():
     """

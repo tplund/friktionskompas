@@ -895,6 +895,62 @@ def list_templates(customer_id: int = None) -> List[Dict]:
         return []
 
 
+def get_unsubscribe_token(email: str) -> str:
+    """Get or create unsubscribe token for user by email"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        user = conn.execute(
+            "SELECT unsubscribe_token FROM users WHERE email = ?",
+            (email,)
+        ).fetchone()
+        conn.close()
+
+        if user and user['unsubscribe_token']:
+            return user['unsubscribe_token']
+    except Exception as e:
+        print(f"Error getting unsubscribe token: {e}")
+
+    # Return empty string if not found (graceful degradation)
+    return ""
+
+
+def add_unsubscribe_headers(message_data: Dict, to_email: str) -> Dict:
+    """
+    Add GDPR-compliant List-Unsubscribe headers to email message.
+    Implements RFC 2369 (List-Unsubscribe) and RFC 8058 (One-Click).
+
+    Args:
+        message_data: Mailjet message dict
+        to_email: Recipient email address
+
+    Returns:
+        Updated message_data with unsubscribe headers
+    """
+    unsubscribe_token = get_unsubscribe_token(to_email)
+    if unsubscribe_token:
+        unsubscribe_url = f"{BASE_URL}/email/unsubscribe/{unsubscribe_token}"
+
+        # Add headers to message
+        if "Headers" not in message_data:
+            message_data["Headers"] = {}
+
+        message_data["Headers"]["List-Unsubscribe"] = f"<{unsubscribe_url}>"
+        message_data["Headers"]["List-Unsubscribe-Post"] = "List-Unsubscribe=One-Click"
+
+        # Also add unsubscribe link to email footer (best practice)
+        if "HTMLPart" in message_data:
+            unsubscribe_footer = f'''
+                <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; font-size: 0.75rem; color: #9ca3af;">
+                    <a href="{unsubscribe_url}" style="color: #6b7280; text-decoration: underline;">Afmeld email-notifikationer</a>
+                </div>
+            '''
+            # Append before closing body tag
+            message_data["HTMLPart"] = message_data["HTMLPart"].replace('</body>', f'{unsubscribe_footer}</body>')
+
+    return message_data
+
+
 def render_template(template: Dict, variables: Dict, language: str = 'da') -> Dict:
     """Render en template med variabler"""
     # Language-specific default variables
@@ -953,20 +1009,23 @@ def send_email_invitation(to_email: str, token: str, assessment_name: str,
     # Get customer-specific email sender
     email_sender = get_email_sender(customer_id)
 
-    data = {
-        'Messages': [
+    message_data = {
+        "From": email_sender,
+        "To": [
             {
-                "From": email_sender,
-                "To": [
-                    {
-                        "Email": to_email
-                    }
-                ],
-                "Subject": rendered['subject'],
-                "TextPart": rendered['text'],
-                "HTMLPart": rendered['html']
+                "Email": to_email
             }
-        ]
+        ],
+        "Subject": rendered['subject'],
+        "TextPart": rendered['text'],
+        "HTMLPart": rendered['html']
+    }
+
+    # GDPR: Add List-Unsubscribe headers
+    message_data = add_unsubscribe_headers(message_data, to_email)
+
+    data = {
+        'Messages': [message_data]
     }
 
     try:
@@ -1048,20 +1107,23 @@ def send_reminder_email(to_email: str, token: str, assessment_name: str,
     # Get customer-specific email sender
     email_sender = get_email_sender(customer_id)
 
-    data = {
-        'Messages': [
+    message_data = {
+        "From": email_sender,
+        "To": [
             {
-                "From": email_sender,
-                "To": [
-                    {
-                        "Email": to_email
-                    }
-                ],
-                "Subject": rendered['subject'],
-                "TextPart": rendered['text'],
-                "HTMLPart": rendered['html']
+                "Email": to_email
             }
-        ]
+        ],
+        "Subject": rendered['subject'],
+        "TextPart": rendered['text'],
+        "HTMLPart": rendered['html']
+    }
+
+    # GDPR: Add List-Unsubscribe headers
+    message_data = add_unsubscribe_headers(message_data, to_email)
+
+    data = {
+        'Messages': [message_data]
     }
 
     try:
@@ -1224,20 +1286,23 @@ def send_profil_invitation(to_email: str, session_id: str, person_name: str = No
     # Get customer-specific email sender
     email_sender = get_email_sender(customer_id)
 
-    data = {
-        'Messages': [
+    message_data = {
+        "From": email_sender,
+        "To": [
             {
-                "From": email_sender,
-                "To": [
-                    {
-                        "Email": to_email
-                    }
-                ],
-                "Subject": rendered['subject'],
-                "TextPart": rendered['text'],
-                "HTMLPart": rendered['html']
+                "Email": to_email
             }
-        ]
+        ],
+        "Subject": rendered['subject'],
+        "TextPart": rendered['text'],
+        "HTMLPart": rendered['html']
+    }
+
+    # GDPR: Add List-Unsubscribe headers
+    message_data = add_unsubscribe_headers(message_data, to_email)
+
+    data = {
+        'Messages': [message_data]
     }
 
     try:
@@ -1340,20 +1405,23 @@ def send_assessment_completed_notification(
     # Get customer-specific email sender
     email_sender = get_email_sender(customer_id)
 
-    data = {
-        'Messages': [
+    message_data = {
+        "From": email_sender,
+        "To": [
             {
-                "From": email_sender,
-                "To": [
-                    {
-                        "Email": to_email
-                    }
-                ],
-                "Subject": rendered['subject'],
-                "TextPart": rendered['text'],
-                "HTMLPart": rendered['html']
+                "Email": to_email
             }
-        ]
+        ],
+        "Subject": rendered['subject'],
+        "TextPart": rendered['text'],
+        "HTMLPart": rendered['html']
+    }
+
+    # GDPR: Add List-Unsubscribe headers
+    message_data = add_unsubscribe_headers(message_data, to_email)
+
+    data = {
+        'Messages': [message_data]
     }
 
     try:
@@ -1599,16 +1667,19 @@ def send_login_code(to_email: str, code: str, code_type: str = 'login',
     text_content = f"{title}\n\n{description}\n\nDin kode: {code}\n\n{expires_text}\n\n{ignore_text}"
 
     try:
+        message_data = {
+            'From': {'Email': FROM_EMAIL, 'Name': FROM_NAME},
+            'To': [{'Email': to_email}],
+            'Subject': subject,
+            'HTMLPart': html_content,
+            'TextPart': text_content
+        }
+
+        # GDPR: Add List-Unsubscribe headers
+        message_data = add_unsubscribe_headers(message_data, to_email)
+
         data = {
-            'Messages': [
-                {
-                    'From': {'Email': FROM_EMAIL, 'Name': FROM_NAME},
-                    'To': [{'Email': to_email}],
-                    'Subject': subject,
-                    'HTMLPart': html_content,
-                    'TextPart': text_content
-                }
-            ]
+            'Messages': [message_data]
         }
 
         result = mailjet.send.create(data=data)
@@ -1733,16 +1804,19 @@ Sendt af {sender_name} via Friktionskompasset
         """
 
         try:
+            message_data = {
+                'From': {'Email': FROM_EMAIL, 'Name': sender_name or FROM_NAME},
+                'To': [{'Email': recipient['email']}],
+                'Subject': subject,
+                'HTMLPart': html_content,
+                'TextPart': text_content
+            }
+
+            # GDPR: Add List-Unsubscribe headers
+            message_data = add_unsubscribe_headers(message_data, recipient['email'])
+
             data = {
-                'Messages': [
-                    {
-                        'From': {'Email': FROM_EMAIL, 'Name': sender_name or FROM_NAME},
-                        'To': [{'Email': recipient['email']}],
-                        'Subject': subject,
-                        'HTMLPart': html_content,
-                        'TextPart': text_content
-                    }
-                ]
+                'Messages': [message_data]
             }
 
             result = mailjet.send.create(data=data)

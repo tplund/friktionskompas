@@ -237,6 +237,34 @@ def init_multitenant_db():
                 ALTER TABLE users ADD COLUMN recovery_email TEXT
             """)
 
+        # GDPR: Tilføj unsubscribe_token til users hvis den ikke findes
+        if 'unsubscribe_token' not in user_column_names:
+            conn.execute("""
+                ALTER TABLE users ADD COLUMN unsubscribe_token TEXT
+            """)
+            # SQLite doesn't support UNIQUE in ALTER TABLE, create index separately
+            conn.execute("""
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_users_unsubscribe_token
+                ON users(unsubscribe_token) WHERE unsubscribe_token IS NOT NULL
+            """)
+            # Generer tokens for eksisterende brugere
+            existing_users = conn.execute("SELECT id FROM users WHERE unsubscribe_token IS NULL").fetchall()
+            for user in existing_users:
+                token = secrets.token_urlsafe(32)
+                conn.execute("UPDATE users SET unsubscribe_token = ? WHERE id = ?", (token, user['id']))
+
+        # GDPR: Tilføj email_unsubscribed til users hvis den ikke findes
+        if 'email_unsubscribed' not in user_column_names:
+            conn.execute("""
+                ALTER TABLE users ADD COLUMN email_unsubscribed INTEGER DEFAULT 0
+            """)
+
+        # GDPR: Tilføj deleted_at til users hvis den ikke findes (soft delete)
+        if 'deleted_at' not in user_column_names:
+            conn.execute("""
+                ALTER TABLE users ADD COLUMN deleted_at TIMESTAMP
+            """)
+
         # Tilføj text_en kolonne til questions hvis den ikke findes
         questions_columns = conn.execute("PRAGMA table_info(questions)").fetchall()
         questions_column_names = [col['name'] for col in questions_columns]

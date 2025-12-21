@@ -98,15 +98,42 @@ clear_translation_cache()  # Clear any stale cached values
 
 app = Flask(__name__)
 
-# Sikker secret key fra miljøvariabel (fallback til autogeneret i development)
-app.secret_key = os.environ.get('SECRET_KEY') or secrets.token_hex(32)
+# Sikker secret key fra miljøvariabel (fallback til autogeneret i development/testing)
+SECRET_KEY = os.environ.get('SECRET_KEY')
+is_dev_or_test = (
+    os.environ.get('FLASK_DEBUG', '').lower() == 'true' or
+    os.environ.get('RATELIMIT_ENABLED', '').lower() == 'false' or  # Tests set this
+    os.environ.get('TESTING', '').lower() == 'true'
+)
+if not SECRET_KEY and not is_dev_or_test:
+    raise RuntimeError('SECRET_KEY must be set in production')
+app.secret_key = SECRET_KEY or secrets.token_hex(32)
+
+# Debug mode configuration
+app.debug = os.environ.get('FLASK_DEBUG', 'false').lower() == 'true'
 
 # Session configuration - timeout efter 8 timers inaktivitet
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=8)
 app.config['SESSION_REFRESH_EACH_REQUEST'] = True  # Refresh timeout ved aktivitet
 
+# Security configuration
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max upload
+app.config['SESSION_COOKIE_SECURE'] = not app.debug  # True in production
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+
 # Initialize OAuth
 init_oauth(app)
+
+# CORS Configuration for API endpoints
+from flask_cors import CORS
+CORS(app, resources={
+    r"/api/*": {
+        "origins": os.environ.get('CORS_ORIGINS', 'https://friktionskompasset.dk,https://frictioncompass.com').split(','),
+        "methods": ["GET", "POST", "OPTIONS"],
+        "allow_headers": ["Content-Type", "X-API-Key", "X-Admin-API-Key"]
+    }
+})
 
 # CSRF Protection and Rate Limiting (shared extensions for blueprints)
 from flask_wtf.csrf import CSRFError
@@ -121,6 +148,30 @@ limiter.init_app(app)
 def handle_csrf_error(e):
     flash('Sessionen er udløbet. Prøv igen.', 'error')
     return redirect(request.referrer or url_for('auth.login'))
+
+# Security headers middleware
+@app.after_request
+def add_security_headers(response):
+    """Add security headers to all responses"""
+    response.headers['Content-Security-Policy'] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://unpkg.com; "
+        "style-src 'self' 'unsafe-inline' https://unpkg.com; "
+        "img-src 'self' data: https:; "
+        "font-src 'self' https://unpkg.com; "
+        "connect-src 'self' https://www.google-analytics.com"
+    )
+    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
+
+    # Only add HSTS in production (not in debug mode)
+    if not app.debug:
+        response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+
+    return response
 
 # Register Friktionsprofil Blueprint
 from friktionsprofil_routes import friktionsprofil
@@ -574,6 +625,141 @@ def admin_unlink_oauth(provider):
         flash('Kunne ikke fjerne tilknytning', 'error')
 
     return redirect(url_for('admin_my_account'))
+
+
+@app.route('/my-data/export')
+@login_required
+def export_my_data():
+    """GDPR Data Export - Export user's own data as JSON"""
+    import json
+    from datetime import datetime, timedelta
+    from flask import jsonify, make_response
+
+    user = session.get('user')
+    user_id = user.get('id')
+
+    # Rate limiting: Check last export time
+    with get_db() as conn:
+        # Check if user exported within last 24 hours
+        last_export = conn.execute("""
+            SELECT created_at FROM audit_log
+            WHERE user_id = ? AND action = 'data_export'
+            ORDER BY created_at DESC LIMIT 1
+        """, (user_id,)).fetchone()
+
+        if last_export:
+            last_export_time = datetime.fromisoformat(last_export['created_at'])
+            if datetime.now() - last_export_time < timedelta(hours=24):
+                flash('Du kan kun eksportere dine data én gang per dag. Prøv igen senere.', 'error')
+                return redirect(url_for('admin_my_account'))
+
+        # Collect user data
+        user_details = conn.execute(
+            "SELECT id, username, name, email, role, created_at, last_login, language FROM users WHERE id = ?",
+            (user_id,)
+        ).fetchone()
+
+        # Get user's responses
+        responses = conn.execute("""
+            SELECT r.id, r.question_id, r.score, r.created_at, q.text as question_text,
+                   c.name as assessment_name, c.period
+            FROM responses r
+            JOIN questions q ON r.question_id = q.id
+            JOIN assessments c ON r.assessment_id = c.id
+            WHERE r.user_id = ?
+            ORDER BY r.created_at DESC
+        """, (user_id,)).fetchall()
+
+        # Get linked OAuth accounts
+        oauth_links = conn.execute("""
+            SELECT provider, provider_email, created_at
+            FROM user_oauth_links
+            WHERE user_id = ?
+        """, (user_id,)).fetchall()
+
+        # Get consent history (if exists)
+        consents = []
+        try:
+            consents = conn.execute("""
+                SELECT consent_type, granted, created_at
+                FROM user_consents
+                WHERE user_id = ?
+                ORDER BY created_at DESC
+            """, (user_id,)).fetchall()
+        except:
+            pass  # Table might not exist
+
+        # Audit log this export
+        from db_multitenant import audit_log
+        audit_log(user_id, 'data_export', f'User exported their personal data')
+
+    # Build export data
+    export_data = {
+        'export_date': datetime.now().isoformat(),
+        'user': dict(user_details) if user_details else {},
+        'responses': [dict(r) for r in responses],
+        'oauth_accounts': [dict(o) for o in oauth_links],
+        'consents': [dict(c) for c in consents],
+        'data_rights': {
+            'right_to_access': 'You have the right to access your personal data (this export)',
+            'right_to_rectification': 'You can update your profile via My Account page',
+            'right_to_erasure': 'You can delete your account via My Account page',
+            'right_to_portability': 'This export is in JSON format for portability',
+            'right_to_object': 'You can unsubscribe from emails via unsubscribe link'
+        }
+    }
+
+    # Create JSON response with download
+    response = make_response(json.dumps(export_data, indent=2, ensure_ascii=False, default=str))
+    response.headers['Content-Type'] = 'application/json; charset=utf-8'
+    response.headers['Content-Disposition'] = f'attachment; filename=my_data_export_{user_id}_{datetime.now().strftime("%Y%m%d")}.json'
+
+    return response
+
+
+@app.route('/admin/my-account/delete', methods=['POST'])
+@login_required
+def delete_my_account():
+    """GDPR Account Deletion - Soft delete user account with 30-day grace period"""
+    from datetime import datetime
+
+    user = session.get('user')
+    user_id = user.get('id')
+
+    # Confirm password or require re-authentication
+    password_confirm = request.form.get('password_confirm')
+
+    with get_db() as conn:
+        user_row = conn.execute(
+            "SELECT password_hash FROM users WHERE id = ?",
+            (user_id,)
+        ).fetchone()
+
+        # Check password if user has one
+        if user_row and not (user_row['password_hash'].startswith('oauth-') or user_row['password_hash'].startswith('b2c-')):
+            if not password_confirm:
+                flash('Du skal bekræfte dit password for at slette din konto', 'error')
+                return redirect(url_for('admin_my_account'))
+
+            if not verify_password(password_confirm, user_row['password_hash']):
+                flash('Forkert password', 'error')
+                return redirect(url_for('admin_my_account'))
+
+        # Soft delete: Mark account as deleted (30-day grace period)
+        conn.execute("""
+            UPDATE users
+            SET deleted_at = ?, is_active = 0
+            WHERE id = ?
+        """, (datetime.now().isoformat(), user_id))
+
+        # Audit log
+        from db_multitenant import audit_log
+        audit_log(user_id, 'account_deletion_requested', 'User requested account deletion (30-day grace period)')
+
+    # Log out user
+    session.clear()
+    flash('Din konto er markeret til sletning. Du har 30 dage til at fortryde. Kontakt support@friktionskompasset.dk for at genaktivere.', 'success')
+    return redirect(url_for('public.index'))
 
 
 # PASSWORDLESS LOGIN & REGISTRATION ROUTES moved to blueprints/auth.py
@@ -2434,5 +2620,17 @@ def admin_gdpr_delete_customer(customer_id):
     return redirect(url_for('admin_gdpr'))
 
 
+# Error handlers
+@app.errorhandler(500)
+def handle_500(e):
+    """Hide error tracebacks in production"""
+    if app.debug:
+        raise e
+    # In production, show generic error page
+    return render_template('errors/500.html'), 500
+
+
 if __name__ == '__main__':
-    app.run(debug=True, port=5001)
+    # Debug mode controlled by FLASK_DEBUG environment variable
+    debug_mode = os.environ.get('FLASK_DEBUG', 'false').lower() == 'true'
+    app.run(debug=debug_mode, port=5001)

@@ -43,6 +43,13 @@ from extensions import csrf
 dev_tools_bp = Blueprint('dev_tools', __name__)
 
 
+def dev_tools_enabled():
+    """Check if dev tools are enabled via environment variable or debug mode"""
+    from flask import current_app
+    return (os.environ.get('ENABLE_DEV_TOOLS', 'false').lower() == 'true' or
+            current_app.debug)
+
+
 def is_api_request():
     """Check if request is from API (has API key header)"""
     return 'X-Admin-API-Key' in request.headers
@@ -193,6 +200,9 @@ def delete_all_data():
 @admin_required
 def generate_test_data():
     """Generer testdata - organisationer, kontakter, kampagner og svar"""
+    if not dev_tools_enabled():
+        flash('Dev tools er deaktiveret i produktion', 'error')
+        return redirect(url_for('admin_core.admin_home'))
     user = get_current_user()
 
     # Test CSV data
@@ -514,6 +524,9 @@ def clear_cache():
 @admin_required
 def rename_assessments():
     """Omdøb målinger fra 'Unit - Q# YYYY' til 'Q# YYYY - Unit' format"""
+    if not dev_tools_enabled():
+        flash('Dev tools er deaktiveret i produktion', 'error')
+        return redirect(url_for('admin_core.admin_home'))
     import re
 
     # Kvartal til dato mapping
@@ -556,6 +569,9 @@ def rename_assessments():
 @admin_required
 def vary_testdata():
     """Tilføj realistisk variation til testdata - forskellige organisationer får forskellige profiler"""
+    if not dev_tools_enabled():
+        flash('Dev tools er deaktiveret i produktion', 'error')
+        return redirect(url_for('admin_core.admin_home'))
     # Profiler for forskellige organisationstyper - med bredere ranges for mere variation
     # Hvert felt har: (target_mean, std_dev, extreme_chance)
     # extreme_chance = sandsynlighed for at producere 1 eller 5 i stedet
@@ -672,6 +688,9 @@ def vary_testdata():
 @admin_required
 def fix_missing_leader_data():
     """Tilføj manglende leader_assess og leader_self data til gruppe_friktion assessments"""
+    if not dev_tools_enabled():
+        flash('Dev tools er deaktiveret i produktion', 'error')
+        return redirect(url_for('admin_core.admin_home'))
     random.seed(42)
     added_count = 0
 

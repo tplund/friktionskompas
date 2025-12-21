@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="{{ language }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if language == 'en' %}Privacy Policy{% else %}Privatlivspolitik{% endif %} - Friktionskompasset</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            line-height: 1.7;
+            color: #1f2937;
+            background: #f9fafb;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1e3a5f 0%, #2d4a6f 100%);
+            color: white;
+            padding: 60px 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: -40px auto 60px;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            padding: 50px;
+        }
+
+        .last-updated {
+            background: #eff6ff;
+            border-left: 4px solid #3b82f6;
+            padding: 15px 20px;
+            margin-bottom: 40px;
+            border-radius: 4px;
+            font-size: 0.95rem;
+            color: #1e40af;
+        }
+
+        .toc {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 40px;
+        }
+
+        .toc h2 {
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            color: #1f2937;
+        }
+
+        .toc ul {
+            list-style: none;
+        }
+
+        .toc li {
+            margin-bottom: 10px;
+        }
+
+        .toc a {
+            color: #3b82f6;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .toc a:hover {
+            color: #2563eb;
+            text-decoration: underline;
+        }
+
+        .section {
+            margin-bottom: 50px;
+        }
+
+        .section h2 {
+            font-size: 1.75rem;
+            color: #1f2937;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+
+        .section h3 {
+            font-size: 1.3rem;
+            color: #374151;
+            margin: 30px 0 15px;
+        }
+
+        .section p {
+            margin-bottom: 15px;
+        }
+
+        .section ul, .section ol {
+            margin: 15px 0 15px 25px;
+        }
+
+        .section li {
+            margin-bottom: 10px;
+        }
+
+        .info-box {
+            background: #ecfdf5;
+            border-left: 4px solid #10b981;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 4px;
+        }
+
+        .info-box strong {
+            color: #065f46;
+        }
+
+        .warning-box {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 4px;
+        }
+
+        .contact-box {
+            background: #f0f9ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 12px;
+            padding: 30px;
+            margin: 40px 0;
+            text-align: center;
+        }
+
+        .contact-box h3 {
+            color: #1e40af;
+            margin-bottom: 15px;
+        }
+
+        .contact-box a {
+            color: #3b82f6;
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        .contact-box a:hover {
+            text-decoration: underline;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 40px 20px;
+            color: #6b7280;
+            font-size: 0.9rem;
+        }
+
+        .footer a {
+            color: #3b82f6;
+            text-decoration: none;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        table th, table td {
+            padding: 12px;
+            text-align: left;
+            border: 1px solid #e5e7eb;
+        }
+
+        table th {
+            background: #f9fafb;
+            font-weight: 600;
+            color: #374151;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 30px 20px;
+                margin: -30px 15px 30px;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .section h2 {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>{% if language == 'en' %}Privacy Policy{% else %}Privatlivspolitik{% endif %}</h1>
+        <p>{% if language == 'en' %}Your data, your rights{% else %}Dine data, dine rettigheder{% endif %}</p>
+    </div>
+
+    <div class="container">
+        <div class="last-updated">
+            <strong>{% if language == 'en' %}Last updated{% else %}Sidst opdateret{% endif %}:</strong> 21. december 2025
+        </div>
+
+        {% if language == 'en' %}
+        <!-- ENGLISH VERSION -->
+        <div class="toc">
+            <h2>Table of Contents</h2>
+            <ul>
+                <li><a href="#controller">1. Data Controller</a></li>
+                <li><a href="#data-collected">2. What Data We Collect</a></li>
+                <li><a href="#how-we-use">3. How We Use Your Data</a></li>
+                <li><a href="#legal-basis">4. Legal Basis</a></li>
+                <li><a href="#sharing">5. Data Sharing</a></li>
+                <li><a href="#processors">6. Sub-Processors</a></li>
+                <li><a href="#retention">7. Data Retention</a></li>
+                <li><a href="#your-rights">8. Your Rights</a></li>
+                <li><a href="#cookies">9. Cookies</a></li>
+                <li><a href="#security">10. Security</a></li>
+                <li><a href="#changes">11. Changes to This Policy</a></li>
+                <li><a href="#contact">12. Contact Us</a></li>
+            </ul>
+        </div>
+
+        <div class="section" id="controller">
+            <h2>1. Data Controller</h2>
+            <p>The data controller responsible for your personal data is:</p>
+            <div class="info-box">
+                <strong>Friktionskompasset</strong><br>
+                CVR: [YOUR CVR NUMBER]<br>
+                Email: support@friktionskompasset.dk<br>
+                Address: [YOUR ADDRESS]
+            </div>
+        </div>
+
+        <div class="section" id="data-collected">
+            <h2>2. What Data We Collect</h2>
+
+            <h3>Account Information</h3>
+            <ul>
+                <li>Name and email address</li>
+                <li>Password (encrypted)</li>
+                <li>Organization affiliation</li>
+                <li>Role (admin, manager, user)</li>
+            </ul>
+
+            <h3>Survey Responses</h3>
+            <ul>
+                <li>Answers to friction assessment questions</li>
+                <li>Free-text comments (anonymous)</li>
+                <li>Response timestamp</li>
+                <li>Organizational unit (for aggregated analysis)</li>
+            </ul>
+
+            <h3>Technical Data</h3>
+            <ul>
+                <li>IP address (for security)</li>
+                <li>Browser type and version</li>
+                <li>Login timestamps</li>
+                <li>Cookies (see section 9)</li>
+            </ul>
+        </div>
+
+        <div class="section" id="how-we-use">
+            <h2>3. How We Use Your Data</h2>
+            <p>We use your personal data for the following purposes:</p>
+
+            <table>
+                <tr>
+                    <th>Purpose</th>
+                    <th>Data Used</th>
+                </tr>
+                <tr>
+                    <td>Account management</td>
+                    <td>Name, email, password</td>
+                </tr>
+                <tr>
+                    <td>Survey delivery</td>
+                    <td>Email address, organization</td>
+                </tr>
+                <tr>
+                    <td>Results analysis</td>
+                    <td>Responses (anonymized)</td>
+                </tr>
+                <tr>
+                    <td>System security</td>
+                    <td>IP address, login logs</td>
+                </tr>
+                <tr>
+                    <td>Communication</td>
+                    <td>Email address</td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="section" id="legal-basis">
+            <h2>4. Legal Basis</h2>
+            <p>We process your personal data based on:</p>
+            <ul>
+                <li><strong>Contract:</strong> To provide the friction assessment service</li>
+                <li><strong>Consent:</strong> For email notifications (can be withdrawn)</li>
+                <li><strong>Legitimate interest:</strong> To improve our service and ensure security</li>
+                <li><strong>Legal obligation:</strong> To comply with accounting and tax laws</li>
+            </ul>
+        </div>
+
+        <div class="section" id="sharing">
+            <h2>5. Data Sharing</h2>
+            <p>We do not sell your personal data. We only share data with:</p>
+            <ul>
+                <li><strong>Your organization:</strong> Aggregated results (minimum 5 responses for anonymity)</li>
+                <li><strong>Sub-processors:</strong> Service providers who help us deliver the service (see below)</li>
+                <li><strong>Legal authorities:</strong> If required by law</li>
+            </ul>
+
+            <div class="warning-box">
+                <strong>Anonymity guarantee:</strong> Individual survey responses are never shown unless there are at least 5 respondents in a unit. Free-text comments are always anonymous.
+            </div>
+        </div>
+
+        <div class="section" id="processors">
+            <h2>6. Sub-Processors</h2>
+            <p>We use the following sub-processors:</p>
+
+            <table>
+                <tr>
+                    <th>Service</th>
+                    <th>Provider</th>
+                    <th>Purpose</th>
+                    <th>Location</th>
+                </tr>
+                <tr>
+                    <td>Hosting</td>
+                    <td>Render (render.com)</td>
+                    <td>Application hosting</td>
+                    <td>EU (Frankfurt)</td>
+                </tr>
+                <tr>
+                    <td>Email delivery</td>
+                    <td>Mailjet</td>
+                    <td>Sending invitations</td>
+                    <td>EU</td>
+                </tr>
+                <tr>
+                    <td>DNS & CDN</td>
+                    <td>Cloudflare</td>
+                    <td>Domain management</td>
+                    <td>Global</td>
+                </tr>
+                <tr>
+                    <td>Analytics</td>
+                    <td>Google Analytics</td>
+                    <td>Usage statistics</td>
+                    <td>EU (anonymized IP)</td>
+                </tr>
+            </table>
+
+            <p>All sub-processors are GDPR compliant and have Data Processing Agreements in place.</p>
+        </div>
+
+        <div class="section" id="retention">
+            <h2>7. Data Retention</h2>
+            <p>We retain your data for the following periods:</p>
+            <ul>
+                <li><strong>Account data:</strong> Until account deletion + 30 days grace period</li>
+                <li><strong>Survey responses:</strong> As long as the organization maintains an active account</li>
+                <li><strong>Audit logs:</strong> 12 months</li>
+                <li><strong>Email logs:</strong> 90 days</li>
+            </ul>
+        </div>
+
+        <div class="section" id="your-rights">
+            <h2>8. Your Rights (GDPR)</h2>
+            <p>Under GDPR, you have the following rights:</p>
+
+            <div class="info-box">
+                <strong>Right to Access:</strong> Download all your data via "Export My Data" in your account settings.
+            </div>
+
+            <div class="info-box">
+                <strong>Right to Rectification:</strong> Update your profile information in your account settings.
+            </div>
+
+            <div class="info-box">
+                <strong>Right to Erasure:</strong> Delete your account via "Delete My Account" (30-day grace period).
+            </div>
+
+            <div class="info-box">
+                <strong>Right to Data Portability:</strong> Your data export is in JSON format for portability.
+            </div>
+
+            <div class="info-box">
+                <strong>Right to Object:</strong> Unsubscribe from emails via the unsubscribe link in any email.
+            </div>
+
+            <div class="info-box">
+                <strong>Right to Lodge a Complaint:</strong> Contact the Danish Data Protection Agency (Datatilsynet) if you believe your rights have been violated.
+            </div>
+        </div>
+
+        <div class="section" id="cookies">
+            <h2>9. Cookies</h2>
+            <p>We use the following cookies:</p>
+
+            <table>
+                <tr>
+                    <th>Cookie</th>
+                    <th>Purpose</th>
+                    <th>Duration</th>
+                </tr>
+                <tr>
+                    <td>session</td>
+                    <td>Keep you logged in (essential)</td>
+                    <td>Session</td>
+                </tr>
+                <tr>
+                    <td>language</td>
+                    <td>Remember your language preference</td>
+                    <td>1 year</td>
+                </tr>
+                <tr>
+                    <td>_ga</td>
+                    <td>Analytics (Google Analytics)</td>
+                    <td>2 years</td>
+                </tr>
+            </table>
+
+            <p>You can disable cookies in your browser settings, but this may affect functionality.</p>
+        </div>
+
+        <div class="section" id="security">
+            <h2>10. Security</h2>
+            <p>We protect your data with:</p>
+            <ul>
+                <li>TLS/SSL encryption for all data in transit</li>
+                <li>Encrypted password storage (bcrypt)</li>
+                <li>Regular security updates</li>
+                <li>Access controls and audit logging</li>
+                <li>Automatic backups</li>
+            </ul>
+        </div>
+
+        <div class="section" id="changes">
+            <h2>11. Changes to This Policy</h2>
+            <p>We may update this privacy policy from time to time. We will notify you of significant changes via email.</p>
+        </div>
+
+        <div class="section" id="contact">
+            <h2>12. Contact Us</h2>
+            <div class="contact-box">
+                <h3>Questions about your privacy?</h3>
+                <p>Contact our Data Protection Officer:</p>
+                <p><a href="mailto:dpo@friktionskompasset.dk">dpo@friktionskompasset.dk</a></p>
+                <p style="margin-top: 20px;">
+                    <strong>Support:</strong> <a href="mailto:support@friktionskompasset.dk">support@friktionskompasset.dk</a>
+                </p>
+            </div>
+        </div>
+
+        {% else %}
+        <!-- DANISH VERSION -->
+        <div class="toc">
+            <h2>Indholdsfortegnelse</h2>
+            <ul>
+                <li><a href="#controller">1. Dataansvarlig</a></li>
+                <li><a href="#data-collected">2. Hvilke data indsamler vi</a></li>
+                <li><a href="#how-we-use">3. Hvordan bruger vi dine data</a></li>
+                <li><a href="#legal-basis">4. Retsgrundlag</a></li>
+                <li><a href="#sharing">5. Deling af data</a></li>
+                <li><a href="#processors">6. Databehandlere</a></li>
+                <li><a href="#retention">7. Opbevaringsperioder</a></li>
+                <li><a href="#your-rights">8. Dine rettigheder</a></li>
+                <li><a href="#cookies">9. Cookies</a></li>
+                <li><a href="#security">10. Sikkerhed</a></li>
+                <li><a href="#changes">11. Ændringer til denne politik</a></li>
+                <li><a href="#contact">12. Kontakt os</a></li>
+            </ul>
+        </div>
+
+        <div class="section" id="controller">
+            <h2>1. Dataansvarlig</h2>
+            <p>Den dataansvarlige for dine personoplysninger er:</p>
+            <div class="info-box">
+                <strong>Friktionskompasset</strong><br>
+                CVR: [DIT CVR NUMMER]<br>
+                Email: support@friktionskompasset.dk<br>
+                Adresse: [DIN ADRESSE]
+            </div>
+        </div>
+
+        <div class="section" id="data-collected">
+            <h2>2. Hvilke data indsamler vi</h2>
+
+            <h3>Kontoinformation</h3>
+            <ul>
+                <li>Navn og email-adresse</li>
+                <li>Password (krypteret)</li>
+                <li>Organisations-tilknytning</li>
+                <li>Rolle (admin, manager, user)</li>
+            </ul>
+
+            <h3>Målingsbesvarelser</h3>
+            <ul>
+                <li>Svar på friktionsspørgsmål</li>
+                <li>Fritekst-kommentarer (anonyme)</li>
+                <li>Besvarelsestidspunkt</li>
+                <li>Organisatorisk enhed (til aggregeret analyse)</li>
+            </ul>
+
+            <h3>Tekniske data</h3>
+            <ul>
+                <li>IP-adresse (til sikkerhed)</li>
+                <li>Browser-type og version</li>
+                <li>Login-tidspunkter</li>
+                <li>Cookies (se afsnit 9)</li>
+            </ul>
+        </div>
+
+        <div class="section" id="how-we-use">
+            <h2>3. Hvordan bruger vi dine data</h2>
+            <p>Vi bruger dine personoplysninger til følgende formål:</p>
+
+            <table>
+                <tr>
+                    <th>Formål</th>
+                    <th>Data anvendt</th>
+                </tr>
+                <tr>
+                    <td>Kontoadministration</td>
+                    <td>Navn, email, password</td>
+                </tr>
+                <tr>
+                    <td>Målingsindkaldelser</td>
+                    <td>Email-adresse, organisation</td>
+                </tr>
+                <tr>
+                    <td>Resultatsanalyse</td>
+                    <td>Besvarelser (anonymiseret)</td>
+                </tr>
+                <tr>
+                    <td>Systemsikkerhed</td>
+                    <td>IP-adresse, login-logs</td>
+                </tr>
+                <tr>
+                    <td>Kommunikation</td>
+                    <td>Email-adresse</td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="section" id="legal-basis">
+            <h2>4. Retsgrundlag</h2>
+            <p>Vi behandler dine personoplysninger på følgende grundlag:</p>
+            <ul>
+                <li><strong>Kontrakt:</strong> For at levere friktionsmålings-servicen</li>
+                <li><strong>Samtykke:</strong> For email-notifikationer (kan trækkes tilbage)</li>
+                <li><strong>Legitim interesse:</strong> For at forbedre vores service og sikre sikkerhed</li>
+                <li><strong>Lovkrav:</strong> For at overholde regnskabs- og skattelovgivning</li>
+            </ul>
+        </div>
+
+        <div class="section" id="sharing">
+            <h2>5. Deling af data</h2>
+            <p>Vi sælger ikke dine personoplysninger. Vi deler kun data med:</p>
+            <ul>
+                <li><strong>Din organisation:</strong> Aggregerede resultater (minimum 5 besvarelser for anonymitet)</li>
+                <li><strong>Databehandlere:</strong> Leverandører der hjælper os med at levere servicen (se nedenfor)</li>
+                <li><strong>Myndigheder:</strong> Hvis det kræves ved lov</li>
+            </ul>
+
+            <div class="warning-box">
+                <strong>Anonymitetsgaranti:</strong> Individuelle målingsbesvarelser vises aldrig medmindre der er mindst 5 respondenter i en enhed. Fritekst-kommentarer er altid anonyme.
+            </div>
+        </div>
+
+        <div class="section" id="processors">
+            <h2>6. Databehandlere</h2>
+            <p>Vi bruger følgende databehandlere:</p>
+
+            <table>
+                <tr>
+                    <th>Service</th>
+                    <th>Leverandør</th>
+                    <th>Formål</th>
+                    <th>Lokation</th>
+                </tr>
+                <tr>
+                    <td>Hosting</td>
+                    <td>Render (render.com)</td>
+                    <td>Applikations-hosting</td>
+                    <td>EU (Frankfurt)</td>
+                </tr>
+                <tr>
+                    <td>Email-levering</td>
+                    <td>Mailjet</td>
+                    <td>Afsendelse af indkaldelser</td>
+                    <td>EU</td>
+                </tr>
+                <tr>
+                    <td>DNS & CDN</td>
+                    <td>Cloudflare</td>
+                    <td>Domæne-håndtering</td>
+                    <td>Global</td>
+                </tr>
+                <tr>
+                    <td>Analytics</td>
+                    <td>Google Analytics</td>
+                    <td>Brugsstatistik</td>
+                    <td>EU (anonymiseret IP)</td>
+                </tr>
+            </table>
+
+            <p>Alle databehandlere er GDPR-compliant og har Databehandleraftaler på plads.</p>
+        </div>
+
+        <div class="section" id="retention">
+            <h2>7. Opbevaringsperioder</h2>
+            <p>Vi opbevarer dine data i følgende perioder:</p>
+            <ul>
+                <li><strong>Kontodata:</strong> Indtil konto slettes + 30 dages fortrydelsesret</li>
+                <li><strong>Målingsbesvarelser:</strong> Så længe organisationen har en aktiv konto</li>
+                <li><strong>Audit-logs:</strong> 12 måneder</li>
+                <li><strong>Email-logs:</strong> 90 dage</li>
+            </ul>
+        </div>
+
+        <div class="section" id="your-rights">
+            <h2>8. Dine rettigheder (GDPR)</h2>
+            <p>Under GDPR har du følgende rettigheder:</p>
+
+            <div class="info-box">
+                <strong>Ret til indsigt:</strong> Download alle dine data via "Eksporter mine data" i dine kontoindstillinger.
+            </div>
+
+            <div class="info-box">
+                <strong>Ret til berigtigelse:</strong> Opdater dine profiloplysninger i dine kontoindstillinger.
+            </div>
+
+            <div class="info-box">
+                <strong>Ret til sletning:</strong> Slet din konto via "Slet min konto" (30 dages fortrydelsesret).
+            </div>
+
+            <div class="info-box">
+                <strong>Ret til dataportabilitet:</strong> Din data-eksport er i JSON-format til portabilitet.
+            </div>
+
+            <div class="info-box">
+                <strong>Ret til indsigelse:</strong> Afmeld emails via afmeld-linket i enhver email.
+            </div>
+
+            <div class="info-box">
+                <strong>Ret til at klage:</strong> Kontakt Datatilsynet hvis du mener dine rettigheder er blevet krænket.
+            </div>
+        </div>
+
+        <div class="section" id="cookies">
+            <h2>9. Cookies</h2>
+            <p>Vi bruger følgende cookies:</p>
+
+            <table>
+                <tr>
+                    <th>Cookie</th>
+                    <th>Formål</th>
+                    <th>Varighed</th>
+                </tr>
+                <tr>
+                    <td>session</td>
+                    <td>Holde dig logget ind (essentiel)</td>
+                    <td>Session</td>
+                </tr>
+                <tr>
+                    <td>language</td>
+                    <td>Huske din sprogpræference</td>
+                    <td>1 år</td>
+                </tr>
+                <tr>
+                    <td>_ga</td>
+                    <td>Analytics (Google Analytics)</td>
+                    <td>2 år</td>
+                </tr>
+            </table>
+
+            <p>Du kan deaktivere cookies i dine browser-indstillinger, men det kan påvirke funktionaliteten.</p>
+        </div>
+
+        <div class="section" id="security">
+            <h2>10. Sikkerhed</h2>
+            <p>Vi beskytter dine data med:</p>
+            <ul>
+                <li>TLS/SSL-kryptering for alle data i transit</li>
+                <li>Krypteret password-lagring (bcrypt)</li>
+                <li>Regelmæssige sikkerhedsopdateringer</li>
+                <li>Adgangskontrol og audit-logging</li>
+                <li>Automatiske backups</li>
+            </ul>
+        </div>
+
+        <div class="section" id="changes">
+            <h2>11. Ændringer til denne politik</h2>
+            <p>Vi kan opdatere denne privatlivspolitik fra tid til anden. Vi vil informere dig om væsentlige ændringer via email.</p>
+        </div>
+
+        <div class="section" id="contact">
+            <h2>12. Kontakt os</h2>
+            <div class="contact-box">
+                <h3>Spørgsmål om dit privatliv?</h3>
+                <p>Kontakt vores Databeskyttelsesrådgiver:</p>
+                <p><a href="mailto:dpo@friktionskompasset.dk">dpo@friktionskompasset.dk</a></p>
+                <p style="margin-top: 20px;">
+                    <strong>Support:</strong> <a href="mailto:support@friktionskompasset.dk">support@friktionskompasset.dk</a>
+                </p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="footer">
+        <p>&copy; 2025 Friktionskompasset. {% if language == 'en' %}All rights reserved.{% else %}Alle rettigheder forbeholdes.{% endif %}</p>
+        <p><a href="/">{% if language == 'en' %}Back to home{% else %}Tilbage til forsiden{% endif %}</a></p>
+    </div>
+</body>
+</html>

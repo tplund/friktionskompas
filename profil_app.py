@@ -23,8 +23,21 @@ import os
 import secrets as secrets_module
 
 app = Flask(__name__)
+
 # Sikker secret key fra miljøvariabel (fallback til autogeneret i development)
-app.secret_key = os.environ.get('SECRET_KEY') or secrets_module.token_hex(32)
+SECRET_KEY = os.environ.get('SECRET_KEY')
+if not SECRET_KEY and not os.environ.get('FLASK_DEBUG'):
+    raise RuntimeError('SECRET_KEY must be set in production')
+app.secret_key = SECRET_KEY or secrets_module.token_hex(32)
+
+# Debug mode configuration
+app.debug = os.environ.get('FLASK_DEBUG', 'false').lower() == 'true'
+
+# Security configuration
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max upload
+app.config['SESSION_COOKIE_SECURE'] = not app.debug  # True in production
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 
 # Initialiser database ved opstart
 init_profil_tables()
@@ -237,4 +250,6 @@ if __name__ == '__main__':
     print("  /profil/test-profiles  - Se testprofiler")
     print("  /profil/generate-test-data - Generer testdata")
     print()
-    app.run(debug=True, port=5003)
+    # Debug mode controlled by FLASK_DEBUG environment variable
+    debug_mode = os.environ.get('FLASK_DEBUG', 'false').lower() == 'true'
+    app.run(debug=debug_mode, port=5003)

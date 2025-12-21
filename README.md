@@ -134,6 +134,42 @@ Integration med Anders Trillingsgaard's framework:
 
 ---
 
+## 🔌 API Integration
+
+Friktionskompasset provides a REST API for enterprise integration with HR systems, Power BI, and data warehouses.
+
+### Quick Start
+
+```bash
+# Get your API key from Settings → API Keys, then:
+curl https://friktionskompasset.dk/api/v1/assessments \
+     -H "X-API-Key: fk_xxx_xxxx"
+```
+
+### Documentation
+
+- **Full API Docs:** [API_DOCUMENTATION.md](API_DOCUMENTATION.md)
+- **Interactive Swagger UI:** https://friktionskompasset.dk/api/docs
+- **OpenAPI Spec:** https://friktionskompasset.dk/static/openapi.yaml
+
+### Available Endpoints
+
+- `GET /api/v1/assessments` - List assessments
+- `GET /api/v1/assessments/{id}` - Get assessment details
+- `GET /api/v1/assessments/{id}/results` - Get friction scores
+- `POST /api/v1/assessments` - Create assessment (requires write permission)
+- `GET /api/v1/units` - Get organizational structure
+- `GET /api/v1/export` - Bulk data export (JSON/CSV)
+
+### Code Examples
+
+See the `examples/` directory for integration examples:
+- `examples/python_example.py` - Python integration
+- `examples/javascript_example.js` - Node.js integration
+- `examples/powerbi_query.m` - Power BI connector
+
+---
+
 ## 🔄 Workflows
 
 ### 1. Opret Organisation

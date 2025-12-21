@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="{{ language }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if language == 'en' %}Unsubscribe from Emails{% else %}Afmeld email-notifikationer{% endif %} - Friktionskompasset</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            line-height: 1.6;
+            color: #1f2937;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            max-width: 600px;
+            width: 100%;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #475569 0%, #334155 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 1.75rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1rem;
+        }
+
+        .content {
+            padding: 40px 30px;
+        }
+
+        .info-box {
+            background: #f9fafb;
+            border-left: 4px solid #3b82f6;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+
+        .warning-box {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+
+        .warning-box h3 {
+            color: #92400e;
+            margin-bottom: 10px;
+        }
+
+        .warning-box ul {
+            margin-left: 20px;
+            color: #78350f;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #dc2626;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #b91c1c;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+        }
+
+        .btn-secondary {
+            background: #e5e7eb;
+            color: #374151;
+        }
+
+        .btn-secondary:hover {
+            background: #d1d5db;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+
+        .status-active {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-unsubscribed {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .footer {
+            padding: 30px;
+            background: #f9fafb;
+            border-top: 1px solid #e5e7eb;
+            text-align: center;
+            color: #6b7280;
+            font-size: 0.875rem;
+        }
+
+        .footer a {
+            color: #3b82f6;
+            text-decoration: none;
+        }
+
+        .footer a:hover {
+            text-decoration: underline;
+        }
+
+        @media (max-width: 640px) {
+            .button-group {
+                flex-direction: column;
+            }
+
+            .content {
+                padding: 30px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📧 {% if language == 'en' %}Email Preferences{% else %}Email-indstillinger{% endif %}</h1>
+            <p>{% if language == 'en' %}Manage your email notifications{% else %}Administrer dine email-notifikationer{% endif %}</p>
+        </div>
+
+        <div class="content">
+            {% if user.email_unsubscribed %}
+                <div class="info-box">
+                    <h3 style="margin-bottom: 10px;">
+                        {% if language == 'en' %}Already Unsubscribed{% else %}Allerede afmeldt{% endif %}
+                    </h3>
+                    <p>
+                        {% if language == 'en' %}
+                            You are currently unsubscribed from email notifications.
+                        {% else %}
+                            Du er allerede afmeldt email-notifikationer.
+                        {% endif %}
+                    </p>
+                </div>
+            {% else %}
+                <div class="info-box">
+                    <p><strong>{% if language == 'en' %}Account{% else %}Konto{% endif %}:</strong> {{ user.email or user.username }}</p>
+                    <p style="margin-top: 8px;">
+                        <span class="status-badge status-active">
+                            {% if language == 'en' %}Subscribed{% else %}Tilmeldt{% endif %}
+                        </span>
+                    </p>
+                </div>
+
+                <div class="warning-box">
+                    <h3>{% if language == 'en' %}What happens when you unsubscribe?{% else %}Hvad sker der når du afmelder?{% endif %}</h3>
+                    <ul>
+                        <li>{% if language == 'en' %}You will stop receiving email notifications{% else %}Du vil ikke længere modtage email-notifikationer{% endif %}</li>
+                        <li>{% if language == 'en' %}Survey invitations will not be sent{% else %}Målingsindkaldelser sendes ikke{% endif %}</li>
+                        <li>{% if language == 'en' %}Your account remains active{% else %}Din konto forbliver aktiv{% endif %}</li>
+                        <li>{% if language == 'en' %}You can re-subscribe at any time{% else %}Du kan tilmelde dig igen når som helst{% endif %}</li>
+                    </ul>
+                </div>
+
+                <form method="POST" action="{{ url_for('public.email_unsubscribe_confirm', token=token) }}">
+                    <div class="button-group">
+                        <button type="submit" class="btn btn-primary">
+                            {% if language == 'en' %}Unsubscribe{% else %}Afmeld{% endif %}
+                        </button>
+                        <a href="{{ url_for('public.index') }}" class="btn btn-secondary">
+                            {% if language == 'en' %}Cancel{% else %}Annuller{% endif %}
+                        </a>
+                    </div>
+                </form>
+            {% endif %}
+        </div>
+
+        <div class="footer">
+            <p>
+                {% if language == 'en' %}
+                    Questions? Read our <a href="{{ url_for('public.privacy') }}">Privacy Policy</a>
+                    or contact us at support@friktionskompasset.dk
+                {% else %}
+                    Spørgsmål? Læs vores <a href="{{ url_for('public.privacy') }}">Privatlivspolitik</a>
+                    eller kontakt os på support@friktionskompasset.dk
+                {% endif %}
+            </p>
+        </div>
+    </div>
+</body>
+</html>

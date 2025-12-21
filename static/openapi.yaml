@@ -41,6 +41,8 @@ tags:
     description: Målinger og resultater
   - name: Units
     description: Organisationsstruktur
+  - name: Export
+    description: Bulk data eksport til analytics og integration
 
 security:
   - ApiKeyAuth: []
@@ -360,6 +362,120 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+  /api/v1/export:
+    get:
+      tags:
+        - Export
+      summary: Bulk data export
+      description: |
+        Eksporter bulk data til analytics, data warehouse, eller compliance.
+
+        Supports JSON og CSV formater med konfigurerbar anonymisering.
+
+        **Use cases:**
+        - Power BI integration
+        - Data warehouse ETL
+        - Compliance reporting
+        - Advanced analytics
+
+        **Anonymiserings-niveauer:**
+        - `none`: Rigtige emails og navne
+        - `pseudonymized`: UUID i stedet for emails (konsistent på tværs af eksporter)
+        - `full`: Al identificerende information fjernet
+      parameters:
+        - name: format
+          in: query
+          description: Export format
+          schema:
+            type: string
+            enum: [json, csv]
+            default: json
+        - name: anonymization
+          in: query
+          description: Anonymiserings-niveau
+          schema:
+            type: string
+            enum: [none, pseudonymized, full]
+            default: pseudonymized
+        - name: assessment_id
+          in: query
+          description: Filtrer til specifik måling
+          schema:
+            type: string
+        - name: include_responses
+          in: query
+          description: Inkluder individuelle responses
+          schema:
+            type: boolean
+            default: true
+        - name: include_scores
+          in: query
+          description: Inkluder aggregerede scores
+          schema:
+            type: boolean
+            default: true
+        - name: include_questions
+          in: query
+          description: Inkluder spørgsmåls-definitioner
+          schema:
+            type: boolean
+            default: true
+        - name: include_units
+          in: query
+          description: Inkluder organisationsstruktur
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: Eksporteret data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ExportData'
+              example:
+                data:
+                  export_date: "2025-01-20T14:30:00"
+                  export_version: "1.0"
+                  anonymization_level: "pseudonymized"
+                  responses:
+                    - response_id: "resp-123"
+                      question_id: 1
+                      score: 4
+                      response_date: "2025-01-16T09:23:00"
+                      respondent_id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                      is_leader: false
+                      assessment_id: "assess-abc123"
+                      unit_id: "unit-xyz789"
+                      unit_name: "Birk Skole"
+                  aggregated_scores:
+                    - assessment_id: "assess-abc123"
+                      unit_id: "unit-xyz789"
+                      unit_name: "Birk Skole"
+                      field: "TRYGHED"
+                      score: 3.85
+                      percent: 77.0
+                      response_count: 22
+                  questions:
+                    - id: 1
+                      sequence: 1
+                      field: "TRYGHED"
+                      text_da: "Jeg kan tale frit om fejl og problemer"
+                      text_en: "I can speak freely about mistakes and problems"
+                      reverse_scored: 0
+            text/csv:
+              schema:
+                type: string
+                format: binary
+                description: CSV fil med semicolon separator og UTF-8 encoding
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
 components:
   securitySchemes:
     ApiKeyAuth:
@@ -615,6 +731,107 @@ components:
           type: integer
         total:
           type: integer
+
+    ExportData:
+      type: object
+      properties:
+        export_date:
+          type: string
+          format: date-time
+          description: Tidspunkt for eksport
+        export_version:
+          type: string
+          description: Eksport format version
+        anonymization_level:
+          type: string
+          enum: [none, pseudonymized, full]
+          description: Anonymiserings-niveau brugt
+        responses:
+          type: array
+          description: Individuelle responses (hvis include_responses=true)
+          items:
+            type: object
+            properties:
+              response_id:
+                type: string
+              question_id:
+                type: integer
+              score:
+                type: integer
+              response_date:
+                type: string
+                format: date-time
+              respondent_id:
+                type: string
+                nullable: true
+                description: Anonymiseret respondent ID eller null
+              is_leader:
+                type: boolean
+              assessment_id:
+                type: string
+              unit_id:
+                type: string
+              unit_name:
+                type: string
+        aggregated_scores:
+          type: array
+          description: Aggregerede scores (hvis include_scores=true)
+          items:
+            type: object
+            properties:
+              assessment_id:
+                type: string
+              unit_id:
+                type: string
+              unit_name:
+                type: string
+              field:
+                type: string
+                enum: [TRYGHED, MENING, KAN, BESVÆR]
+              score:
+                type: number
+                nullable: true
+              percent:
+                type: number
+                nullable: true
+              response_count:
+                type: integer
+        questions:
+          type: array
+          description: Spørgsmåls-definitioner (hvis include_questions=true)
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              sequence:
+                type: integer
+              field:
+                type: string
+              text_da:
+                type: string
+              text_en:
+                type: string
+              reverse_scored:
+                type: integer
+        units:
+          type: array
+          description: Organisationsenheder (hvis include_units=true)
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              name:
+                type: string
+              path:
+                type: string
+                nullable: true
+              parent_id:
+                type: string
+                nullable: true
+              level:
+                type: integer
 
   responses:
     Unauthorized:

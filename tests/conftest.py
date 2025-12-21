@@ -68,7 +68,7 @@ def _init_test_db(db_path):
         )
     """)
 
-    # Assessments table
+    # Assessments table (full schema to match production)
     conn.execute("""
         CREATE TABLE IF NOT EXISTS assessments (
             id TEXT PRIMARY KEY,
@@ -76,6 +76,16 @@ def _init_test_db(db_path):
             period TEXT,
             target_unit_id TEXT,
             customer_id TEXT,
+            sent_from TEXT DEFAULT 'admin',
+            sent_at TIMESTAMP,
+            scheduled_at TIMESTAMP,
+            status TEXT DEFAULT 'sent',
+            mode TEXT DEFAULT 'anonymous',
+            min_responses INTEGER DEFAULT 5,
+            include_leader_assessment INTEGER DEFAULT 0,
+            include_leader_self INTEGER DEFAULT 0,
+            sender_name TEXT DEFAULT 'HR',
+            assessment_type_id TEXT DEFAULT 'gruppe_friktion',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (target_unit_id) REFERENCES organizational_units(id) ON DELETE CASCADE,
             FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE

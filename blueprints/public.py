@@ -6,11 +6,15 @@ Routes:
 - /landing
 - /robots.txt
 - /sitemap.xml
+- /privacy - Privacy policy
+- /email/unsubscribe/<token> - Email unsubscribe
 - Zoho verification files
 """
 
 from flask import Blueprint, render_template, redirect, url_for, session, \
-    send_from_directory, request, Response
+    send_from_directory, request, Response, flash
+from db_multitenant import get_db
+import secrets
 
 public_bp = Blueprint('public', __name__)
 
@@ -70,3 +74,66 @@ def zoho_verify():
 def zoho_domain_verify():
     """Zoho domain verification (alternative file)"""
     return send_from_directory('.', 'zoho-domain-verification.html')
+
+
+@public_bp.route('/privacy')
+def privacy():
+    """Privacy policy page (GDPR compliance)"""
+    # Get domain for language detection
+    domain = request.host
+    language = 'en' if 'frictioncompass.com' in domain else 'da'
+    return render_template('privacy.html', language=language)
+
+
+@public_bp.route('/email/unsubscribe/<token>', methods=['GET'])
+def email_unsubscribe_page(token):
+    """Show email unsubscribe confirmation page"""
+    with get_db() as conn:
+        user = conn.execute(
+            "SELECT id, username, email, email_unsubscribed FROM users WHERE unsubscribe_token = ?",
+            (token,)
+        ).fetchone()
+
+        if not user:
+            flash('Invalid unsubscribe link.', 'error')
+            return redirect(url_for('public.index'))
+
+        # Get domain for language detection
+        domain = request.host
+        language = 'en' if 'frictioncompass.com' in domain else 'da'
+
+        return render_template('email_unsubscribe.html',
+                             user=user,
+                             token=token,
+                             language=language)
+
+
+@public_bp.route('/email/unsubscribe/<token>', methods=['POST'])
+def email_unsubscribe_confirm(token):
+    """Process email unsubscribe request"""
+    with get_db() as conn:
+        user = conn.execute(
+            "SELECT id, username, email FROM users WHERE unsubscribe_token = ?",
+            (token,)
+        ).fetchone()
+
+        if not user:
+            flash('Invalid unsubscribe link.', 'error')
+            return redirect(url_for('public.index'))
+
+        # Mark user as unsubscribed
+        conn.execute(
+            "UPDATE users SET email_unsubscribed = 1 WHERE id = ?",
+            (user['id'],)
+        )
+
+        # Get domain for language detection
+        domain = request.host
+        language = 'en' if 'frictioncompass.com' in domain else 'da'
+
+        if language == 'en':
+            flash('You have been unsubscribed from email notifications.', 'success')
+        else:
+            flash('Du er nu afmeldt email-notifikationer.', 'success')
+
+        return redirect(url_for('public.index'))
