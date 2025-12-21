@@ -6,15 +6,17 @@ Used by both admin_app.py and all blueprints to ensure consistent auth handling.
 
 import os
 from functools import wraps
+from typing import Any, Dict, Optional, Callable, Tuple
 from flask import session, request, redirect, url_for, flash, jsonify, g
+from werkzeug.wrappers import Response
 
 
-def get_current_user():
+def get_current_user() -> Optional[Dict[str, Any]]:
     """Hent current user fra session"""
     return session.get('user')
 
 
-def get_effective_role():
+def get_effective_role() -> Optional[str]:
     """Returnerer den effektive rolle - simuleret eller faktisk"""
     user = get_current_user()
     if not user:
@@ -25,7 +27,7 @@ def get_effective_role():
     return user.get('role')
 
 
-def is_role_simulated():
+def is_role_simulated() -> bool:
     """Returnerer True hvis superadmin simulerer en anden rolle"""
     user = get_current_user()
     if not user:
@@ -33,7 +35,7 @@ def is_role_simulated():
     return user.get('role') == 'superadmin' and 'simulated_role' in session
 
 
-def check_admin_api_key():
+def check_admin_api_key() -> bool:
     """Check for valid admin API key in request header.
     Returns True if valid API key found, False otherwise.
     API key should be passed in X-Admin-API-Key header.
@@ -47,7 +49,7 @@ def check_admin_api_key():
     return api_key == expected_key
 
 
-def is_api_request():
+def is_api_request() -> bool:
     """Check if request is from API client (expects JSON response)"""
     return (
         request.headers.get('Accept') == 'application/json' or
@@ -56,10 +58,10 @@ def is_api_request():
     )
 
 
-def login_required(f):
+def login_required(f: Callable) -> Callable:
     """Decorator til at kræve login"""
     @wraps(f)
-    def decorated_function(*args, **kwargs):
+    def decorated_function(*args: Any, **kwargs: Any) -> Any:
         if 'user' not in session:
             flash('Du skal være logget ind for at se denne side', 'error')
             return redirect(url_for('auth.login'))
@@ -67,10 +69,10 @@ def login_required(f):
     return decorated_function
 
 
-def admin_required(f):
+def admin_required(f: Callable) -> Callable:
     """Decorator til at kræve admin eller superadmin rolle"""
     @wraps(f)
-    def decorated_function(*args, **kwargs):
+    def decorated_function(*args: Any, **kwargs: Any) -> Any:
         if 'user' not in session:
             flash('Du skal være logget ind', 'error')
             return redirect(url_for('auth.login'))
@@ -85,10 +87,10 @@ def admin_required(f):
     return decorated_function
 
 
-def superadmin_required(f):
+def superadmin_required(f: Callable) -> Callable:
     """Decorator til at kræve superadmin rolle"""
     @wraps(f)
-    def decorated_function(*args, **kwargs):
+    def decorated_function(*args: Any, **kwargs: Any) -> Any:
         if 'user' not in session:
             flash('Du skal være logget ind', 'error')
             return redirect(url_for('auth.login'))
@@ -103,12 +105,12 @@ def superadmin_required(f):
     return decorated_function
 
 
-def api_or_admin_required(f):
+def api_or_admin_required(f: Callable) -> Callable:
     """Decorator that accepts either admin session OR valid API key.
     Returns JSON for API requests, HTML redirect for browser requests.
     """
     @wraps(f)
-    def decorated_function(*args, **kwargs):
+    def decorated_function(*args: Any, **kwargs: Any) -> Any:
         # Check API key first
         if check_admin_api_key():
             return f(*args, **kwargs)
@@ -131,7 +133,7 @@ def api_or_admin_required(f):
     return decorated_function
 
 
-def customer_api_required(f):
+def customer_api_required(f: Callable) -> Callable:
     """
     Decorator for Customer API endpoints.
 
@@ -149,7 +151,7 @@ def customer_api_required(f):
             ...
     """
     @wraps(f)
-    def decorated_function(*args, **kwargs):
+    def decorated_function(*args: Any, **kwargs: Any) -> Any:
         from db_multitenant import validate_customer_api_key
 
         api_key = request.headers.get('X-API-Key')
@@ -178,7 +180,7 @@ def customer_api_required(f):
     return decorated_function
 
 
-def customer_api_write_required(f):
+def customer_api_write_required(f: Callable) -> Callable:
     """
     Decorator that requires write permission.
     Must be used AFTER @customer_api_required.
@@ -192,7 +194,7 @@ def customer_api_write_required(f):
             ...
     """
     @wraps(f)
-    def decorated_function(*args, **kwargs):
+    def decorated_function(*args: Any, **kwargs: Any) -> Any:
         if not g.get('api_permissions', {}).get('write', False):
             return jsonify({
                 'error': 'Write permission required',

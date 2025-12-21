@@ -526,6 +526,104 @@ URL: `/admin/cleanup-empty` (kræver admin login)
   3. Kald `POST /admin/seed-translations` for at opdatere databasen
 - **Alternativ**: Besøg `/admin/db-status` og klik "Seed Translations"
 
+## Blueprint Struktur
+
+Applikationen bruger Flask blueprints til at organisere routes modular. Alle blueprints registreres i `admin_app.py` og bruges til at gruppere relaterede endpoints.
+
+### De 10 Blueprints
+
+| Blueprint | Fil | Formål | Antimekanisme |
+|-----------|-----|--------|---------------|
+| **public** | `blueprints/public.py` | Offentlige sider: landing page, robots.txt, sitemap | Ingen auth kraves |
+| **auth** | `blueprints/auth.py` | Login, logout, registrering, OAuth, password reset, email login | `@limiter` på login (10/min) |
+| **admin_core** | `blueprints/admin_core.py` | Dashboard, KPIs, trends, analyser - hovedoversigt | `@login_required`, `@admin_required` |
+| **api_admin** | `blueprints/api_admin.py` | Admin API endpoints: status, cache clearing, dokumentation | `@api_or_admin_required`, `X-Admin-API-Key` header |
+| **api_customer** | `blueprints/api_customer.py` | REST API v1 for enterprise kunder: assessments, units, export | `@customer_api_required` med API keys |
+| **assessments** | `blueprints/assessments.py` | Assessment CRUD: opret, vis, slet, analyser, PDF export, assessment types | `@login_required`, `@admin_required` |
+| **units** | `blueprints/units.py` | Enhed management: opret unit, bulk upload, move, kontakter, dashboard | `@login_required`, `@admin_required` |
+| **customers** | `blueprints/customers.py` | Kunde management: opret kunde, domæner, API-nøgler, auth konfiguration | `@admin_required`, `@superadmin_required` |
+| **export** | `blueprints/export.py` | Backup, restore, bulk export med anonymisering | `@admin_required`, `@api_or_admin_required` |
+| **dev_tools** | `blueprints/dev_tools.py` | Seed data, migrering, database status, dev debugging | `@admin_required` |
+| **friktionsprofil** | `friktionsprofil_routes.py` | Screening og dybdeprofil: survey, resultater, sammenligning | Ingen auth (B2C) |
+
+### Route Gruppering
+
+**Offentlige routes (ingen auth):**
+- `public` - Landing page
+- `friktionsprofil` - Screening/dyb måling (B2C)
+
+**Bruger auth (login kraves):**
+- `admin_core` - Dashboard og analyser
+- `assessments` - Assessment management
+- `units` - Enhed management
+
+**Admin routes (admin_required):**
+- `customers` - Kunde og domæne konfiguration
+- `export` - Backup og bulk export
+- `dev_tools` - Seed data og migrering
+
+**API routes (API key kraves):**
+- `api_admin` - Admin API med `X-Admin-API-Key` header
+- `api_customer` - Customer REST API v1 med customer API-nøgler
+
+**Auth routes:**
+- `auth` - Login flows med rate limiting
+
+### Hvordan Tilføjer Man Nye Routes?
+
+**1. Velg rigtig blueprint baseret på formål:**
+- **Dashboard/oversigt?** → `admin_core`
+- **CRUD på assessments?** → `assessments`
+- **CRUD på units?** → `units`
+- **Kunde-/domæne-konfiguration?** → `customers`
+- **Backup/export?** → `export`
+- **Dev tools/seed data?** → `dev_tools`
+- **API endpoint?** → `api_admin` eller `api_customer`
+- **Public sider?** → `public`
+- **Auth flows?** → `auth`
+
+**2. Opret route med rigtig sikkerhed:**
+```python
+# I f.eks. assessments.py
+@assessments_bp.route('/admin/min-nye-side', methods=['GET', 'POST'])
+@login_required  # For bruger-authenticated routes
+@admin_required  # For admin-only routes
+def min_nye_route():
+    user = get_current_user()
+    where_clause, params = get_customer_filter(user['role'], user['customer_id'], session.get('customer_filter'))
+    # Implementation...
+    return render_template('...')
+```
+
+**3. Tilføj template og static filer:**
+- Templates: `templates/path/page.html`
+- JavaScript: `static/js/script.js`
+- CSS: `static/css/style.css`
+- **VIGTIGT**: Commit alle template/static filer eksplicit!
+
+**4. Tilføj navigation link i admin layout** (`templates/admin/layout.html`):
+```html
+<a href="{{ url_for('blueprint_name.route_function') }}">Min side</a>
+```
+
+**5. Tilføj tests** i `tests/test_routes.py`:
+```python
+def test_ny_route():
+    with client.session_transaction() as sess:
+        sess['user'] = {'id': 1, 'role': 'admin', 'customer_id': 'xyz'}
+    response = client.get('/admin/min-nye-side')
+    assert response.status_code == 200
+```
+
+**6. Commit til git FØR push:**
+```bash
+git add blueprints/assessments.py templates/path/page.html static/
+git commit -m "feat: Add new assessment feature"
+git push
+```
+
+---
+
 ## Domæner og OAuth
 
 ### Domæne-konfiguration
