@@ -62,7 +62,7 @@ def login_required(f):
     def decorated_function(*args, **kwargs):
         if 'user' not in session:
             flash('Du skal være logget ind for at se denne side', 'error')
-            return redirect(url_for('login'))
+            return redirect(url_for('auth.login'))
         return f(*args, **kwargs)
     return decorated_function
 
@@ -73,7 +73,7 @@ def admin_required(f):
     def decorated_function(*args, **kwargs):
         if 'user' not in session:
             flash('Du skal være logget ind', 'error')
-            return redirect(url_for('login'))
+            return redirect(url_for('auth.login'))
         role = session['user']['role']
         if role not in ('admin', 'superadmin'):
             flash('Kun admin har adgang til denne side', 'error')
@@ -91,7 +91,7 @@ def superadmin_required(f):
     def decorated_function(*args, **kwargs):
         if 'user' not in session:
             flash('Du skal være logget ind', 'error')
-            return redirect(url_for('login'))
+            return redirect(url_for('auth.login'))
         role = session['user']['role']
         if role != 'superadmin':
             flash('Kun system administrator har adgang til denne side', 'error')
@@ -117,7 +117,7 @@ def api_or_admin_required(f):
             if is_api_request():
                 return jsonify({'error': 'Authentication required'}), 401
             flash('Du skal være logget ind', 'error')
-            return redirect(url_for('login'))
+            return redirect(url_for('auth.login'))
         role = session['user']['role']
         if role not in ('admin', 'superadmin'):
             if is_api_request():

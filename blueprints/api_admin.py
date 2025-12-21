@@ -12,6 +12,7 @@ Routes:
 import os
 from flask import Blueprint, jsonify, request, send_from_directory, current_app
 
+from extensions import csrf
 from auth_helpers import api_or_admin_required
 from db_hierarchical import get_db
 from translations import clear_translation_cache
@@ -54,6 +55,7 @@ def api_admin_status():
 
 
 @api_admin_bp.route('/admin/clear-cache', methods=['POST'])
+@csrf.exempt
 @api_or_admin_required
 def api_admin_clear_cache():
     """Clear all caches.

@@ -340,19 +340,19 @@
             <button type="submit" class="btn" aria-label="Log ind">{{ t('login.button') }}</button>
 
             <div class="links-section">
-                <a href="{{ url_for('forgot_password') }}">{{ t('login.forgot_password', 'Glemt password?') }}</a>
+                <a href="{{ url_for('auth.forgot_password') }}">{{ t('login.forgot_password', 'Glemt password?') }}</a>
             </div>
         </form>
 
         <div class="alt-login">
-            <a href="{{ url_for('email_login') }}">{{ t('login.email_code', 'Log ind med email-kode i stedet') }}</a>
+            <a href="{{ url_for('auth.email_login') }}">{{ t('login.email_code', 'Log ind med email-kode i stedet') }}</a>
         </div>
 
         {% endif %}
 
         <div class="register-section">
             {{ t('login.no_account', 'Har du ikke en konto?') }}
-            <a href="{{ url_for('register') }}">{{ t('login.register_link', 'Opret konto') }}</a>
+            <a href="{{ url_for('auth.register') }}">{{ t('login.register_link', 'Opret konto') }}</a>
             <br><br>
             <a href="{{ url_for('help_page') }}" style="font-weight: normal;">{{ t('login.need_help', 'Brug for hjælp?') }}</a>
         </div>

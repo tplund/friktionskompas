@@ -226,7 +226,7 @@ def _init_test_db(db_path):
 
 def _seed_test_data(db_path):
     """Seed test database with minimal test data."""
-    from werkzeug.security import generate_password_hash
+    import bcrypt  # Use bcrypt to match production verify_password()
 
     conn = sqlite3.connect(db_path)
     conn.execute("PRAGMA foreign_keys=ON")
@@ -241,9 +241,9 @@ def _seed_test_data(db_path):
         VALUES ('cust-test2', 'Test Kunde 2', 'test2.dk', datetime('now'))
     """)
 
-    # Create test users
-    admin_hash = generate_password_hash('admin123')
-    manager_hash = generate_password_hash('manager123')
+    # Create test users - using bcrypt to match verify_password() in db_multitenant.py
+    admin_hash = bcrypt.hashpw('admin123'.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    manager_hash = bcrypt.hashpw('manager123'.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
     conn.execute("""
         INSERT INTO users (id, username, email, password_hash, name, role, customer_id)

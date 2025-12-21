@@ -135,7 +135,7 @@
         <h1>Friktionskompasset</h1>
         <div class="navbar-user">
             <span>{{ session.user.name }}</span>
-            <a href="{{ url_for('logout') }}">{{ t('nav.logout', 'Log ud') }}</a>
+            <a href="{{ url_for('auth.logout') }}">{{ t('nav.logout', 'Log ud') }}</a>
         </div>
     </nav>
 

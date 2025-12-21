@@ -10,6 +10,7 @@ Routes:
 - /login/email/verify (GET, POST) - Verify email login
 - /forgot-password (GET, POST) - Forgot password
 - /reset-password (GET, POST) - Reset password
+- /resend-code (POST) - Resend verification code
 - /auth/<provider> - Start OAuth flow
 - /auth/<provider>/callback - OAuth callback
 """
@@ -17,6 +18,7 @@ Routes:
 from flask import Blueprint, render_template, redirect, url_for, session, \
     request, flash
 
+from extensions import limiter
 from auth_helpers import login_required
 from oauth import oauth, get_enabled_providers, get_provider_info, handle_oauth_callback
 from db_multitenant import (
@@ -37,6 +39,7 @@ auth_bp = Blueprint('auth', __name__)
 
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
+@limiter.limit("10 per minute", methods=["POST"])
 def login():
     """Login side"""
     if request.method == 'POST':
@@ -163,6 +166,7 @@ def logout():
 
 
 @auth_bp.route('/register', methods=['GET', 'POST'])
+@limiter.limit("5 per minute", methods=["POST"])
 def register():
     """Registreringsside for B2C brugere"""
     if request.method == 'POST':
@@ -242,6 +246,7 @@ def verify_registration():
 
 
 @auth_bp.route('/login/email', methods=['GET', 'POST'])
+@limiter.limit("5 per minute", methods=["POST"])
 def email_login():
     """Passwordless login med email-kode"""
     if request.method == 'POST':
@@ -300,6 +305,7 @@ def verify_email_login():
 
 
 @auth_bp.route('/forgot-password', methods=['GET', 'POST'])
+@limiter.limit("3 per minute", methods=["POST"])
 def forgot_password():
     """Glemt password - send reset kode"""
     if request.method == 'POST':
@@ -348,3 +354,30 @@ def reset_password():
                 flash('Forkert eller udløbet kode. Prøv igen.', 'error')
 
     return render_template('reset_password.html', email=email)
+
+
+@auth_bp.route('/resend-code', methods=['POST'])
+@limiter.limit("3 per minute")
+def resend_code():
+    """Gensend verifikationskode"""
+    code_type = request.form.get('type', 'login')
+    email = None
+
+    if code_type == 'login':
+        email = session.get('pending_email_login')
+    elif code_type == 'register':
+        pending = session.get('pending_registration')
+        email = pending.get('email') if pending else None
+    elif code_type == 'reset':
+        email = session.get('pending_password_reset')
+
+    if email:
+        code = generate_email_code(email, code_type)
+        if send_login_code(email, code, code_type, get_user_language()):
+            flash('Ny kode sendt!', 'success')
+        else:
+            flash('Kunne ikke sende kode. Prøv igen.', 'error')
+    else:
+        flash('Ingen email at sende til', 'error')
+
+    return redirect(request.referrer or url_for('auth.login'))
