@@ -452,6 +452,12 @@ def init_db():
         except sqlite3.OperationalError:
             conn.execute("ALTER TABLE tasks ADD COLUMN situation TEXT")
 
+        # Migration: Tilføj assessment_id kolonne til email_logs hvis den mangler
+        try:
+            conn.execute("SELECT assessment_id FROM email_logs LIMIT 1")
+        except sqlite3.OperationalError:
+            conn.execute("ALTER TABLE email_logs ADD COLUMN assessment_id TEXT")
+
         # Handlinger (actions) - 2-5 per opgave
         conn.execute("""
             CREATE TABLE IF NOT EXISTS actions (
