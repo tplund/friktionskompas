@@ -128,6 +128,22 @@ curl -s -X POST "https://api.cloudflare.com/client/v4/zones/ZONE_ID/purge_cache"
   --data '{"purge_everything":true}'
 ```
 
+### Mailjet (Email)
+**Primary API Key:** `f470ff0c3a9ab9d2eaa1d080b271f468`
+**Primary API Secret:** `ffa9d70fee458d15b77a3b520881a5dd`
+
+**VIGTIGT:** Brug ALTID Primary API key - sub-account keys har ikke validerede sender-adresser!
+
+**Environment variables på Render:**
+- `MAILJET_API_KEY` = Primary API key
+- `MAILJET_API_SECRET` = Primary API secret
+- `FROM_EMAIL` = info@friktionskompasset.dk
+- `FROM_NAME` = Friktionskompasset
+
+**Hvad kan jeg gøre:**
+- ✅ Sende transaktionelle emails (invitationer, login-koder, etc.)
+- ✅ Tjekke email statistik via Mailjet dashboard
+
 ### Friktionskompasset Admin API (Applikation)
 **API Key:** `w_r0xNlJAzAm7XSKARbo2T4GkKCePxiqXroB2w0o29s`
 **Header:** `X-Admin-API-Key`
