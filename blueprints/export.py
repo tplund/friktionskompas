@@ -27,7 +27,6 @@ from auth_helpers import (
 )
 from db_hierarchical import get_db
 from db_multitenant import get_customer_filter
-from friction_engine import score_to_percent
 from audit import log_action, AuditAction
 
 export_bp = Blueprint('export', __name__)
