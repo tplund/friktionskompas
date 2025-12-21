@@ -1,12 +1,13 @@
 """
 Scheduler for Friktionskompasset
 Kører planlagte målinger automatisk
+GDPR Phase 2: Includes daily data retention cleanup
 """
 import threading
 import time
 import sqlite3
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Dict
 
 # Database path (same logic as db_hierarchical.py)
@@ -19,6 +20,7 @@ else:
 # Global scheduler state
 _scheduler_thread = None
 _scheduler_running = False
+_last_cleanup_date = None  # Track last cleanup run (date only)
 
 
 def get_db_connection():
@@ -129,15 +131,54 @@ def mark_assessment_error(assessment_id: str, error_message: str):
         print(f"[Scheduler] Error marking assessment error: {e}")
 
 
+def run_daily_cleanup():
+    """Run data retention cleanup job (GDPR compliance)"""
+    global _last_cleanup_date
+
+    try:
+        from data_retention import run_all_cleanups
+
+        print("[Scheduler] Running daily data retention cleanup...")
+        results = run_all_cleanups()
+
+        _last_cleanup_date = datetime.now().date()
+
+        print(f"[Scheduler] Cleanup complete: {results['total_deleted']} records deleted")
+        return results
+
+    except Exception as e:
+        print(f"[Scheduler] Error running cleanup: {e}")
+        return None
+
+
+def should_run_cleanup() -> bool:
+    """Check if cleanup should run today"""
+    global _last_cleanup_date
+
+    today = datetime.now().date()
+
+    # Run if never run, or if last run was not today
+    if _last_cleanup_date is None or _last_cleanup_date < today:
+        return True
+
+    return False
+
+
 def scheduler_loop():
     """Hovedloop for scheduler - tjekker hvert minut"""
     global _scheduler_running
 
     print("[Scheduler] Started")
 
+    # Variables for cleanup scheduling
+    cleanup_hour = 3  # Run cleanup at 3 AM
+    cleanup_checked_today = False
+
     while _scheduler_running:
         try:
-            # Hent pending assessments
+            current_time = datetime.now()
+
+            # Check for scheduled assessments
             pending = get_pending_scheduled_assessments()
 
             if pending:
@@ -145,6 +186,15 @@ def scheduler_loop():
 
                 for assessment in pending:
                     send_scheduled_assessment(assessment)
+
+            # Check if it's time to run cleanup (once per day at cleanup_hour)
+            if current_time.hour == cleanup_hour and should_run_cleanup():
+                if not cleanup_checked_today:
+                    run_daily_cleanup()
+                    cleanup_checked_today = True
+            elif current_time.hour != cleanup_hour:
+                # Reset flag when we're past the cleanup hour
+                cleanup_checked_today = False
 
         except Exception as e:
             print(f"[Scheduler] Error in loop: {e}")

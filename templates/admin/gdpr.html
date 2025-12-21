@@ -427,14 +427,38 @@
                 <strong>👤 Brugerkonti</strong>
                 <p>Opbevares indtil bruger eller admin sletter</p>
             </div>
-            <div class="retention-item">
+            <div class="retention-item" id="email-logs-retention">
                 <strong>📧 Email logs</strong>
                 <p>90 dage, derefter automatisk sletning</p>
+                <p style="margin-top: 8px; font-size: 0.85rem; color: #3b82f6;" id="email-logs-stats">
+                    <span class="loading-dots">Henter status...</span>
+                </p>
             </div>
-            <div class="retention-item">
+            <div class="retention-item" id="audit-logs-retention">
                 <strong>📋 Audit log</strong>
                 <p>1 år, derefter automatisk sletning</p>
+                <p style="margin-top: 8px; font-size: 0.85rem; color: #3b82f6;" id="audit-logs-stats">
+                    <span class="loading-dots">Henter status...</span>
+                </p>
             </div>
+        </div>
+
+        <!-- Cleanup Status -->
+        <div style="margin-top: 25px; padding: 20px; background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border-radius: 8px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px;">
+                <div>
+                    <strong style="color: #1e40af; display: block; margin-bottom: 5px;">🔄 Automatisk Cleanup Status</strong>
+                    <p style="margin: 0; color: #3b82f6; font-size: 0.9rem;" id="cleanup-status-text">
+                        <span class="loading-dots">Henter status...</span>
+                    </p>
+                </div>
+                {% if is_superadmin %}
+                <button onclick="runManualCleanup()" class="btn-cleanup" id="cleanup-btn">
+                    Kør cleanup nu
+                </button>
+                {% endif %}
+            </div>
+            <div style="font-size: 0.85rem; color: #1e40af;" id="cleanup-details"></div>
         </div>
     </div>
 </div>
@@ -486,6 +510,40 @@
 </div>
 {% endif %}
 
+<!-- DPA - Databehandleraftale -->
+{% if stats.customers_detail %}
+<div class="section-card" style="border: 2px solid #dbeafe;">
+    <div class="section-header" style="background: #eff6ff;">
+        <span class="icon">📄</span>
+        <h2 style="color: #1e40af;">Databehandleraftale (DPA)</h2>
+    </div>
+    <div class="section-body">
+        <p class="section-subtitle">
+            Generer en juridisk bindende databehandleraftale for hver kunde i overensstemmelse med GDPR krav.
+        </p>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px;">
+            {% for customer in stats.customers_detail %}
+            <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 15px;">
+                <div style="font-weight: 600; color: #1f2937; margin-bottom: 8px;">{{ customer.name }}</div>
+                <div style="display: flex; gap: 8px;">
+                    <a href="{{ url_for('admin_dpa', customer_id=customer.id) }}"
+                       target="_blank"
+                       style="flex: 1; background: #3b82f6; color: white; padding: 8px 12px; border-radius: 6px; text-decoration: none; text-align: center; font-size: 0.85rem;">
+                        Se DPA ↗
+                    </a>
+                    <a href="{{ url_for('admin_dpa_pdf', customer_id=customer.id) }}"
+                       style="background: #10b981; color: white; padding: 8px 12px; border-radius: 6px; text-decoration: none; font-size: 0.85rem;">
+                        PDF
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <!-- Compliance Info -->
 <div class="section-card">
     <div class="section-header">
@@ -510,6 +568,10 @@
                 <strong><span class="check-icon">✓</span> Audit Logging</strong>
                 <p>Alle handlinger logges</p>
             </div>
+            <div class="compliance-item">
+                <strong><span class="check-icon">✓</span> Auto-Retention</strong>
+                <p>Automatisk sletning af gamle logs</p>
+            </div>
         </div>
 
         <div class="dpo-contact">
@@ -524,6 +586,34 @@
 {% endblock %}
 
 {% block extra_js %}
+<style>
+    .btn-cleanup {
+        background: #10b981;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 6px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+    .btn-cleanup:hover {
+        background: #059669;
+    }
+    .btn-cleanup:disabled {
+        background: #9ca3af;
+        cursor: not-allowed;
+    }
+    .loading-dots::after {
+        content: '...';
+        animation: dots 1.5s steps(4, end) infinite;
+    }
+    @keyframes dots {
+        0%, 20% { content: '.'; }
+        40% { content: '..'; }
+        60%, 100% { content: '...'; }
+    }
+</style>
 <script>
 async function confirmDeleteCustomer(customerId, customerName, userCount, unitCount, assessmentCount) {
     const confirmed = await ModalUtils.confirmWithInput({
@@ -545,5 +635,93 @@ async function confirmDeleteCustomer(customerId, customerName, userCount, unitCo
         document.getElementById('delete-form-' + customerId).submit();
     }
 }
+
+// Load cleanup status on page load
+async function loadCleanupStatus() {
+    try {
+        const response = await fetch('/admin/cleanup-status');
+        const data = await response.json();
+
+        // Update email logs stats
+        if (data.email_logs) {
+            const el = data.email_logs;
+            document.getElementById('email-logs-stats').innerHTML =
+                `${el.total} logs (${el.eligible_for_cleanup} kan slettes)`;
+        }
+
+        // Update audit logs stats
+        if (data.audit_log) {
+            const al = data.audit_log;
+            document.getElementById('audit-logs-stats').innerHTML =
+                `${al.total} logs (${al.eligible_for_cleanup} kan slettes)`;
+        }
+
+        // Update cleanup status
+        const lastRun = data.last_cleanup_run;
+        if (lastRun && lastRun.found) {
+            const runDate = new Date(lastRun.last_run);
+            const now = new Date();
+            const daysSince = Math.floor((now - runDate) / (1000 * 60 * 60 * 24));
+
+            document.getElementById('cleanup-status-text').innerHTML =
+                `Sidste cleanup: ${runDate.toLocaleDateString('da-DK')} (${daysSince} dage siden)`;
+
+            document.getElementById('cleanup-details').innerHTML =
+                lastRun.details || '';
+        } else {
+            document.getElementById('cleanup-status-text').innerHTML =
+                'Ingen cleanup er kørt endnu. Næste cleanup kører kl. 03:00.';
+        }
+
+    } catch (error) {
+        console.error('Error loading cleanup status:', error);
+        document.getElementById('cleanup-status-text').innerHTML =
+            'Kunne ikke hente status (fejl: ' + error.message + ')';
+    }
+}
+
+// Run manual cleanup
+async function runManualCleanup() {
+    const btn = document.getElementById('cleanup-btn');
+    const originalText = btn.textContent;
+
+    if (!confirm('Kør manuel cleanup nu? Dette sletter email logs ældre end 90 dage og audit logs ældre end 1 år.')) {
+        return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Kører cleanup...';
+
+    try {
+        const response = await fetch('/admin/cleanup-run', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const data = await response.json();
+
+        if (data.error) {
+            alert('Fejl: ' + data.error);
+        } else {
+            alert(`Cleanup fuldført!\n\nEmail logs slettet: ${data.email_logs.deleted}\nAudit logs slettet: ${data.audit_log.deleted}\nTotal: ${data.total_deleted} records`);
+
+            // Reload status
+            await loadCleanupStatus();
+        }
+
+    } catch (error) {
+        alert('Fejl ved cleanup: ' + error.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = originalText;
+    }
+}
+
+// Load status on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadCleanupStatus();
+});
 </script>
 {% endblock %}

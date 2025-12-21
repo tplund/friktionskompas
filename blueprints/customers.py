@@ -36,6 +36,7 @@ from db_multitenant import (
 )
 from oauth import save_auth_providers, DEFAULT_AUTH_PROVIDERS
 from audit import log_action, AuditAction
+from translations import t
 
 customers_bp = Blueprint('customers', __name__)
 

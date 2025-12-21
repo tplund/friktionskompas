@@ -11,6 +11,9 @@ Routes:
 - /admin/dashboard - Hierarchical organization dashboard (org_dashboard)
 - /admin/dashboard/<customer_id> - Customer-level dashboard
 - /admin/dashboard/<customer_id>/<unit_id> - Unit drill-down dashboard
+- /admin/audit-log - Audit log viewer
+- /admin/gdpr - GDPR dashboard
+- /admin/gdpr/delete-customer/<customer_id> - Delete customer data (GDPR)
 """
 
 from flask import Blueprint, render_template, redirect, url_for, session, request, flash
@@ -19,8 +22,45 @@ from auth_helpers import login_required, admin_required, get_current_user
 from db_hierarchical import get_db
 from db_multitenant import get_customer_filter
 from analysis import get_trend_data
+from audit import log_action, AuditAction, get_audit_logs, get_audit_log_count, get_action_summary
 
 admin_core_bp = Blueprint('admin_core', __name__)
+
+
+# ========================================
+# GDPR SUB-PROCESSORS CONSTANT
+# ========================================
+
+SUB_PROCESSORS = [
+    {
+        'name': 'Render',
+        'purpose': 'Hosting og serverdrift',
+        'data_types': 'Alle applikationsdata',
+        'location': 'EU (Frankfurt)',
+        'url': 'https://render.com/privacy'
+    },
+    {
+        'name': 'Mailjet',
+        'purpose': 'Email-udsendelse',
+        'data_types': 'Email-adresser, navne',
+        'location': 'EU',
+        'url': 'https://www.mailjet.com/gdpr/'
+    },
+    {
+        'name': 'Cloudflare',
+        'purpose': 'DNS, CDN, DDoS-beskyttelse',
+        'data_types': 'IP-adresser, HTTP headers',
+        'location': 'Global (EU-compliant)',
+        'url': 'https://www.cloudflare.com/gdpr/introduction/'
+    },
+    {
+        'name': 'GitHub',
+        'purpose': 'Kildekode hosting',
+        'data_types': 'Ingen persondata (kun kode)',
+        'location': 'USA (EU-US DPF)',
+        'url': 'https://docs.github.com/en/site-policy/privacy-policies'
+    }
+]
 
 
 @admin_core_bp.route('/admin')
@@ -1184,3 +1224,145 @@ def org_dashboard(customer_id=None, unit_id=None):
                              breadcrumb=breadcrumb,
                              customer_id=customer_id,
                              profiler=[dict(p) for p in profiler] if profiler else [])
+
+
+# ========================================
+# AUDIT LOG
+# ========================================
+
+@admin_core_bp.route('/admin/audit-log')
+@admin_required
+def audit_log_page():
+    """Audit log oversigt - kun admin"""
+    page = request.args.get('page', 1, type=int)
+    per_page = 50
+
+    filters = {
+        'action': request.args.get('action', ''),
+        'start_date': request.args.get('start_date', ''),
+        'end_date': request.args.get('end_date', '')
+    }
+
+    # Get logs with filters
+    logs = get_audit_logs(
+        limit=per_page,
+        offset=(page - 1) * per_page,
+        action=filters['action'] or None,
+        start_date=filters['start_date'] or None,
+        end_date=filters['end_date'] or None
+    )
+
+    # Get total count for pagination
+    total = get_audit_log_count(
+        action=filters['action'] or None,
+        start_date=filters['start_date'] or None,
+        end_date=filters['end_date'] or None
+    )
+    total_pages = (total + per_page - 1) // per_page
+
+    # Get summary for last 30 days
+    summary = get_action_summary(days=30)
+
+    return render_template('admin/audit_log.html',
+                          logs=logs,
+                          page=page,
+                          total_pages=total_pages,
+                          filters=filters,
+                          summary=summary)
+
+
+# ========================================
+# GDPR / DPO DASHBOARD
+# ========================================
+
+@admin_core_bp.route('/admin/gdpr')
+@admin_required
+def admin_gdpr():
+    """GDPR/DPO Dashboard - overblik over data og compliance"""
+    # Kun superadmin kan se fuld GDPR oversigt
+    user = get_current_user()
+    is_superadmin = user['role'] == 'superadmin'
+
+    with get_db() as conn:
+        # Data statistik
+        stats = {}
+
+        if is_superadmin:
+            # Fuld statistik for superadmin
+            stats['customers'] = conn.execute('SELECT COUNT(*) FROM customers').fetchone()[0]
+            stats['users'] = conn.execute('SELECT COUNT(*) FROM users').fetchone()[0]
+            stats['units'] = conn.execute('SELECT COUNT(*) FROM organizational_units').fetchone()[0]
+            stats['assessments'] = conn.execute('SELECT COUNT(*) FROM assessments').fetchone()[0]
+            stats['responses'] = conn.execute('SELECT COUNT(*) FROM responses').fetchone()[0]
+            stats['tokens'] = conn.execute('SELECT COUNT(*) FROM tokens').fetchone()[0]
+            stats['situation_assessments'] = conn.execute('SELECT COUNT(*) FROM situation_assessments').fetchone()[0]
+            stats['situation_responses'] = conn.execute('SELECT COUNT(*) FROM situation_responses').fetchone()[0]
+
+            # Ældste og nyeste data
+            oldest = conn.execute('SELECT MIN(created_at) FROM responses').fetchone()[0]
+            newest = conn.execute('SELECT MAX(created_at) FROM responses').fetchone()[0]
+            stats['oldest_data'] = oldest[:10] if oldest else 'Ingen data'
+            stats['newest_data'] = newest[:10] if newest else 'Ingen data'
+
+            # Kunder med data
+            customers_with_data = conn.execute('''
+                SELECT c.id, c.name,
+                       (SELECT COUNT(*) FROM users WHERE customer_id = c.id) as user_count,
+                       (SELECT COUNT(*) FROM organizational_units WHERE customer_id = c.id) as unit_count,
+                       (SELECT COUNT(*) FROM assessments a
+                        JOIN organizational_units ou ON a.target_unit_id = ou.id
+                        WHERE ou.customer_id = c.id) as assessment_count
+                FROM customers c
+                ORDER BY c.name
+            ''').fetchall()
+            stats['customers_detail'] = [dict(c) for c in customers_with_data]
+        else:
+            # Begrænset statistik for admin/manager
+            customer_id = user['customer_id']
+            stats['units'] = conn.execute(
+                'SELECT COUNT(*) FROM organizational_units WHERE customer_id = ?',
+                (customer_id,)
+            ).fetchone()[0]
+            stats['users'] = conn.execute(
+                'SELECT COUNT(*) FROM users WHERE customer_id = ?',
+                (customer_id,)
+            ).fetchone()[0]
+
+    return render_template('admin/gdpr.html',
+                           stats=stats,
+                           sub_processors=SUB_PROCESSORS,
+                           is_superadmin=is_superadmin,
+                           active_page='gdpr')
+
+
+@admin_core_bp.route('/admin/gdpr/delete-customer/<customer_id>', methods=['POST'])
+@admin_required
+def admin_gdpr_delete_customer(customer_id):
+    """Slet al data for en kunde (GDPR sletning)"""
+    user = get_current_user()
+    if user['role'] != 'superadmin':
+        flash('Kun superadmin kan slette kundedata', 'error')
+        return redirect(url_for('admin_core.admin_gdpr'))
+
+    with get_db() as conn:
+        # Hent kundenavn til bekræftelse
+        customer = conn.execute('SELECT name FROM customers WHERE id = ?', (customer_id,)).fetchone()
+        if not customer:
+            flash('Kunde ikke fundet', 'error')
+            return redirect(url_for('admin_core.admin_gdpr'))
+
+        customer_name = customer['name']
+
+        # CASCADE DELETE vil slette alt relateret data
+        conn.execute('DELETE FROM customers WHERE id = ?', (customer_id,))
+
+        # Log sletningen
+        log_action(
+            AuditAction.GDPR_DELETE,
+            entity_type='customer',
+            entity_id=customer_id,
+            details=f'Slettet kunde: {customer_name} ({customer_id})'
+        )
+
+    flash(f'Al data for "{customer_name}" er slettet permanent', 'success')
+    return redirect(url_for('admin_core.admin_gdpr'))

@@ -2620,6 +2620,143 @@ def admin_gdpr_delete_customer(customer_id):
     return redirect(url_for('admin_gdpr'))
 
 
+@app.route('/admin/cleanup-status')
+@admin_required
+def admin_cleanup_status():
+    """Get data retention cleanup status (GDPR Phase 2)"""
+    from data_retention import get_cleanup_status, get_last_cleanup_run
+    from scheduler import _last_cleanup_date
+
+    status = get_cleanup_status()
+    last_run = get_last_cleanup_run()
+
+    # Add scheduler info
+    if _last_cleanup_date:
+        status['last_scheduled_cleanup'] = _last_cleanup_date.isoformat()
+    else:
+        status['last_scheduled_cleanup'] = None
+
+    status['last_cleanup_run'] = last_run
+
+    return jsonify(status)
+
+
+@app.route('/admin/cleanup-run', methods=['POST'])
+@admin_required
+def admin_cleanup_run():
+    """Manually trigger data retention cleanup (GDPR Phase 2)"""
+    from data_retention import run_all_cleanups
+
+    user = get_current_user()
+    if user['role'] != 'superadmin':
+        return jsonify({'error': 'Kun superadmin kan køre cleanup'}), 403
+
+    results = run_all_cleanups()
+
+    # Log manual cleanup
+    log_action(
+        AuditAction.DATA_DELETED,
+        entity_type='manual_cleanup',
+        details=f"Manual cleanup: {results['total_deleted']} records deleted"
+    )
+
+    return jsonify(results)
+
+
+@app.route('/admin/dpa/<customer_id>')
+@admin_required
+def admin_dpa(customer_id):
+    """Generate Data Processing Agreement (DPA) for a customer"""
+    from db_hierarchical import get_db
+
+    user = get_current_user()
+
+    # Superadmin kan se alle kunder, andre kun egen kunde
+    if user['role'] != 'superadmin' and user['customer_id'] != customer_id:
+        flash('Du kan kun se DPA for din egen kunde', 'error')
+        return redirect(url_for('admin_gdpr'))
+
+    with get_db() as conn:
+        customer = conn.execute(
+            'SELECT * FROM customers WHERE id = ?',
+            (customer_id,)
+        ).fetchone()
+
+        if not customer:
+            flash('Kunde ikke fundet', 'error')
+            return redirect(url_for('admin_gdpr'))
+
+        customer_data = dict(customer)
+
+    # Current date for DPA
+    dpa_date = datetime.now().strftime('%Y-%m-%d')
+
+    return render_template('legal/dpa.html',
+                           customer=customer_data,
+                           sub_processors=SUB_PROCESSORS,
+                           dpa_date=dpa_date)
+
+
+@app.route('/admin/dpa/<customer_id>/pdf')
+@admin_required
+def admin_dpa_pdf(customer_id):
+    """Download DPA as PDF"""
+    from xhtml2pdf import pisa
+    from db_hierarchical import get_db
+
+    user = get_current_user()
+
+    # Superadmin kan se alle kunder, andre kun egen kunde
+    if user['role'] != 'superadmin' and user['customer_id'] != customer_id:
+        return "Unauthorized", 403
+
+    with get_db() as conn:
+        customer = conn.execute(
+            'SELECT * FROM customers WHERE id = ?',
+            (customer_id,)
+        ).fetchone()
+
+        if not customer:
+            return "Customer not found", 404
+
+        customer_data = dict(customer)
+
+    # Current date for DPA
+    dpa_date = datetime.now().strftime('%Y-%m-%d')
+
+    # Render HTML
+    html = render_template('legal/dpa.html',
+                           customer=customer_data,
+                           sub_processors=SUB_PROCESSORS,
+                           dpa_date=dpa_date,
+                           pdf_mode=True)
+
+    # Generate PDF
+    pdf_buffer = io.BytesIO()
+    pisa_status = pisa.CreatePDF(html, dest=pdf_buffer)
+
+    if pisa_status.err:
+        return "Error generating PDF", 500
+
+    pdf_buffer.seek(0)
+
+    # Log DPA generation
+    log_action(
+        AuditAction.DATA_EXPORTED,
+        entity_type='dpa',
+        entity_id=customer_id,
+        details=f"Generated DPA for {customer_data['name']}"
+    )
+
+    return Response(
+        pdf_buffer.getvalue(),
+        mimetype='application/pdf',
+        headers={
+            'Content-Disposition': f'attachment; filename=DPA_{customer_data["name"]}_{dpa_date}.pdf'
+        }
+    )
+
+
 # Error handlers
 @app.errorhandler(500)
 def handle_500(e):

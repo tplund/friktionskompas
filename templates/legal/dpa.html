@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Databehandleraftale - {{ customer.name }}</title>
+    <style>
+        {% if pdf_mode %}
+        /* PDF-specific styles */
+        @page {
+            size: A4;
+            margin: 2cm;
+        }
+        {% else %}
+        /* Web view styles */
+        .dpa-header-actions {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            gap: 10px;
+        }
+        .btn {
+            background: #3b82f6;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn:hover {
+            background: #2563eb;
+        }
+        .btn-secondary {
+            background: #6b7280;
+        }
+        .btn-secondary:hover {
+            background: #4b5563;
+        }
+        {% endif %}
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.6;
+            color: #1f2937;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            background: #f9fafb;
+        }
+        .dpa-container {
+            background: white;
+            padding: 60px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border-radius: 8px;
+        }
+        h1 {
+            font-size: 2rem;
+            color: #1e3a5f;
+            margin-bottom: 10px;
+            border-bottom: 3px solid #3b82f6;
+            padding-bottom: 10px;
+        }
+        h2 {
+            font-size: 1.5rem;
+            color: #1e3a5f;
+            margin-top: 30px;
+            margin-bottom: 15px;
+        }
+        h3 {
+            font-size: 1.2rem;
+            color: #374151;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+        .meta-info {
+            background: #f3f4f6;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+        .meta-info p {
+            margin: 5px 0;
+        }
+        .meta-info strong {
+            color: #1f2937;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border: 1px solid #e5e7eb;
+        }
+        th {
+            background: #f9fafb;
+            font-weight: 600;
+            color: #374151;
+        }
+        tr:nth-child(even) {
+            background: #f9fafb;
+        }
+        ul, ol {
+            margin: 10px 0;
+            padding-left: 30px;
+        }
+        li {
+            margin: 8px 0;
+        }
+        .signature-section {
+            margin-top: 50px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+        }
+        .signature-box {
+            border-top: 1px solid #d1d5db;
+            padding-top: 10px;
+        }
+        .signature-box p {
+            margin: 5px 0;
+            color: #6b7280;
+            font-size: 0.9rem;
+        }
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+            color: #6b7280;
+            font-size: 0.85rem;
+            text-align: center;
+        }
+        .highlight {
+            background: #fef3c7;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    {% if not pdf_mode %}
+    <div class="dpa-header-actions">
+        <a href="{{ url_for('admin_dpa_pdf', customer_id=customer.id) }}" class="btn">
+            <span>📄</span>
+            Download PDF
+        </a>
+        <a href="{{ url_for('admin_gdpr') }}" class="btn btn-secondary">
+            <span>←</span>
+            Tilbage
+        </a>
+    </div>
+    {% endif %}
+
+    <div class="dpa-container">
+        <h1>Databehandleraftale</h1>
+        <p style="color: #6b7280; margin-bottom: 30px;">Data Processing Agreement (DPA)</p>
+
+        <div class="meta-info">
+            <p><strong>Dataansvarlig (Data Controller):</strong> {{ customer.name }}</p>
+            <p><strong>Databehandler (Data Processor):</strong> Friktionskompasset ApS</p>
+            <p><strong>Dato:</strong> {{ dpa_date }}</p>
+        </div>
+
+        <h2>1. Baggrund og Formål</h2>
+        <p>
+            Denne Databehandleraftale ("Aftalen") udgør en del af samarbejdsaftalen mellem
+            {{ customer.name }} ("Kunden") og Friktionskompasset ApS ("Leverandøren")
+            vedrørende levering af HR-analyse- og måletjenester.
+        </p>
+        <p>
+            Aftalen er indgået i overensstemmelse med EU's Generelle Databeskyttelsesforordning
+            (GDPR) og fastlægger parternes rettigheder og pligter i forbindelse med behandling
+            af personoplysninger.
+        </p>
+
+        <h2>2. Behandlingens Genstand og Varighed</h2>
+
+        <h3>2.1 Formål</h3>
+        <p>Databehandler behandler personoplysninger på vegne af Kunden med følgende formål:</p>
+        <ul>
+            <li>Gennemførelse af medarbejdermålinger og -analyser</li>
+            <li>Aggregering og anonymisering af måledata</li>
+            <li>Rapportering og visualisering af resultater</li>
+            <li>Email-udsendelse af målingsinvitationer</li>
+            <li>Autentifikation og adgangsstyring</li>
+        </ul>
+
+        <h3>2.2 Varighed</h3>
+        <p>
+            Aftalen gælder fra dato for accept og fortsætter så længe, der er aktive data
+            i systemet for Kunden, eller indtil samarbejdet ophører.
+        </p>
+
+        <h2>3. Kategorier af Registrerede og Data</h2>
+
+        <h3>3.1 Kategorier af registrerede</h3>
+        <ul>
+            <li>Kundens medarbejdere</li>
+            <li>Kundens ledere og HR-personale</li>
+            <li>Individuelle brugere (B2C-målinger)</li>
+        </ul>
+
+        <h3>3.2 Kategorier af personoplysninger</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Datakategori</th>
+                    <th>Beskrivelse</th>
+                    <th>Opbevaring</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Brugerkonti</td>
+                    <td>Navn, email, rolle, login-tid</td>
+                    <td>Indtil sletning</td>
+                </tr>
+                <tr>
+                    <td>Måledata</td>
+                    <td>Anonyme svar på spørgeskemaer</td>
+                    <td>Indtil sletning</td>
+                </tr>
+                <tr>
+                    <td>Email-logs</td>
+                    <td>Email-adresser, afsendelsestidspunkt</td>
+                    <td class="highlight">90 dage (auto-sletning)</td>
+                </tr>
+                <tr>
+                    <td>Audit-logs</td>
+                    <td>IP-adresser, brugerhandlinger</td>
+                    <td class="highlight">1 år (auto-sletning)</td>
+                </tr>
+                <tr>
+                    <td>Session-data</td>
+                    <td>Login-sessions</td>
+                    <td>30 dage</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p><strong>Note:</strong> Måledata (responses) gemmes <span class="highlight">anonymt</span> - svar kan ikke tilbageføres til specifikke individer.</p>
+
+        <h2>4. Tekniske og Organisatoriske Sikkerhedsforanstaltninger</h2>
+
+        <h3>4.1 Kryptering</h3>
+        <ul>
+            <li><strong>In Transit:</strong> TLS 1.3 kryptering for al datatransmission</li>
+            <li><strong>At Rest:</strong> AES-256 kryptering af database på disk</li>
+        </ul>
+
+        <h3>4.2 Adgangskontrol</h3>
+        <ul>
+            <li>Role-based access control (RBAC) - Superadmin, Admin, Manager, User</li>
+            <li>Multi-tenant isolation - Kunder kan kun se egne data</li>
+            <li>OAuth 2.0 integration (Microsoft, Google)</li>
+            <li>Session-baseret autentifikation med timeout</li>
+        </ul>
+
+        <h3>4.3 Audit Logging</h3>
+        <ul>
+            <li>Alle dataændringer logges med timestamp, bruger-ID og IP-adresse</li>
+            <li>Logs opbevares i 1 år, derefter automatisk sletning</li>
+        </ul>
+
+        <h3>4.4 Data Retention</h3>
+        <ul>
+            <li>Automatisk sletning af email-logs efter 90 dage</li>
+            <li>Automatisk sletning af audit-logs efter 1 år</li>
+            <li>Manuel sletning af kundedata via GDPR-dashboard</li>
+        </ul>
+
+        <h2>5. Underdatabehandlere (Sub-processors)</h2>
+        <p>Databehandler benytter følgende underdatabehandlere til at levere tjenesten:</p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Navn</th>
+                    <th>Formål</th>
+                    <th>Datatyper</th>
+                    <th>Lokation</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for sp in sub_processors %}
+                <tr>
+                    <td><strong>{{ sp.name }}</strong></td>
+                    <td>{{ sp.purpose }}</td>
+                    <td>{{ sp.data_types }}</td>
+                    <td>{{ sp.location }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <p>
+            Alle underdatabehandlere er GDPR-compliant og behandler data i EU eller på
+            EU-godkendt grundlag. Kunden accepterer brugen af ovenstående underdatabehandlere
+            ved accept af denne aftale.
+        </p>
+
+        <h2>6. Kundens Rettigheder</h2>
+
+        <h3>6.1 Ret til indsigt</h3>
+        <p>Kunden kan via GDPR-dashboardet få fuld indsigt i alle data i systemet.</p>
+
+        <h3>6.2 Ret til sletning</h3>
+        <p>
+            Kunden kan til enhver tid anmode om sletning af data via GDPR-dashboardet.
+            Sletning sker øjeblikkeligt og er permanent.
+        </p>
+
+        <h3>6.3 Ret til dataportabilitet</h3>
+        <p>
+            Kunden kan eksportere alle data i CSV eller JSON format via Export-funktionen.
+        </p>
+
+        <h3>6.4 Audit-adgang</h3>
+        <p>
+            Kunden har adgang til audit-logs, der viser alle handlinger udført på kundens data.
+        </p>
+
+        <h2>7. Databehandlers Forpligtelser</h2>
+
+        <ol>
+            <li>Databehandler må kun behandle personoplysninger efter Kundens instruks</li>
+            <li>Databehandler skal sikre, at personer med adgang til data er underlagt tavshedspligt</li>
+            <li>Databehandler skal implementere passende tekniske og organisatoriske sikkerhedsforanstaltninger</li>
+            <li>Databehandler skal bistå Kunden med at efterkomme anmodninger fra registrerede</li>
+            <li>Databehandler skal straks underrette Kunden ved databrud</li>
+            <li>Databehandler skal slette eller returnere data ved aftalens ophør</li>
+        </ol>
+
+        <h2>8. Databrud</h2>
+        <p>
+            Ved mistanke om databrud forpligter Databehandler sig til at underrette Kunden
+            inden for <strong>24 timer</strong> med følgende oplysninger:
+        </p>
+        <ul>
+            <li>Beskrivelse af databruddet og omfang</li>
+            <li>Kategorier og antal af registrerede</li>
+            <li>Mulige konsekvenser</li>
+            <li>Foreslåede afhjælpende foranstaltninger</li>
+        </ul>
+
+        <h2>9. Aftalens Ophør</h2>
+        <p>
+            Ved aftalens ophør skal Databehandler efter Kundens valg enten:
+        </p>
+        <ul>
+            <li>Slette alle personoplysninger og bekræfte sletningen skriftligt, eller</li>
+            <li>Returnere alle personoplysninger til Kunden i maskinlæsbart format</li>
+        </ul>
+        <p>Dette skal ske senest <strong>30 dage</strong> efter aftalens ophør.</p>
+
+        <h2>10. Kontaktoplysninger</h2>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin: 20px 0;">
+            <div>
+                <h3>Dataansvarlig (Kunde)</h3>
+                <p><strong>{{ customer.name }}</strong></p>
+                {% if customer.contact_email %}
+                <p>Email: {{ customer.contact_email }}</p>
+                {% endif %}
+            </div>
+            <div>
+                <h3>Databehandler</h3>
+                <p><strong>Friktionskompasset ApS</strong></p>
+                <p>Email: dpo@friktionskompasset.dk</p>
+                <p>Web: https://friktionskompasset.dk</p>
+            </div>
+        </div>
+
+        <div class="signature-section">
+            <div class="signature-box">
+                <p><strong>For Kunden</strong></p>
+                <p>Dato: ___________________</p>
+                <p>Navn: ___________________</p>
+                <p>Underskrift: ___________________</p>
+            </div>
+            <div class="signature-box">
+                <p><strong>For Friktionskompasset ApS</strong></p>
+                <p>Dato: ___________________</p>
+                <p>Navn: ___________________</p>
+                <p>Underskrift: ___________________</p>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Genereret fra Friktionskompasset GDPR Dashboard - {{ dpa_date }}</p>
+            <p>Dette dokument er juridisk bindende efter underskrift af begge parter.</p>
+        </div>
+    </div>
+</body>
+</html>
