@@ -131,11 +131,15 @@ from blueprints.public import public_bp
 from blueprints.auth import auth_bp
 from blueprints.api_admin import api_admin_bp
 from blueprints.api_customer import api_customer_bp
+from blueprints.admin_core import admin_core_bp
+from blueprints.export import export_bp
 
 app.register_blueprint(public_bp)
 app.register_blueprint(auth_bp)
 app.register_blueprint(api_admin_bp)
 app.register_blueprint(api_customer_bp)
+app.register_blueprint(admin_core_bp)
+app.register_blueprint(export_bp)
 
 from flask import g
 
@@ -278,7 +282,7 @@ def admin_required(f):
             # User rolle sendes til user_home, andre til admin_home
             if role == 'user':
                 return redirect(url_for('user_home'))
-            return redirect(url_for('admin_home'))
+            return redirect(url_for('admin_core.admin_home'))
         return f(*args, **kwargs)
     return decorated_function
 
@@ -296,7 +300,7 @@ def superadmin_required(f):
             # User rolle sendes til user_home, andre til admin_home
             if role == 'user':
                 return redirect(url_for('user_home'))
-            return redirect(url_for('admin_home'))
+            return redirect(url_for('admin_core.admin_home'))
         return f(*args, **kwargs)
     return decorated_function
 
@@ -347,7 +351,7 @@ def api_or_admin_required(f):
             # User rolle sendes til user_home, andre til admin_home
             if role == 'user':
                 return redirect(url_for('user_home'))
-            return redirect(url_for('admin_home'))
+            return redirect(url_for('admin_core.admin_home'))
         return f(*args, **kwargs)
     return decorated_function
 
@@ -696,7 +700,7 @@ def user_home():
     """Hjemmeside for B2C brugere"""
     user = session.get('user')
     if user['role'] != 'user':
-        return redirect(url_for('admin_home'))
+        return redirect(url_for('admin_core.admin_home'))
 
     return render_template('user_home.html')
 
@@ -739,7 +743,7 @@ def admin_seed_translations():
     if 'db-status' in referrer:
         return redirect('/admin/db-status')
     flash('Oversættelser er seedet til databasen', 'success')
-    return redirect(request.referrer or url_for('admin_home'))
+    return redirect(request.referrer or url_for('admin_core.admin_home'))
 
 
 @app.route('/admin/seed-domains', methods=['GET', 'POST'])
@@ -844,7 +848,7 @@ def delete_all_data():
     confirm = request.form.get('confirm')
     if confirm != 'SLET ALT':
         flash('Du skal skrive "SLET ALT" for at bekræfte', 'error')
-        return redirect(url_for('admin_home'))
+        return redirect(url_for('admin_core.admin_home'))
 
     with get_db() as conn:
         # Slet i rigtig rækkefølge pga foreign keys
@@ -856,7 +860,7 @@ def delete_all_data():
         conn.execute("DELETE FROM questions WHERE is_default = 0")  # Behold default spørgsmål
 
     flash('Alle data er slettet!', 'success')
-    return redirect(url_for('admin_home'))
+    return redirect(url_for('admin_core.admin_home'))
 
 
 @app.route('/admin/generate-test-data', methods=['POST'])
@@ -957,515 +961,7 @@ Niels;Olsen;niels@techcorp.dk;+4512345017;TechCorp//Sales//DACH"""
                             responses_created += 1
 
     flash(f'Testdata genereret! {stats["units_created"]} organisationer, {stats["contacts_created"]} kontakter, {assessments_created} målinger og {responses_created} svar oprettet.', 'success')
-    return redirect(url_for('admin_home'))
-
-
-@app.route('/admin')
-@login_required
-def admin_home():
-    """Dashboard v2 - kombineret oversigt med KPIs, trend, og analyser"""
-    user = get_current_user()
-
-    # User rolle skal bruge user_home, ikke admin
-    if user.get('role') == 'user':
-        return redirect(url_for('user_home'))
-
-    customer_filter = session.get('customer_filter') or user.get('customer_id')
-    unit_id = request.args.get('unit_id')  # For trend filter
-
-    with get_db() as conn:
-        # Base filter for queries
-        if customer_filter:
-            customer_where = "WHERE ou.customer_id = ?"
-            customer_params = [customer_filter]
-            cid = customer_filter
-        elif user['role'] not in ('admin', 'superadmin'):
-            customer_where = "WHERE ou.customer_id = ?"
-            customer_params = [user['customer_id']]
-            cid = user['customer_id']
-        else:
-            customer_where = ""
-            customer_params = []
-            cid = None
-
-        # === KPI Stats ===
-        if cid:
-            total_customers = 1
-            total_units = conn.execute(
-                "SELECT COUNT(*) as cnt FROM organizational_units WHERE customer_id = ?",
-                [cid]
-            ).fetchone()['cnt']
-            total_assessments = conn.execute("""
-                SELECT COUNT(*) as cnt FROM assessments c
-                JOIN organizational_units ou ON c.target_unit_id = ou.id
-                WHERE ou.customer_id = ?
-            """, [cid]).fetchone()['cnt']
-            total_responses = conn.execute("""
-                SELECT COUNT(*) as cnt FROM responses r
-                JOIN assessments c ON r.assessment_id = c.id
-                JOIN organizational_units ou ON c.target_unit_id = ou.id
-                WHERE ou.customer_id = ?
-            """, [cid]).fetchone()['cnt']
-        else:
-            total_customers = conn.execute("SELECT COUNT(*) as cnt FROM customers").fetchone()['cnt']
-            total_units = conn.execute("SELECT COUNT(*) as cnt FROM organizational_units").fetchone()['cnt']
-            total_assessments = conn.execute("SELECT COUNT(*) as cnt FROM assessments").fetchone()['cnt']
-            total_responses = conn.execute("SELECT COUNT(*) as cnt FROM responses").fetchone()['cnt']
-
-        # === Field Scores (aggregeret) ===
-        field_scores_query = """
-            SELECT
-                q.field,
-                AVG(CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END) as avg_score,
-                COUNT(*) as response_count
-            FROM responses r
-            JOIN questions q ON r.question_id = q.id
-            JOIN assessments c ON r.assessment_id = c.id
-            JOIN organizational_units ou ON c.target_unit_id = ou.id
-            {where}
-            GROUP BY q.field
-            ORDER BY avg_score ASC
-        """.format(where=customer_where)
-        field_scores = conn.execute(field_scores_query, customer_params).fetchall()
-
-        # === Seneste målinger ===
-        recent_assessments_query = """
-            SELECT
-                c.id,
-                c.name,
-                c.period,
-                c.created_at,
-                ou.name as unit_name,
-                COUNT(DISTINCT r.id) as response_count
-            FROM assessments c
-            JOIN organizational_units ou ON c.target_unit_id = ou.id
-            LEFT JOIN responses r ON r.assessment_id = c.id
-            {where}
-            GROUP BY c.id
-            ORDER BY c.created_at DESC
-            LIMIT 5
-        """.format(where=customer_where)
-        recent_assessments = conn.execute(recent_assessments_query, customer_params).fetchall()
-
-        # === Units for dropdown ===
-        if cid:
-            units = conn.execute("""
-                SELECT id, name, full_path, level
-                FROM organizational_units
-                WHERE customer_id = ?
-                ORDER BY full_path
-            """, [cid]).fetchall()
-        else:
-            units = conn.execute("""
-                SELECT id, name, full_path, level
-                FROM organizational_units
-                ORDER BY full_path
-            """).fetchall()
-
-        # === Unit scores - hierarkisk med aggregerede scores ===
-        # Hent alle units med deres aggregerede scores (inkl. børn)
-        unit_scores_query = """
-            SELECT
-                ou.id,
-                ou.name,
-                ou.full_path,
-                ou.level,
-                ou.parent_id,
-
-                -- Tæl antal målinger for denne enhed OG børn
-                (SELECT COUNT(*) FROM assessments a
-                 JOIN organizational_units ou2 ON a.target_unit_id = ou2.id
-                 WHERE ou2.full_path LIKE ou.full_path || '%') as assessment_count,
-
-                -- Total responses for denne enhed OG børn
-                COUNT(DISTINCT r.id) as total_responses,
-
-                AVG(CASE
-                    WHEN q.field = 'MENING' THEN
-                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END
-                END) as employee_mening,
-
-                AVG(CASE
-                    WHEN q.field = 'TRYGHED' THEN
-                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END
-                END) as employee_tryghed,
-
-                AVG(CASE
-                    WHEN q.field = 'KAN' THEN
-                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END
-                END) as employee_kan,
-
-                AVG(CASE
-                    WHEN q.field = 'BESVÆR' THEN
-                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END
-                END) as employee_besvaer
-
-            FROM organizational_units ou
-            -- Join med alle børne-units for at aggregere
-            LEFT JOIN organizational_units children ON children.full_path LIKE ou.full_path || '%'
-            LEFT JOIN assessments c ON c.target_unit_id = children.id
-            LEFT JOIN responses r ON c.id = r.assessment_id AND r.respondent_type = 'employee'
-            LEFT JOIN questions q ON r.question_id = q.id
-            {where}
-            GROUP BY ou.id
-            HAVING total_responses > 0
-            ORDER BY ou.full_path
-        """.format(where=customer_where)
-        unit_scores_raw = conn.execute(unit_scores_query, customer_params).fetchall()
-
-        # Enrich and build hierarchy
-        unit_scores = []
-        unit_by_id = {}
-        for unit in unit_scores_raw:
-            unit_dict = dict(unit)
-            unit_dict['children'] = []
-            unit_dict['has_children'] = False
-            unit_by_id[unit['id']] = unit_dict
-            unit_scores.append(unit_dict)
-
-        # Mark units that have children with data
-        for unit in unit_scores:
-            if unit['parent_id'] and unit['parent_id'] in unit_by_id:
-                unit_by_id[unit['parent_id']]['has_children'] = True
-
-        # === Alerts ===
-        alerts = []
-        for unit in unit_scores:
-            # Only show alerts for leaf units (not aggregated)
-            if unit.get('has_children'):
-                continue
-            # Low scores
-            for field, label in [('employee_tryghed', 'TRYGHED'), ('employee_besvaer', 'BESVÆR'),
-                                 ('employee_mening', 'MENING'), ('employee_kan', 'KAN')]:
-                if unit.get(field) and unit[field] < 2.5:
-                    alerts.append({
-                        'icon': '⚠️',
-                        'text': f"{unit['name']}: {label} kritisk lav ({unit[field]:.2f})",
-                        'unit_id': unit['id']
-                    })
-
-    # Get trend data
-    if cid:
-        trend_data = get_trend_data(unit_id=unit_id, customer_id=cid)
-    else:
-        trend_data = get_trend_data(unit_id=unit_id)
-
-    return render_template('admin/dashboard_v2.html',
-                         # KPIs
-                         total_customers=total_customers,
-                         total_units=total_units,
-                         total_assessments=total_assessments,
-                         total_responses=total_responses,
-                         show_customer_stats=(user['role'] in ('admin', 'superadmin') and not customer_filter),
-                         # Field scores
-                         field_scores=[dict(f) for f in field_scores],
-                         # Recent
-                         recent_assessments=[dict(c) for c in recent_assessments],
-                         # Trend
-                         trend_data=trend_data,
-                         units=[dict(u) for u in units],
-                         selected_unit=unit_id,
-                         # Unit drill-down
-                         unit_scores=unit_scores,
-                         # Alerts
-                         alerts=alerts[:10])
-
-
-@app.route('/admin/units')
-@login_required
-def admin_units():
-    """Organisationstræ - vis og rediger organisationsstrukturen"""
-    user = get_current_user()
-
-    # Check for customer filter (admin filtering by customer)
-    customer_filter = session.get('customer_filter') or user.get('customer_id')
-
-    with get_db() as conn:
-        # Hent units baseret på customer filter
-        if customer_filter:
-            # Filter på specific customer
-            all_units = conn.execute("""
-                SELECT
-                    ou.*,
-                    COUNT(DISTINCT children.id) as child_count,
-                    COUNT(DISTINCT leaf.id) as leaf_count,
-                    COALESCE(SUM(leaf.employee_count), ou.employee_count) as total_employees
-                FROM organizational_units ou
-                LEFT JOIN organizational_units children ON children.parent_id = ou.id
-                LEFT JOIN (
-                    SELECT ou2.id, ou2.full_path, ou2.employee_count FROM organizational_units ou2
-                    LEFT JOIN organizational_units c ON ou2.id = c.parent_id
-                    WHERE c.id IS NULL
-                ) leaf ON leaf.full_path LIKE ou.full_path || '%'
-                WHERE ou.customer_id = ?
-                GROUP BY ou.id
-                ORDER BY ou.full_path
-            """, [customer_filter]).fetchall()
-
-            assessment_count = conn.execute("""
-                SELECT COUNT(DISTINCT c.id) as cnt
-                FROM assessments c
-                JOIN organizational_units ou ON c.target_unit_id = ou.id
-                WHERE ou.customer_id = ?
-            """, [customer_filter]).fetchone()['cnt']
-        else:
-            # Admin ser alt (ingen filter)
-            all_units = conn.execute("""
-                SELECT
-                    ou.*,
-                    COUNT(DISTINCT children.id) as child_count,
-                    COUNT(DISTINCT leaf.id) as leaf_count,
-                    COALESCE(SUM(leaf.employee_count), ou.employee_count) as total_employees
-                FROM organizational_units ou
-                LEFT JOIN organizational_units children ON children.parent_id = ou.id
-                LEFT JOIN (
-                    SELECT ou2.id, ou2.full_path, ou2.employee_count FROM organizational_units ou2
-                    LEFT JOIN organizational_units c ON ou2.id = c.parent_id
-                    WHERE c.id IS NULL
-                ) leaf ON leaf.full_path LIKE ou.full_path || '%'
-                GROUP BY ou.id
-                ORDER BY ou.full_path
-            """).fetchall()
-
-            assessment_count = conn.execute("SELECT COUNT(*) as cnt FROM assessments").fetchone()['cnt']
-
-        # Hent customer info - altid
-        customers = conn.execute("SELECT id, name FROM customers ORDER BY name").fetchall()
-        customers_dict = {c['id']: c['name'] for c in customers}
-
-    return render_template('admin/home.html',
-                         units=[dict(u) for u in all_units],
-                         assessment_count=assessment_count,
-                         show_all_customers=(user['role'] in ('admin', 'superadmin')),
-                         customers_dict=customers_dict,
-                         current_filter=session.get('customer_filter'),
-                         current_filter_name=session.get('customer_filter_name'))
-
-
-@app.route('/admin/noegletal')
-@login_required
-def admin_noegletal():
-    """Dashboard med nøgletal - samlet overblik over systemet"""
-    user = get_current_user()
-    customer_filter = session.get('customer_filter') or user.get('customer_id')
-
-    with get_db() as conn:
-        # Base filter for queries
-        if customer_filter:
-            customer_where = "WHERE ou.customer_id = ?"
-            customer_params = [customer_filter]
-        elif user['role'] not in ('admin', 'superadmin'):
-            customer_where = "WHERE ou.customer_id = ?"
-            customer_params = [user['customer_id']]
-        else:
-            customer_where = ""
-            customer_params = []
-
-        # Totale stats
-        if customer_filter or user['role'] not in ('admin', 'superadmin'):
-            cid = customer_filter or user['customer_id']
-            total_customers = 1
-            total_units = conn.execute(
-                "SELECT COUNT(*) as cnt FROM organizational_units WHERE customer_id = ?",
-                [cid]
-            ).fetchone()['cnt']
-            total_assessments = conn.execute("""
-                SELECT COUNT(*) as cnt FROM assessments c
-                JOIN organizational_units ou ON c.target_unit_id = ou.id
-                WHERE ou.customer_id = ?
-            """, [cid]).fetchone()['cnt']
-            total_responses = conn.execute("""
-                SELECT COUNT(*) as cnt FROM responses r
-                JOIN assessments c ON r.assessment_id = c.id
-                JOIN organizational_units ou ON c.target_unit_id = ou.id
-                WHERE ou.customer_id = ?
-            """, [cid]).fetchone()['cnt']
-        else:
-            total_customers = conn.execute("SELECT COUNT(*) as cnt FROM customers").fetchone()['cnt']
-            total_units = conn.execute("SELECT COUNT(*) as cnt FROM organizational_units").fetchone()['cnt']
-            total_assessments = conn.execute("SELECT COUNT(*) as cnt FROM assessments").fetchone()['cnt']
-            total_responses = conn.execute("SELECT COUNT(*) as cnt FROM responses").fetchone()['cnt']
-
-        # Gennemsnitlige scores per felt
-        field_scores_query = """
-            SELECT
-                q.field,
-                AVG(CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END) as avg_score,
-                COUNT(*) as response_count
-            FROM responses r
-            JOIN questions q ON r.question_id = q.id
-            JOIN assessments c ON r.assessment_id = c.id
-            JOIN organizational_units ou ON c.target_unit_id = ou.id
-            {where}
-            GROUP BY q.field
-            ORDER BY avg_score ASC
-        """.format(where=customer_where)
-        field_scores = conn.execute(field_scores_query, customer_params).fetchall()
-
-        # Seneste kampagner
-        recent_assessments_query = """
-            SELECT
-                c.id,
-                c.name,
-                c.period,
-                c.created_at,
-                ou.name as unit_name,
-                cust.name as customer_name,
-                COUNT(DISTINCT r.id) as response_count,
-                (SELECT COUNT(*) FROM tokens t WHERE t.assessment_id = c.id) as token_count
-            FROM assessments c
-            JOIN organizational_units ou ON c.target_unit_id = ou.id
-            JOIN customers cust ON ou.customer_id = cust.id
-            LEFT JOIN responses r ON r.assessment_id = c.id
-            {where}
-            GROUP BY c.id
-            ORDER BY c.created_at DESC
-            LIMIT 5
-        """.format(where=customer_where)
-        recent_assessments = conn.execute(recent_assessments_query, customer_params).fetchall()
-
-        # Per-kunde stats (kun for admin/superadmin uden filter)
-        customer_stats = []
-        if user['role'] in ('admin', 'superadmin') and not customer_filter:
-            customer_stats = conn.execute("""
-                SELECT
-                    cust.id,
-                    cust.name,
-                    COUNT(DISTINCT ou.id) as unit_count,
-                    COUNT(DISTINCT c.id) as assessment_count,
-                    COUNT(DISTINCT r.id) as response_count
-                FROM customers cust
-                LEFT JOIN organizational_units ou ON ou.customer_id = cust.id
-                LEFT JOIN assessments c ON c.target_unit_id = ou.id
-                LEFT JOIN responses r ON r.assessment_id = c.id
-                GROUP BY cust.id
-                ORDER BY response_count DESC
-            """).fetchall()
-
-        # Svarprocent beregning
-        response_rate_data = conn.execute("""
-            SELECT
-                COUNT(DISTINCT CASE WHEN t.is_used = 1 THEN t.token END) as used_tokens,
-                COUNT(DISTINCT t.token) as total_tokens
-            FROM tokens t
-            JOIN assessments c ON t.assessment_id = c.id
-            JOIN organizational_units ou ON c.target_unit_id = ou.id
-            {where}
-        """.format(where=customer_where), customer_params).fetchone()
-
-        if response_rate_data['total_tokens'] > 0:
-            avg_response_rate = (response_rate_data['used_tokens'] / response_rate_data['total_tokens']) * 100
-        else:
-            avg_response_rate = 0
-
-    return render_template('admin/noegletal.html',
-                         total_customers=total_customers,
-                         total_units=total_units,
-                         total_assessments=total_assessments,
-                         total_responses=total_responses,
-                         avg_response_rate=avg_response_rate,
-                         field_scores=[dict(f) for f in field_scores],
-                         recent_assessments=[dict(c) for c in recent_assessments],
-                         customer_stats=[dict(c) for c in customer_stats],
-                         show_customer_stats=(user['role'] in ('admin', 'superadmin') and not customer_filter))
-
-
-@app.route('/admin/trend')
-@login_required
-def admin_trend():
-    """Trend analyse - sammenlign friktionsscores over tid"""
-    user = get_current_user()
-    customer_filter = session.get('customer_filter') or user.get('customer_id')
-
-    # Get unit_id from query param (optional)
-    unit_id = request.args.get('unit_id')
-
-    # Get trend data
-    if customer_filter or user['role'] not in ('admin', 'superadmin'):
-        cid = customer_filter or user['customer_id']
-        trend_data = get_trend_data(unit_id=unit_id, customer_id=cid)
-    else:
-        trend_data = get_trend_data(unit_id=unit_id)
-
-    # Get available units for filter dropdown
-    with get_db() as conn:
-        if customer_filter or user['role'] not in ('admin', 'superadmin'):
-            cid = customer_filter or user['customer_id']
-            units = conn.execute("""
-                SELECT id, name, full_path, level
-                FROM organizational_units
-                WHERE customer_id = ?
-                ORDER BY full_path
-            """, [cid]).fetchall()
-        else:
-            units = conn.execute("""
-                SELECT id, name, full_path, level
-                FROM organizational_units
-                ORDER BY full_path
-            """).fetchall()
-
-    return render_template('admin/trend.html',
-                         trend_data=trend_data,
-                         units=[dict(u) for u in units],
-                         selected_unit=unit_id)
-
-
-@app.route('/admin/assessments-overview')
-@login_required
-def assessments_overview():
-    """Oversigt over alle analyser/kampagner"""
-    user = get_current_user()
-    where_clause, params = get_customer_filter(user['role'], user['customer_id'], session.get('customer_filter'))
-
-    with get_db() as conn:
-        # Hent alle assessments med stats
-        if user['role'] in ('admin', 'superadmin'):
-            assessments = conn.execute("""
-                SELECT
-                    c.*,
-                    ou.name as target_name,
-                    COALESCE(COUNT(DISTINCT t.token), 0) as tokens_sent,
-                    COALESCE(COUNT(DISTINCT CASE WHEN t.is_used = 1 THEN t.token END), 0) as tokens_used,
-                    COUNT(DISTINCT r.respondent_name) as unique_respondents,
-                    COUNT(DISTINCT r.id) as total_responses,
-                    AVG(CASE
-                        WHEN q.field = 'BESVÆR' THEN
-                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END
-                    END) as avg_besvaer
-                FROM assessments c
-                JOIN organizational_units ou ON c.target_unit_id = ou.id
-                LEFT JOIN tokens t ON c.id = t.assessment_id
-                LEFT JOIN responses r ON c.id = r.assessment_id
-                LEFT JOIN questions q ON r.question_id = q.id
-                GROUP BY c.id
-                ORDER BY c.created_at DESC
-            """).fetchall()
-        else:
-            # Manager ser kun kampagner for sine units
-            assessments = conn.execute("""
-                SELECT
-                    c.*,
-                    ou.name as target_name,
-                    COALESCE(COUNT(DISTINCT t.token), 0) as tokens_sent,
-                    COALESCE(COUNT(DISTINCT CASE WHEN t.is_used = 1 THEN t.token END), 0) as tokens_used,
-                    COUNT(DISTINCT r.respondent_name) as unique_respondents,
-                    COUNT(DISTINCT r.id) as total_responses,
-                    AVG(CASE
-                        WHEN q.field = 'BESVÆR' THEN
-                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END
-                    END) as avg_besvaer
-                FROM assessments c
-                JOIN organizational_units ou ON c.target_unit_id = ou.id
-                LEFT JOIN tokens t ON c.id = t.assessment_id
-                LEFT JOIN responses r ON c.id = r.assessment_id
-                LEFT JOIN questions q ON r.question_id = q.id
-                WHERE ou.customer_id = ?
-                GROUP BY c.id
-                ORDER BY c.created_at DESC
-            """, [user['customer_id']]).fetchall()
-
-    return render_template('admin/assessments_overview.html',
-                         assessments=[dict(c) for c in assessments])
+    return redirect(url_for('admin_core.admin_home'))
 
 
 @app.route('/admin/scheduled-assessments')
@@ -1564,380 +1060,6 @@ def reschedule_assessment_route(assessment_id):
         flash('Kunne ikke ændre tidspunkt', 'error')
 
     return redirect(url_for('scheduled_assessments'))
-
-
-@app.route('/admin/analyser')
-@login_required
-def analyser():
-    """Analyser: Aggregeret friktionsdata på tværs af organisationen.
-
-    Modes:
-    1. Default (no unit_id): Show units with aggregated scores across ALL assessments
-    2. With unit_id: Show individual assessments for that unit
-    """
-    user = get_current_user()
-    where_clause, params = get_customer_filter(user['role'], user['customer_id'], session.get('customer_filter'))
-
-    # Get filter parameters
-    unit_id = request.args.get('unit_id')  # Filter by unit (and children)
-    # Default sort: by date DESC when viewing assessments (unit_id set), by name ASC otherwise
-    default_sort = 'date' if unit_id else 'name'
-    default_order = 'desc' if unit_id else 'asc'
-    sort_by = request.args.get('sort', default_sort)
-    sort_order = request.args.get('order', default_order)
-
-    with get_db() as conn:
-        enriched_units = []
-        selected_unit_name = None
-        show_assessments = False  # Whether we're showing individual assessments
-        trend_data = None  # Trend data for units with multiple assessments
-
-        if unit_id:
-            # Get unit info
-            unit_row = conn.execute("SELECT id, name, parent_id FROM organizational_units WHERE id = ?", [unit_id]).fetchone()
-            if unit_row:
-                selected_unit_name = unit_row['name']
-
-            # Check if this unit has direct assessments
-            has_direct_assessments = conn.execute("""
-                SELECT COUNT(*) FROM assessments WHERE target_unit_id = ?
-            """, [unit_id]).fetchone()[0] > 0
-
-            if has_direct_assessments:
-                # MODE 2a: Show individual assessments for this unit (leaf node)
-                show_assessments = True
-
-                # Get trend data if there are multiple group assessments
-                trend_data = None
-                assessment_count = conn.execute("""
-                    SELECT COUNT(*) FROM assessments
-                    WHERE target_unit_id = ? AND assessment_type_id = 'gruppe_friktion'
-                """, [unit_id]).fetchone()[0]
-
-                if assessment_count >= 2:
-                    # Calculate trend from oldest to newest assessment (only gruppe_friktion)
-                    trend_query = """
-                        SELECT
-                            a.id,
-                            a.name,
-                            a.period,
-                            a.created_at,
-                            AVG(CASE WHEN r.respondent_type = 'employee' THEN
-                                CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as overall,
-                            AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'MENING' THEN
-                                CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as mening,
-                            AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'TRYGHED' THEN
-                                CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as tryghed,
-                            AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'KAN' THEN
-                                CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as kan,
-                            AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'BESVÆR' THEN
-                                CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as besvaer
-                        FROM assessments a
-                        JOIN responses r ON a.id = r.assessment_id
-                        JOIN questions q ON r.question_id = q.id
-                        WHERE a.target_unit_id = ? AND a.assessment_type_id = 'gruppe_friktion'
-                        GROUP BY a.id
-                        ORDER BY a.created_at ASC
-                    """
-                    trend_rows = conn.execute(trend_query, [unit_id]).fetchall()
-
-                    if len(trend_rows) >= 2:
-                        first = dict(trend_rows[0])
-                        last = dict(trend_rows[-1])
-
-                        # Calculate changes
-                        def calc_change(field):
-                            f_val = first.get(field)
-                            l_val = last.get(field)
-                            if f_val and l_val:
-                                return round(l_val - f_val, 2)
-                            return None
-
-                        # Build assessments list for chart
-                        assessments_for_chart = []
-                        for row in trend_rows:
-                            r = dict(row)
-                            assessments_for_chart.append({
-                                'name': r['name'],
-                                'period': r.get('period') or '',
-                                'date': r['created_at'][:10] if r['created_at'] else '',
-                                'scores': {
-                                    'TRYGHED': round(r['tryghed'] or 0, 2),
-                                    'MENING': round(r['mening'] or 0, 2),
-                                    'KAN': round(r['kan'] or 0, 2),
-                                    'BESVÆR': round(r['besvaer'] or 0, 2),
-                                }
-                            })
-
-                        trend_data = {
-                            'first_name': first['name'],
-                            'last_name': last['name'],
-                            'assessment_count': len(trend_rows),
-                            'overall_change': calc_change('overall'),
-                            'mening_change': calc_change('mening'),
-                            'tryghed_change': calc_change('tryghed'),
-                            'kan_change': calc_change('kan'),
-                            'besvaer_change': calc_change('besvaer'),
-                            'first_overall': round(first.get('overall') or 0, 2),
-                            'last_overall': round(last.get('overall') or 0, 2),
-                            'assessments': assessments_for_chart,
-                            'fields': ['TRYGHED', 'MENING', 'KAN', 'BESVÆR'],
-                        }
-
-                query = """
-                    SELECT
-                        ou.id,
-                        ou.name,
-                        ou.full_path,
-                        ou.level,
-                        c.id as assessment_id,
-                        c.name as assessment_name,
-                        c.period,
-                        c.created_at,
-                        COUNT(DISTINCT r.id) as total_responses,
-                        CAST(SUM(CASE WHEN r.respondent_type = 'employee' THEN 1 ELSE 0 END) AS REAL) / 24 as unique_respondents,
-
-                        AVG(CASE WHEN r.respondent_type = 'employee' THEN
-                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_overall,
-                        AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'MENING' THEN
-                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_mening,
-                        AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'TRYGHED' THEN
-                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_tryghed,
-                        AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'KAN' THEN
-                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_kan,
-                        AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'BESVÆR' THEN
-                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_besvaer,
-
-                        AVG(CASE WHEN r.respondent_type = 'leader_assess' THEN
-                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as leader_overall,
-                        AVG(CASE WHEN r.respondent_type = 'leader_assess' AND q.field = 'MENING' THEN
-                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as leader_mening,
-                        AVG(CASE WHEN r.respondent_type = 'leader_assess' AND q.field = 'TRYGHED' THEN
-                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as leader_tryghed,
-                        AVG(CASE WHEN r.respondent_type = 'leader_assess' AND q.field = 'KAN' THEN
-                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as leader_kan,
-                        AVG(CASE WHEN r.respondent_type = 'leader_assess' AND q.field = 'BESVÆR' THEN
-                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as leader_besvaer
-
-                    FROM organizational_units ou
-                    JOIN assessments c ON c.target_unit_id = ou.id
-                    JOIN responses r ON c.id = r.assessment_id
-                    JOIN questions q ON r.question_id = q.id
-                    WHERE ou.id = ?
-                """
-                query_params = [unit_id]
-
-                if where_clause != "1=1":
-                    query += f" AND {where_clause}"
-                    query_params.extend(params)
-
-                query += """
-                    GROUP BY ou.id, c.id
-                    HAVING total_responses > 0
-                """
-
-                assessment_sort_columns = {
-                    'name': 'c.name',
-                    'date': 'c.created_at',
-                    'responses': 'unique_respondents',
-                    'employee_overall': 'employee_overall',
-                    'mening': 'employee_mening',
-                    'tryghed': 'employee_tryghed',
-                    'kan': 'employee_kan',
-                    'besvaer': 'employee_besvaer',
-                }
-                sort_col = assessment_sort_columns.get(sort_by, 'c.created_at')
-                order = 'DESC' if sort_order == 'desc' else 'ASC'
-                if sort_by == 'date' and sort_order == 'asc':
-                    order = 'ASC'
-                elif sort_by == 'date':
-                    order = 'DESC'
-                query += f" ORDER BY {sort_col} {order}"
-
-                units = conn.execute(query, query_params).fetchall()
-
-            else:
-                # MODE 2b: Show children with aggregated scores (parent node)
-                # Use recursive CTE to get all descendants' data aggregated per direct child
-                show_assessments = False
-
-                query = """
-                    WITH RECURSIVE descendants AS (
-                        -- Direct children of the selected unit
-                        SELECT id, id as root_child_id, name as root_child_name
-                        FROM organizational_units
-                        WHERE parent_id = ?
-
-                        UNION ALL
-
-                        -- All descendants, keeping track of which direct child they belong to
-                        SELECT ou.id, d.root_child_id, d.root_child_name
-                        FROM organizational_units ou
-                        JOIN descendants d ON ou.parent_id = d.id
-                    )
-                    SELECT
-                        child.id,
-                        child.name,
-                        child.full_path,
-                        child.level,
-                        COUNT(DISTINCT c.id) as assessment_count,
-                        COUNT(DISTINCT r.id) as total_responses,
-                        CAST(SUM(CASE WHEN r.respondent_type = 'employee' THEN 1 ELSE 0 END) AS REAL) / 24 as unique_respondents,
-
-                        AVG(CASE WHEN r.respondent_type = 'employee' THEN
-                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_overall,
-                        AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'MENING' THEN
-                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_mening,
-                        AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'TRYGHED' THEN
-                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_tryghed,
-                        AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'KAN' THEN
-                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_kan,
-                        AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'BESVÆR' THEN
-                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_besvaer,
-
-                        AVG(CASE WHEN r.respondent_type = 'leader_assess' THEN
-                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as leader_overall,
-                        AVG(CASE WHEN r.respondent_type = 'leader_assess' AND q.field = 'MENING' THEN
-                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as leader_mening,
-                        AVG(CASE WHEN r.respondent_type = 'leader_assess' AND q.field = 'TRYGHED' THEN
-                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as leader_tryghed,
-                        AVG(CASE WHEN r.respondent_type = 'leader_assess' AND q.field = 'KAN' THEN
-                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as leader_kan,
-                        AVG(CASE WHEN r.respondent_type = 'leader_assess' AND q.field = 'BESVÆR' THEN
-                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as leader_besvaer
-
-                    FROM organizational_units child
-                    JOIN descendants d ON d.root_child_id = child.id
-                    JOIN assessments c ON c.target_unit_id = d.id
-                    JOIN responses r ON c.id = r.assessment_id
-                    JOIN questions q ON r.question_id = q.id
-                    WHERE child.parent_id = ?
-                """
-                query_params = [unit_id, unit_id]
-
-                if where_clause != "1=1":
-                    # Replace 'ou.' with 'child.' since we alias organizational_units as 'child'
-                    adjusted_where = where_clause.replace('ou.', 'child.')
-                    query += f" AND {adjusted_where}"
-                    query_params.extend(params)
-
-                query += """
-                    GROUP BY child.id
-                    HAVING total_responses > 0
-                    ORDER BY child.name
-                """
-
-                units = conn.execute(query, query_params).fetchall()
-
-        else:
-            # MODE 1: Show units with aggregated scores (no individual assessments)
-            query = """
-                SELECT
-                    ou.id,
-                    ou.name,
-                    ou.full_path,
-                    ou.level,
-                    COUNT(DISTINCT c.id) as assessment_count,
-                    COUNT(DISTINCT r.id) as total_responses,
-                    -- Calculate respondents: employee responses / 24 questions per respondent
-                    CAST(SUM(CASE WHEN r.respondent_type = 'employee' THEN 1 ELSE 0 END) AS REAL) / 24 as unique_respondents,
-
-                    -- Employee scores (aggregated across ALL assessments)
-                    AVG(CASE WHEN r.respondent_type = 'employee' THEN
-                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_overall,
-                    AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'MENING' THEN
-                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_mening,
-                    AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'TRYGHED' THEN
-                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_tryghed,
-                    AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'KAN' THEN
-                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_kan,
-                    AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'BESVÆR' THEN
-                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_besvaer,
-
-                    -- Leader assessment scores
-                    AVG(CASE WHEN r.respondent_type = 'leader_assess' THEN
-                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as leader_overall,
-                    AVG(CASE WHEN r.respondent_type = 'leader_assess' AND q.field = 'MENING' THEN
-                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as leader_mening,
-                    AVG(CASE WHEN r.respondent_type = 'leader_assess' AND q.field = 'TRYGHED' THEN
-                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as leader_tryghed,
-                    AVG(CASE WHEN r.respondent_type = 'leader_assess' AND q.field = 'KAN' THEN
-                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as leader_kan,
-                    AVG(CASE WHEN r.respondent_type = 'leader_assess' AND q.field = 'BESVÆR' THEN
-                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as leader_besvaer
-
-                FROM organizational_units ou
-                JOIN assessments c ON c.target_unit_id = ou.id
-                JOIN responses r ON c.id = r.assessment_id
-                JOIN questions q ON r.question_id = q.id
-            """
-
-            query_params = []
-            if where_clause != "1=1":
-                query += f" WHERE {where_clause}"
-                query_params.extend(params)
-
-            # Group by UNIT only (not assessment) to get aggregated scores
-            query += """
-                GROUP BY ou.id, ou.name, ou.full_path, ou.level
-                HAVING total_responses > 0
-            """
-
-            # Add sorting
-            sort_columns = {
-                'name': 'ou.name',
-                'responses': 'total_responses',
-                'employee_overall': 'employee_overall',
-                'mening': 'employee_mening',
-                'tryghed': 'employee_tryghed',
-                'kan': 'employee_kan',
-                'besvaer': 'employee_besvaer',
-                'gap': 'ABS(employee_overall - leader_overall)'
-            }
-
-            sort_col = sort_columns.get(sort_by, 'ou.name')
-            order = 'DESC' if sort_order == 'desc' else 'ASC'
-            query += f" ORDER BY {sort_col} {order}"
-
-            units = conn.execute(query, query_params).fetchall()
-
-        # Enrich units with indicators
-        for unit in units:
-            unit_dict = dict(unit)
-
-            # For aggregated view, we can't calculate per-assessment indicators
-            # Set defaults
-            unit_dict['has_substitution'] = False
-            unit_dict['has_leader_gap'] = False
-            unit_dict['has_leader_blocked'] = False
-
-            # Calculate leader gap if we have both scores
-            if unit_dict.get('employee_overall') and unit_dict.get('leader_overall'):
-                max_gap = 0
-                for field in ['tryghed', 'mening', 'kan', 'besvaer']:
-                    emp_score = unit_dict.get(f'employee_{field}')
-                    leader_score = unit_dict.get(f'leader_{field}')
-                    if emp_score and leader_score:
-                        gap = abs(emp_score - leader_score)
-                        if gap > max_gap:
-                            max_gap = gap
-                unit_dict['has_leader_gap'] = max_gap > 1.0
-
-            enriched_units.append(unit_dict)
-
-    return render_template('admin/analyser.html',
-                         units=enriched_units,
-                         current_unit_id=unit_id,
-                         selected_unit_name=selected_unit_name,
-                         show_assessments=show_assessments,
-                         sort_by=sort_by,
-                         sort_order=sort_order,
-                         trend_data=trend_data)
-
-
-# REMOVED: Debug endpoint /api/debug-analyser/<unit_id>
-# Fjernet i go-live security audit 2025-12-18
-# Endpoint eksponerede database data uden autentifikation
 
 
 @app.route('/admin/bulk-upload', methods=['GET', 'POST'])
@@ -2057,7 +1179,7 @@ def bulk_upload_confirm():
             flash(error, 'warning')
 
     flash(f"{stats['units_created']} organisationer oprettet! {stats['contacts_created']} kontakter tilføjet.", 'success')
-    return redirect(url_for('admin_home'))
+    return redirect(url_for('admin_core.admin_home'))
 
 
 @app.route('/admin/csv-template')
@@ -2169,7 +1291,7 @@ def view_unit(unit_id):
 
         if not unit:
             flash("Unit ikke fundet eller ingen adgang", 'error')
-            return redirect(url_for('admin_home'))
+            return redirect(url_for('admin_core.admin_home'))
 
         # Hent kontakter
         contacts = conn.execute(
@@ -2318,7 +1440,7 @@ def delete_unit(unit_id):
 
         if not unit:
             flash('Organisation ikke fundet eller ingen adgang', 'error')
-            return redirect(url_for('admin_home'))
+            return redirect(url_for('admin_core.admin_home'))
 
         unit_name = unit['name']
 
@@ -2335,7 +1457,7 @@ def delete_unit(unit_id):
         )
 
     flash(f'Organisation "{unit_name}" og alle underorganisationer er slettet', 'success')
-    return redirect(url_for('admin_home'))
+    return redirect(url_for('admin_core.admin_home'))
 
 
 @app.route('/admin/customer/<customer_id>/delete', methods=['POST'])
@@ -2351,7 +1473,7 @@ def delete_customer(customer_id):
 
         if not customer:
             flash('Kunde ikke fundet', 'error')
-            return redirect(url_for('admin_home'))
+            return redirect(url_for('admin_core.admin_home'))
 
         customer_name = customer['name']
 
@@ -2371,7 +1493,7 @@ def delete_customer(customer_id):
         )
 
     flash(f'Kunde "{customer_name}" og alle tilhørende data er slettet', 'success')
-    return redirect(url_for('admin_home'))
+    return redirect(url_for('admin_core.admin_home'))
 
 
 @app.route('/admin/units/bulk-delete', methods=['POST'])
@@ -2382,7 +1504,7 @@ def bulk_delete_units():
 
     if user['role'] not in ('admin', 'superadmin'):
         flash('Kun administratorer kan bulk-slette', 'error')
-        return redirect(url_for('admin_home'))
+        return redirect(url_for('admin_core.admin_home'))
 
     import json
     unit_ids_json = request.form.get('unit_ids', '[]')
@@ -2390,11 +1512,11 @@ def bulk_delete_units():
         unit_ids = json.loads(unit_ids_json)
     except (json.JSONDecodeError, ValueError):
         flash('Ugyldige unit IDs', 'error')
-        return redirect(url_for('admin_home'))
+        return redirect(url_for('admin_core.admin_home'))
 
     if not unit_ids:
         flash('Ingen organisationer valgt', 'warning')
-        return redirect(url_for('admin_home'))
+        return redirect(url_for('admin_core.admin_home'))
 
     deleted_count = 0
     with get_db() as conn:
@@ -2411,7 +1533,7 @@ def bulk_delete_units():
                 deleted_count += 1
 
     flash(f'{deleted_count} organisation(er) slettet', 'success')
-    return redirect(url_for('admin_home'))
+    return redirect(url_for('admin_core.admin_home'))
 
 
 @app.route('/api/units/<unit_id>/move', methods=['POST'])
@@ -2571,7 +1693,7 @@ def view_assessment(assessment_id):
 
         if not assessment:
             flash("Måling ikke fundet eller ingen adgang", 'error')
-            return redirect(url_for('admin_home'))
+            return redirect(url_for('admin_core.admin_home'))
 
     # Target unit info
     target_unit_id = assessment['target_unit_id']
@@ -2622,7 +1744,7 @@ def delete_assessment(assessment_id):
 
         if not assessment:
             flash("Måling ikke fundet eller ingen adgang", 'error')
-            return redirect(url_for('assessments_overview'))
+            return redirect(url_for('admin_core.assessments_overview'))
 
         assessment_name = assessment['name']
 
@@ -2640,7 +1762,7 @@ def delete_assessment(assessment_id):
 
         flash(f'Målingen "{assessment_name}" blev slettet', 'success')
 
-    return redirect(url_for('assessments_overview'))
+    return redirect(url_for('admin_core.assessments_overview'))
 
 
 @app.route('/admin/customers')
@@ -2983,10 +2105,10 @@ def impersonate_customer(customer_id):
     if next_url:
         # If on dashboard with specific customer/unit, go to that customer's dashboard
         if '/dashboard' in next_url:
-            return redirect(url_for('org_dashboard', customer_id=customer_id))
+            return redirect(url_for('admin_core.org_dashboard', customer_id=customer_id))
         # For other pages, just go back to that page type
         return redirect(next_url)
-    return redirect(url_for('admin_home'))
+    return redirect(url_for('admin_core.admin_home'))
 
 
 @app.route('/admin/stop-impersonate')
@@ -3019,9 +2141,9 @@ def stop_impersonate():
     if next_url:
         # If on dashboard with specific customer, go to main dashboard
         if '/dashboard' in next_url:
-            return redirect(url_for('org_dashboard'))
+            return redirect(url_for('admin_core.org_dashboard'))
         return redirect(next_url)
-    return redirect(url_for('admin_home'))
+    return redirect(url_for('admin_core.admin_home'))
 
 
 @app.route('/admin/simulate-role/<role>')
@@ -3031,7 +2153,7 @@ def simulate_role(role):
     user = get_current_user()
     if user['role'] != 'superadmin':
         flash('Kun superadmin kan simulere roller', 'error')
-        return redirect(url_for('admin_home'))
+        return redirect(url_for('admin_core.admin_home'))
 
     if role == 'clear' or role == '':
         session.pop('simulated_role', None)
@@ -3046,7 +2168,7 @@ def simulate_role(role):
     next_url = request.args.get('next', '')
     if next_url:
         return redirect(next_url)
-    return redirect(url_for('admin_home'))
+    return redirect(url_for('admin_core.admin_home'))
 
 
 @app.route('/admin/impersonate')
@@ -3133,7 +2255,7 @@ def impersonate_user(user_id):
 
         flash(f'Du er nu logget ind som {target_user["name"]} ({target_user["role"]})', 'info')
 
-    return redirect(url_for('admin_home'))
+    return redirect(url_for('admin_core.admin_home'))
 
 
 @app.route('/admin/view/<view_mode>')
@@ -3142,7 +2264,7 @@ def switch_view_mode(view_mode):
     """Switch mellem user/manager/admin visning"""
     if view_mode not in ['user', 'manager', 'admin']:
         flash('Ugyldig visning', 'error')
-        return redirect(url_for('admin_home'))
+        return redirect(url_for('admin_core.admin_home'))
 
     session['view_mode'] = view_mode
 
@@ -3155,7 +2277,7 @@ def switch_view_mode(view_mode):
         return redirect(url_for('manager_dashboard'))
     else:
         # Adminvisning - normal admin home
-        return redirect(url_for('admin_home'))
+        return redirect(url_for('admin_core.admin_home'))
 
 
 @app.route('/admin/user-view/survey')
@@ -3228,7 +2350,7 @@ def unit_dashboard(unit_id):
 
         if not unit:
             flash("Unit ikke fundet eller ingen adgang", 'error')
-            return redirect(url_for('admin_home'))
+            return redirect(url_for('admin_core.admin_home'))
 
         # Find seneste kampagne for denne unit
         latest_assessment = conn.execute("""
@@ -3372,7 +2494,7 @@ def assessment_detailed_analysis(assessment_id):
 
             if not assessment:
                 flash("Måling ikke fundet eller ingen adgang", 'error')
-                return redirect(url_for('admin_home'))
+                return redirect(url_for('admin_core.admin_home'))
 
         target_unit_id = assessment['target_unit_id']
         assessment_customer_id = assessment['customer_id']
@@ -3479,7 +2601,7 @@ def assessment_pdf_export(assessment_id):
 
             if not assessment:
                 flash("Måling ikke fundet eller ingen adgang", 'error')
-                return redirect(url_for('admin_home'))
+                return redirect(url_for('admin_core.admin_home'))
 
         target_unit_id = assessment['target_unit_id']
 
@@ -4941,503 +4063,6 @@ def fix_missing_leader_data():
 
     flash(f'Tilføjet {added_count} manglende leder-responses og opdateret assessments', 'success')
     return redirect(url_for('dev_tools'))
-
-
-# =============================================================================
-# BULK DATA EXPORT
-# =============================================================================
-
-@app.route('/admin/bulk-export')
-@admin_required
-def bulk_export_page():
-    """Bulk data export page with options for anonymization and format."""
-    from db_hierarchical import get_db
-
-    user = get_current_user()
-    where_clause, params = get_customer_filter(user['role'], user['customer_id'], session.get('customer_filter'))
-
-    with get_db() as conn:
-        # Get customers for dropdown (superadmin only)
-        customers = []
-        if user['role'] == 'superadmin':
-            customers = conn.execute("""
-                SELECT id, name FROM customers ORDER BY name
-            """).fetchall()
-
-        # Get assessments
-        if user['role'] == 'superadmin':
-            assessments = conn.execute("""
-                SELECT a.id, a.name, a.period, c.name as customer_name
-                FROM assessments a
-                JOIN organizational_units ou ON a.target_unit_id = ou.id
-                JOIN customers c ON ou.customer_id = c.id
-                ORDER BY a.created_at DESC
-                LIMIT 100
-            """).fetchall()
-        else:
-            assessments = conn.execute(f"""
-                SELECT a.id, a.name, a.period
-                FROM assessments a
-                JOIN organizational_units ou ON a.target_unit_id = ou.id
-                WHERE {where_clause}
-                ORDER BY a.created_at DESC
-                LIMIT 100
-            """, params).fetchall()
-
-        # Get stats
-        if user['role'] == 'superadmin':
-            stats = {
-                'assessments': conn.execute("SELECT COUNT(*) FROM assessments").fetchone()[0],
-                'responses': conn.execute("SELECT COUNT(*) FROM responses").fetchone()[0],
-                'units': conn.execute("SELECT COUNT(*) FROM organizational_units").fetchone()[0],
-            }
-        else:
-            stats = {
-                'assessments': conn.execute(f"""
-                    SELECT COUNT(*) FROM assessments a
-                    JOIN organizational_units ou ON a.target_unit_id = ou.id
-                    WHERE {where_clause}
-                """, params).fetchone()[0],
-                'responses': conn.execute(f"""
-                    SELECT COUNT(*) FROM responses r
-                    JOIN assessments a ON r.assessment_id = a.id
-                    JOIN organizational_units ou ON a.target_unit_id = ou.id
-                    WHERE {where_clause}
-                """, params).fetchone()[0],
-                'units': conn.execute(f"""
-                    SELECT COUNT(*) FROM organizational_units WHERE {where_clause}
-                """, params).fetchone()[0],
-            }
-
-    return render_template('admin/bulk_export.html',
-        customers=customers,
-        assessments=assessments,
-        stats=stats,
-        selected_customer_id=request.args.get('customer_id'),
-        current_user=user
-    )
-
-
-@app.route('/admin/bulk-export/download', methods=['POST'])
-@admin_required
-def bulk_export_download():
-    """Download bulk export with specified options."""
-    import hashlib
-    import uuid
-    import json
-    from db_hierarchical import get_db
-
-    user = get_current_user()
-
-    # Parse options
-    customer_id = request.form.get('customer_id') or None
-    assessment_id = request.form.get('assessment_id') or None
-    export_format = request.form.get('format', 'json')
-    anonymization = request.form.get('anonymization', 'pseudonymized')
-
-    include_responses = request.form.get('include_responses') == '1'
-    include_scores = request.form.get('include_scores') == '1'
-    include_questions = request.form.get('include_questions') == '1'
-    include_units = request.form.get('include_units') == '1'
-
-    # Security: non-superadmin can only export own customer data
-    if user['role'] != 'superadmin':
-        customer_id = user['customer_id']
-
-    # Helper for anonymization
-    def anonymize_email(email, level):
-        if level == 'none':
-            return email
-        elif level == 'pseudonymized':
-            # Consistent hash-based UUID
-            hash_bytes = hashlib.sha256(email.encode()).digest()[:16]
-            return str(uuid.UUID(bytes=hash_bytes))
-        else:  # full
-            return None
-
-    def anonymize_unit_name(name, unit_id, level):
-        if level == 'full':
-            return f"unit_{unit_id}"
-        return name
-
-    with get_db() as conn:
-        export_data = {
-            'export_date': datetime.now().isoformat(),
-            'export_version': '1.0',
-            'anonymization_level': anonymization,
-            'filters': {
-                'customer_id': customer_id,
-                'assessment_id': assessment_id
-            }
-        }
-
-        # Build WHERE clause based on filters
-        where_conditions = []
-        params = []
-
-        if customer_id:
-            where_conditions.append("ou.customer_id = ?")
-            params.append(customer_id)
-        elif user['role'] != 'superadmin':
-            where_conditions.append("ou.customer_id = ?")
-            params.append(user['customer_id'])
-
-        if assessment_id:
-            where_conditions.append("a.id = ?")
-            params.append(assessment_id)
-
-        where_clause = " AND ".join(where_conditions) if where_conditions else "1=1"
-
-        # Export responses
-        if include_responses:
-            responses = conn.execute(f"""
-                SELECT
-                    r.id as response_id,
-                    r.question_id,
-                    r.score,
-                    r.created_at as response_date,
-                    r.respondent_name,
-                    r.respondent_type,
-                    a.id as assessment_id,
-                    a.name as assessment_name,
-                    a.period,
-                    ou.id as unit_id,
-                    ou.name as unit_name,
-                    ou.full_path
-                FROM responses r
-                JOIN assessments a ON r.assessment_id = a.id
-                JOIN organizational_units ou ON r.unit_id = ou.id
-                WHERE {where_clause}
-                ORDER BY r.created_at
-            """, params).fetchall()
-
-            export_data['responses'] = [
-                {
-                    'response_id': r['response_id'],
-                    'question_id': r['question_id'],
-                    'score': r['score'],
-                    'response_date': r['response_date'],
-                    'respondent_id': anonymize_email(r['respondent_name'] or '', anonymization) if r['respondent_name'] else None,
-                    'is_leader': r['respondent_type'] == 'leader',
-                    'assessment_id': r['assessment_id'],
-                    'assessment_name': r['assessment_name'] if anonymization != 'full' else None,
-                    'period': r['period'],
-                    'unit_id': r['unit_id'],
-                    'unit_name': anonymize_unit_name(r['unit_name'], r['unit_id'], anonymization),
-                }
-                for r in responses
-            ]
-
-        # Export aggregated scores
-        if include_scores:
-            # Get scores per assessment/unit
-            scores_query = f"""
-                SELECT
-                    a.id as assessment_id,
-                    a.name as assessment_name,
-                    a.period,
-                    ou.id as unit_id,
-                    ou.name as unit_name,
-                    q.field,
-                    AVG(CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END) as avg_score,
-                    COUNT(DISTINCT r.respondent_name) as response_count
-                FROM responses r
-                JOIN assessments a ON r.assessment_id = a.id
-                JOIN organizational_units ou ON r.unit_id = ou.id
-                JOIN questions q ON r.question_id = q.id
-                WHERE {where_clause}
-                GROUP BY a.id, ou.id, q.field
-            """
-            scores = conn.execute(scores_query, params).fetchall()
-
-            export_data['aggregated_scores'] = [
-                {
-                    'assessment_id': s['assessment_id'],
-                    'assessment_name': s['assessment_name'] if anonymization != 'full' else None,
-                    'period': s['period'],
-                    'unit_id': s['unit_id'],
-                    'unit_name': anonymize_unit_name(s['unit_name'], s['unit_id'], anonymization),
-                    'field': s['field'],
-                    'score': round(s['avg_score'], 2) if s['avg_score'] else None,
-                    'percent': round(score_to_percent(s['avg_score']), 1) if s['avg_score'] else None,
-                    'response_count': s['response_count']
-                }
-                for s in scores
-            ]
-
-        # Export questions metadata
-        if include_questions:
-            questions = conn.execute("""
-                SELECT id, sequence, field, text_da, text_en, reverse_scored, is_default
-                FROM questions
-                WHERE is_default = 1
-                ORDER BY sequence
-            """).fetchall()
-
-            export_data['questions'] = [
-                {
-                    'id': q['id'],
-                    'sequence': q['sequence'],
-                    'field': q['field'],
-                    'text_da': q['text_da'],
-                    'text_en': q['text_en'],
-                    'reverse_scored': bool(q['reverse_scored'])
-                }
-                for q in questions
-            ]
-
-        # Export organizational units
-        if include_units:
-            units_query = f"""
-                SELECT ou.id, ou.name, ou.full_path, ou.parent_id, ou.level, c.name as customer_name
-                FROM organizational_units ou
-                JOIN customers c ON ou.customer_id = c.id
-                WHERE {where_clause.replace('a.id = ?', '1=1').replace('t.assessment_id = ?', '1=1')}
-            """
-            # Remove assessment filter for units
-            units_params = [p for p in params if p != assessment_id]
-            units = conn.execute(units_query, units_params if units_params else []).fetchall()
-
-            export_data['units'] = [
-                {
-                    'id': u['id'],
-                    'name': anonymize_unit_name(u['name'], u['id'], anonymization),
-                    'path': u['full_path'] if anonymization != 'full' else None,
-                    'parent_id': u['parent_id'],
-                    'level': u['level'],
-                    'customer': u['customer_name'] if anonymization == 'none' else None
-                }
-                for u in units
-            ]
-
-    # Audit log
-    log_action(
-        AuditAction.DATA_EXPORTED,
-        entity_type="bulk_export",
-        details=f"Bulk export: format={export_format}, anonymization={anonymization}, "
-                f"customer={customer_id}, assessment={assessment_id}"
-    )
-
-    # Return in requested format
-    if export_format == 'csv':
-        # Flatten to CSV - primarily responses data
-        output = io.StringIO()
-        writer = csv.writer(output, delimiter=';')
-
-        if include_responses and 'responses' in export_data:
-            # Header
-            writer.writerow([
-                'response_id', 'question_id', 'score', 'response_date',
-                'respondent_id', 'is_leader', 'assessment_id', 'assessment_name',
-                'period', 'unit_id', 'unit_name'
-            ])
-            # Data
-            for r in export_data['responses']:
-                writer.writerow([
-                    r['response_id'], r['question_id'], r['score'], r['response_date'],
-                    r['respondent_id'], r['is_leader'], r['assessment_id'], r['assessment_name'],
-                    r['period'], r['unit_id'], r['unit_name']
-                ])
-
-        csv_content = output.getvalue()
-        filename = f"friktionskompas_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
-
-        return Response(
-            '\ufeff' + csv_content,  # BOM for Excel
-            mimetype='text/csv; charset=utf-8',
-            headers={'Content-Disposition': f'attachment; filename={filename}'}
-        )
-    else:
-        # JSON format
-        json_str = json.dumps(export_data, ensure_ascii=False, indent=2, default=str)
-        filename = f"friktionskompas_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-
-        return Response(
-            json_str,
-            mimetype='application/json',
-            headers={'Content-Disposition': f'attachment; filename={filename}'}
-        )
-
-
-# /api/v1/export route moved to blueprints/api_customer.py
-
-@app.route('/admin/backup')
-@admin_required
-def backup_page():
-    """Backup/restore side"""
-    with get_db() as conn:
-        stats = {
-            'customers': conn.execute("SELECT COUNT(*) FROM customers").fetchone()[0],
-            'users': conn.execute("SELECT COUNT(*) FROM users").fetchone()[0],
-            'units': conn.execute("SELECT COUNT(*) FROM organizational_units").fetchone()[0],
-            'assessments': conn.execute("SELECT COUNT(*) FROM assessments").fetchone()[0],
-            'responses': conn.execute("SELECT COUNT(*) FROM responses").fetchone()[0],
-            'contacts': conn.execute("SELECT COUNT(*) FROM contacts").fetchone()[0],
-            'tokens': conn.execute("SELECT COUNT(*) FROM tokens").fetchone()[0],
-        }
-    return render_template('admin/backup.html', stats=stats)
-
-
-@app.route('/admin/backup/download')
-@admin_required
-def backup_download():
-    """Download fuld database backup som JSON"""
-    import json
-    from datetime import datetime
-
-    backup_data = {
-        'backup_date': datetime.now().isoformat(),
-        'version': '1.0',
-        'tables': {}
-    }
-
-    with get_db() as conn:
-        # Export alle relevante tabeller
-        tables_to_export = [
-            'customers',
-            'users',
-            'organizational_units',
-            'contacts',
-            'assessments',
-            'tokens',
-            'responses',
-            'questions',
-            'email_logs',
-            'translations'
-        ]
-
-        for table in tables_to_export:
-            try:
-                rows = conn.execute(f"SELECT * FROM {table}").fetchall()
-                backup_data['tables'][table] = [dict(row) for row in rows]
-            except Exception as e:
-                backup_data['tables'][table] = {'error': str(e)}
-
-    # Audit log backup creation
-    log_action(
-        AuditAction.BACKUP_CREATED,
-        entity_type="database",
-        details=f"Full database backup downloaded"
-    )
-
-    # Returner som downloadbar JSON fil
-    json_str = json.dumps(backup_data, ensure_ascii=False, indent=2, default=str)
-    filename = f"friktionskompas_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-
-    return Response(
-        json_str,
-        mimetype='application/json',
-        headers={'Content-Disposition': f'attachment; filename={filename}'}
-    )
-
-
-@app.route('/admin/backup/restore', methods=['POST'])
-@admin_required
-def backup_restore():
-    """Restore database fra uploadet JSON backup"""
-    import json
-
-    if 'backup_file' not in request.files:
-        flash('Ingen fil uploadet', 'error')
-        return redirect(url_for('backup_page'))
-
-    file = request.files['backup_file']
-    if file.filename == '':
-        flash('Ingen fil valgt', 'error')
-        return redirect(url_for('backup_page'))
-
-    try:
-        backup_data = json.load(file)
-    except json.JSONDecodeError:
-        flash('Ugyldig JSON fil', 'error')
-        return redirect(url_for('backup_page'))
-
-    if 'tables' not in backup_data:
-        flash('Ugyldig backup fil format', 'error')
-        return redirect(url_for('backup_page'))
-
-    # Valider at det er en rigtig backup
-    if 'version' not in backup_data:
-        flash('Backup fil mangler versionsnummer', 'error')
-        return redirect(url_for('backup_page'))
-
-    restore_mode = request.form.get('restore_mode', 'merge')
-    stats = {'inserted': 0, 'skipped': 0, 'errors': 0}
-
-    with get_db() as conn:
-        conn.execute("PRAGMA foreign_keys=OFF")
-
-        if restore_mode == 'replace':
-            # Slet eksisterende data først (i omvendt rækkefølge pga. foreign keys)
-            delete_order = ['responses', 'tokens', 'email_logs', 'contacts', 'assessments',
-                           'organizational_units', 'users', 'customers']
-            for table in delete_order:
-                try:
-                    conn.execute(f"DELETE FROM {table}")
-                except Exception:
-                    pass  # Table may not exist - continue with others
-
-        # Restore tabeller i rigtig rækkefølge (parents før children)
-        restore_order = ['customers', 'users', 'organizational_units', 'contacts',
-                        'assessments', 'tokens', 'responses', 'questions', 'translations']
-
-        # SQL injection protection: Validér kolonne-navne (tilføjet i go-live audit 2025-12-18)
-        import re
-        SAFE_COLUMN_PATTERN = re.compile(r'^[a-zA-Z_][a-zA-Z0-9_]*$')
-
-        def validate_column_names(columns):
-            """Returnerer True hvis alle kolonne-navne er sikre"""
-            return all(SAFE_COLUMN_PATTERN.match(col) for col in columns)
-
-        for table in restore_order:
-            if table not in backup_data['tables']:
-                continue
-
-            table_data = backup_data['tables'][table]
-            if isinstance(table_data, dict) and 'error' in table_data:
-                continue
-
-            for row in table_data:
-                try:
-                    # SQL injection protection: Validér kolonne-navne
-                    if not validate_column_names(row.keys()):
-                        stats['errors'] += 1
-                        continue  # Skip rows with suspicious column names
-
-                    # Check om row allerede eksisterer (baseret på id)
-                    if 'id' in row:
-                        existing = conn.execute(f"SELECT id FROM {table} WHERE id = ?", (row['id'],)).fetchone()
-                        if existing and restore_mode == 'merge':
-                            stats['skipped'] += 1
-                            continue
-
-                    # Insert row (kolonne-navne er nu valideret)
-                    columns = ', '.join(row.keys())
-                    placeholders = ', '.join(['?' for _ in row])
-                    conn.execute(f"INSERT OR REPLACE INTO {table} ({columns}) VALUES ({placeholders})",
-                               list(row.values()))
-                    stats['inserted'] += 1
-                except Exception as e:
-                    stats['errors'] += 1
-
-        conn.execute("PRAGMA foreign_keys=ON")
-        conn.commit()
-
-    # Audit log restore
-    log_action(
-        AuditAction.BACKUP_RESTORED,
-        entity_type="database",
-        details=f"Database restored from backup (mode: {restore_mode}). {stats['inserted']} inserted, {stats['skipped']} skipped, {stats['errors']} errors"
-    )
-
-    flash(f"Restore gennemført: {stats['inserted']} rækker importeret, {stats['skipped']} sprunget over, {stats['errors']} fejl", 'success')
-    return redirect(url_for('backup_page'))
-
-
-# TEMPORARY: Fix user role endpoint - REMOVE AFTER USE
-@app.route('/admin/fix-user-role/<email>/<role>')
-@csrf.exempt
-@api_or_admin_required
 def fix_user_role(email, role):
     """Temporary endpoint to fix user role. REMOVE AFTER USE."""
     from db_hierarchical import get_db
@@ -5498,66 +4123,6 @@ def export_db_backup():
 
     # Return as plain text for easy download
     return db_b64, 200, {'Content-Type': 'text/plain'}
-
-
-@app.route('/admin/restore-db-from-backup', methods=['GET', 'POST'])
-@csrf.exempt  # API uses X-Admin-API-Key header for auth
-@api_or_admin_required
-def restore_db_from_backup():
-    """Restore database fra git-pushed db_backup.b64 fil.
-
-    Denne endpoint bruges til at synkronisere lokal database til Render:
-    1. Lokalt: python -c "import base64; open('db_backup.b64','w').write(base64.b64encode(open('friktionskompas_v3.db','rb').read()).decode())"
-    2. git add db_backup.b64 && git commit -m "DB sync" && git push
-    3. Vent på deployment
-    4. curl -X POST https://friktionskompasset.dk/admin/restore-db-from-backup -H "X-Admin-API-Key: YOUR_KEY"
-    """
-    import base64
-    import shutil
-    from db_hierarchical import DB_PATH
-
-    # Find backup fil i repo
-    backup_path = os.path.join(os.path.dirname(__file__), 'db_backup.b64')
-
-    if not os.path.exists(backup_path):
-        return jsonify({
-            'success': False,
-            'error': 'db_backup.b64 ikke fundet i repo',
-            'hint': 'Kør lokalt: python -c "import base64; open(\'db_backup.b64\',\'w\').write(base64.b64encode(open(\'friktionskompas_v3.db\',\'rb\').read()).decode())"'
-        }), 404
-
-    try:
-        # Læs base64 og decode
-        with open(backup_path, 'r') as f:
-            b64_content = f.read()
-
-        db_content = base64.b64decode(b64_content)
-
-        # Backup eksisterende database
-        if os.path.exists(DB_PATH):
-            backup_existing = DB_PATH + '.before_restore'
-            shutil.copy2(DB_PATH, backup_existing)
-
-        # Skriv ny database
-        with open(DB_PATH, 'wb') as f:
-            f.write(db_content)
-
-        # Verificer
-        new_size = os.path.getsize(DB_PATH)
-
-        return jsonify({
-            'success': True,
-            'message': 'Database restored successfully',
-            'db_path': DB_PATH,
-            'new_size_bytes': new_size,
-            'new_size_mb': round(new_size / (1024 * 1024), 2)
-        })
-
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
 
 
 @app.route('/admin/db-status')
@@ -5970,418 +4535,6 @@ def full_reset():
     """
 
 
-@app.route('/admin/upload-database', methods=['GET', 'POST'])
-@login_required
-def upload_database():
-    """Upload en database fil direkte"""
-    if session['user']['role'] not in ('admin', 'superadmin'):
-        return "Ikke tilladt", 403
-
-    from db_hierarchical import DB_PATH
-    import shutil
-
-    if request.method == 'GET':
-        return '''
-        <h1>Upload Database</h1>
-        <p>Current DB path: ''' + DB_PATH + '''</p>
-        <form method="post" enctype="multipart/form-data">
-            <input type="file" name="dbfile" accept=".db">
-            <br><br>
-            <input type="submit" value="Upload og erstat database">
-        </form>
-        <p style="color:red;">ADVARSEL: Dette erstatter HELE databasen!</p>
-        '''
-
-    if 'dbfile' not in request.files:
-        return 'Ingen fil valgt', 400
-
-    file = request.files['dbfile']
-    if file.filename == '':
-        return 'Ingen fil valgt', 400
-
-    try:
-        # Save uploaded file directly to DB_PATH
-        file.save(DB_PATH)
-        flash(f'Database uploadet til {DB_PATH}!', 'success')
-        return redirect('/admin')
-    except Exception as e:
-        return f'Fejl: {str(e)}'
-
-
-@app.route('/admin/cleanup-empty')
-@login_required
-def cleanup_empty_units():
-    """SLET ALT og importer ren lokal database"""
-    if session['user']['role'] not in ('admin', 'superadmin'):
-        return "Ikke tilladt", 403
-
-    import json
-    import os
-    from db_hierarchical import DB_PATH
-
-    json_path = os.path.join(os.path.dirname(__file__), 'local_data_export.json')
-
-    # Debug info
-    debug = f"DB_PATH: {DB_PATH}, JSON exists: {os.path.exists(json_path)}"
-
-    if not os.path.exists(json_path):
-        return f'FEJL: local_data_export.json ikke fundet! Debug: {debug}'
-
-    with open(json_path, 'r', encoding='utf-8') as f:
-        data = json.load(f)
-
-    try:
-        with get_db() as conn:
-            # Disable foreign keys during delete/insert, enable after
-            conn.execute("PRAGMA foreign_keys=OFF")
-
-            # Tæl før
-            before_units = conn.execute("SELECT COUNT(*) FROM organizational_units").fetchone()[0]
-            before_responses = conn.execute("SELECT COUNT(*) FROM responses").fetchone()[0]
-
-            # SLET ALT FØRST
-            conn.execute("DELETE FROM responses")
-            conn.execute("DELETE FROM tokens")
-            conn.execute("DELETE FROM assessments")
-            conn.execute("DELETE FROM contacts")
-            conn.execute("DELETE FROM organizational_units")
-
-            # Importer units - sorteret efter level så parents kommer først
-            units_sorted = sorted(data.get('organizational_units', []), key=lambda x: x.get('level', 0))
-            for unit in units_sorted:
-                conn.execute('''
-                    INSERT INTO organizational_units (id, name, full_path, parent_id, level, leader_name, leader_email, employee_count, sick_leave_percent, customer_id)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ''', (unit['id'], unit['name'], unit.get('full_path'), unit.get('parent_id'),
-                      unit.get('level', 0), unit.get('leader_name'), unit.get('leader_email'),
-                      unit.get('employee_count', 0), unit.get('sick_leave_percent', 0), unit.get('customer_id')))
-
-            # Importer assessments
-            for camp in data.get('assessments', []):
-                conn.execute('''
-                    INSERT INTO assessments (id, name, target_unit_id, period, created_at, min_responses, mode)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                ''', (camp['id'], camp['name'], camp['target_unit_id'], camp.get('period'),
-                      camp.get('created_at'), camp.get('min_responses', 5), camp.get('mode', 'anonymous')))
-
-            # Importer responses
-            for resp in data.get('responses', []):
-                conn.execute('''
-                    INSERT INTO responses (assessment_id, unit_id, question_id, score, respondent_type, respondent_name, comment, category_comment, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ''', (resp['assessment_id'], resp['unit_id'], resp['question_id'],
-                      resp['score'], resp.get('respondent_type'), resp.get('respondent_name'),
-                      resp.get('comment'), resp.get('category_comment'), resp.get('created_at')))
-
-            # Nu commit - alt eller intet
-            conn.commit()
-
-            units = conn.execute("SELECT COUNT(*) FROM organizational_units").fetchone()[0]
-            assessments = conn.execute("SELECT COUNT(*) FROM assessments").fetchone()[0]
-            responses = conn.execute("SELECT COUNT(*) FROM responses").fetchone()[0]
-
-            # Vis toplevel names
-            toplevel = conn.execute("SELECT name FROM organizational_units WHERE parent_id IS NULL").fetchall()
-            names = [t[0] for t in toplevel]
-
-        flash(f'Database erstattet! Før: {before_units} units/{before_responses} responses, Nu: {units} units, {assessments} målinger, {responses} responses. Toplevel: {names}', 'success')
-    except Exception as e:
-        import traceback
-        return f'FEJL: {str(e)}.<br><br>Traceback:<pre>{traceback.format_exc()}</pre><br>Debug: {debug}'
-
-    return redirect('/admin')
-
-
-# ============================================
-# ORGANISATIONS-DASHBOARD MED DRILL-DOWN
-# ============================================
-
-@app.route('/admin/dashboard')
-@app.route('/admin/dashboard/<customer_id>')
-@app.route('/admin/dashboard/<customer_id>/<unit_id>')
-@login_required
-def org_dashboard(customer_id=None, unit_id=None):
-    """
-    Hierarkisk organisations-dashboard med drill-down.
-
-    Niveauer:
-    1. /admin/dashboard - Oversigt over alle kunder (kun admin)
-    2. /admin/dashboard/<customer_id> - Oversigt over kundens forvaltninger
-    3. /admin/dashboard/<customer_id>/<unit_id> - Drill-down i unit hierarki
-    """
-    user = get_current_user()
-
-    # Hvis ikke admin/superadmin, tving til egen kunde
-    if user['role'] not in ('admin', 'superadmin'):
-        customer_id = user['customer_id']
-    # For admin/superadmin: brug customer_filter fra session hvis sat
-    elif not customer_id and session.get('customer_filter'):
-        customer_id = session.get('customer_filter')
-
-    with get_db() as conn:
-        # Niveau 1: Vis alle kunder (kun admin/superadmin uden customer_id)
-        if not customer_id and user['role'] in ('admin', 'superadmin'):
-            customers = conn.execute("""
-                SELECT
-                    c.id,
-                    c.name,
-                    COUNT(DISTINCT ou.id) as unit_count,
-                    COUNT(DISTINCT camp.id) as assessment_count,
-                    COUNT(DISTINCT r.id) as response_count,
-                    AVG(CASE
-                        WHEN r.respondent_type = 'employee' THEN
-                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END
-                    END) as avg_score
-                FROM customers c
-                LEFT JOIN organizational_units ou ON ou.customer_id = c.id
-                LEFT JOIN assessments camp ON camp.target_unit_id = ou.id
-                LEFT JOIN responses r ON r.assessment_id = camp.id
-                LEFT JOIN questions q ON r.question_id = q.id
-                GROUP BY c.id
-                ORDER BY c.name
-            """).fetchall()
-
-            return render_template('admin/org_dashboard.html',
-                                 level='customers',
-                                 items=[dict(c) for c in customers],
-                                 breadcrumb=[{'name': 'Alle Organisationer', 'url': None}])
-
-        # Hent kundeinfo
-        customer = conn.execute("SELECT * FROM customers WHERE id = ?", [customer_id]).fetchone()
-        if not customer:
-            flash('Kunde ikke fundet', 'error')
-            return redirect(url_for('org_dashboard'))
-
-        # Niveau 2 & 3: Vis units under kunde eller parent unit
-        if unit_id:
-            # Drill-down: vis børn af denne unit
-            parent_unit = conn.execute("SELECT * FROM organizational_units WHERE id = ?", [unit_id]).fetchone()
-            if not parent_unit:
-                flash('Enhed ikke fundet', 'error')
-                return redirect(url_for('org_dashboard', customer_id=customer_id))
-
-            parent_id_filter = unit_id
-            current_level = parent_unit['level'] + 1
-
-            # Byg breadcrumb
-            breadcrumb = [{'name': 'Alle Organisationer', 'url': url_for('org_dashboard')}]
-            breadcrumb.append({'name': customer['name'], 'url': url_for('org_dashboard', customer_id=customer_id)})
-
-            # Tilføj parent units til breadcrumb
-            path_units = []
-            current = parent_unit
-            while current:
-                path_units.insert(0, current)
-                if current['parent_id']:
-                    current = conn.execute("SELECT * FROM organizational_units WHERE id = ?", [current['parent_id']]).fetchone()
-                else:
-                    current = None
-
-            for pu in path_units[:-1]:  # Alle undtagen sidste (den er current)
-                breadcrumb.append({'name': pu['name'], 'url': url_for('org_dashboard', customer_id=customer_id, unit_id=pu['id'])})
-            breadcrumb.append({'name': parent_unit['name'], 'url': None})
-
-        else:
-            # Top-level: vis root units for denne kunde
-            parent_id_filter = None
-            current_level = 0
-            breadcrumb = [
-                {'name': 'Alle Organisationer', 'url': url_for('org_dashboard')},
-                {'name': customer['name'], 'url': None}
-            ]
-            parent_unit = None
-
-        # Hent units på dette niveau med aggregerede scores
-        if parent_id_filter:
-            # Hent child units med rekursiv aggregering fra underenheder
-            child_units = conn.execute("""
-                SELECT id, name, level, leader_name,
-                       (SELECT COUNT(*) FROM organizational_units WHERE parent_id = ou.id) as child_count,
-                       (SELECT camp.id FROM assessments camp WHERE camp.target_unit_id = ou.id LIMIT 1) as direct_assessment_id
-                FROM organizational_units ou
-                WHERE ou.parent_id = ?
-                ORDER BY ou.name
-            """, [parent_id_filter]).fetchall()
-
-            # Beregn aggregerede scores for hver unit inkl. alle underenheder
-            units = []
-            for child in child_units:
-                # Rekursiv query der aggregerer fra hele subtræet
-                agg = conn.execute("""
-                    WITH RECURSIVE subtree AS (
-                        SELECT id FROM organizational_units WHERE id = ?
-                        UNION ALL
-                        SELECT ou.id FROM organizational_units ou
-                        JOIN subtree st ON ou.parent_id = st.id
-                    )
-                    SELECT
-                        COUNT(DISTINCT camp.id) as assessment_count,
-                        COUNT(DISTINCT r.id) as response_count,
-                        AVG(CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END) as avg_score,
-                        AVG(CASE WHEN q.field = 'MENING' THEN CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as score_mening,
-                        AVG(CASE WHEN q.field = 'TRYGHED' THEN CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as score_tryghed,
-                        AVG(CASE WHEN q.field = 'KAN' THEN CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as score_kan,
-                        AVG(CASE WHEN q.field = 'BESVÆR' THEN CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as score_besvaer
-                    FROM subtree st
-                    LEFT JOIN assessments camp ON camp.target_unit_id = st.id
-                    LEFT JOIN responses r ON r.assessment_id = camp.id AND r.respondent_type = 'employee'
-                    LEFT JOIN questions q ON r.question_id = q.id
-                """, [child['id']]).fetchone()
-
-                units.append({
-                    'id': child['id'],
-                    'name': child['name'],
-                    'level': child['level'],
-                    'leader_name': child['leader_name'],
-                    'child_count': child['child_count'],
-                    'direct_assessment_id': child['direct_assessment_id'],
-                    'assessment_count': agg['assessment_count'] or 0,
-                    'response_count': agg['response_count'] or 0,
-                    'avg_score': agg['avg_score'],
-                    'score_mening': agg['score_mening'],
-                    'score_tryghed': agg['score_tryghed'],
-                    'score_kan': agg['score_kan'],
-                    'score_besvaer': agg['score_besvaer']
-                })
-
-            # Hent friktionsprofiler for denne unit (hvis leaf node) - with fallback
-            try:
-                profiler = conn.execute("""
-                    SELECT ps.id, ps.person_name, ps.created_at, ps.is_complete
-                    FROM profil_sessions ps
-                    WHERE ps.unit_id = ? AND ps.is_complete = 1
-                    ORDER BY ps.created_at DESC
-                """, [unit_id]).fetchall()
-            except Exception:
-                profiler = []
-
-            # Add profil_count to units
-            for u in units:
-                try:
-                    count = conn.execute("""
-                        SELECT COUNT(*) FROM profil_sessions ps
-                        WHERE ps.unit_id = ? AND ps.is_complete = 1
-                    """, [u['id']]).fetchone()[0]
-                    u['profil_count'] = count
-                except Exception:
-                    u['profil_count'] = 0
-        else:
-            # Root units for kunde - med rekursiv aggregering fra underenheder
-            # Først hent root units
-            root_units = conn.execute("""
-                SELECT id, name, level, leader_name,
-                       (SELECT COUNT(*) FROM organizational_units WHERE parent_id = ou.id) as child_count,
-                       (SELECT camp.id FROM assessments camp WHERE camp.target_unit_id = ou.id LIMIT 1) as direct_assessment_id
-                FROM organizational_units ou
-                WHERE ou.customer_id = ? AND ou.parent_id IS NULL
-                ORDER BY ou.name
-            """, [customer_id]).fetchall()
-
-            # Beregn aggregerede scores for hver root unit inkl. alle underenheder
-            units = []
-            for root in root_units:
-                # Rekursiv query der aggregerer fra hele subtræet
-                agg = conn.execute("""
-                    WITH RECURSIVE subtree AS (
-                        SELECT id FROM organizational_units WHERE id = ?
-                        UNION ALL
-                        SELECT ou.id FROM organizational_units ou
-                        JOIN subtree st ON ou.parent_id = st.id
-                    )
-                    SELECT
-                        COUNT(DISTINCT camp.id) as assessment_count,
-                        COUNT(DISTINCT r.id) as response_count,
-                        AVG(CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END) as avg_score,
-                        AVG(CASE WHEN q.field = 'MENING' THEN CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as score_mening,
-                        AVG(CASE WHEN q.field = 'TRYGHED' THEN CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as score_tryghed,
-                        AVG(CASE WHEN q.field = 'KAN' THEN CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as score_kan,
-                        AVG(CASE WHEN q.field = 'BESVÆR' THEN CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as score_besvaer
-                    FROM subtree st
-                    LEFT JOIN assessments camp ON camp.target_unit_id = st.id
-                    LEFT JOIN responses r ON r.assessment_id = camp.id AND r.respondent_type = 'employee'
-                    LEFT JOIN questions q ON r.question_id = q.id
-                """, [root['id']]).fetchone()
-
-                units.append({
-                    'id': root['id'],
-                    'name': root['name'],
-                    'level': root['level'],
-                    'leader_name': root['leader_name'],
-                    'child_count': root['child_count'],
-                    'direct_assessment_id': root['direct_assessment_id'],
-                    'assessment_count': agg['assessment_count'] or 0,
-                    'response_count': agg['response_count'] or 0,
-                    'avg_score': agg['avg_score'],
-                    'score_mening': agg['score_mening'],
-                    'score_tryghed': agg['score_tryghed'],
-                    'score_kan': agg['score_kan'],
-                    'score_besvaer': agg['score_besvaer']
-                })
-
-            # Add profil_count to units (units er allerede dicts)
-            for u in units:
-                try:
-                    count = conn.execute("""
-                        SELECT COUNT(*) FROM profil_sessions ps
-                        WHERE ps.unit_id = ? AND ps.is_complete = 1
-                    """, [u['id']]).fetchone()[0]
-                    u['profil_count'] = count
-                except Exception:
-                    u['profil_count'] = 0
-
-            profiler = []  # Ingen profiler på root niveau
-
-        # Beregn samlet score for dette niveau
-        if parent_unit:
-            # Aggregér for parent unit
-            agg_scores = conn.execute("""
-                WITH RECURSIVE subtree AS (
-                    SELECT id FROM organizational_units WHERE id = ?
-                    UNION ALL
-                    SELECT ou.id FROM organizational_units ou
-                    JOIN subtree st ON ou.parent_id = st.id
-                )
-                SELECT
-                    AVG(CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END) as avg_score,
-                    AVG(CASE WHEN q.field = 'MENING' THEN CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as mening,
-                    AVG(CASE WHEN q.field = 'TRYGHED' THEN CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as tryghed,
-                    AVG(CASE WHEN q.field = 'KAN' THEN CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as kan,
-                    AVG(CASE WHEN q.field = 'BESVÆR' THEN CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as besvaer,
-                    COUNT(DISTINCT r.id) as response_count
-                FROM responses r
-                JOIN assessments camp ON r.assessment_id = camp.id
-                JOIN questions q ON r.question_id = q.id
-                JOIN subtree st ON camp.target_unit_id = st.id
-                WHERE r.respondent_type = 'employee'
-            """, [unit_id]).fetchone()
-        else:
-            # Aggregér for hele kunden
-            agg_scores = conn.execute("""
-                SELECT
-                    AVG(CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END) as avg_score,
-                    AVG(CASE WHEN q.field = 'MENING' THEN CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as mening,
-                    AVG(CASE WHEN q.field = 'TRYGHED' THEN CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as tryghed,
-                    AVG(CASE WHEN q.field = 'KAN' THEN CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as kan,
-                    AVG(CASE WHEN q.field = 'BESVÆR' THEN CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as besvaer,
-                    COUNT(DISTINCT r.id) as response_count
-                FROM responses r
-                JOIN assessments camp ON r.assessment_id = camp.id
-                JOIN questions q ON r.question_id = q.id
-                JOIN organizational_units ou ON camp.target_unit_id = ou.id
-                WHERE ou.customer_id = ? AND r.respondent_type = 'employee'
-            """, [customer_id]).fetchone()
-
-        return render_template('admin/org_dashboard.html',
-                             level='units',
-                             items=units,  # Already list of dicts
-                             customer=dict(customer),
-                             parent_unit=dict(parent_unit) if parent_unit else None,
-                             agg_scores=dict(agg_scores) if agg_scores else None,
-                             breadcrumb=breadcrumb,
-                             customer_id=customer_id,
-                             profiler=[dict(p) for p in profiler] if profiler else [])
-
-
 # ========================================
 # BRANDING ROUTES (for admin users)
 # ========================================
@@ -6406,7 +4559,7 @@ def my_branding():
             customer_id = user.get('customer_id')
             if not customer_id:
                 flash('Ingen kunde tilknyttet din bruger', 'error')
-                return redirect(url_for('admin_home'))
+                return redirect(url_for('admin_core.admin_home'))
 
             domains = conn.execute("""
                 SELECT d.*, c.name as customer_name

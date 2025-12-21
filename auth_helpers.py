@@ -80,7 +80,7 @@ def admin_required(f):
             # User rolle sendes til user_home, andre til admin_home
             if role == 'user':
                 return redirect(url_for('user_home'))
-            return redirect(url_for('admin_home'))
+            return redirect(url_for('admin_core.admin_home'))
         return f(*args, **kwargs)
     return decorated_function
 
@@ -98,7 +98,7 @@ def superadmin_required(f):
             # User rolle sendes til user_home, andre til admin_home
             if role == 'user':
                 return redirect(url_for('user_home'))
-            return redirect(url_for('admin_home'))
+            return redirect(url_for('admin_core.admin_home'))
         return f(*args, **kwargs)
     return decorated_function
 
@@ -126,7 +126,7 @@ def api_or_admin_required(f):
             # User rolle sendes til user_home, andre til admin_home
             if role == 'user':
                 return redirect(url_for('user_home'))
-            return redirect(url_for('admin_home'))
+            return redirect(url_for('admin_core.admin_home'))
         return f(*args, **kwargs)
     return decorated_function
 

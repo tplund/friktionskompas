@@ -61,7 +61,7 @@ def login():
                 customer_id=user.get('customer_id')
             )
             flash(f'Velkommen {user["name"]}!', 'success')
-            return redirect(url_for('admin_home'))
+            return redirect(url_for('admin_core.admin_home'))
         else:
             log_action(
                 AuditAction.LOGIN_FAILED,
@@ -138,7 +138,7 @@ def oauth_callback(provider):
             session['user'] = user
             session.permanent = True
             flash(f'Velkommen {user["name"]}!', 'success')
-            return redirect(url_for('admin_home'))
+            return redirect(url_for('admin_core.admin_home'))
         else:
             flash('Kunne ikke logge ind - kontakt administrator', 'error')
             return redirect(url_for('auth.login'))
@@ -294,7 +294,7 @@ def verify_email_login():
             if user['role'] == 'user':
                 return redirect(url_for('user_home'))
             else:
-                return redirect(url_for('admin_home'))
+                return redirect(url_for('admin_core.admin_home'))
         else:
             flash('Forkert eller udløbet kode. Prøv igen.', 'error')
 

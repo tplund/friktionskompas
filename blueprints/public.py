@@ -19,7 +19,7 @@ public_bp = Blueprint('public', __name__)
 def index():
     """Root route - show landing page or redirect to admin if logged in"""
     if 'user' in session:
-        return redirect(url_for('admin_home'))
+        return redirect(url_for('admin_core.admin_home'))
     return render_template('landing.html')
 
 

@@ -337,7 +337,7 @@
             {% endif %}
         </h1>
         {% if level != 'customers' %}
-        <a href="{{ url_for('analyser') }}" class="btn" style="background: #10b981; color: white; padding: 10px 20px; text-decoration: none; border-radius: 8px; font-weight: 500;">
+        <a href="{{ url_for('admin_core.analyser') }}" class="btn" style="background: #10b981; color: white; padding: 10px 20px; text-decoration: none; border-radius: 8px; font-weight: 500;">
             {{ t('dashboard.see_analyses') }}
         </a>
         {% endif %}
@@ -348,7 +348,7 @@
     <div class="cards-grid">
         {% for item in items %}
         <div class="org-card {% if item.avg_score and item.avg_score < 3.0 %}has-problems{% endif %}"
-             onclick="window.location='{{ url_for('org_dashboard', customer_id=item.id) }}'">
+             onclick="window.location='{{ url_for('admin_core.org_dashboard', customer_id=item.id) }}'">
             <div class="org-card-header">
                 <div>
                     <h3 class="org-card-title">{{ item.name }}</h3>
@@ -421,7 +421,7 @@
         {% for item in items %}
         <div class="org-card {% if item.avg_score and item.avg_score < 3.0 %}has-problems{% endif %}"
              {% if item.child_count > 0 %}
-             onclick="window.location='{{ url_for('org_dashboard', customer_id=customer_id, unit_id=item.id) }}'"
+             onclick="window.location='{{ url_for('admin_core.org_dashboard', customer_id=customer_id, unit_id=item.id) }}'"
              {% elif item.direct_assessment_id %}
              onclick="window.location='{{ url_for('assessment_detailed_analysis', assessment_id=item.direct_assessment_id) }}'"
              {% endif %}>
