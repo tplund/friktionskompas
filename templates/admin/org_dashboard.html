@@ -423,7 +423,7 @@
              {% if item.child_count > 0 %}
              onclick="window.location='{{ url_for('admin_core.org_dashboard', customer_id=customer_id, unit_id=item.id) }}'"
              {% elif item.direct_assessment_id %}
-             onclick="window.location='{{ url_for('assessment_detailed_analysis', assessment_id=item.direct_assessment_id) }}'"
+             onclick="window.location='{{ url_for('assessments.assessment_detailed_analysis', assessment_id=item.direct_assessment_id) }}'"
              {% endif %}>
 
             <div class="org-card-header">
@@ -533,7 +533,7 @@
         <h3>{{ t('dashboard.no_subunits') }}</h3>
         <p>{{ t('dashboard.no_subunits_desc') }}</p>
         {% if parent_unit and parent_unit.direct_assessment_id %}
-        <a href="{{ url_for('assessment_detailed_analysis', assessment_id=parent_unit.direct_assessment_id) }}"
+        <a href="{{ url_for('assessments.assessment_detailed_analysis', assessment_id=parent_unit.direct_assessment_id) }}"
            class="btn" style="background: #6366f1; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; margin-top: 20px; display: inline-block;">
             {{ t('dashboard.see_analysis') }}
         </a>

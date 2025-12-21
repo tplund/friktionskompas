@@ -322,12 +322,12 @@
                     <td>{{ key.created_at[:10] if key.created_at else '-' }}</td>
                     <td>
                         {% if key.is_active %}
-                        <form method="POST" action="{{ url_for('admin_revoke_api_key', key_id=key.id) }}" style="display: inline;" onsubmit="return confirm('Er du sikker på at du vil deaktivere denne nøgle?')">
+                        <form method="POST" action="{{ url_for('customers.admin_revoke_api_key', key_id=key.id) }}" style="display: inline;" onsubmit="return confirm('Er du sikker på at du vil deaktivere denne nøgle?')">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button type="submit" class="btn btn-sm btn-danger">Deaktiver</button>
                         </form>
                         {% else %}
-                        <form method="POST" action="{{ url_for('admin_delete_api_key', key_id=key.id) }}" style="display: inline;" onsubmit="return confirm('Slet denne nøgle permanent?')">
+                        <form method="POST" action="{{ url_for('customers.admin_delete_api_key', key_id=key.id) }}" style="display: inline;" onsubmit="return confirm('Slet denne nøgle permanent?')">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button type="submit" class="btn btn-sm btn-secondary">Slet</button>
                         </form>
@@ -356,7 +356,7 @@
             <h3>Opret ny API-nøgle</h3>
             <button class="modal-close" onclick="closeCreateModal()">&times;</button>
         </div>
-        <form method="POST" action="{{ url_for('admin_create_api_key') }}">
+        <form method="POST" action="{{ url_for('customers.admin_create_api_key') }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
             <div class="form-group">

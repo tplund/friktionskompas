@@ -22,7 +22,7 @@ function toggleQuestions(typeId) {
             <h1 style="margin: 0; font-size: 1.75rem;">Målingstyper</h1>
             <p style="color: #666; margin-top: 5px;">Konfigurer hvilke tests og målinger der er tilgængelige i systemet</p>
         </div>
-        <form action="{{ url_for('seed_assessment_types_route') }}" method="post" style="display: inline;">
+        <form action="{{ url_for('dev_tools.seed_assessment_types_route') }}" method="post" style="display: inline;">
             <button type="submit" style="background: #6b7280; color: white; padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer;">
                 Seed/Opdater typer
             </button>
@@ -110,7 +110,7 @@ function toggleQuestions(typeId) {
                             {% endif %}
                         </td>
                         <td style="padding: 16px 20px; text-align: center;">
-                            <form action="{{ url_for('toggle_assessment_type', type_id=at.id) }}" method="post" style="display: inline;">
+                            <form action="{{ url_for('assessments.toggle_assessment_type', type_id=at.id) }}" method="post" style="display: inline;">
                                 <button type="submit" style="background: {% if at.is_active %}#ef4444{% else %}#10b981{% endif %}; color: white; padding: 6px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">
                                     {% if at.is_active %}Deaktiver{% else %}Aktiver{% endif %}
                                 </button>
