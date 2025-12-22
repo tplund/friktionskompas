@@ -131,6 +131,35 @@ def _init_test_db(db_path):
         )
     """)
 
+    # Contacts table
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS contacts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            unit_id TEXT NOT NULL,
+            name TEXT,
+            email TEXT,
+            phone TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (unit_id) REFERENCES organizational_units(id) ON DELETE CASCADE
+        )
+    """)
+
+    # Tasks table (for situation assessments)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS tasks (
+            id TEXT PRIMARY KEY,
+            customer_id TEXT NOT NULL,
+            unit_id TEXT,
+            name TEXT NOT NULL,
+            description TEXT,
+            situation TEXT,
+            created_by TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE,
+            FOREIGN KEY (unit_id) REFERENCES organizational_units(id) ON DELETE SET NULL
+        )
+    """)
+
     # Email templates table
     conn.execute("""
         CREATE TABLE IF NOT EXISTS email_templates (
@@ -218,9 +247,83 @@ def _init_test_db(db_path):
             microsoft_auth_enabled INTEGER DEFAULT 0,
             google_auth_enabled INTEGER DEFAULT 0,
             email_password_enabled INTEGER DEFAULT 1,
+            auth_providers TEXT,
             is_active INTEGER DEFAULT 1,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+        )
+    """)
+
+    # User OAuth links table
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS user_oauth_links (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL,
+            provider TEXT NOT NULL,
+            provider_user_id TEXT NOT NULL,
+            provider_email TEXT,
+            access_token TEXT,
+            refresh_token TEXT,
+            token_expires_at TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            UNIQUE(provider, provider_user_id)
+        )
+    """)
+
+    # Actions table (for situation assessments)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS actions (
+            id TEXT PRIMARY KEY,
+            task_id TEXT NOT NULL,
+            name TEXT NOT NULL,
+            description TEXT,
+            sequence INTEGER DEFAULT 0,
+            FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
+        )
+    """)
+
+    # Situation assessments table
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS situation_assessments (
+            id TEXT PRIMARY KEY,
+            task_id TEXT NOT NULL,
+            unit_id TEXT,
+            name TEXT,
+            period TEXT,
+            sent_from TEXT,
+            sender_name TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,
+            FOREIGN KEY (unit_id) REFERENCES organizational_units(id) ON DELETE SET NULL
+        )
+    """)
+
+    # Situation tokens table
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS situation_tokens (
+            token TEXT PRIMARY KEY,
+            situation_assessment_id TEXT NOT NULL,
+            recipient_email TEXT,
+            recipient_name TEXT,
+            is_used INTEGER DEFAULT 0,
+            used_at TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (situation_assessment_id) REFERENCES situation_assessments(id) ON DELETE CASCADE
+        )
+    """)
+
+    # Situation responses table
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS situation_responses (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            situation_assessment_id TEXT NOT NULL,
+            action_id TEXT NOT NULL,
+            field TEXT NOT NULL,
+            score INTEGER,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (situation_assessment_id) REFERENCES situation_assessments(id) ON DELETE CASCADE,
+            FOREIGN KEY (action_id) REFERENCES actions(id) ON DELETE CASCADE
         )
     """)
 
@@ -358,37 +461,65 @@ def _seed_test_data(db_path):
     conn.close()
 
 
-@pytest.fixture(scope='session')
-def app():
-    """Create application for testing."""
-    # Use a temporary database for tests
-    db_fd, db_path = tempfile.mkstemp(suffix='.db')
+# Global app instance (created once, reused)
+_cached_app = None
+_cached_db_path = None
 
-    # Set environment BEFORE importing app
-    os.environ['DB_PATH'] = db_path
-    os.environ['RATELIMIT_ENABLED'] = 'false'  # Disable rate limiting in tests
-    os.environ['TESTING'] = 'true'  # Signal testing environment
 
-    # Initialize the test database with schema BEFORE creating app
+def _reset_database(db_path):
+    """Reset database to clean state by dropping and recreating all tables."""
+    conn = sqlite3.connect(db_path)
+    conn.execute("PRAGMA foreign_keys=OFF")
+
+    # Get all tables
+    tables = conn.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+    ).fetchall()
+
+    # Drop all tables
+    for (table,) in tables:
+        conn.execute(f"DROP TABLE IF EXISTS {table}")
+
+    conn.commit()
+    conn.close()
+
+    # Recreate schema and seed data
     _init_test_db(db_path)
     _seed_test_data(db_path)
 
-    # Import admin_app which creates the app via factory and registers all routes
-    # This ensures both blueprint routes and admin_app routes are registered
-    from admin_app import app as flask_app
 
-    flask_app.config.update({
-        'DATABASE': db_path,
-    })
+@pytest.fixture(scope='function')
+def app():
+    """Create application for testing with fresh database per test."""
+    global _cached_app, _cached_db_path
 
-    yield flask_app
+    # Create app only once (expensive operation)
+    if _cached_app is None:
+        db_fd, db_path = tempfile.mkstemp(suffix='.db')
+        _cached_db_path = db_path
 
-    # Cleanup
-    os.close(db_fd)
-    try:
-        os.unlink(db_path)
-    except:
-        pass  # May fail on Windows
+        # Set environment BEFORE importing app
+        os.environ['DB_PATH'] = db_path
+        os.environ['RATELIMIT_ENABLED'] = 'false'
+        os.environ['TESTING'] = 'true'
+
+        # Initialize the test database with schema
+        _init_test_db(db_path)
+        _seed_test_data(db_path)
+
+        # Import admin_app which creates the app via factory
+        from admin_app import app as flask_app
+
+        flask_app.config.update({
+            'DATABASE': db_path,
+        })
+
+        _cached_app = flask_app
+    else:
+        # Reset database to clean state for each test
+        _reset_database(_cached_db_path)
+
+    yield _cached_app
 
 
 @pytest.fixture
