@@ -174,6 +174,173 @@ def admin_seed_domains():
     return redirect(request.referrer or url_for('customers.manage_domains'))
 
 
+@dev_tools_bp.route('/admin/migrate-7point', methods=['GET', 'POST'])
+@api_or_admin_required
+def admin_migrate_7point():
+    """Migrate database from 1-5 to 1-7 Likert scale.
+
+    TEMPORARY ENDPOINT - Remove after migration is complete.
+
+    API Usage:
+        curl https://friktionskompasset.dk/admin/migrate-7point \
+             -H "X-Admin-API-Key: YOUR_KEY"
+    """
+    import shutil
+    from datetime import datetime
+
+    results = {
+        'tables': {},
+        'backup_file': None,
+        'success': False,
+        'error': None
+    }
+
+    def migrate_score(old_score):
+        """Convert 1-5 score to 1-7 scale."""
+        if old_score is None:
+            return None
+        mapping = {1: 1, 2: 3, 3: 4, 4: 6, 5: 7}
+        return mapping.get(old_score, old_score)
+
+    try:
+        with get_db() as conn:
+            # Step 1: Check if already migrated
+            max_score = conn.execute("SELECT MAX(score) FROM responses WHERE score IS NOT NULL").fetchone()[0]
+            if max_score and max_score > 5:
+                results['error'] = f'Already migrated (max score = {max_score})'
+                if is_api_request():
+                    return jsonify(results), 400
+                flash(f'Allerede migreret (max score = {max_score})', 'warning')
+                return redirect(request.referrer or url_for('admin_core.admin_home'))
+
+            # Step 2: Create backup
+            db_path = conn.execute("PRAGMA database_list").fetchone()[2]
+            backup_file = f"{db_path}.backup_7point_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+
+            # Close connection temporarily to copy file
+            conn.close()
+            shutil.copy2(db_path, backup_file)
+            results['backup_file'] = backup_file
+
+            # Reconnect
+            conn = get_db().__enter__()
+
+            # Step 3: Migrate responses table
+            before_stats = conn.execute("""
+                SELECT COUNT(*), MIN(score), MAX(score), AVG(score)
+                FROM responses WHERE score IS NOT NULL
+            """).fetchone()
+
+            conn.execute("""
+                UPDATE responses SET score = CASE
+                    WHEN score = 1 THEN 1
+                    WHEN score = 2 THEN 3
+                    WHEN score = 3 THEN 4
+                    WHEN score = 4 THEN 6
+                    WHEN score = 5 THEN 7
+                    ELSE score
+                END
+                WHERE score IS NOT NULL
+            """)
+
+            after_stats = conn.execute("""
+                SELECT COUNT(*), MIN(score), MAX(score), AVG(score)
+                FROM responses WHERE score IS NOT NULL
+            """).fetchone()
+
+            results['tables']['responses'] = {
+                'rows': before_stats[0],
+                'before': {'min': before_stats[1], 'max': before_stats[2], 'avg': round(before_stats[3], 2) if before_stats[3] else None},
+                'after': {'min': after_stats[1], 'max': after_stats[2], 'avg': round(after_stats[3], 2) if after_stats[3] else None}
+            }
+
+            # Step 4: Migrate profil_responses table (if exists)
+            table_exists = conn.execute("""
+                SELECT name FROM sqlite_master WHERE type='table' AND name='profil_responses'
+            """).fetchone()
+
+            if table_exists:
+                before_stats = conn.execute("""
+                    SELECT COUNT(*), MIN(score), MAX(score), AVG(score)
+                    FROM profil_responses WHERE score IS NOT NULL
+                """).fetchone()
+
+                if before_stats[0] > 0:
+                    conn.execute("""
+                        UPDATE profil_responses SET score = CASE
+                            WHEN score = 1 THEN 1
+                            WHEN score = 2 THEN 3
+                            WHEN score = 3 THEN 4
+                            WHEN score = 4 THEN 6
+                            WHEN score = 5 THEN 7
+                            ELSE score
+                        END
+                        WHERE score IS NOT NULL
+                    """)
+
+                    after_stats = conn.execute("""
+                        SELECT COUNT(*), MIN(score), MAX(score), AVG(score)
+                        FROM profil_responses WHERE score IS NOT NULL
+                    """).fetchone()
+
+                    results['tables']['profil_responses'] = {
+                        'rows': before_stats[0],
+                        'before': {'min': before_stats[1], 'max': before_stats[2], 'avg': round(before_stats[3], 2) if before_stats[3] else None},
+                        'after': {'min': after_stats[1], 'max': after_stats[2], 'avg': round(after_stats[3], 2) if after_stats[3] else None}
+                    }
+
+            # Step 5: Migrate situation_responses table (if exists and has data)
+            table_exists = conn.execute("""
+                SELECT name FROM sqlite_master WHERE type='table' AND name='situation_responses'
+            """).fetchone()
+
+            if table_exists:
+                before_stats = conn.execute("""
+                    SELECT COUNT(*), MIN(score), MAX(score), AVG(score)
+                    FROM situation_responses WHERE score IS NOT NULL
+                """).fetchone()
+
+                if before_stats[0] > 0:
+                    conn.execute("""
+                        UPDATE situation_responses SET score = CASE
+                            WHEN score = 1 THEN 1
+                            WHEN score = 2 THEN 3
+                            WHEN score = 3 THEN 4
+                            WHEN score = 4 THEN 6
+                            WHEN score = 5 THEN 7
+                            ELSE score
+                        END
+                        WHERE score IS NOT NULL
+                    """)
+
+                    after_stats = conn.execute("""
+                        SELECT COUNT(*), MIN(score), MAX(score), AVG(score)
+                        FROM situation_responses WHERE score IS NOT NULL
+                    """).fetchone()
+
+                    results['tables']['situation_responses'] = {
+                        'rows': before_stats[0],
+                        'before': {'min': before_stats[1], 'max': before_stats[2], 'avg': round(before_stats[3], 2) if before_stats[3] else None},
+                        'after': {'min': after_stats[1], 'max': after_stats[2], 'avg': round(after_stats[3], 2) if after_stats[3] else None}
+                    }
+
+            conn.commit()
+            results['success'] = True
+
+    except Exception as e:
+        results['error'] = str(e)
+        if is_api_request():
+            return jsonify(results), 500
+        flash(f'Migration fejlede: {e}', 'error')
+        return redirect(request.referrer or url_for('admin_core.admin_home'))
+
+    if is_api_request():
+        return jsonify(results)
+
+    flash(f'Migration gennemført! Backup: {results["backup_file"]}', 'success')
+    return redirect(request.referrer or url_for('admin_core.admin_home'))
+
+
 @dev_tools_bp.route('/admin/delete-all-data', methods=['POST'])
 @admin_required
 def delete_all_data():
