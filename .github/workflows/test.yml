@@ -31,7 +31,7 @@ jobs:
         pip install Flask==3.0.0 Jinja2==3.1.4 Werkzeug==3.0.1
         pip install python-dotenv==1.0.1 gunicorn==21.2.0 mailjet-rest==1.3.4
         pip install bcrypt==4.1.2 Authlib==1.3.0 httpx==0.27.0
-        pip install Flask-WTF==1.2.1 Flask-Limiter==3.5.1
+        pip install Flask-WTF==1.2.1 Flask-Limiter==3.5.1 Flask-CORS==4.0.0
         pip install 'WeasyPrint>=60.0'
         pip install pytest pytest-flask pytest-cov
 
