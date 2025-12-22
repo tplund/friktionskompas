@@ -42,6 +42,133 @@ Før du laver ændringer i følgende områder, TJEK denne liste:
 - ✅ Database: SQLite med persistent disk på Render `/var/data/`
 - ✅ Auth: Session-based med Flask-Login
 - ✅ Oversættelser: Database-based (translations table)
+- ✅ Logging: Centraliseret struktureret logging (JSON format)
+- ✅ **Flask App Factory Pattern** (implementeret 2025-12-22)
+
+---
+
+## Flask App Factory Pattern (2025-12-22)
+
+**Beslutning:** Implementeret Flask app factory pattern for bedre testbarhed og konfiguration.
+
+### Struktur
+- **app_factory.py**: Central factory funktion `create_app(config_name)`
+  - Config modes: 'development', 'testing', 'production'
+  - Håndterer database initialization, extensions, blueprints, middleware
+- **admin_app.py**: Bruger factory til at skabe app instance
+  - Automatisk miljø-detektion (production hvis `/var/data` eksisterer)
+  - Registrerer legacy routes (som ikke er i blueprints endnu)
+
+### Konfigurationsmodes
+```python
+# Development (default lokalt)
+app = create_app('development')  # Debug=True, rate limiting enabled
+
+# Testing (pytest)
+app = create_app('testing')  # Debug=False, CSRF disabled, rate limiting disabled
+
+# Production (Render)
+app = create_app('production')  # Debug=False, seed database, fuld sikkerhed
+```
+
+### Tests
+- `tests/conftest.py` importerer `admin_app.app` (som bruger factory)
+- Tests får automatisk korrekt miljø via `os.environ['TESTING'] = 'true'`
+- Alle 461 tests kører korrekt med factory pattern
+
+### Miljø-detektion
+Admin_app.py detekterer automatisk miljø:
+```python
+if os.path.exists('/var/data'):
+    app = create_app('production')  # Render
+elif os.environ.get('TESTING', '').lower() == 'true':
+    app = create_app('testing')     # Pytest
+else:
+    app = create_app('development')  # Lokal udvikling
+```
+
+### Hvad er flyttet til factory
+- Flask app creation og config
+- Extension initialization (CSRF, rate limiting, CORS, OAuth)
+- Blueprint registration
+- Middleware (domain detection, security headers)
+- Context processors (translations, customers, helpers)
+- Error handlers (CSRF, 404, 500)
+
+### Bagudkompatibilitet
+- Eksisterende imports virker stadig: `from admin_app import app`
+- Routes i admin_app.py registreres automatisk
+- Deployment kræver ingen ændringer
+
+### Fremtidige migreringer
+Legacy routes i admin_app.py bør gradvist flyttes til blueprints:
+- `/admin/my-account` → `blueprints.admin_core`
+- `/help` → `blueprints.public`
+- `/user` → `blueprints.auth`
+- osv.
+
+---
+
+## Struktureret Logging (2025-12-22)
+
+### Arkitektur
+Projektet bruger centraliseret struktureret logging via `logging_config.py`:
+
+**Features:**
+- JSON formattering for strukturerede logs (production)
+- Farvet console output (development)
+- Automatisk log rotation (10MB filer, 5 backups)
+- Separate log filer: `app.log`, `error.log`, `security.log`
+- Request logging middleware med timing
+- Automatisk sanitering af sensitive data (passwords, tokens, etc.)
+- Context-aware logging (inkluderer request info hvor relevant)
+
+**Log levels:**
+- DEBUG: Detaljeret debugging info
+- INFO: Normale operationer (requests, database queries)
+- WARNING: Potentielle problemer
+- ERROR: Fejl der ikke stopper applikationen
+- CRITICAL: Alvorlige fejl
+
+**Brug:**
+```python
+from logging_config import get_logger, log_security_event
+
+logger = get_logger(__name__)
+
+# Normal logging
+logger.info("User logged in", extra={'extra_data': {
+    'user_id': user_id,
+    'email': email
+}})
+
+# Security events
+log_security_event(logger, 'login_failed', {
+    'email': email,
+    'ip': request.remote_addr
+})
+
+# Error logging with exception
+try:
+    # code
+except Exception as e:
+    logger.error("Operation failed", exc_info=True, extra={'extra_data': {
+        'context': 'value'
+    }})
+```
+
+**Log locations:**
+- Production (Render): `/var/data/logs/`
+- Development: `./logs/`
+
+**Environment variable:**
+- `LOG_LEVEL`: DEBUG, INFO, WARNING, ERROR, CRITICAL (default: INFO)
+
+**VIGTIGT:**
+- **ALDRIG** brug `print()` - brug altid `logger.info()`, `logger.error()`, etc.
+- Inkluder context via `extra={'extra_data': {...}}` for struktureret søgning
+- Sensitive data (passwords, tokens) bliver automatisk saniteret
+- Request logging sker automatisk via middleware
 
 ---
 

@@ -12,6 +12,11 @@ from datetime import datetime
 # Load .env file
 load_dotenv()
 
+# Import logging
+from logging_config import get_logger
+
+logger = get_logger(__name__)
+
 # Mailjet API credentials (sæt som environment variables)
 MAILJET_API_KEY = os.getenv('MAILJET_API_KEY', '')
 MAILJET_API_SECRET = os.getenv('MAILJET_API_SECRET', '')
@@ -38,7 +43,9 @@ def get_email_sender(customer_id: str = None) -> Dict[str, str]:
                 'Name': config['from_name']
             }
         except Exception as e:
-            print(f"[Mailjet] Error getting customer email config: {e}")
+            logger.error("Error getting customer email config", exc_info=True, extra={'extra_data': {
+                'customer_id': customer_id
+            }})
 
     return {
         'Email': DEFAULT_FROM_EMAIL,
@@ -81,7 +88,7 @@ def ensure_email_logs_table():
         conn.commit()
         conn.close()
     except Exception as e:
-        print(f"Error creating email_logs table: {e}")
+        logger.error("Error creating email_logs table", exc_info=True)
 
 
 def log_email(to_email: str, subject: str, email_type: str, status: str,
@@ -101,7 +108,10 @@ def log_email(to_email: str, subject: str, email_type: str, status: str,
         conn.close()
         return log_id
     except Exception as e:
-        print(f"Error logging email: {e}")
+        logger.error("Error logging email", exc_info=True, extra={'extra_data': {
+            'to_email': to_email,
+            'email_type': email_type
+        }})
         return None
 
 
@@ -121,7 +131,10 @@ def update_email_status(message_id: str, status: str, timestamp_field: str = Non
         conn.commit()
         conn.close()
     except Exception as e:
-        print(f"Error updating email status: {e}")
+        logger.error("Error updating email status", exc_info=True, extra={'extra_data': {
+            'message_id': message_id,
+            'status': status
+        }})
 
 
 def get_email_stats(assessment_id: str = None) -> Dict:
@@ -158,7 +171,9 @@ def get_email_stats(assessment_id: str = None) -> Dict:
         conn.close()
         return dict(stats) if stats else {}
     except Exception as e:
-        print(f"Error getting email stats: {e}")
+        logger.error("Error getting email stats", exc_info=True, extra={'extra_data': {
+            'assessment_id': assessment_id
+        }})
         return {}
 
 
@@ -181,7 +196,9 @@ def get_email_logs(assessment_id: str = None, limit: int = 100) -> List[Dict]:
         conn.close()
         return [dict(row) for row in logs]
     except Exception as e:
-        print(f"Error getting email logs: {e}")
+        logger.error("Error getting email logs", exc_info=True, extra={'extra_data': {
+            'assessment_id': assessment_id
+        }})
         return []
 
 
@@ -195,7 +212,9 @@ def check_mailjet_status(message_id: str) -> Optional[Dict]:
         if result.status_code == 200:
             return result.json()
     except Exception as e:
-        print(f"Error checking Mailjet status: {e}")
+        logger.error("Error checking Mailjet status", exc_info=True, extra={'extra_data': {
+            'message_id': message_id
+        }})
     return None
 
 
@@ -836,7 +855,10 @@ def get_template(template_type: str, customer_id: int = None, language: str = 'd
                     'text': template['text_content']
                 }
         except Exception as e:
-            print(f"Error getting template: {e}")
+            logger.error("Error getting template", exc_info=True, extra={'extra_data': {
+                'customer_id': customer_id,
+                'template_type': template_type
+            }})
 
     # Get default template for the specified language
     templates = get_templates_for_language(language)
@@ -871,7 +893,10 @@ def save_template(customer_id: int, template_type: str, subject: str,
         conn.close()
         return True
     except Exception as e:
-        print(f"Error saving template: {e}")
+        logger.error("Error saving template", exc_info=True, extra={'extra_data': {
+            'customer_id': customer_id,
+            'template_type': template_type
+        }})
         return False
 
 
@@ -891,7 +916,9 @@ def list_templates(customer_id: int = None) -> List[Dict]:
         conn.close()
         return [dict(t) for t in templates]
     except Exception as e:
-        print(f"Error listing templates: {e}")
+        logger.error("Error listing templates", exc_info=True, extra={'extra_data': {
+            'customer_id': customer_id
+        }})
         return []
 
 
@@ -909,7 +936,9 @@ def get_unsubscribe_token(email: str) -> str:
         if user and user['unsubscribe_token']:
             return user['unsubscribe_token']
     except Exception as e:
-        print(f"Error getting unsubscribe token: {e}")
+        logger.error("Error getting unsubscribe token", exc_info=True, extra={'extra_data': {
+            'email': email
+        }})
 
     # Return empty string if not found (graceful degradation)
     return ""
@@ -1045,7 +1074,10 @@ def send_email_invitation(to_email: str, token: str, assessment_name: str,
                      error_message=f"Status {result.status_code}")
             return False
     except Exception as e:
-        print(f"Error sending email to {to_email}: {e}")
+        logger.error("Error sending email invitation", exc_info=True, extra={'extra_data': {
+            'to_email': to_email,
+            'assessment_name': assessment_name
+        }})
         log_email(to_email, rendered['subject'], 'invitation', 'error', error_message=str(e))
         return False
 
@@ -1067,13 +1099,14 @@ def send_sms_invitation(phone: str, token: str, assessment_name: str,
 Dit link virker kun én gang.
 
 Mvh {sender_name}"""
-    
+
     # TODO: Implementer SMS-gateway (CPSMS, SMS1919 eller Mailjet SMS)
-    # For nu: Print til console
-    print(f"SMS til {phone}:")
-    print(message)
-    print()
-    
+    # For nu: Log SMS (not actually sent)
+    logger.debug("SMS mock send", extra={'extra_data': {
+        'phone': phone,
+        'message': message
+    }})
+
     return True  # Mock success
 
 
@@ -1142,7 +1175,9 @@ def send_reminder_email(to_email: str, token: str, assessment_name: str,
                      error_message=f"Status {result.status_code}", token=token)
             return False
     except Exception as e:
-        print(f"Error sending reminder to {to_email}: {e}")
+        logger.error("Error sending reminder email", exc_info=True, extra={'extra_data': {
+            'to_email': to_email
+        }})
         log_email(to_email, rendered['subject'], 'reminder', 'error', error_message=str(e), token=token)
         return False
 
@@ -1322,7 +1357,9 @@ def send_profil_invitation(to_email: str, session_id: str, person_name: str = No
                      error_message=f"Status {result.status_code}")
             return False
     except Exception as e:
-        print(f"Error sending profil invitation to {to_email}: {e}")
+        logger.error("Error sending profil invitation", exc_info=True, extra={'extra_data': {
+            'to_email': to_email
+        }})
         log_email(to_email, rendered['subject'], 'profil_invitation', 'error', error_message=str(e))
         return False
 
@@ -1441,7 +1478,10 @@ def send_assessment_completed_notification(
                      error_message=f"Status {result.status_code}", assessment_id=assessment_id)
             return False
     except Exception as e:
-        print(f"Error sending assessment completed notification to {to_email}: {e}")
+        logger.error("Error sending assessment completed notification", exc_info=True, extra={'extra_data': {
+            'to_email': to_email,
+            'assessment_id': assessment_id
+        }})
         log_email(to_email, rendered['subject'], 'assessment_completed', 'error',
                  error_message=str(e), assessment_id=assessment_id)
         return False
@@ -1543,7 +1583,9 @@ def check_and_notify_assessment_completed(assessment_id: str, threshold_percent:
         return sent_count > 0
 
     except Exception as e:
-        print(f"Error checking assessment completion: {e}")
+        logger.error("Error checking assessment completion", exc_info=True, extra={'extra_data': {
+            'assessment_id': assessment_id
+        }})
         return False
 
 
@@ -1551,17 +1593,16 @@ def check_and_notify_assessment_completed(assessment_id: str, threshold_percent:
 def test_mailjet_connection():
     """Test at Mailjet credentials virker"""
     if not MAILJET_API_KEY or not MAILJET_API_SECRET:
-        print("❌ Mailjet credentials mangler!")
-        print("Sæt MAILJET_API_KEY og MAILJET_API_SECRET som environment variables")
+        logger.error("Mailjet credentials missing - set MAILJET_API_KEY and MAILJET_API_SECRET")
         return False
 
     try:
         # Test med en simpel GET request
         result = mailjet.contactslist.get()
-        print("✅ Mailjet connection virker!")
+        logger.info("Mailjet connection successful")
         return True
     except Exception as e:
-        print(f"❌ Mailjet connection fejlede: {e}")
+        logger.error("Mailjet connection failed", exc_info=True)
         return False
 
 
@@ -1690,12 +1731,18 @@ def send_login_code(to_email: str, code: str, code_type: str = 'login',
         else:
             log_email(to_email, subject, f'{code_type}_code', 'failed',
                      error_message=str(result.json()))
-            print(f"Mailjet error: {result.status_code} - {result.json()}")
+            logger.error("Mailjet error sending login code", extra={'extra_data': {
+                'status_code': result.status_code,
+                'response': result.json()
+            }})
             return False
 
     except Exception as e:
         log_email(to_email, subject, f'{code_type}_code', 'failed', error_message=str(e))
-        print(f"Error sending login code: {e}")
+        logger.error("Error sending login code", exc_info=True, extra={'extra_data': {
+            'to_email': to_email,
+            'code_type': code_type
+        }})
         return False
 
 

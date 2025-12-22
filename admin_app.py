@@ -1,14 +1,28 @@
 """
 Admin interface for Friktionskompasset v3
 Hierarkisk organisationsstruktur med units + Multi-tenant
+
+This module uses the Flask app factory pattern (see app_factory.py).
+Routes and business logic are defined here.
 """
-from flask import Flask, render_template, request, redirect, url_for, flash, Response, session, jsonify, send_from_directory
+import os
+from app_factory import create_app
+
+# Import Flask components needed for routes
+from flask import render_template, request, redirect, url_for, flash, Response, session, jsonify, send_from_directory
 import csv
 import io
-import os
 import secrets
+import time
 from datetime import datetime, timedelta
 from functools import wraps
+
+# Setup logging first (before other imports that might log)
+from logging_config import get_logger, log_request, log_security_event
+
+logger = get_logger(__name__)
+
+# Import database and analysis functions
 from db_hierarchical import (
     init_db, create_unit, create_unit_from_path, create_assessment,
     create_individual_assessment, generate_tokens_for_assessment,
@@ -22,7 +36,6 @@ from analysis import (
     get_free_text_comments, get_kkc_recommendations,
     get_start_here_recommendation, get_trend_data
 )
-# Import beregningsfunktioner fra central motor
 from friction_engine import (
     score_to_percent, get_percent_class as engine_get_percent_class,
     get_severity, get_spread_level, THRESHOLDS, FRICTION_FIELDS,
@@ -30,7 +43,7 @@ from friction_engine import (
 )
 from db_multitenant import (
     authenticate_user, create_customer, create_user, list_customers,
-    list_users, get_customer_filter, init_multitenant_db, get_customer, update_customer,
+    list_users, get_customer_filter, get_customer, update_customer,
     get_domain_config, list_domains, create_domain, update_domain, delete_domain,
     generate_email_code, verify_email_code, find_user_by_email, create_b2c_user,
     get_or_create_b2c_customer, authenticate_by_email_code, reset_password_with_code,
@@ -46,275 +59,37 @@ from mailjet_integration import (
     get_template, save_template, list_templates, DEFAULT_TEMPLATES,
     check_and_notify_assessment_completed, send_login_code
 )
-from db_hierarchical import init_db
 from db_profil import (
     init_profil_tables, get_all_questions as get_profil_questions,
     get_db as get_profil_db
 )
-from translations import t, get_user_language, set_language, SUPPORTED_LANGUAGES, seed_translations, clear_translation_cache
-from scheduler import start_scheduler, get_scheduled_assessments, cancel_scheduled_assessment, reschedule_assessment
+from translations import t, get_user_language, set_language, SUPPORTED_LANGUAGES
+from scheduler import get_scheduled_assessments, cancel_scheduled_assessment, reschedule_assessment
 from oauth import (
-    init_oauth, oauth, get_enabled_providers, get_provider_info,
+    oauth, get_enabled_providers, get_provider_info,
     handle_oauth_callback, get_auth_providers_for_domain, save_auth_providers,
     DEFAULT_AUTH_PROVIDERS, get_user_oauth_links, link_oauth_to_user, unlink_oauth_from_user
 )
 from cache import get_cache_stats, invalidate_all, invalidate_assessment_cache, Pagination
-from audit import log_action, AuditAction, get_audit_logs, get_audit_log_count, get_action_summary, init_audit_tables
-
-# Copy seed database to persistent disk on first deploy (if not exists)
-def copy_seed_database():
-    """Copy bundled database to persistent disk if empty/missing."""
-    import shutil
-    persistent_path = '/var/data/friktionskompas_v3.db'
-    seed_path = os.path.join(os.path.dirname(__file__), 'seed_database.db')
-
-    if os.path.exists('/var/data') and os.path.exists(seed_path):
-        # Force copy if FORCE_SEED_DB env var is set (one-time migration)
-        # Or if persistent db is empty/missing
-        force_copy = os.environ.get('FORCE_SEED_DB', '').lower() in ('1', 'true', 'yes')
-        should_copy = (
-            not os.path.exists(persistent_path) or
-            os.path.getsize(persistent_path) < 10000 or
-            force_copy
-        )
-        if should_copy:
-            print(f"[STARTUP] Copying seed database to {persistent_path} (force={force_copy})")
-            shutil.copy2(seed_path, persistent_path)
-            print(f"[STARTUP] Seed database copied successfully ({os.path.getsize(persistent_path)} bytes)")
-
-copy_seed_database()
-
-# Initialize databases
-init_db()  # Main hierarchical database
-init_profil_tables()  # Profil tables
-init_multitenant_db()  # Multi-tenant tables
-
-# Start scheduler for planned assessments
-start_scheduler()
-
-# Seed translations and clear cache on startup
-seed_translations()  # Ensures translations exist in database
-clear_translation_cache()  # Clear any stale cached values
-
-app = Flask(__name__)
-
-# Sikker secret key fra miljøvariabel (fallback til autogeneret i development/testing)
-SECRET_KEY = os.environ.get('SECRET_KEY')
-is_dev_or_test = (
-    os.environ.get('FLASK_DEBUG', '').lower() == 'true' or
-    os.environ.get('RATELIMIT_ENABLED', '').lower() == 'false' or  # Tests set this
-    os.environ.get('TESTING', '').lower() == 'true'
-)
-if not SECRET_KEY and not is_dev_or_test:
-    raise RuntimeError('SECRET_KEY must be set in production')
-app.secret_key = SECRET_KEY or secrets.token_hex(32)
-
-# Debug mode configuration
-app.debug = os.environ.get('FLASK_DEBUG', 'false').lower() == 'true'
-
-# Session configuration - timeout efter 8 timers inaktivitet
-app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=8)
-app.config['SESSION_REFRESH_EACH_REQUEST'] = True  # Refresh timeout ved aktivitet
-
-# Security configuration
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max upload
-app.config['SESSION_COOKIE_SECURE'] = not app.debug  # True in production
-app.config['SESSION_COOKIE_HTTPONLY'] = True
-app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-
-# Initialize OAuth
-init_oauth(app)
-
-# CORS Configuration for API endpoints
-from flask_cors import CORS
-CORS(app, resources={
-    r"/api/*": {
-        "origins": os.environ.get('CORS_ORIGINS', 'https://friktionskompasset.dk,https://frictioncompass.com').split(','),
-        "methods": ["GET", "POST", "OPTIONS"],
-        "allow_headers": ["Content-Type", "X-API-Key", "X-Admin-API-Key"]
-    }
-})
-
-# CSRF Protection and Rate Limiting (shared extensions for blueprints)
-from flask_wtf.csrf import CSRFError
+from audit import log_action, AuditAction, get_audit_logs, get_audit_log_count, get_action_summary
 from extensions import csrf, limiter
 
-# Initialize extensions with app
-csrf.init_app(app)
-limiter.init_app(app)
-
-# CSRF error handler
-@app.errorhandler(CSRFError)
-def handle_csrf_error(e):
-    flash('Sessionen er udløbet. Prøv igen.', 'error')
-    return redirect(request.referrer or url_for('auth.login'))
-
-# Security headers middleware
-@app.after_request
-def add_security_headers(response):
-    """Add security headers to all responses"""
-    response.headers['Content-Security-Policy'] = (
-        "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://unpkg.com; "
-        "style-src 'self' 'unsafe-inline' https://unpkg.com; "
-        "img-src 'self' data: https:; "
-        "font-src 'self' https://unpkg.com; "
-        "connect-src 'self' https://www.google-analytics.com"
-    )
-    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
-    response.headers['X-Content-Type-Options'] = 'nosniff'
-    response.headers['X-XSS-Protection'] = '1; mode=block'
-    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
-    response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
-
-    # Only add HSTS in production (not in debug mode)
-    if not app.debug:
-        response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
-
-    return response
-
-# Register Friktionsprofil Blueprint
-from friktionsprofil_routes import friktionsprofil
-app.register_blueprint(friktionsprofil)
-
-# Register modular blueprints
-from blueprints.public import public_bp
-from blueprints.auth import auth_bp
-from blueprints.api_admin import api_admin_bp
-from blueprints.api_customer import api_customer_bp
-from blueprints.admin_core import admin_core_bp
-from blueprints.export import export_bp
-from blueprints.assessments import assessments_bp
-from blueprints.units import units_bp
-from blueprints.customers import customers_bp
-from blueprints.dev_tools import dev_tools_bp
-
-app.register_blueprint(public_bp)
-app.register_blueprint(auth_bp)
-app.register_blueprint(api_admin_bp)
-app.register_blueprint(api_customer_bp)
-app.register_blueprint(admin_core_bp)
-app.register_blueprint(export_bp)
-app.register_blueprint(assessments_bp)
-app.register_blueprint(units_bp)
-app.register_blueprint(customers_bp)
-app.register_blueprint(dev_tools_bp)
-
-from flask import g
-
-# Domain middleware - detect domain and load config
-@app.before_request
-def detect_domain():
-    """Detect domain and load domain-specific config"""
-    host = request.host.split(':')[0].lower()  # Remove port if present
-
-    # Try to get domain config from database
-    domain_config = get_domain_config(host)
-
-    if domain_config:
-        g.domain_config = domain_config
-        # Auto-set language based on domain if not already set by user
-        if 'language' not in session:
-            session['language'] = domain_config.get('default_language', 'da')
-        # Auto-set customer filter based on domain if user is admin/superadmin and no filter set
-        if domain_config.get('customer_id') and 'user' in session:
-            if session['user']['role'] in ('admin', 'superadmin') and 'customer_filter' not in session:
-                session['customer_filter'] = domain_config['customer_id']
-    else:
-        g.domain_config = None
+# Determine environment and create app instance
+# Check if we're in production (Render) or development
+if os.path.exists('/var/data'):
+    # Production environment (Render has /var/data persistent disk)
+    app = create_app('production')
+elif os.environ.get('TESTING', '').lower() == 'true':
+    # Testing environment
+    app = create_app('testing')
+else:
+    # Development environment
+    app = create_app('development')
 
 
-@app.context_processor
-def inject_domain_config():
-    """Make domain config available in all templates"""
-    return {
-        'domain_config': getattr(g, 'domain_config', None)
-    }
-
-
-# Context processor for translations - gør t() tilgængelig i alle templates
-@app.context_processor
-def inject_translation_helpers():
-    """Injicer translation helpers i alle templates"""
-    return {
-        't': t,
-        'get_user_language': get_user_language,
-        'supported_languages': SUPPORTED_LANGUAGES
-    }
-
-
-@app.context_processor
-def inject_customers():
-    """Gør kundeliste tilgængelig i alle templates"""
-    customers = []
-    if 'user' in session and session['user']['role'] in ('admin', 'superadmin'):
-        with get_db() as conn:
-            customers = conn.execute("""
-                SELECT id, name
-                FROM customers
-                ORDER BY name
-            """).fetchall()
-
-    def get_score_class(score):
-        """Return CSS class based on friction score (0-5 scale)"""
-        if score is None:
-            return 'score-none'
-        if score > 3.5:
-            return 'score-high'
-        elif score >= 2.5:
-            return 'score-medium'
-        else:
-            return 'score-low'
-
-    def get_percent_class(score):
-        """Return CSS class based on friction score as percent"""
-        if score is None:
-            return 'score-none'
-        percent = (score / 5) * 100
-        if percent > 70:
-            return 'score-high'
-        elif percent >= 50:
-            return 'score-medium'
-        else:
-            return 'score-low'
-
-    def get_gap_class(employee_score, leader_score):
-        """Return CSS class and icon based on gap between employee and leader"""
-        if employee_score is None or leader_score is None:
-            return 'gap-none', ''
-        gap = abs(employee_score - leader_score)
-        if gap > 1.0:  # More than 1 point difference on 0-5 scale
-            return 'gap-critical', '🚨'
-        elif gap > 0.5:
-            return 'gap-warning', '⚠️'
-        else:
-            return 'gap-ok', '✓'
-
-    def to_percent(score):
-        """Convert 1-5 score to percent (1=0%, 5=100%)"""
-        if score is None or score == 0:
-            return 0
-        # Convert 1-5 scale to 0-100%
-        return ((score - 1) / 4) * 100
-
-    # Rolle-simulation info
-    simulated_role = session.get('simulated_role')
-    is_simulating = 'user' in session and session['user'].get('role') == 'superadmin' and simulated_role is not None
-    # Effective role - hvad brugeren ser systemet som
-    actual_role = session['user'].get('role') if 'user' in session else None
-    effective_role = simulated_role if is_simulating else actual_role
-
-    return dict(
-        customers=customers,
-        get_score_class=get_score_class,
-        get_percent_class=get_percent_class,
-        get_gap_class=get_gap_class,
-        to_percent=to_percent,
-        simulated_role=simulated_role,
-        is_simulating=is_simulating,
-        effective_role=effective_role,
-        actual_role=actual_role
-    )
+# ============================================================================
+# ROUTES START HERE (line ~350 in original file)
+# ============================================================================
 
 
 # Auth decorators imported from shared module
@@ -2701,7 +2476,7 @@ def admin_dpa(customer_id):
 @admin_required
 def admin_dpa_pdf(customer_id):
     """Download DPA as PDF"""
-    from xhtml2pdf import pisa
+    from weasyprint import HTML
     from db_hierarchical import get_db
 
     user = get_current_user()
@@ -2731,13 +2506,9 @@ def admin_dpa_pdf(customer_id):
                            dpa_date=dpa_date,
                            pdf_mode=True)
 
-    # Generate PDF
+    # Generate PDF with WeasyPrint
     pdf_buffer = io.BytesIO()
-    pisa_status = pisa.CreatePDF(html, dest=pdf_buffer)
-
-    if pisa_status.err:
-        return "Error generating PDF", 500
-
+    HTML(string=html).write_pdf(pdf_buffer)
     pdf_buffer.seek(0)
 
     # Log DPA generation

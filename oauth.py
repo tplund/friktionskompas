@@ -14,6 +14,11 @@ from flask import session, url_for, redirect, flash, request
 # Import centralized database functions
 from db import get_db_connection, DB_PATH
 
+# Import logging
+from logging_config import get_logger, log_security_event
+
+logger = get_logger(__name__)
+
 # OAuth instance (initialized in init_oauth)
 oauth = OAuth()
 
@@ -122,7 +127,9 @@ def get_auth_providers_for_domain(domain: str = None) -> Dict:
 
         conn.close()
     except Exception as e:
-        print(f"[OAuth] Error getting auth providers: {e}")
+        logger.error("Error getting auth providers", exc_info=True, extra={'extra_data': {
+            'domain': domain
+        }})
 
     return DEFAULT_AUTH_PROVIDERS.copy()
 
@@ -169,7 +176,9 @@ def find_user_by_oauth(provider: str, provider_user_id: str) -> Optional[Dict]:
             return dict(row)
         return None
     except Exception as e:
-        print(f"[OAuth] Error finding user by OAuth: {e}")
+        logger.error("Error finding user by OAuth", exc_info=True, extra={'extra_data': {
+            'provider': provider
+        }})
         return None
 
 
@@ -189,7 +198,9 @@ def find_user_by_email(email: str) -> Optional[Dict]:
             return dict(row)
         return None
     except Exception as e:
-        print(f"[OAuth] Error finding user by email: {e}")
+        logger.error("Error finding user by email", exc_info=True, extra={'extra_data': {
+            'email': email
+        }})
         return None
 
 
@@ -208,7 +219,10 @@ def link_oauth_to_user(user_id: str, provider: str, provider_user_id: str,
         conn.close()
         return True
     except Exception as e:
-        print(f"[OAuth] Error linking OAuth: {e}")
+        logger.error("Error linking OAuth", exc_info=True, extra={'extra_data': {
+            'user_id': user_id,
+            'provider': provider
+        }})
         return False
 
 
@@ -225,7 +239,9 @@ def get_user_oauth_links(user_id: str) -> list:
         conn.close()
         return [dict(row) for row in rows]
     except Exception as e:
-        print(f"[OAuth] Error getting user OAuth links: {e}")
+        logger.error("Error getting user OAuth links", exc_info=True, extra={'extra_data': {
+            'user_id': user_id
+        }})
         return []
 
 
@@ -241,7 +257,10 @@ def unlink_oauth_from_user(user_id: str, provider: str) -> bool:
         conn.close()
         return True
     except Exception as e:
-        print(f"[OAuth] Error unlinking OAuth: {e}")
+        logger.error("Error unlinking OAuth", exc_info=True, extra={'extra_data': {
+            'user_id': user_id,
+            'provider': provider
+        }})
         return False
 
 
@@ -269,11 +288,17 @@ def create_user_from_oauth(provider: str, provider_user_id: str, email: str,
         conn.commit()
         conn.close()
 
-        print(f"[OAuth] Created new user {email} via {provider}")
+        log_security_event(logger, 'oauth_user_created', {
+            'email': email,
+            'provider': provider
+        })
         return user_id
 
     except Exception as e:
-        print(f"[OAuth] Error creating user from OAuth: {e}")
+        logger.error("Error creating user from OAuth", exc_info=True, extra={'extra_data': {
+            'email': email,
+            'provider': provider
+        }})
         return None
 
 
@@ -299,11 +324,15 @@ def handle_oauth_callback(provider: str, token: dict, userinfo: dict) -> Optiona
         email = userinfo.get('email')
         name = userinfo.get('name', email.split('@')[0] if email else 'Unknown')
     else:
-        print(f"[OAuth] Unknown provider: {provider}")
+        logger.warning("Unknown OAuth provider", extra={'extra_data': {
+            'provider': provider
+        }})
         return None
 
     if not provider_user_id or not email:
-        print(f"[OAuth] Missing user info from {provider}")
+        logger.warning("Missing user info from OAuth provider", extra={'extra_data': {
+            'provider': provider
+        }})
         return None
 
     # Step 1: Check if this OAuth account is already linked
@@ -328,7 +357,10 @@ def handle_oauth_callback(provider: str, token: dict, userinfo: dict) -> Optiona
             refresh_token=token.get('refresh_token')
         )
         update_last_login(user['id'])
-        print(f"[OAuth] Linked {provider} to existing user {email}")
+        log_security_event(logger, 'oauth_linked_to_existing_user', {
+            'email': email,
+            'provider': provider
+        })
         return format_user_for_session(user)
 
     # Step 3: Create new user (for self-service signup domains)
@@ -377,7 +409,9 @@ def update_last_login(user_id: str):
         conn.commit()
         conn.close()
     except Exception as e:
-        print(f"[OAuth] Error updating last login: {e}")
+        logger.error("Error updating last login", exc_info=True, extra={'extra_data': {
+            'user_id': user_id
+        }})
 
 
 def get_customer_id_for_domain(domain: str) -> Optional[str]:
@@ -395,7 +429,9 @@ def get_customer_id_for_domain(domain: str) -> Optional[str]:
         if row:
             return row['customer_id']
     except Exception as e:
-        print(f"[OAuth] Error getting customer for domain: {e}")
+        logger.error("Error getting customer for domain", exc_info=True, extra={'extra_data': {
+            'domain': domain
+        }})
 
     return None
 
@@ -430,7 +466,10 @@ def save_auth_providers(entity_type: str, entity_id: str, providers: Dict) -> bo
         return True
 
     except Exception as e:
-        print(f"[OAuth] Error saving auth providers: {e}")
+        logger.error("Error saving auth providers", exc_info=True, extra={'extra_data': {
+            'entity_type': entity_type,
+            'entity_id': entity_id
+        }})
         return False
 
 

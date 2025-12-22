@@ -13,6 +13,11 @@ from typing import List, Dict
 # Import centralized database functions
 from db import get_db_connection, DB_PATH
 
+# Import logging
+from logging_config import get_logger
+
+logger = get_logger(__name__)
+
 # Global scheduler state
 _scheduler_thread = None
 _scheduler_running = False
@@ -37,7 +42,7 @@ def get_pending_scheduled_assessments() -> List[Dict]:
         conn.close()
         return [dict(c) for c in assessments]
     except Exception as e:
-        print(f"[Scheduler] Error getting pending assessments: {e}")
+        logger.error("Error getting pending assessments", exc_info=True)
         return []
 
 
@@ -53,14 +58,19 @@ def send_scheduled_assessment(assessment: Dict) -> bool:
     assessment_name = assessment['name']
     sender_name = assessment.get('sender_name', 'HR')
 
-    print(f"[Scheduler] Sending scheduled assessment: {assessment_name} (ID: {assessment_id})")
+    logger.info("Sending scheduled assessment", extra={'extra_data': {
+        'assessment_id': assessment_id,
+        'assessment_name': assessment_name
+    }})
 
     try:
         # Generer tokens
         tokens_by_unit = generate_tokens_for_assessment(assessment_id)
 
         if not tokens_by_unit:
-            print(f"[Scheduler] No tokens generated for assessment {assessment_id}")
+            logger.warning("No tokens generated for assessment", extra={'extra_data': {
+                'assessment_id': assessment_id
+            }})
             mark_assessment_sent(assessment_id)
             return True
 
@@ -82,12 +92,19 @@ def send_scheduled_assessment(assessment: Dict) -> bool:
         mark_assessment_sent(assessment_id)
 
         total_tokens = sum(len(t) for t in tokens_by_unit.values())
-        print(f"[Scheduler] Assessment {assessment_id} sent: {total_tokens} tokens, {total_sent} emails, {total_errors} errors")
+        logger.info("Assessment sent successfully", extra={'extra_data': {
+            'assessment_id': assessment_id,
+            'total_tokens': total_tokens,
+            'total_sent': total_sent,
+            'total_errors': total_errors
+        }})
 
         return True
 
     except Exception as e:
-        print(f"[Scheduler] Error sending assessment {assessment_id}: {e}")
+        logger.error("Error sending assessment", exc_info=True, extra={'extra_data': {
+            'assessment_id': assessment_id
+        }})
         mark_assessment_error(assessment_id, str(e))
         return False
 
@@ -104,7 +121,9 @@ def mark_assessment_sent(assessment_id: str):
         conn.commit()
         conn.close()
     except Exception as e:
-        print(f"[Scheduler] Error marking assessment sent: {e}")
+        logger.error("Error marking assessment sent", exc_info=True, extra={'extra_data': {
+            'assessment_id': assessment_id
+        }})
 
 
 def mark_assessment_error(assessment_id: str, error_message: str):
@@ -113,10 +132,15 @@ def mark_assessment_error(assessment_id: str, error_message: str):
         conn = get_db_connection()
         # Gem error i en ny kolonne eller bare hold den som scheduled
         # For nu, lad den være scheduled så den kan prøves igen
-        print(f"[Scheduler] Assessment {assessment_id} failed: {error_message}")
+        logger.error("Assessment failed", extra={'extra_data': {
+            'assessment_id': assessment_id,
+            'error_message': error_message
+        }})
         conn.close()
     except Exception as e:
-        print(f"[Scheduler] Error marking assessment error: {e}")
+        logger.error("Error marking assessment error", exc_info=True, extra={'extra_data': {
+            'assessment_id': assessment_id
+        }})
 
 
 def run_daily_cleanup():
@@ -126,16 +150,18 @@ def run_daily_cleanup():
     try:
         from data_retention import run_all_cleanups
 
-        print("[Scheduler] Running daily data retention cleanup...")
+        logger.info("Running daily data retention cleanup")
         results = run_all_cleanups()
 
         _last_cleanup_date = datetime.now().date()
 
-        print(f"[Scheduler] Cleanup complete: {results['total_deleted']} records deleted")
+        logger.info("Cleanup complete", extra={'extra_data': {
+            'total_deleted': results['total_deleted']
+        }})
         return results
 
     except Exception as e:
-        print(f"[Scheduler] Error running cleanup: {e}")
+        logger.error("Error running cleanup", exc_info=True)
         return None
 
 
@@ -156,7 +182,7 @@ def scheduler_loop():
     """Hovedloop for scheduler - tjekker hvert minut"""
     global _scheduler_running
 
-    print("[Scheduler] Started")
+    logger.info("Scheduler started")
 
     # Variables for cleanup scheduling
     cleanup_hour = 3  # Run cleanup at 3 AM
@@ -170,7 +196,9 @@ def scheduler_loop():
             pending = get_pending_scheduled_assessments()
 
             if pending:
-                print(f"[Scheduler] Found {len(pending)} scheduled assessments to send")
+                logger.info("Found scheduled assessments to send", extra={'extra_data': {
+                    'count': len(pending)
+                }})
 
                 for assessment in pending:
                     send_scheduled_assessment(assessment)
@@ -185,7 +213,7 @@ def scheduler_loop():
                 cleanup_checked_today = False
 
         except Exception as e:
-            print(f"[Scheduler] Error in loop: {e}")
+            logger.error("Error in scheduler loop", exc_info=True)
 
         # Vent 60 sekunder før næste check
         for _ in range(60):
@@ -193,7 +221,7 @@ def scheduler_loop():
                 break
             time.sleep(1)
 
-    print("[Scheduler] Stopped")
+    logger.info("Scheduler stopped")
 
 
 def start_scheduler():
@@ -201,20 +229,20 @@ def start_scheduler():
     global _scheduler_thread, _scheduler_running
 
     if _scheduler_running:
-        print("[Scheduler] Already running")
+        logger.info("Scheduler already running")
         return
 
     _scheduler_running = True
     _scheduler_thread = threading.Thread(target=scheduler_loop, daemon=True)
     _scheduler_thread.start()
-    print("[Scheduler] Background thread started")
+    logger.info("Scheduler background thread started")
 
 
 def stop_scheduler():
     """Stop scheduler"""
     global _scheduler_running
     _scheduler_running = False
-    print("[Scheduler] Stop requested")
+    logger.info("Scheduler stop requested")
 
 
 def get_scheduled_assessments() -> List[Dict]:
@@ -233,7 +261,7 @@ def get_scheduled_assessments() -> List[Dict]:
         conn.close()
         return [dict(c) for c in assessments]
     except Exception as e:
-        print(f"[Scheduler] Error getting scheduled assessments: {e}")
+        logger.error("Error getting scheduled assessments", exc_info=True)
         return []
 
 
@@ -258,11 +286,15 @@ def cancel_scheduled_assessment(assessment_id: str) -> bool:
         conn.commit()
         conn.close()
 
-        print(f"[Scheduler] Assessment {assessment_id} cancelled")
+        logger.info("Assessment cancelled", extra={'extra_data': {
+            'assessment_id': assessment_id
+        }})
         return True
 
     except Exception as e:
-        print(f"[Scheduler] Error cancelling assessment: {e}")
+        logger.error("Error cancelling assessment", exc_info=True, extra={'extra_data': {
+            'assessment_id': assessment_id
+        }})
         return False
 
 
@@ -287,11 +319,16 @@ def reschedule_assessment(assessment_id: str, new_scheduled_at: datetime) -> boo
         conn.commit()
         conn.close()
 
-        print(f"[Scheduler] Assessment {assessment_id} rescheduled to {new_scheduled_at}")
+        logger.info("Assessment rescheduled", extra={'extra_data': {
+            'assessment_id': assessment_id,
+            'new_scheduled_at': new_scheduled_at.isoformat()
+        }})
         return True
 
     except Exception as e:
-        print(f"[Scheduler] Error rescheduling assessment: {e}")
+        logger.error("Error rescheduling assessment", exc_info=True, extra={'extra_data': {
+            'assessment_id': assessment_id
+        }})
         return False
 
 

@@ -30,6 +30,7 @@ def _init_test_db(db_path):
             domain TEXT,
             contact_email TEXT,
             is_active INTEGER DEFAULT 1,
+            allow_profile_edit INTEGER DEFAULT 1,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
@@ -238,6 +239,75 @@ def _init_test_db(db_path):
         )
     """)
 
+    # Assessment types table
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS assessment_types (
+            id TEXT PRIMARY KEY,
+            name_da TEXT NOT NULL,
+            name_en TEXT NOT NULL,
+            description_da TEXT,
+            description_en TEXT,
+            question_count INTEGER,
+            duration_minutes INTEGER,
+            is_individual INTEGER DEFAULT 1,
+            is_active INTEGER DEFAULT 1,
+            sequence INTEGER DEFAULT 0,
+            icon TEXT,
+            storage_mode TEXT DEFAULT 'server' CHECK(storage_mode IN ('local', 'server', 'both')),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    # Customer assessment types
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS customer_assessment_types (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            customer_id TEXT NOT NULL,
+            assessment_type_id TEXT NOT NULL,
+            is_enabled INTEGER DEFAULT 1,
+            custom_name_da TEXT,
+            custom_name_en TEXT,
+            FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE,
+            FOREIGN KEY (assessment_type_id) REFERENCES assessment_types(id) ON DELETE CASCADE,
+            UNIQUE(customer_id, assessment_type_id)
+        )
+    """)
+
+    # Domain assessment types
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS domain_assessment_types (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            domain_id TEXT NOT NULL,
+            assessment_type_id TEXT NOT NULL,
+            is_enabled INTEGER DEFAULT 1,
+            FOREIGN KEY (domain_id) REFERENCES domains(id) ON DELETE CASCADE,
+            FOREIGN KEY (assessment_type_id) REFERENCES assessment_types(id) ON DELETE CASCADE,
+            UNIQUE(domain_id, assessment_type_id)
+        )
+    """)
+
+    # Assessment presets
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS assessment_presets (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            description TEXT,
+            is_default INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    # Preset assessment types
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS preset_assessment_types (
+            preset_id INTEGER NOT NULL,
+            assessment_type_id TEXT NOT NULL,
+            FOREIGN KEY (preset_id) REFERENCES assessment_presets(id) ON DELETE CASCADE,
+            FOREIGN KEY (assessment_type_id) REFERENCES assessment_types(id) ON DELETE CASCADE,
+            PRIMARY KEY(preset_id, assessment_type_id)
+        )
+    """)
+
     conn.commit()
     conn.close()
 
@@ -297,17 +367,17 @@ def app():
     # Set environment BEFORE importing app
     os.environ['DB_PATH'] = db_path
     os.environ['RATELIMIT_ENABLED'] = 'false'  # Disable rate limiting in tests
+    os.environ['TESTING'] = 'true'  # Signal testing environment
 
-    # Initialize the test database with schema BEFORE importing app
+    # Initialize the test database with schema BEFORE creating app
     _init_test_db(db_path)
     _seed_test_data(db_path)
 
-    # Now import app (it will use our DB_PATH)
+    # Import admin_app which creates the app via factory and registers all routes
+    # This ensures both blueprint routes and admin_app routes are registered
     from admin_app import app as flask_app
 
     flask_app.config.update({
-        'TESTING': True,
-        'WTF_CSRF_ENABLED': False,
         'DATABASE': db_path,
     })
 

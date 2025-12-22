@@ -11,24 +11,17 @@ import os
 from datetime import datetime, timedelta
 from typing import Dict, Tuple
 
-# Database path (same logic as other modules)
-RENDER_DISK_PATH = "/var/data"
-if os.path.exists(RENDER_DISK_PATH):
-    DB_PATH = os.path.join(RENDER_DISK_PATH, "friktionskompas_v3.db")
-else:
-    DB_PATH = "friktionskompas_v3.db"
+# Import centralized database functions
+from db import get_db_connection, DB_PATH
+
+# Import logging
+from logging_config import get_logger
+
+logger = get_logger(__name__)
 
 # Retention periods (in days)
 EMAIL_LOGS_RETENTION_DAYS = 90
 AUDIT_LOG_RETENTION_DAYS = 365
-
-
-def get_db_connection():
-    """Get database connection with foreign keys enabled"""
-    conn = sqlite3.connect(DB_PATH, timeout=30.0)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys=ON")
-    return conn
 
 
 def cleanup_email_logs(days: int = EMAIL_LOGS_RETENTION_DAYS) -> Dict:
@@ -82,7 +75,9 @@ def cleanup_email_logs(days: int = EMAIL_LOGS_RETENTION_DAYS) -> Dict:
         }
 
     except Exception as e:
-        print(f"[DataRetention] Error cleaning email_logs: {e}")
+        logger.error("Error cleaning email_logs", exc_info=True, extra={'extra_data': {
+            'retention_days': days
+        }})
         return {
             'deleted': 0,
             'remaining': 0,
@@ -144,7 +139,9 @@ def cleanup_audit_logs(days: int = AUDIT_LOG_RETENTION_DAYS) -> Dict:
         }
 
     except Exception as e:
-        print(f"[DataRetention] Error cleaning audit_log: {e}")
+        logger.error("Error cleaning audit_log", exc_info=True, extra={'extra_data': {
+            'retention_days': days
+        }})
         return {
             'deleted': 0,
             'remaining': 0,
@@ -161,16 +158,20 @@ def run_all_cleanups() -> Dict:
     Returns:
         dict with results from all cleanup jobs
     """
-    print("[DataRetention] Starting automated cleanup...")
+    logger.info("Starting automated cleanup")
 
     email_result = cleanup_email_logs()
     audit_result = cleanup_audit_logs()
 
     total_deleted = email_result['deleted'] + audit_result['deleted']
 
-    print(f"[DataRetention] Cleanup completed: {total_deleted} total records deleted")
-    print(f"  - Email logs: {email_result['deleted']} deleted, {email_result['remaining']} remaining")
-    print(f"  - Audit logs: {audit_result['deleted']} deleted, {audit_result['remaining']} remaining")
+    logger.info("Cleanup completed", extra={'extra_data': {
+        'total_deleted': total_deleted,
+        'email_logs_deleted': email_result['deleted'],
+        'email_logs_remaining': email_result['remaining'],
+        'audit_logs_deleted': audit_result['deleted'],
+        'audit_logs_remaining': audit_result['remaining']
+    }})
 
     return {
         'email_logs': email_result,
@@ -245,7 +246,7 @@ def get_cleanup_status() -> Dict:
         }
 
     except Exception as e:
-        print(f"[DataRetention] Error getting cleanup status: {e}")
+        logger.error("Error getting cleanup status", exc_info=True)
         return {
             'error': str(e),
             'timestamp': datetime.now().isoformat()
@@ -289,7 +290,7 @@ def get_last_cleanup_run() -> Dict:
             }
 
     except Exception as e:
-        print(f"[DataRetention] Error getting last cleanup run: {e}")
+        logger.error("Error getting last cleanup run", exc_info=True)
         return {
             'error': str(e),
             'found': False
