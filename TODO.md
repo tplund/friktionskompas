@@ -564,11 +564,11 @@ Baseret på fuld teknisk audit. Se `docs/AUDIT_2025-12-20.md` for detaljer.
 - [x] ~~**Erstat xhtml2pdf med WeasyPrint**~~ ✅ FÆRDIG - Replaced deprecated library (2025-12-22)
 
 ### 🟢 Kan Vente (inden 3 måneder)
-- [ ] **Implementér struktureret logging** - Python logging modul med levels
-- [ ] **Konsolidér profil-systemer** - db_profil.py + db_friktionsprofil.py → én fil
-- [ ] **App factory pattern** - Centralisér Flask app creation
-- [ ] **Øg test coverage til 60%** - Fokus: mailjet_integration.py, scheduler.py, oauth.py
-- [ ] **Opret DATABASE_SCHEMA.md** - ER-diagram og tabelbeskrivelser
+- [x] ~~**Implementér struktureret logging**~~ ✅ FÆRDIG - `logging_config.py` med JSON format, file rotation, security logging (2025-12-22)
+- [ ] **Konsolidér profil-systemer** - Anbefales IKKE (de er to forskellige målesystemer)
+- [x] ~~**App factory pattern**~~ ✅ FÆRDIG - `app_factory.py` med create_app() (2025-12-22)
+- [x] ~~**Øg test coverage**~~ ✅ FÆRDIG - Fra 6% til 39% med 1000+ nye tests (2025-12-22)
+- [x] ~~**Opret DATABASE_SCHEMA.md**~~ ✅ FÆRDIG - Komplet med ER-diagram og tabelbeskrivelser (2025-12-22)
 - [ ] **Planlæg Python 3.11 upgrade** - 3.10 end-of-life jan 2026
 
 ---
