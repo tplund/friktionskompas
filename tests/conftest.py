@@ -21,6 +21,8 @@ def _init_test_db(db_path):
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys=ON")
+    # Use DELETE journal mode for tests (more deterministic than WAL)
+    conn.execute("PRAGMA journal_mode=DELETE")
 
     # Customers table (using TEXT id like production)
     conn.execute("""
@@ -218,7 +220,8 @@ def _init_test_db(db_path):
             layer TEXT,
             sequence INTEGER DEFAULT 0,
             reverse_scored INTEGER DEFAULT 0,
-            respondent_types TEXT DEFAULT 'medarbejder,leder'
+            respondent_types TEXT DEFAULT 'medarbejder,leder',
+            question_type TEXT DEFAULT 'sensitivity'
         )
     """)
 
@@ -457,6 +460,55 @@ def _seed_test_data(db_path):
         VALUES ('unit-test-2', 'Test Afdeling', 'cust-test1', 'unit-test-1', 1)
     """)
 
+    # Create default domain (required for app startup)
+    conn.execute("""
+        INSERT INTO domains (id, domain, customer_id, default_language, is_active)
+        VALUES ('dom-default', 'localhost', NULL, 'da', 1)
+    """)
+    conn.execute("""
+        INSERT INTO domains (id, domain, customer_id, default_language, is_active)
+        VALUES ('dom-test1', 'test.dk', 'cust-test1', 'da', 1)
+    """)
+
+    # Add basic translations
+    translations = [
+        ('btn.create', 'da', 'Opret'), ('btn.create', 'en', 'Create'),
+        ('btn.save', 'da', 'Gem'), ('btn.save', 'en', 'Save'),
+        ('btn.delete', 'da', 'Slet'), ('btn.delete', 'en', 'Delete'),
+        ('trend.title', 'da', 'Trendanalyse'), ('trend.title', 'en', 'Trend Analysis'),
+        ('trend.subtitle', 'da', 'Se udvikling over tid'), ('trend.subtitle', 'en', 'View development over time'),
+        ('nav.my_account', 'da', 'Min konto'), ('nav.my_account', 'en', 'My Account'),
+        ('nav.logout', 'da', 'Log ud'), ('nav.logout', 'en', 'Log out'),
+    ]
+    for key, lang, value in translations:
+        conn.execute("INSERT INTO translations (key, language, value) VALUES (?, ?, ?)", (key, lang, value))
+
+    # Add profil_questions seed data
+    profil_questions = [
+        ('TRYGHED', 'Jeg føler mig tryg på arbejdet', 'I feel safe at work', 'baseline', 1, 0, 'sensitivity'),
+        ('MENING', 'Mit arbejde giver mening', 'My work is meaningful', 'baseline', 2, 0, 'sensitivity'),
+        ('KAN', 'Jeg kan udføre mine opgaver', 'I can perform my tasks', 'baseline', 3, 0, 'sensitivity'),
+        ('BESVÆR', 'Jeg oplever besvær i arbejdet', 'I experience difficulties at work', 'baseline', 4, 1, 'sensitivity'),
+    ]
+    for field, text_da, text_en, layer, seq, reverse, qtype in profil_questions:
+        conn.execute("""
+            INSERT INTO profil_questions (field, text_da, text_en, layer, sequence, reverse_scored, question_type)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (field, text_da, text_en, layer, seq, reverse, qtype))
+
+    # Add baseline questions too
+    questions = [
+        ('TRYGHED', 'Jeg føler mig tryg på arbejdet', 'I feel safe at work', 'baseline', 1, 0),
+        ('MENING', 'Mit arbejde giver mening', 'My work is meaningful', 'baseline', 2, 0),
+        ('KAN', 'Jeg kan udføre mine opgaver', 'I can perform my tasks', 'baseline', 3, 0),
+        ('BESVÆR', 'Jeg oplever besvær i arbejdet', 'I experience difficulties at work', 'baseline', 4, 1),
+    ]
+    for field, text_da, text_en, layer, seq, reverse in questions:
+        conn.execute("""
+            INSERT INTO questions (field, text_da, text_en, layer, sequence, reverse_scored)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (field, text_da, text_en, layer, seq, reverse))
+
     conn.commit()
     conn.close()
 
@@ -468,8 +520,12 @@ _cached_db_path = None
 
 def _reset_database(db_path):
     """Reset database to clean state by dropping and recreating all tables."""
+    import time
+
     conn = sqlite3.connect(db_path)
     conn.execute("PRAGMA foreign_keys=OFF")
+    # Use DELETE journal mode for consistency
+    conn.execute("PRAGMA journal_mode=DELETE")
 
     # Get all tables
     tables = conn.execute(
@@ -487,10 +543,16 @@ def _reset_database(db_path):
     _init_test_db(db_path)
     _seed_test_data(db_path)
 
+    # Ensure database file is fully synced
+    time.sleep(0.05)
+
 
 @pytest.fixture(scope='function')
 def app():
-    """Create application for testing with fresh database per test."""
+    """Create application for testing with fresh database per test.
+
+    The app is cached but the database is reset for each test to ensure isolation.
+    """
     global _cached_app, _cached_db_path
 
     # Create app only once (expensive operation)
@@ -518,6 +580,10 @@ def app():
     else:
         # Reset database to clean state for each test
         _reset_database(_cached_db_path)
+
+    # Ensure environment is still set correctly (paranoia check)
+    os.environ['DB_PATH'] = _cached_db_path
+    os.environ['TESTING'] = 'true'
 
     yield _cached_app
 

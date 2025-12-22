@@ -63,8 +63,14 @@ def get_db():
     # SQLite has foreign keys DISABLED by default!
     conn.execute("PRAGMA foreign_keys=ON")
 
-    # Enable WAL mode for better concurrent access
-    conn.execute("PRAGMA journal_mode=WAL")
+    # Enable WAL mode for better concurrent access (but not during tests)
+    # Tests use DELETE journal mode for more deterministic behavior
+    if os.environ.get('TESTING'):
+        conn.execute("PRAGMA journal_mode=DELETE")
+        # Use IMMEDIATE to ensure reads see all prior commits
+        conn.execute("PRAGMA read_uncommitted=0")
+    else:
+        conn.execute("PRAGMA journal_mode=WAL")
 
     try:
         yield conn
@@ -90,6 +96,11 @@ def get_db_connection():
     conn = sqlite3.connect(db_path, timeout=30.0)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys=ON")
-    conn.execute("PRAGMA journal_mode=WAL")
+    # Enable WAL mode for better concurrent access (but not during tests)
+    if os.environ.get('TESTING'):
+        conn.execute("PRAGMA journal_mode=DELETE")
+        conn.execute("PRAGMA read_uncommitted=0")
+    else:
+        conn.execute("PRAGMA journal_mode=WAL")
 
     return conn

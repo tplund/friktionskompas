@@ -9,10 +9,20 @@ from datetime import datetime, timedelta
 from unittest.mock import patch, Mock
 
 
+def _create_test_connection(db_path):
+    """Create a sqlite3 connection to the test database."""
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
 @pytest.fixture
 def test_db(tmp_path):
     """Create a temporary test database with audit and email tables."""
     db_path = str(tmp_path / "test_retention.db")
+
+    # Save original DB_PATH to restore later
+    original_db_path = os.environ.get('DB_PATH')
 
     # Set environment to use test db
     os.environ['DB_PATH'] = db_path
@@ -52,11 +62,22 @@ def test_db(tmp_path):
     conn.commit()
     conn.close()
 
-    yield db_path
+    # Mock get_db_connection to use our test database
+    with patch('data_retention.get_db_connection', lambda: _create_test_connection(db_path)):
+        yield db_path
 
-    # Cleanup
-    if os.path.exists(db_path):
-        os.remove(db_path)
+    # Cleanup - use try/except for Windows compatibility
+    try:
+        if os.path.exists(db_path):
+            os.remove(db_path)
+    except PermissionError:
+        pass  # Windows may hold the file lock
+
+    # Restore original DB_PATH
+    if original_db_path is not None:
+        os.environ['DB_PATH'] = original_db_path
+    elif 'DB_PATH' in os.environ:
+        del os.environ['DB_PATH']
 
 
 class TestEmailLogsCleanup:
@@ -458,8 +479,8 @@ class TestAuditLogging:
         conn.commit()
         conn.close()
 
-        # Mock audit.log_action to avoid importing entire audit module
-        with patch('data_retention.log_action') as mock_log:
+        # Mock audit.log_action - the import happens inside the function
+        with patch('audit.log_action') as mock_log:
             from data_retention import cleanup_email_logs
 
             result = cleanup_email_logs(days=90)
@@ -473,7 +494,7 @@ class TestAuditLogging:
 
     def test_cleanup_no_audit_when_nothing_deleted(self, test_db):
         """Test that no audit entry is created when nothing is deleted."""
-        with patch('data_retention.log_action') as mock_log:
+        with patch('audit.log_action') as mock_log:
             from data_retention import cleanup_email_logs
 
             result = cleanup_email_logs(days=90)

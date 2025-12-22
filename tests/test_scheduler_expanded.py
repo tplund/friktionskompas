@@ -10,10 +10,21 @@ from datetime import datetime, timedelta
 from unittest.mock import Mock, patch, MagicMock
 
 
+def _create_test_connection(db_path):
+    """Create a sqlite3 connection to the test database."""
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys=ON")
+    return conn
+
+
 @pytest.fixture
 def test_db(tmp_path):
     """Create a temporary test database with all necessary tables."""
     db_path = str(tmp_path / "test_scheduler.db")
+
+    # Save original DB_PATH to restore later
+    original_db_path = os.environ.get('DB_PATH')
 
     # Set environment to use test db
     os.environ['DB_PATH'] = db_path
@@ -111,11 +122,22 @@ def test_db(tmp_path):
     conn.commit()
     conn.close()
 
-    yield db_path
+    # Mock get_db_connection to use our test database
+    with patch('scheduler.get_db_connection', lambda: _create_test_connection(db_path)):
+        yield db_path
 
-    # Cleanup
-    if os.path.exists(db_path):
-        os.remove(db_path)
+    # Cleanup - use try/except for Windows compatibility
+    try:
+        if os.path.exists(db_path):
+            os.remove(db_path)
+    except PermissionError:
+        pass  # Windows may hold the file lock
+
+    # Restore original DB_PATH
+    if original_db_path is not None:
+        os.environ['DB_PATH'] = original_db_path
+    elif 'DB_PATH' in os.environ:
+        del os.environ['DB_PATH']
 
 
 class TestGetPendingAssessments:
@@ -264,10 +286,10 @@ class TestSendScheduledAssessment:
         conn.commit()
         conn.close()
 
-        # Mock dependencies
-        with patch('scheduler.generate_tokens_for_assessment') as mock_tokens, \
-             patch('scheduler.get_unit_contacts') as mock_contacts, \
-             patch('scheduler.send_assessment_batch') as mock_send:
+        # Mock dependencies - these are imported inside the function
+        with patch('db_hierarchical.generate_tokens_for_assessment') as mock_tokens, \
+             patch('db_hierarchical.get_unit_contacts') as mock_contacts, \
+             patch('mailjet_integration.send_assessment_batch') as mock_send:
 
             mock_tokens.return_value = {
                 'unit-1': [{'token': 'token-123', 'unit_id': 'unit-1'}]
@@ -302,7 +324,7 @@ class TestSendScheduledAssessment:
         conn.commit()
         conn.close()
 
-        with patch('scheduler.generate_tokens_for_assessment') as mock_tokens:
+        with patch('db_hierarchical.generate_tokens_for_assessment') as mock_tokens:
             mock_tokens.return_value = {}  # No tokens
 
             from scheduler import send_scheduled_assessment
@@ -315,7 +337,7 @@ class TestSendScheduledAssessment:
 
     def test_send_scheduled_assessment_error_handling(self, test_db):
         """Test that errors are caught and logged."""
-        with patch('scheduler.generate_tokens_for_assessment') as mock_tokens:
+        with patch('db_hierarchical.generate_tokens_for_assessment') as mock_tokens:
             mock_tokens.side_effect = Exception('Token generation failed')
 
             from scheduler import send_scheduled_assessment
@@ -331,7 +353,7 @@ class TestDailyCleanup:
 
     def test_run_daily_cleanup(self, test_db):
         """Test running daily cleanup job."""
-        with patch('scheduler.run_all_cleanups') as mock_cleanup:
+        with patch('data_retention.run_all_cleanups') as mock_cleanup:
             mock_cleanup.return_value = {
                 'total_deleted': 10,
                 'email_logs': {'deleted': 5},
@@ -511,7 +533,7 @@ class TestErrorHandling:
 
     def test_run_daily_cleanup_error(self, test_db):
         """Test that run_daily_cleanup handles errors gracefully."""
-        with patch('scheduler.run_all_cleanups') as mock_cleanup:
+        with patch('data_retention.run_all_cleanups') as mock_cleanup:
             mock_cleanup.side_effect = Exception('Cleanup failed')
 
             from scheduler import run_daily_cleanup
@@ -581,10 +603,10 @@ class TestSchedulerIntegration:
         conn.commit()
         conn.close()
 
-        # Mock external dependencies
-        with patch('scheduler.generate_tokens_for_assessment') as mock_tokens, \
-             patch('scheduler.get_unit_contacts') as mock_contacts, \
-             patch('scheduler.send_assessment_batch') as mock_send:
+        # Mock external dependencies - these are imported inside the function
+        with patch('db_hierarchical.generate_tokens_for_assessment') as mock_tokens, \
+             patch('db_hierarchical.get_unit_contacts') as mock_contacts, \
+             patch('mailjet_integration.send_assessment_batch') as mock_send:
 
             mock_tokens.return_value = {'unit-1': [{'token': 'token-123'}]}
             mock_contacts.return_value = [{'email': 'test@example.com'}]

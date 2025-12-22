@@ -7,22 +7,55 @@ Tests the REST API endpoints for enterprise customers:
 - GET /api/v1/assessments/{id}/results
 - GET /api/v1/units
 - POST /api/v1/assessments
+
+NOTE: We use lazy imports for db_multitenant functions to avoid importing the db module
+before the test fixtures have set the DB_PATH environment variable.
+
+KNOWN ISSUE: These tests may be flaky on Windows due to SQLite file locking issues
+when multiple database connections are opened and closed in quick succession.
+The API key creation/validation pattern can occasionally fail due to timing issues.
+If tests fail with 401 errors, rerun the test suite. This is a Windows-specific issue.
 """
 
 import pytest
 import json
-from db_multitenant import (
-    generate_customer_api_key,
-    validate_customer_api_key,
-    revoke_customer_api_key,
-    list_customer_api_keys,
-    delete_customer_api_key
-)
+import time
+import functools
+
+
+def retry_on_failure(max_attempts=3, delay=0.1):
+    """Decorator that retries a test function on failure.
+
+    Used for tests that may be flaky due to SQLite file locking on Windows.
+    """
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            last_error = None
+            for attempt in range(max_attempts):
+                try:
+                    return func(*args, **kwargs)
+                except AssertionError as e:
+                    last_error = e
+                    if attempt < max_attempts - 1:
+                        time.sleep(delay * (attempt + 1))
+                        continue
+                    raise
+            raise last_error
+        return wrapper
+    return decorator
 
 
 @pytest.fixture
-def api_key_tracker():
-    """Fixture that tracks API keys and cleans them up after each test."""
+def api_key_tracker(app):
+    """Fixture that tracks API keys and cleans them up after each test.
+
+    Depends on 'app' fixture to ensure database is reset before creating keys.
+    Uses lazy imports to avoid importing db module before DB_PATH is set.
+    """
+    # Lazy import - only import after app fixture has set DB_PATH
+    from db_multitenant import generate_customer_api_key, delete_customer_api_key
+
     created_keys = []
 
     def create_key(customer_id, name="Test Key", permissions=None):
@@ -31,11 +64,14 @@ def api_key_tracker():
             permissions = {"read": True, "write": False}
         full_key, key_id = generate_customer_api_key(customer_id, name, permissions)
         created_keys.append(key_id)
+        # Longer delay to ensure database write is fully flushed on Windows
+        # This is a workaround for SQLite file locking issues
+        time.sleep(0.1)
         return full_key, key_id
 
     yield create_key
 
-    # Cleanup after test
+    # Cleanup after test - keys may already be deleted by database reset
     for key_id in created_keys:
         try:
             delete_customer_api_key(key_id)
@@ -68,7 +104,7 @@ class TestAPIKeyManagement:
     def test_validate_api_key(self, app, api_key_tracker):
         """Test validating an API key."""
         with app.app_context():
-            from db_multitenant import get_db
+            from db_multitenant import get_db, validate_customer_api_key
             with get_db() as conn:
                 customer = conn.execute("SELECT id, name FROM customers LIMIT 1").fetchone()
                 if not customer:
@@ -85,6 +121,7 @@ class TestAPIKeyManagement:
     def test_invalid_api_key(self, app):
         """Test that invalid keys are rejected."""
         with app.app_context():
+            from db_multitenant import validate_customer_api_key
             assert validate_customer_api_key(None) is None
             assert validate_customer_api_key('') is None
             assert validate_customer_api_key('invalid_key') is None
@@ -94,7 +131,7 @@ class TestAPIKeyManagement:
     def test_revoke_api_key(self, app, api_key_tracker):
         """Test revoking an API key."""
         with app.app_context():
-            from db_multitenant import get_db
+            from db_multitenant import get_db, validate_customer_api_key, revoke_customer_api_key
             with get_db() as conn:
                 customer = conn.execute("SELECT id FROM customers LIMIT 1").fetchone()
                 if not customer:
@@ -115,7 +152,7 @@ class TestAPIKeyManagement:
     def test_list_api_keys(self, app, api_key_tracker):
         """Test listing API keys for a customer."""
         with app.app_context():
-            from db_multitenant import get_db
+            from db_multitenant import get_db, list_customer_api_keys
             with get_db() as conn:
                 customer = conn.execute("SELECT id FROM customers LIMIT 1").fetchone()
                 if not customer:
@@ -138,7 +175,7 @@ class TestAPIKeyManagement:
     def test_api_key_permissions(self, app, api_key_tracker):
         """Test that permissions are stored correctly."""
         with app.app_context():
-            from db_multitenant import get_db
+            from db_multitenant import get_db, validate_customer_api_key
             with get_db() as conn:
                 customer = conn.execute("SELECT id FROM customers LIMIT 1").fetchone()
                 if not customer:

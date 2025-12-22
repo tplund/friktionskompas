@@ -460,10 +460,12 @@ class TestGetUnitStatsWithKnownData:
         with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as f:
             temp_db = f.name
 
-        # Temporarily override DB_PATH
+        # Temporarily override DB_PATH (both module variable and environment)
         import db_hierarchical
         original_path = db_hierarchical.DB_PATH
+        original_env_path = os.environ.get('DB_PATH')
         db_hierarchical.DB_PATH = temp_db
+        os.environ['DB_PATH'] = temp_db
 
         try:
             conn = sqlite3.connect(temp_db)
@@ -558,8 +560,12 @@ class TestGetUnitStatsWithKnownData:
                     f"Expected response_count > 0 for {stat['field']}"
 
         finally:
-            # Restore original path
+            # Restore original paths
             db_hierarchical.DB_PATH = original_path
+            if original_env_path:
+                os.environ['DB_PATH'] = original_env_path
+            elif 'DB_PATH' in os.environ:
+                del os.environ['DB_PATH']
             # Clean up temp file
             if os.path.exists(temp_db):
                 os.unlink(temp_db)
