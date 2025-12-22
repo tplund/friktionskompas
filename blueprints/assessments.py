@@ -647,15 +647,10 @@ def assessment_pdf_export(assessment_id):
 
         # Generate PDF
         try:
-            from xhtml2pdf import pisa
+            from weasyprint import HTML
 
             pdf_buffer = BytesIO()
-            pisa_status = pisa.CreatePDF(html, dest=pdf_buffer)
-
-            if pisa_status.err:
-                flash("Fejl ved PDF generering", 'error')
-                return redirect(url_for('assessments.view_assessment', assessment_id=assessment_id))
-
+            HTML(string=html).write_pdf(pdf_buffer)
             pdf_buffer.seek(0)
 
             # Create filename

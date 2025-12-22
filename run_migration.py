@@ -6,22 +6,10 @@ import sqlite3
 import os
 from contextlib import contextmanager
 
-DB_PATH = "friktionskompas_v3.db"
-MIGRATIONS_DIR = "migrations"
+# Import centralized database functions
+from db import get_db, DB_PATH
 
-@contextmanager
-def get_db():
-    """Context manager for database connection"""
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    try:
-        yield conn
-        conn.commit()
-    except Exception as e:
-        conn.rollback()
-        raise e
-    finally:
-        conn.close()
+MIGRATIONS_DIR = "migrations"
 
 
 def init_migration_tracking():

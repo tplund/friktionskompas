@@ -16,8 +16,8 @@ import secrets
 from datetime import datetime, timedelta
 import random
 
-# Database connection
-DB_PATH = 'friktionskompas_v3.db'
+# Import centralized database functions
+from db import get_db_connection as get_db, DB_PATH
 
 # Esbjerg customer ID (eksisterende)
 ESBJERG_CUSTOMER_ID = 'cust-SHKIi10cOe8'
@@ -31,12 +31,6 @@ QUESTIONS = {
 }
 
 REVERSE_SCORED = {95, 99, 90, 94, 101, 106, 107, 108, 112}
-
-def get_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.execute('PRAGMA foreign_keys=ON')
-    conn.row_factory = sqlite3.Row
-    return conn
 
 def generate_id(prefix=''):
     return f"{prefix}{secrets.token_urlsafe(8)}"
