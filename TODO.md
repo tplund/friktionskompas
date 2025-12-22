@@ -70,7 +70,7 @@ Grundig gennemgang af hele systemet før go-live.
 - [x] ~~**Storage mode konfiguration** - `storage_mode` kolonne på assessment_types (local/server/both)~~
 - [x] ~~**Admin UI** - Viser storage mode i /admin/assessment-types~~
 - [ ] **Opt-in server storage** - Valgfrit for brugere der vil have backup (fremtidig)
-- [ ] **Cookie consent** - Opdater privacy notice for localStorage brug (fremtidig)
+- [x] ~~**Cookie consent** - Google Consent Mode v2 med privacy notice~~ (2025-12-22)
 - [x] ~~**B2B uændret** - Enterprise kunder gemmer stadig centralt~~
 
 **Storage modes:**
@@ -135,8 +135,8 @@ Grundig gennemgang af hele systemet før go-live.
 - [x] ~~Secret key fra environment variable~~
 - [x] ~~**Superadmin rolle** - Global admin der kan se alle kunder/domæner~~
 - [x] ~~**Branding side** - Admin kan redigere branding for egne domæner~~
-- [ ] CSRF protection (deferred til produktion)
-- [ ] Rate limiting på login (deferred til produktion)
+- [x] ~~CSRF protection~~ (Flask-WTF implementeret 2025-12-22)
+- [x] ~~Rate limiting på login~~ (Flask-Limiter implementeret 2025-12-22)
 
 ### Admin API ✅ FÆRDIG
 - [x] ~~**Intern Admin API** - API endpoints til automatiserede admin-operationer~~
@@ -146,12 +146,13 @@ Grundig gennemgang af hele systemet før go-live.
   - `/admin/seed-translations` - Seed oversættelser
   - `/api/admin/clear-cache` - Ryd alle caches
 - [x] ~~**Dokumentation i CLAUDE.md** - API brug og eksempler~~
-- [ ] **API sikkerhed** - Beskyttelse mod brute force og misbrug
-  - Rate limiting på API endpoints (max requests per minute)
-  - Brute force protection (lockout efter X fejlede forsøg)
-  - API key rotation mulighed
-  - Audit logging af alle API kald
-  - IP whitelist option for enterprise
+- [x] ~~**API sikkerhed** - Beskyttelse mod brute force og misbrug~~ (2025-12-22)
+  - [x] Rate limiting på API endpoints (100/min GET, 20/min POST)
+  - [x] Security headers (CSP, HSTS, X-Frame-Options, etc.)
+  - [x] CORS konfiguration
+  - [x] Secure session cookies
+  - [ ] API key rotation UI (fremtidig)
+  - [ ] IP whitelist option for enterprise (fremtidig)
 
 ### Kunde API ✅ FÆRDIG
 - [x] ~~**Kunde-facing REST API** - Giv enterprise-kunder mulighed for at integrere med egne systemer~~
@@ -162,7 +163,7 @@ Grundig gennemgang af hele systemet før go-live.
   - GET `/api/v1/units` - Organisationsoversigt
   - POST `/api/v1/assessments` - Opret ny måling
 - [x] ~~**API key management** - Admin UI til oprettelse/rotation af API keys~~ (`/admin/api-keys`)
-- [ ] **API dokumentation** - OpenAPI/Swagger spec (fremtidig)
+- [x] ~~**API dokumentation**~~ - OpenAPI spec + Swagger UI (`/api/docs`) + `API_DOCUMENTATION.md` (2025-12-22)
 - [ ] **Webhook support** - Notifikationer ved events (fremtidig)
 
 **Formål:** Enterprise-kunder kan integrere Friktionskompasset med deres HR-systemer, Power BI dashboards, etc.
@@ -202,7 +203,7 @@ Bulk data håndtering til forskning, analyse og integration.
 
 **Formål:** Muliggør forskning, benchmarking og brug af data uden lock-in.
 
-### GDPR & DPO-overblik ✅ DELVIST FÆRDIG
+### GDPR & DPO-overblik ✅ FÆRDIG (2025-12-22)
 Compliance-features der gør det nemt for kunder at dokumentere.
 
 - [x] ~~**DPO Dashboard** - Samlet overblik for Data Protection Officers~~ (`/admin/gdpr`)
@@ -210,10 +211,12 @@ Compliance-features der gør det nemt for kunder at dokumentere.
   - Data per kunde visning
   - Datatyper og formål
 - [x] ~~**Sletning som feature** - Admin kan slette kundedata komplet~~ (GDPR sletning)
-- [ ] **Auto-DPA** - Generer databehandleraftale med kundeinfo (fremtidig)
-- [ ] **Underdatabehandlere** - Live liste med formål, datatyper, region (fremtidig)
-- [ ] **Retention-regler** - Auto-sletning efter X måneder (fremtidig)
-- [ ] **Bruger-initieret sletning** - Self-service sletning med eksport (fremtidig)
+- [x] ~~**Auto-DPA** - Generer databehandleraftale med kundeinfo~~ (`/admin/dpa/<customer_id>`) (2025-12-22)
+- [x] ~~**Underdatabehandlere** - Live liste med formål, datatyper, region~~ (i DPA template) (2025-12-22)
+- [x] ~~**Retention-regler** - Auto-sletning efter X måneder~~ (`data_retention.py`, daglig cleanup) (2025-12-22)
+- [x] ~~**Bruger-initieret sletning** - Self-service sletning med eksport~~ (`/my-data/export`, `/admin/my-account/delete`) (2025-12-22)
+- [x] ~~**Privacy policy** - GDPR-compliant privacy side~~ (`/privacy`) (2025-12-22)
+- [x] ~~**Email unsubscribe** - List-Unsubscribe headers og opt-out~~ (2025-12-22)
 
 **Formål:** Compliance uden friktion. DPO'er kan dokumentere alt på 5 minutter.
 
@@ -540,24 +543,25 @@ Baseret på fuld teknisk audit. Se `docs/AUDIT_2025-12-20.md` for detaljer.
 - [x] ~~**survey_app.py dead code** - Fjernet ubrugt fil~~ (fikset 2025-12-20)
 
 ### 🟡 Gør Snart (inden 1 måned)
-- [ ] **Opdel admin_app.py i blueprints** - 8,400 linjer i én fil er for meget
-  - [x] auth_helpers.py - Shared auth decorators (login_required, admin_required, etc.)
-  - [x] template_helpers.py - Shared template helpers (get_score_class, etc.)
-  - [x] blueprints/public.py - Landing, robots.txt, sitemap (6 routes)
-  - [x] blueprints/api_admin.py - Admin API endpoints (5 routes)
-  - [x] blueprints/api_customer.py - Customer REST API (6 routes)
-  - [x] blueprints/auth.py - Login, logout, OAuth, register (10 routes)
-  - [ ] blueprints/admin_core.py - Dashboard, views (pending)
-  - [ ] blueprints/assessments.py - Assessment CRUD (pending)
-  - [ ] blueprints/units.py - Unit management (pending)
-  - [ ] blueprints/customers.py - Customer management (pending)
-  - [ ] Registrer blueprints og fjern routes fra admin_app.py (pending)
-- [ ] **Centralisér get_db() i db.py** - Duplikeret i 4 moduler
-- [ ] **Fix N+1 query i get_assessment_overview()** - 20-30 queries → 2-3
-- [ ] **Tilføj caching til get_detailed_breakdown()** - TTL: 300 sek
-- [ ] **Opret DEPLOYMENT_GUIDE.md** - Trin-for-trin Render deployment
-- [ ] **Opret API_DOCUMENTATION.md** - Alle endpoints med request/response
-- [ ] **Erstat xhtml2pdf med WeasyPrint** - xhtml2pdf er deprecated
+- [x] ~~**Opdel admin_app.py i blueprints**~~ ✅ FÆRDIG (2025-12-22)
+  - [x] auth_helpers.py - Shared auth decorators
+  - [x] template_helpers.py - Shared template helpers
+  - [x] blueprints/public.py - Landing, robots.txt, sitemap
+  - [x] blueprints/api_admin.py - Admin API endpoints
+  - [x] blueprints/api_customer.py - Customer REST API
+  - [x] blueprints/auth.py - Login, logout, OAuth, register
+  - [x] blueprints/admin_core.py - Dashboard, GDPR, audit log
+  - [x] blueprints/assessments.py - Assessment CRUD
+  - [x] blueprints/units.py - Unit management
+  - [x] blueprints/customers.py - Customer/domain management
+  - [x] blueprints/export.py - Backup/export
+  - [x] blueprints/dev_tools.py - Development tools
+- [x] ~~**Centralisér get_db() i db.py**~~ ✅ FÆRDIG - Ny `db.py` med get_db() og get_db_connection() (2025-12-22)
+- [x] ~~**Fix N+1 query i get_assessment_overview()**~~ ✅ FÆRDIG - Optimized with CTEs (2025-12-22)
+- [x] ~~**Tilføj caching til get_detailed_breakdown()**~~ ✅ FÆRDIG - @cached(ttl=300) decorator (2025-12-22)
+- [x] ~~**Opret DEPLOYMENT_GUIDE.md**~~ ✅ FÆRDIG - `DEPLOYMENT_CHECKLIST.md` (2025-12-22)
+- [x] ~~**Opret API_DOCUMENTATION.md**~~ ✅ FÆRDIG (2025-12-22)
+- [x] ~~**Erstat xhtml2pdf med WeasyPrint**~~ ✅ FÆRDIG - Replaced deprecated library (2025-12-22)
 
 ### 🟢 Kan Vente (inden 3 måneder)
 - [ ] **Implementér struktureret logging** - Python logging modul med levels
