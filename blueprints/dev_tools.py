@@ -203,8 +203,8 @@ def admin_migrate_7point():
         return mapping.get(old_score, old_score)
 
     try:
+        # Step 1: Check if already migrated and get DB path
         with get_db() as conn:
-            # Step 1: Check if already migrated
             max_score = conn.execute("SELECT MAX(score) FROM responses WHERE score IS NOT NULL").fetchone()[0]
             if max_score and max_score > 5:
                 results['error'] = f'Already migrated (max score = {max_score})'
@@ -213,19 +213,17 @@ def admin_migrate_7point():
                 flash(f'Allerede migreret (max score = {max_score})', 'warning')
                 return redirect(request.referrer or url_for('admin_core.admin_home'))
 
-            # Step 2: Create backup
             db_path = conn.execute("PRAGMA database_list").fetchone()[2]
-            backup_file = f"{db_path}.backup_7point_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
-            # Close connection temporarily to copy file
-            conn.close()
-            shutil.copy2(db_path, backup_file)
-            results['backup_file'] = backup_file
+        # Step 2: Create backup (outside of connection)
+        backup_file = f"{db_path}.backup_7point_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        shutil.copy2(db_path, backup_file)
+        results['backup_file'] = backup_file
 
-            # Reconnect
-            conn = get_db().__enter__()
+        # Step 3: Reconnect and do the migration
+        with get_db() as conn:
 
-            # Step 3: Migrate responses table
+            # Migrate responses table
             before_stats = conn.execute("""
                 SELECT COUNT(*), MIN(score), MAX(score), AVG(score)
                 FROM responses WHERE score IS NOT NULL
@@ -254,7 +252,7 @@ def admin_migrate_7point():
                 'after': {'min': after_stats[1], 'max': after_stats[2], 'avg': round(after_stats[3], 2) if after_stats[3] else None}
             }
 
-            # Step 4: Migrate profil_responses table (if exists)
+            # Migrate profil_responses table (if exists)
             table_exists = conn.execute("""
                 SELECT name FROM sqlite_master WHERE type='table' AND name='profil_responses'
             """).fetchone()
@@ -289,7 +287,7 @@ def admin_migrate_7point():
                         'after': {'min': after_stats[1], 'max': after_stats[2], 'avg': round(after_stats[3], 2) if after_stats[3] else None}
                     }
 
-            # Step 5: Migrate situation_responses table (if exists and has data)
+            # Migrate situation_responses table (if exists and has data)
             table_exists = conn.execute("""
                 SELECT name FROM sqlite_master WHERE type='table' AND name='situation_responses'
             """).fetchone()
