@@ -10,25 +10,13 @@ import os
 from datetime import datetime, timedelta
 from typing import List, Dict
 
-# Database path (same logic as db_hierarchical.py)
-RENDER_DISK_PATH = "/var/data"
-if os.path.exists(RENDER_DISK_PATH):
-    DB_PATH = os.path.join(RENDER_DISK_PATH, "friktionskompas_v3.db")
-else:
-    DB_PATH = "friktionskompas_v3.db"
+# Import centralized database functions
+from db import get_db_connection, DB_PATH
 
 # Global scheduler state
 _scheduler_thread = None
 _scheduler_running = False
 _last_cleanup_date = None  # Track last cleanup run (date only)
-
-
-def get_db_connection():
-    """Get database connection with foreign keys enabled"""
-    conn = sqlite3.connect(DB_PATH, timeout=30.0)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys=ON")
-    return conn
 
 
 def get_pending_scheduled_assessments() -> List[Dict]:

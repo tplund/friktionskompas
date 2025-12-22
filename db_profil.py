@@ -9,24 +9,8 @@ from contextlib import contextmanager
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 
-# Use persistent disk on Render, local file otherwise
-RENDER_DISK_PATH = "/var/data"
-if os.path.exists(RENDER_DISK_PATH):
-    DB_PATH = os.path.join(RENDER_DISK_PATH, "friktionskompas_v3.db")
-else:
-    DB_PATH = "friktionskompas_v3.db"
-
-@contextmanager
-def get_db():
-    """Context manager for database connection"""
-    conn = sqlite3.connect(DB_PATH, timeout=30.0)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL")
-    try:
-        yield conn
-        conn.commit()
-    finally:
-        conn.close()
+# Import centralized database functions
+from db import get_db, DB_PATH
 
 
 def init_profil_tables():

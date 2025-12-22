@@ -10,14 +10,8 @@ import sqlite3
 from typing import Any
 import os
 
-# Database path
-DB_PATH = "friktionskompas_v3.db"
-
-def get_db():
-    """Get database connection"""
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
+# Import centralized database functions
+from db import get_db_connection as get_db, DB_PATH
 
 def handle_request(request: dict) -> dict:
     """Handle incoming MCP request"""

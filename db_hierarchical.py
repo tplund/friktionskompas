@@ -9,34 +9,8 @@ from contextlib import contextmanager
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 
-# Use DB_PATH from environment, or persistent disk on Render, or local file
-def _get_db_path():
-    """Determine database path, respecting environment variable."""
-    if 'DB_PATH' in os.environ:
-        return os.environ['DB_PATH']
-    RENDER_DISK_PATH = "/var/data"
-    if os.path.exists(RENDER_DISK_PATH):
-        return os.path.join(RENDER_DISK_PATH, "friktionskompas_v3.db")
-    return "friktionskompas_v3.db"
-
-DB_PATH = _get_db_path()
-
-@contextmanager
-def get_db():
-    """Context manager for database connection"""
-    # Check environment at runtime for test support
-    db_path = os.environ.get('DB_PATH', DB_PATH)
-    conn = sqlite3.connect(db_path, timeout=30.0)
-    conn.row_factory = sqlite3.Row
-    # Enable foreign keys for CASCADE DELETE to work
-    conn.execute("PRAGMA foreign_keys=ON")
-    # Enable WAL mode for better concurrent access
-    conn.execute("PRAGMA journal_mode=WAL")
-    try:
-        yield conn
-        conn.commit()
-    finally:
-        conn.close()
+# Import centralized database functions
+from db import get_db, DB_PATH
 
 
 def migrate_campaign_to_assessment():
@@ -986,58 +960,79 @@ def get_unit_stats(unit_id: str, assessment_id: str, include_children: bool = Tr
 
 
 def get_assessment_overview(assessment_id: str) -> List[Dict]:
-    """Hent overview for alle leaf units i en kampagne"""
+    """Hent overview for alle leaf units i en kampagne
+
+    OPTIMIZED: Uses single query with JOINs instead of N+1 queries.
+    Performance: 20 units: 41 queries → 2 queries (95% reduction)
+    """
     with get_db() as conn:
         # Find target unit for assessment
         assessment = conn.execute(
             "SELECT target_unit_id FROM assessments WHERE id = ?",
             (assessment_id,)
         ).fetchone()
-        
+
         if not assessment:
             return []
-        
-        # Find alle leaf units under target
-        leaf_units = get_leaf_units(assessment['target_unit_id'])
-        
-        # Hent stats for hver
-        overview = []
-        for unit in leaf_units:
-            unit_id = unit['id']
-            
-            # Count tokens sent/used
-            token_stats = conn.execute("""
-                SELECT 
+
+        target_unit_id = assessment['target_unit_id']
+
+        # Single optimized query using CTEs and JOINs to get all data at once
+        # This replaces the N+1 pattern (1 query per unit) with a single batch query
+        overview_data = conn.execute("""
+            WITH RECURSIVE subtree AS (
+                -- Get all units under target (including target itself if it's a leaf)
+                SELECT * FROM organizational_units WHERE id = ?
+                UNION ALL
+                SELECT ou.* FROM organizational_units ou
+                JOIN subtree st ON ou.parent_id = st.id
+            ),
+            leaf_units AS (
+                -- Filter to only leaf units (units with no children)
+                SELECT st.* FROM subtree st
+                LEFT JOIN organizational_units children ON st.id = children.parent_id
+                WHERE children.id IS NULL
+            ),
+            token_stats AS (
+                -- Aggregate token stats per unit
+                SELECT
+                    unit_id,
                     COUNT(*) as tokens_sent,
                     SUM(CASE WHEN is_used = 1 THEN 1 ELSE 0 END) as tokens_used
                 FROM tokens
-                WHERE assessment_id = ? AND unit_id = ?
-            """, (assessment_id, unit_id)).fetchone()
-            
-            # Besvær score
-            besvær = conn.execute("""
-                SELECT 
-                    ROUND(AVG(CASE 
+                WHERE assessment_id = ?
+                GROUP BY unit_id
+            ),
+            besvær_scores AS (
+                -- Calculate besvær score per unit
+                SELECT
+                    r.unit_id,
+                    ROUND(AVG(CASE
                         WHEN q.field = 'BESVÆR' AND q.reverse_scored = 0 THEN r.score
                         WHEN q.field = 'BESVÆR' AND q.reverse_scored = 1 THEN 6 - r.score
-                        ELSE NULL 
+                        ELSE NULL
                     END), 1) as besvær_score
                 FROM responses r
                 JOIN questions q ON r.question_id = q.id
-                WHERE r.assessment_id = ? AND r.unit_id = ? AND q.field = 'BESVÆR'
-            """, (assessment_id, unit_id)).fetchone()
-            
-            overview.append({
-                'id': unit_id,
-                'name': unit['name'],
-                'full_path': unit['full_path'],
-                'sick_leave_percent': unit['sick_leave_percent'],
-                'tokens_sent': token_stats['tokens_sent'] or 0,
-                'tokens_used': token_stats['tokens_used'] or 0,
-                'besvær_score': besvær['besvær_score']
-            })
-        
-        return overview
+                WHERE r.assessment_id = ? AND q.field = 'BESVÆR'
+                GROUP BY r.unit_id
+            )
+            -- Join all CTEs together
+            SELECT
+                lu.id,
+                lu.name,
+                lu.full_path,
+                lu.sick_leave_percent,
+                COALESCE(ts.tokens_sent, 0) as tokens_sent,
+                COALESCE(ts.tokens_used, 0) as tokens_used,
+                bs.besvær_score
+            FROM leaf_units lu
+            LEFT JOIN token_stats ts ON lu.id = ts.unit_id
+            LEFT JOIN besvær_scores bs ON lu.id = bs.unit_id
+            ORDER BY lu.full_path
+        """, (target_unit_id, assessment_id, assessment_id)).fetchall()
+
+        return [dict(row) for row in overview_data]
 
 
 def get_questions():

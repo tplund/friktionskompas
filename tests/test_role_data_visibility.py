@@ -35,40 +35,40 @@ class TestSetupMultipleCustomers:
         conn = sqlite3.connect(db_path)
         conn.execute("PRAGMA foreign_keys=ON")
 
-        # Check if second customer exists, if not create it
-        existing = conn.execute("SELECT id FROM customers WHERE id = 2").fetchone()
-        if not existing:
-            # Create second customer
-            conn.execute("""
-                INSERT INTO customers (id, name, domain, created_at)
-                VALUES (2, 'Herning Kommune', 'herning.dk', datetime('now'))
-            """)
+        # Check if second customer exists (cust-test2), if not it should already exist from conftest
+        # Just ensure we have data for both customers
+        existing = conn.execute("SELECT id FROM customers WHERE id = 'cust-test2'").fetchone()
 
-            # Create organization for second customer
+        # Create organization for second customer if not exists
+        existing_unit = conn.execute("SELECT id FROM organizational_units WHERE id = 'unit-herning-1'").fetchone()
+        if not existing_unit:
             conn.execute("""
                 INSERT INTO organizational_units (id, name, customer_id, parent_id, level)
-                VALUES ('unit-herning-1', 'Herning Hovedkontor', 2, NULL, 0)
+                VALUES ('unit-herning-1', 'Herning Hovedkontor', 'cust-test2', NULL, 0)
             """)
 
             conn.execute("""
                 INSERT INTO organizational_units (id, name, customer_id, parent_id, level)
-                VALUES ('unit-herning-2', 'Herning Afdeling', 2, 'unit-herning-1', 1)
-            """)
-
-            # Create assessment for second customer
-            conn.execute("""
-                INSERT INTO assessments (id, name, period, target_unit_id, customer_id, created_at)
-                VALUES ('assessment-herning-1', 'Herning Q4 2024', 'Q4 2024', 'unit-herning-1', 2, datetime('now'))
+                VALUES ('unit-herning-2', 'Herning Afdeling', 'cust-test2', 'unit-herning-1', 1)
             """)
 
             conn.commit()
 
-        # Ensure first customer has a assessment too
-        existing_camp = conn.execute("SELECT id FROM assessments WHERE customer_id = 1").fetchone()
+        # Create assessment for second customer if not exists
+        existing_assessment = conn.execute("SELECT id FROM assessments WHERE id = 'assessment-herning-1'").fetchone()
+        if not existing_assessment:
+            conn.execute("""
+                INSERT INTO assessments (id, name, period, target_unit_id, customer_id, created_at)
+                VALUES ('assessment-herning-1', 'Herning Q4 2024', 'Q4 2024', 'unit-herning-1', 'cust-test2', datetime('now'))
+            """)
+            conn.commit()
+
+        # Ensure first customer has an assessment too
+        existing_camp = conn.execute("SELECT id FROM assessments WHERE customer_id = 'cust-test1'").fetchone()
         if not existing_camp:
             conn.execute("""
                 INSERT INTO assessments (id, name, period, target_unit_id, customer_id, created_at)
-                VALUES ('assessment-test-1', 'Test Q4 2024', 'Q4 2024', 'unit-test-1', 1, datetime('now'))
+                VALUES ('assessment-test-1', 'Test Q4 2024', 'Q4 2024', 'unit-test-1', 'cust-test1', datetime('now'))
             """)
             conn.commit()
 

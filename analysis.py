@@ -227,13 +227,14 @@ def get_comparison_by_respondent_type(
     return results
 
 
+@cached(ttl=300, prefix="breakdown")
 def get_detailed_breakdown(
     unit_id: str,
     assessment_id: str,
     include_children: bool = True
 ) -> Dict:
     """
-    Komplet breakdown med alle lag og respondent types
+    Komplet breakdown med alle lag og respondent types (cached i 5 minutter)
 
     Returns struktureret data klar til dashboard
     """

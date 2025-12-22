@@ -141,6 +141,7 @@ def invalidate_unit_cache(unit_id: str):
     """Invalider al cache relateret til en organisatorisk enhed"""
     invalidate_prefix(f"stats:")
     invalidate_prefix(f"analysis:")
+    invalidate_prefix(f"breakdown:")
 
 
 # ============================================

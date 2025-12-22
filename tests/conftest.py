@@ -51,7 +51,7 @@ def _init_test_db(db_path):
         )
     """)
 
-    # Organizational units table
+    # Organizational units table (matches production schema)
     conn.execute("""
         CREATE TABLE IF NOT EXISTS organizational_units (
             id TEXT PRIMARY KEY,
@@ -60,6 +60,8 @@ def _init_test_db(db_path):
             parent_id TEXT,
             level INTEGER DEFAULT 0,
             full_path TEXT,
+            leader_name TEXT,
+            leader_email TEXT,
             employee_count INTEGER DEFAULT 0,
             sick_leave_percent REAL DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -157,15 +159,21 @@ def _init_test_db(db_path):
         )
     """)
 
-    # Profil sessions table
+    # Profil sessions table (matches production schema in db_profil.py)
     conn.execute("""
         CREATE TABLE IF NOT EXISTS profil_sessions (
             id TEXT PRIMARY KEY,
-            name TEXT,
-            email TEXT,
+            person_name TEXT,
+            person_email TEXT,
+            context TEXT DEFAULT 'general',
+            measurement_type TEXT DEFAULT 'profile',
+            situation_context TEXT,
+            customer_id TEXT,
             unit_id TEXT,
-            status TEXT DEFAULT 'invited',
+            is_complete INTEGER DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            completed_at TIMESTAMP,
+            FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE,
             FOREIGN KEY (unit_id) REFERENCES organizational_units(id) ON DELETE CASCADE
         )
     """)

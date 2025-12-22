@@ -11,12 +11,8 @@ from datetime import datetime
 from authlib.integrations.flask_client import OAuth
 from flask import session, url_for, redirect, flash, request
 
-# Database path
-RENDER_DISK_PATH = "/var/data"
-if os.path.exists(RENDER_DISK_PATH):
-    DB_PATH = os.path.join(RENDER_DISK_PATH, "friktionskompas_v3.db")
-else:
-    DB_PATH = "friktionskompas_v3.db"
+# Import centralized database functions
+from db import get_db_connection, DB_PATH
 
 # OAuth instance (initialized in init_oauth)
 oauth = OAuth()
@@ -94,12 +90,7 @@ def init_oauth(app):
         )
 
 
-def get_db_connection():
-    """Get database connection"""
-    conn = sqlite3.connect(DB_PATH, timeout=30.0)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys=ON")
-    return conn
+# get_db_connection is now imported from db.py
 
 
 def get_auth_providers_for_domain(domain: str = None) -> Dict:
