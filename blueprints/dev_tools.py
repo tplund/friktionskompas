@@ -220,26 +220,60 @@ def admin_migrate_7point():
         shutil.copy2(db_path, backup_file)
         results['backup_file'] = backup_file
 
-        # Step 3: Reconnect and do the migration
+        # Step 3: Reconnect and do the migration using table recreation
+        # (because CHECK constraints block direct UPDATE)
         with get_db() as conn:
+            conn.execute("PRAGMA foreign_keys=OFF")
 
-            # Migrate responses table
+            # --- RESPONSES TABLE ---
             before_stats = conn.execute("""
                 SELECT COUNT(*), MIN(score), MAX(score), AVG(score)
                 FROM responses WHERE score IS NOT NULL
             """).fetchone()
 
+            # Create new table with 1-7 constraint
             conn.execute("""
-                UPDATE responses SET score = CASE
-                    WHEN score = 1 THEN 1
-                    WHEN score = 2 THEN 3
-                    WHEN score = 3 THEN 4
-                    WHEN score = 4 THEN 6
-                    WHEN score = 5 THEN 7
-                    ELSE score
-                END
-                WHERE score IS NOT NULL
+                CREATE TABLE responses_new (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    assessment_id TEXT NOT NULL,
+                    unit_id TEXT NOT NULL,
+                    question_id INTEGER NOT NULL,
+                    score INTEGER NOT NULL CHECK(score BETWEEN 1 AND 7),
+                    comment TEXT,
+                    category_comment TEXT,
+                    respondent_type TEXT DEFAULT 'employee',
+                    respondent_name TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (assessment_id) REFERENCES assessments(id) ON DELETE CASCADE,
+                    FOREIGN KEY (unit_id) REFERENCES organizational_units(id) ON DELETE CASCADE,
+                    FOREIGN KEY (question_id) REFERENCES questions(id)
+                )
             """)
+
+            # Copy with converted scores
+            conn.execute("""
+                INSERT INTO responses_new (id, assessment_id, unit_id, question_id, score, comment, category_comment, respondent_type, respondent_name, created_at)
+                SELECT id, assessment_id, unit_id, question_id,
+                       CASE
+                           WHEN score = 1 THEN 1
+                           WHEN score = 2 THEN 3
+                           WHEN score = 3 THEN 4
+                           WHEN score = 4 THEN 6
+                           WHEN score = 5 THEN 7
+                           ELSE score
+                       END,
+                       comment, category_comment, respondent_type, respondent_name, created_at
+                FROM responses
+            """)
+
+            conn.execute("DROP TABLE responses")
+            conn.execute("ALTER TABLE responses_new RENAME TO responses")
+
+            # Recreate indexes
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_responses_assessment ON responses(assessment_id)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_responses_unit ON responses(unit_id)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_responses_question ON responses(question_id)")
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_responses_created_at ON responses(created_at)")
 
             after_stats = conn.execute("""
                 SELECT COUNT(*), MIN(score), MAX(score), AVG(score)
@@ -252,7 +286,7 @@ def admin_migrate_7point():
                 'after': {'min': after_stats[1], 'max': after_stats[2], 'avg': round(after_stats[3], 2) if after_stats[3] else None}
             }
 
-            # Migrate profil_responses table (if exists)
+            # --- PROFIL_RESPONSES TABLE ---
             table_exists = conn.execute("""
                 SELECT name FROM sqlite_master WHERE type='table' AND name='profil_responses'
             """).fetchone()
@@ -265,16 +299,33 @@ def admin_migrate_7point():
 
                 if before_stats[0] > 0:
                     conn.execute("""
-                        UPDATE profil_responses SET score = CASE
-                            WHEN score = 1 THEN 1
-                            WHEN score = 2 THEN 3
-                            WHEN score = 3 THEN 4
-                            WHEN score = 4 THEN 6
-                            WHEN score = 5 THEN 7
-                            ELSE score
-                        END
-                        WHERE score IS NOT NULL
+                        CREATE TABLE profil_responses_new (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            session_id TEXT NOT NULL,
+                            question_id INTEGER NOT NULL,
+                            score INTEGER NOT NULL CHECK(score BETWEEN 1 AND 7),
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            FOREIGN KEY (session_id) REFERENCES profil_sessions(id) ON DELETE CASCADE
+                        )
                     """)
+
+                    conn.execute("""
+                        INSERT INTO profil_responses_new (id, session_id, question_id, score, created_at)
+                        SELECT id, session_id, question_id,
+                               CASE
+                                   WHEN score = 1 THEN 1
+                                   WHEN score = 2 THEN 3
+                                   WHEN score = 3 THEN 4
+                                   WHEN score = 4 THEN 6
+                                   WHEN score = 5 THEN 7
+                                   ELSE score
+                               END,
+                               created_at
+                        FROM profil_responses
+                    """)
+
+                    conn.execute("DROP TABLE profil_responses")
+                    conn.execute("ALTER TABLE profil_responses_new RENAME TO profil_responses")
 
                     after_stats = conn.execute("""
                         SELECT COUNT(*), MIN(score), MAX(score), AVG(score)
@@ -287,7 +338,7 @@ def admin_migrate_7point():
                         'after': {'min': after_stats[1], 'max': after_stats[2], 'avg': round(after_stats[3], 2) if after_stats[3] else None}
                     }
 
-            # Migrate situation_responses table (if exists and has data)
+            # --- SITUATION_RESPONSES TABLE ---
             table_exists = conn.execute("""
                 SELECT name FROM sqlite_master WHERE type='table' AND name='situation_responses'
             """).fetchone()
@@ -300,16 +351,35 @@ def admin_migrate_7point():
 
                 if before_stats[0] > 0:
                     conn.execute("""
-                        UPDATE situation_responses SET score = CASE
-                            WHEN score = 1 THEN 1
-                            WHEN score = 2 THEN 3
-                            WHEN score = 3 THEN 4
-                            WHEN score = 4 THEN 6
-                            WHEN score = 5 THEN 7
-                            ELSE score
-                        END
-                        WHERE score IS NOT NULL
+                        CREATE TABLE situation_responses_new (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            token TEXT NOT NULL,
+                            action_id TEXT NOT NULL,
+                            field TEXT NOT NULL,
+                            score INTEGER CHECK(score BETWEEN 1 AND 7),
+                            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                            FOREIGN KEY (token) REFERENCES situation_tokens(token) ON DELETE CASCADE,
+                            FOREIGN KEY (action_id) REFERENCES actions(id) ON DELETE CASCADE
+                        )
                     """)
+
+                    conn.execute("""
+                        INSERT INTO situation_responses_new (id, token, action_id, field, score, created_at)
+                        SELECT id, token, action_id, field,
+                               CASE
+                                   WHEN score = 1 THEN 1
+                                   WHEN score = 2 THEN 3
+                                   WHEN score = 3 THEN 4
+                                   WHEN score = 4 THEN 6
+                                   WHEN score = 5 THEN 7
+                                   ELSE score
+                               END,
+                               created_at
+                        FROM situation_responses
+                    """)
+
+                    conn.execute("DROP TABLE situation_responses")
+                    conn.execute("ALTER TABLE situation_responses_new RENAME TO situation_responses")
 
                     after_stats = conn.execute("""
                         SELECT COUNT(*), MIN(score), MAX(score), AVG(score)
@@ -322,6 +392,7 @@ def admin_migrate_7point():
                         'after': {'min': after_stats[1], 'max': after_stats[2], 'avg': round(after_stats[3], 2) if after_stats[3] else None}
                     }
 
+            conn.execute("PRAGMA foreign_keys=ON")
             conn.commit()
             results['success'] = True
 
