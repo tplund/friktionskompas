@@ -224,7 +224,7 @@ def bulk_export_download():
                     ou.id as unit_id,
                     ou.name as unit_name,
                     q.field,
-                    AVG(CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END) as avg_score,
+                    AVG(CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END) as avg_score,
                     COUNT(DISTINCT r.respondent_name) as response_count
                 FROM responses r
                 JOIN assessments a ON r.assessment_id = a.id

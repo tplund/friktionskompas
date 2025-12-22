@@ -221,8 +221,8 @@
             </p>
             <p style="background: white; padding: 15px; border-radius: 8px; margin-top: 15px;">
                 <strong>Sådan svarer du:</strong><br>
-                <span style="color: #666;">Tænk på din hverdag de seneste 2 uger. Brug skalaen 1–5:</span><br>
-                <span style="color: #666;">1 = Helt uenig · 2 = Uenig · 3 = Hverken/eller · 4 = Enig · 5 = Helt enig</span>
+                <span style="color: #666;">Tænk på din hverdag de seneste 2 uger. Brug skalaen 1–7:</span><br>
+                <span style="color: #666;">1 = Helt uenig · 4 = Neutral · 7 = Helt enig</span>
             </p>
             {% if respondent_type != 'employee' %}
             <p style="background: #fff3e0; padding: 15px; border-radius: 8px; margin-top: 15px; border-left: 4px solid #f57c00;">
@@ -257,7 +257,7 @@
                             </div>
 
                     <div class="scale">
-                        {% for value in [1, 2, 3, 4, 5] %}
+                        {% for value in [1, 2, 3, 4, 5, 6, 7] %}
                         <div class="scale-option">
                             <input type="radio"
                                    id="q{{ question.id }}_{{ value }}"

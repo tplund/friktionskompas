@@ -19,14 +19,14 @@ from friction_engine import (
 
 
 class TestScoreConversion:
-    """Test score <-> percent konvertering"""
+    """Test score <-> percent konvertering (7-point skala)"""
 
     def test_score_to_percent_basic(self):
-        """Test basisk konvertering"""
-        assert score_to_percent(5) == 100.0
-        assert score_to_percent(1) == 20.0
-        assert score_to_percent(2.5) == 50.0
-        assert score_to_percent(3.5) == 70.0
+        """Test basisk konvertering (1-7 skala)"""
+        assert score_to_percent(7) == 100.0
+        assert abs(score_to_percent(1) - 14.3) < 0.1  # 1/7 * 100
+        assert score_to_percent(3.5) == 50.0
+        assert abs(score_to_percent(4.9) - 70.0) < 0.1
 
     def test_score_to_percent_edge_cases(self):
         """Test edge cases"""
@@ -34,57 +34,57 @@ class TestScoreConversion:
         assert score_to_percent(None) == 0.0
 
     def test_percent_to_score(self):
-        """Test omvendt konvertering"""
-        assert percent_to_score(100) == 5.0
-        assert percent_to_score(50) == 2.5
-        assert percent_to_score(70) == 3.5
+        """Test omvendt konvertering (7-point skala)"""
+        assert percent_to_score(100) == 7.0
+        assert percent_to_score(50) == 3.5
+        assert abs(percent_to_score(70) - 4.9) < 0.1
 
     def test_roundtrip(self):
         """Test at konvertering er konsistent"""
-        for score in [1, 2, 3, 4, 5]:
+        for score in [1, 2, 3, 4, 5, 6, 7]:
             pct = score_to_percent(score)
             back = percent_to_score(pct)
             assert abs(back - score) < 0.01
 
 
 class TestAdjustScore:
-    """Test reverse scoring"""
+    """Test reverse scoring (7-point skala: 8 - score)"""
 
     def test_normal_score(self):
         """Ikke-reverse scores forbliver uændrede"""
-        assert adjust_score(5, reverse_scored=False) == 5
+        assert adjust_score(7, reverse_scored=False) == 7
         assert adjust_score(1, reverse_scored=False) == 1
-        assert adjust_score(3, reverse_scored=False) == 3
+        assert adjust_score(4, reverse_scored=False) == 4
 
     def test_reverse_score(self):
-        """Reverse scores inverteres korrekt"""
-        assert adjust_score(5, reverse_scored=True) == 1
-        assert adjust_score(1, reverse_scored=True) == 5
-        assert adjust_score(3, reverse_scored=True) == 3  # 6-3=3
-        assert adjust_score(4, reverse_scored=True) == 2
-        assert adjust_score(2, reverse_scored=True) == 4
+        """Reverse scores inverteres korrekt (8 - score)"""
+        assert adjust_score(7, reverse_scored=True) == 1  # 8-7=1
+        assert adjust_score(1, reverse_scored=True) == 7  # 8-1=7
+        assert adjust_score(4, reverse_scored=True) == 4  # 8-4=4 (midtpunkt)
+        assert adjust_score(6, reverse_scored=True) == 2  # 8-6=2
+        assert adjust_score(2, reverse_scored=True) == 6  # 8-2=6
 
 
 class TestSeverity:
-    """Test severity klassificering"""
+    """Test severity klassificering (7-point skala)"""
 
     def test_severity_high(self):
-        """Scores under 2.5 = høj severity"""
-        assert get_severity(2.4) == Severity.HIGH
+        """Scores under 3.5 = høj severity (~50%)"""
+        assert get_severity(3.4) == Severity.HIGH
         assert get_severity(1.0) == Severity.HIGH
-        assert get_severity(2.0) == Severity.HIGH
+        assert get_severity(2.5) == Severity.HIGH
 
     def test_severity_medium(self):
-        """Scores 2.5-3.5 = medium severity"""
-        assert get_severity(2.5) == Severity.MEDIUM
-        assert get_severity(3.0) == Severity.MEDIUM
-        assert get_severity(3.4) == Severity.MEDIUM
+        """Scores 3.5-4.9 = medium severity (50-70%)"""
+        assert get_severity(3.5) == Severity.MEDIUM
+        assert get_severity(4.0) == Severity.MEDIUM
+        assert get_severity(4.8) == Severity.MEDIUM
 
     def test_severity_low(self):
-        """Scores >= 3.5 = lav severity"""
-        assert get_severity(3.5) == Severity.LOW
-        assert get_severity(4.0) == Severity.LOW
-        assert get_severity(5.0) == Severity.LOW
+        """Scores >= 4.9 = lav severity (>=70%)"""
+        assert get_severity(4.9) == Severity.LOW
+        assert get_severity(5.5) == Severity.LOW
+        assert get_severity(7.0) == Severity.LOW
 
 
 class TestPercentClass:
@@ -110,23 +110,23 @@ class TestPercentClass:
 
 
 class TestSpreadLevel:
-    """Test spredningsklassificering"""
+    """Test spredningsklassificering (7-point skala)"""
 
     def test_spread_low(self):
-        """Std dev < 0.5 = lav"""
+        """Std dev < 0.7 = lav"""
         assert get_spread_level(0.3) == SpreadLevel.LOW
-        assert get_spread_level(0.49) == SpreadLevel.LOW
+        assert get_spread_level(0.69) == SpreadLevel.LOW
 
     def test_spread_medium(self):
-        """Std dev 0.5-1.0 = medium"""
-        assert get_spread_level(0.5) == SpreadLevel.MEDIUM
+        """Std dev 0.7-1.4 = medium"""
         assert get_spread_level(0.7) == SpreadLevel.MEDIUM
-        assert get_spread_level(0.99) == SpreadLevel.MEDIUM
+        assert get_spread_level(1.0) == SpreadLevel.MEDIUM
+        assert get_spread_level(1.39) == SpreadLevel.MEDIUM
 
     def test_spread_high(self):
-        """Std dev >= 1.0 = høj"""
-        assert get_spread_level(1.0) == SpreadLevel.HIGH
-        assert get_spread_level(1.5) == SpreadLevel.HIGH
+        """Std dev >= 1.4 = høj"""
+        assert get_spread_level(1.4) == SpreadLevel.HIGH
+        assert get_spread_level(2.0) == SpreadLevel.HIGH
 
 
 class TestStdDev:
@@ -169,14 +169,14 @@ class TestCalculateFieldScores:
         assert result['MENING'].response_count == 5
 
     def test_reverse_scoring_in_fields(self):
-        """Test at reverse scoring anvendes korrekt"""
+        """Test at reverse scoring anvendes korrekt (8 - score på 7-point)"""
         responses = [
-            {'sequence': 1, 'score': 5, 'reverse_scored': True},  # Bliver 1
-            {'sequence': 2, 'score': 5, 'reverse_scored': True},  # Bliver 1
+            {'sequence': 1, 'score': 7, 'reverse_scored': True},  # Bliver 8-7=1
+            {'sequence': 2, 'score': 7, 'reverse_scored': True},  # Bliver 8-7=1
         ]
         result = calculate_field_scores(responses)
 
-        # Med reverse scoring bør gennemsnittet være 1.0
+        # Med reverse scoring bør gennemsnittet være 1.0 (8-7=1)
         assert result['MENING'].avg_score == 1.0
 
     def test_empty_responses(self):
@@ -189,77 +189,77 @@ class TestCalculateFieldScores:
 
 
 class TestGapAnalysis:
-    """Test gap-analyse mellem respondenttyper"""
+    """Test gap-analyse mellem respondenttyper (7-point skala)"""
 
     def test_calculate_gap_significant(self):
-        """Test signifikant gap (> 1.0)"""
-        gap, severity, misaligned = calculate_gap(2.0, 4.0)
+        """Test signifikant gap (> 1.4)"""
+        gap, severity, misaligned = calculate_gap(2.5, 4.5)
 
         assert gap == 2.0
         assert severity == 'kritisk'
         assert misaligned is True
 
     def test_calculate_gap_moderate(self):
-        """Test moderat gap (0.6-1.0)"""
-        gap, severity, misaligned = calculate_gap(3.0, 3.7)
+        """Test moderat gap (0.84-1.4)"""
+        gap, severity, misaligned = calculate_gap(4.0, 5.0)
 
-        assert gap == 0.7
+        assert gap == 1.0
         assert severity == 'moderat'
         assert misaligned is True
 
     def test_calculate_gap_ok(self):
-        """Test acceptabelt gap (< 0.6)"""
-        gap, severity, misaligned = calculate_gap(3.5, 3.8)
+        """Test acceptabelt gap (< 0.84)"""
+        gap, severity, misaligned = calculate_gap(5.0, 5.5)
 
-        assert gap == 0.3
+        assert gap == 0.5
         assert severity is None
         assert misaligned is False
 
     def test_leader_blocked(self):
-        """Test leder blokeret logik"""
-        # Begge under 3.5 = blokeret
-        assert check_leader_blocked(3.0, 3.0) is True
-        assert check_leader_blocked(2.5, 3.4) is True
+        """Test leder blokeret logik (threshold 4.9)"""
+        # Begge under 4.9 = blokeret
+        assert check_leader_blocked(4.0, 4.0) is True
+        assert check_leader_blocked(3.5, 4.8) is True
 
-        # Én over 3.5 = ikke blokeret
-        assert check_leader_blocked(3.0, 3.5) is False
-        assert check_leader_blocked(3.5, 3.0) is False
+        # Én over 4.9 = ikke blokeret
+        assert check_leader_blocked(4.0, 4.9) is False
+        assert check_leader_blocked(4.9, 4.0) is False
 
-        # Begge over 3.5 = ikke blokeret
-        assert check_leader_blocked(4.0, 4.0) is False
+        # Begge over 4.9 = ikke blokeret
+        assert check_leader_blocked(5.5, 5.5) is False
 
 
 class TestSubstitution:
-    """Test substitutionsanalyse (Kahneman)"""
+    """Test substitutionsanalyse (Kahneman) - 7-point skala"""
 
     def test_substitution_flagged(self):
         """Test at substitution flagges korrekt"""
         # Respondent med høj tid_bias og høj underliggende
         scores = {
-            14: 1,   # Har IKKE tid nok -> TID_MANGEL = 5
-            19: 4,   # Lav mekanisk friktion
-            20: 4,   # Lav mekanisk friktion
-            21: 4,   # Lav mekanisk friktion
-            22: 4,   # Lav mekanisk friktion
-            5: 4,    # Høj tilfredshed
-            10: 4,   # Høj tilfredshed
-            17: 4,   # Høj tilfredshed
-            18: 4,   # Høj tilfredshed
+            14: 1,   # Har IKKE tid nok -> TID_MANGEL = 8-1 = 7
+            19: 6,   # Lav mekanisk friktion
+            20: 6,   # Lav mekanisk friktion
+            21: 6,   # Lav mekanisk friktion
+            22: 6,   # Lav mekanisk friktion
+            5: 6,    # Høj tilfredshed
+            10: 6,   # Høj tilfredshed
+            17: 6,   # Høj tilfredshed
+            18: 6,   # Høj tilfredshed
         }
         result = calculate_substitution_for_respondent(scores)
 
-        # TID_MANGEL = 6-1 = 5
-        # PROC = (4 + (6-4) + (6-4) + (6-4)) / 4 = (4+2+2+2)/4 = 2.5
-        # TID_BIAS = 5 - 2.5 = 2.5 >= 0.6 ✓
-        # UNDERLIGGENDE = max(4,4,4,4) = 4 >= 3.5 ✓
+        # TID_MANGEL = 8-1 = 7
+        # PROC = (6 + (8-6) + (8-6) + (8-6)) / 4 = (6+2+2+2)/4 = 3.0
+        # TID_BIAS = 7 - 3.0 = 4.0 >= 0.84 ✓
+        # UNDERLIGGENDE = max(6,6,6,6) = 6 >= 4.9 ✓
         assert result['flagged'] is True
-        assert result['tid_bias'] >= 0.6
+        assert result['tid_bias'] >= 0.84
 
     def test_substitution_not_flagged(self):
         """Test at normal respondent ikke flagges"""
         # Respondent med lav tid_bias
         scores = {
-            14: 4,   # Har tid nok -> TID_MANGEL = 2
+            14: 6,   # Har tid nok -> TID_MANGEL = 8-6 = 2
             19: 2,   # Høj mekanisk friktion
             20: 2,   # Høj mekanisk friktion
             21: 2,   # Høj mekanisk friktion
@@ -276,16 +276,16 @@ class TestSubstitution:
 
 
 class TestWarnings:
-    """Test warning-generering"""
+    """Test warning-generering (7-point skala)"""
 
     def test_high_friction_warning(self):
         """Test at høj friktion genererer warning"""
         field_scores = {
             'MENING': FieldScore(
                 field='MENING',
-                avg_score=2.0,  # Kritisk lav
+                avg_score=2.5,  # Kritisk lav (under 3.5)
                 response_count=10,
-                std_dev=0.5,
+                std_dev=0.7,
                 spread=SpreadLevel.MEDIUM
             )
         }
@@ -296,14 +296,14 @@ class TestWarnings:
 
     def test_gap_warning(self):
         """Test at gap genererer warning"""
-        field_scores = {'MENING': FieldScore('MENING', 3.0, 10, 0.5, SpreadLevel.LOW)}
+        field_scores = {'MENING': FieldScore('MENING', 4.0, 10, 0.7, SpreadLevel.LOW)}
         gap_analysis = {
             'MENING': GapAnalysis(
                 field='MENING',
-                employee_score=2.0,
-                leader_assess_score=4.0,
-                leader_self_score=4.0,
-                gap=2.0,
+                employee_score=3.0,
+                leader_assess_score=5.5,
+                leader_self_score=5.5,
+                gap=2.5,
                 gap_severity='kritisk',
                 has_misalignment=True,
                 leader_blocked=False
@@ -315,73 +315,73 @@ class TestWarnings:
 
 
 class TestStartHereRecommendation:
-    """Test KKC 'Start Her' anbefaling"""
+    """Test KKC 'Start Her' anbefaling (7-point skala)"""
 
     def test_start_with_tryghed(self):
         """TRYGHED prioriteres først (ny rækkefølge: TRYGHED, MENING, KAN, BESVÆR)"""
         scores = {
-            'MENING': FieldScore('MENING', 2.0, 10, 0.5, SpreadLevel.LOW),
-            'TRYGHED': FieldScore('TRYGHED', 2.0, 10, 0.5, SpreadLevel.LOW),
-            'KAN': FieldScore('KAN', 2.0, 10, 0.5, SpreadLevel.LOW),
-            'BESVÆR': FieldScore('BESVÆR', 2.0, 10, 0.5, SpreadLevel.LOW),
+            'MENING': FieldScore('MENING', 3.0, 10, 0.7, SpreadLevel.LOW),
+            'TRYGHED': FieldScore('TRYGHED', 3.0, 10, 0.7, SpreadLevel.LOW),
+            'KAN': FieldScore('KAN', 3.0, 10, 0.7, SpreadLevel.LOW),
+            'BESVÆR': FieldScore('BESVÆR', 3.0, 10, 0.7, SpreadLevel.LOW),
         }
         assert get_start_here_recommendation(scores) == 'TRYGHED'
 
     def test_start_with_mening_if_tryghed_ok(self):
         """MENING prioriteres når TRYGHED er OK"""
         scores = {
-            'MENING': FieldScore('MENING', 2.0, 10, 0.5, SpreadLevel.LOW),
-            'TRYGHED': FieldScore('TRYGHED', 4.0, 10, 0.5, SpreadLevel.LOW),
-            'KAN': FieldScore('KAN', 2.0, 10, 0.5, SpreadLevel.LOW),
-            'BESVÆR': FieldScore('BESVÆR', 2.0, 10, 0.5, SpreadLevel.LOW),
+            'MENING': FieldScore('MENING', 3.0, 10, 0.7, SpreadLevel.LOW),
+            'TRYGHED': FieldScore('TRYGHED', 5.5, 10, 0.7, SpreadLevel.LOW),
+            'KAN': FieldScore('KAN', 3.0, 10, 0.7, SpreadLevel.LOW),
+            'BESVÆR': FieldScore('BESVÆR', 3.0, 10, 0.7, SpreadLevel.LOW),
         }
         assert get_start_here_recommendation(scores) == 'MENING'
 
     def test_no_recommendation_if_all_ok(self):
-        """Ingen anbefaling hvis alt er OK"""
+        """Ingen anbefaling hvis alt er OK (>= 4.9)"""
         scores = {
-            'MENING': FieldScore('MENING', 4.0, 10, 0.5, SpreadLevel.LOW),
-            'TRYGHED': FieldScore('TRYGHED', 4.0, 10, 0.5, SpreadLevel.LOW),
-            'KAN': FieldScore('KAN', 4.0, 10, 0.5, SpreadLevel.LOW),
-            'BESVÆR': FieldScore('BESVÆR', 4.0, 10, 0.5, SpreadLevel.LOW),
+            'MENING': FieldScore('MENING', 5.5, 10, 0.7, SpreadLevel.LOW),
+            'TRYGHED': FieldScore('TRYGHED', 5.5, 10, 0.7, SpreadLevel.LOW),
+            'KAN': FieldScore('KAN', 5.5, 10, 0.7, SpreadLevel.LOW),
+            'BESVÆR': FieldScore('BESVÆR', 5.5, 10, 0.7, SpreadLevel.LOW),
         }
         assert get_start_here_recommendation(scores) is None
 
 
 class TestProfileType:
-    """Test profiltype-bestemmelse"""
+    """Test profiltype-bestemmelse (7-point skala)"""
 
     def test_retningsloest_team(self):
-        """Kritisk lav MENING = retningsløst"""
+        """Kritisk lav MENING (< 3.5) = retningsløst"""
         scores = {
-            'MENING': FieldScore('MENING', 2.0, 10, 0.5, SpreadLevel.LOW),
-            'TRYGHED': FieldScore('TRYGHED', 4.0, 10, 0.5, SpreadLevel.LOW),
-            'KAN': FieldScore('KAN', 4.0, 10, 0.5, SpreadLevel.LOW),
-            'BESVÆR': FieldScore('BESVÆR', 4.0, 10, 0.5, SpreadLevel.LOW),
+            'MENING': FieldScore('MENING', 3.0, 10, 0.7, SpreadLevel.LOW),
+            'TRYGHED': FieldScore('TRYGHED', 5.5, 10, 0.7, SpreadLevel.LOW),
+            'KAN': FieldScore('KAN', 5.5, 10, 0.7, SpreadLevel.LOW),
+            'BESVÆR': FieldScore('BESVÆR', 5.5, 10, 0.7, SpreadLevel.LOW),
         }
         assert get_profile_type(scores) == 'retningsløst_team'
 
     def test_hoejtydende_team(self):
-        """Alle scores >= 4.0 = højtydende"""
+        """Alle scores >= 5.6 = højtydende (80% på 7-point)"""
         scores = {
-            'MENING': FieldScore('MENING', 4.5, 10, 0.3, SpreadLevel.LOW),
-            'TRYGHED': FieldScore('TRYGHED', 4.2, 10, 0.3, SpreadLevel.LOW),
-            'KAN': FieldScore('KAN', 4.0, 10, 0.3, SpreadLevel.LOW),
-            'BESVÆR': FieldScore('BESVÆR', 4.3, 10, 0.3, SpreadLevel.LOW),
+            'MENING': FieldScore('MENING', 6.0, 10, 0.5, SpreadLevel.LOW),
+            'TRYGHED': FieldScore('TRYGHED', 5.8, 10, 0.5, SpreadLevel.LOW),
+            'KAN': FieldScore('KAN', 5.6, 10, 0.5, SpreadLevel.LOW),
+            'BESVÆR': FieldScore('BESVÆR', 5.9, 10, 0.5, SpreadLevel.LOW),
         }
         assert get_profile_type(scores) == 'højtydende_team'
 
 
 class TestThresholds:
-    """Test at grænseværdier er korrekte"""
+    """Test at grænseværdier er korrekte (7-point skala)"""
 
     def test_threshold_values(self):
-        """Verificer grænseværdier fra ANALYSELOGIK.md"""
+        """Verificer grænseværdier for 7-point skala"""
         assert THRESHOLDS['percent_green'] == 70
         assert THRESHOLDS['percent_yellow'] == 50
-        assert THRESHOLDS['severity_high'] == 2.5
-        assert THRESHOLDS['severity_medium'] == 3.5
-        assert THRESHOLDS['gap_significant'] == 1.0
-        assert THRESHOLDS['gap_moderate'] == 0.6
-        assert THRESHOLDS['tid_bias'] == 0.6
-        assert THRESHOLDS['underliggende'] == 3.5
+        assert THRESHOLDS['severity_high'] == 3.5    # 50% på 7-point
+        assert THRESHOLDS['severity_medium'] == 4.9  # 70% på 7-point
+        assert THRESHOLDS['gap_significant'] == 1.4  # 20% på 7-point
+        assert THRESHOLDS['gap_moderate'] == 0.84    # 12% på 7-point
+        assert THRESHOLDS['tid_bias'] == 0.84        # 12% på 7-point
+        assert THRESHOLDS['underliggende'] == 4.9    # 70% på 7-point

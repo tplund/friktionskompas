@@ -82,7 +82,7 @@ def get_unit_stats_with_layers(
                 q.field,
                 q.sequence,
                 AVG(CASE
-                    WHEN q.reverse_scored = 1 THEN 6 - r.score
+                    WHEN q.reverse_scored = 1 THEN 8 - r.score
                     ELSE r.score
                 END) as avg_score,
                 COUNT(r.id) as response_count
@@ -104,7 +104,7 @@ def get_unit_stats_with_layers(
             SELECT
                 q.field,
                 CASE
-                    WHEN q.reverse_scored = 1 THEN 6 - r.score
+                    WHEN q.reverse_scored = 1 THEN 8 - r.score
                     ELSE r.score
                 END as score
             FROM questions q
@@ -797,14 +797,14 @@ def get_alerts_and_findings(breakdown: Dict, comparison: Dict, substitution: Dic
     # 1. KRITISK LAV SCORE (< 40% / 2.0)
     for field in FRICTION_FIELDS:
         emp_score = breakdown['employee'].get(field, {}).get('avg_score', 0)
-        if emp_score > 0 and emp_score < 2.0:
+        if emp_score > 0 and emp_score < 2.8:  # ~40% på 7-point skala
             alerts.append({
                 'severity': 'kritisk',
                 'type': 'kritisk_lav_score',
                 'field': field,
                 'icon': '🔴',
                 'title': f'Kritisk lav score - {field}',
-                'description': f'Medarbejdere scorer kun {int(emp_score/5*100)}% ({emp_score:.1f}/5). Dette er under kritisk tærskel (40%).',
+                'description': f'Medarbejdere scorer kun {int(score_to_percent(emp_score))}% ({emp_score:.1f}/7). Dette er under kritisk tærskel (40%).',
                 'recommendation': 'Dette er et akut problemområde der kræver øjeblikkelig handling.'
             })
 
@@ -826,7 +826,7 @@ def get_alerts_and_findings(breakdown: Dict, comparison: Dict, substitution: Dic
                 'field': field,
                 'icon': '⚠️',
                 'title': f'{gap_severity.title()} forskel - {field}',
-                'description': f'Medarbejdere: {int(emp/5*100)}% | Leder vurderer: {int(leader/5*100)}% (forskel: {int(gap*20)}%).',
+                'description': f'Medarbejdere: {int(score_to_percent(emp))}% | Leder vurderer: {int(score_to_percent(leader))}% (forskel: {int(gap/7*100)}%).',
                 'recommendation': f'Lederen {direction} teamets {field.lower()}-friktioner. Dialog nødvendig.'
             })
 
@@ -860,7 +860,7 @@ def get_alerts_and_findings(breakdown: Dict, comparison: Dict, substitution: Dic
                 'field': field,
                 'icon': '🚧',
                 'title': f'Leder blokeret - {field}',
-                'description': f'Team: {int(emp/5*100)}% | Leder selv: {int(leader_self/5*100)}%. Begge under 70%.',
+                'description': f'Team: {int(score_to_percent(emp))}% | Leder selv: {int(score_to_percent(leader_self))}%. Begge under 70%.',
                 'recommendation': 'Lederen har samme friktioner som teamet og kan ikke effektivt hjælpe. Leder bør først adressere egne friktioner.'
             })
 
@@ -870,7 +870,7 @@ def get_alerts_and_findings(breakdown: Dict, comparison: Dict, substitution: Dic
         leader_self = breakdown['leader_self'].get(field, {}).get('avg_score', 0)
         paradox_gap = abs(leader_self - leader_assess)
 
-        if paradox_gap >= THRESHOLDS['gap_significant']:  # 20% forskel
+        if paradox_gap >= THRESHOLDS['gap_significant']:  # 20% forskel (1.4 på 7-point)
             direction = "højere" if leader_self > leader_assess else "lavere"
             alerts.append({
                 'severity': 'info',
@@ -878,7 +878,7 @@ def get_alerts_and_findings(breakdown: Dict, comparison: Dict, substitution: Dic
                 'field': field,
                 'icon': '🤔',
                 'title': f'Leder paradoks - {field}',
-                'description': f'Leder vurderer team: {int(leader_assess/5*100)}% | Leder selv: {int(leader_self/5*100)}% (forskel: {int(paradox_gap*20)}%).',
+                'description': f'Leder vurderer team: {int(score_to_percent(leader_assess))}% | Leder selv: {int(score_to_percent(leader_self))}% (forskel: {int(paradox_gap/7*100)}%).',
                 'recommendation': f'Lederen oplever {direction} {field.lower()}-friktion end teamet. Dette kan påvirke lederens forståelse af teamets situation.'
             })
 
@@ -1039,7 +1039,7 @@ def get_trend_data(unit_id: str = None, customer_id: str = None) -> Dict:
                 SELECT
                     q.field,
                     AVG(CASE
-                        WHEN q.reverse_scored = 1 THEN 6 - r.score
+                        WHEN q.reverse_scored = 1 THEN 8 - r.score
                         ELSE r.score
                     END) as avg_score
                 FROM responses r

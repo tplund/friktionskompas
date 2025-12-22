@@ -951,7 +951,7 @@ def get_individual_scores(target_unit_id, assessment_id):
             COALESCE(r.respondent_name, strftime('%Y-%m-%d %H:%M', r.created_at)) as resp_key,
             q.field,
             AVG(CASE
-                WHEN q.reverse_scored = 1 THEN 6 - r.score
+                WHEN q.reverse_scored = 1 THEN 8 - r.score
                 ELSE r.score
             END) as avg_score
         FROM responses r
@@ -985,7 +985,7 @@ def get_individual_scores(target_unit_id, assessment_id):
         SELECT
             q.field,
             AVG(CASE
-                WHEN q.reverse_scored = 1 THEN 6 - r.score
+                WHEN q.reverse_scored = 1 THEN 8 - r.score
                 ELSE r.score
             END) as avg_score
         FROM responses r

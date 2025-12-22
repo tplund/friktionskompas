@@ -190,21 +190,21 @@ class TestKKCRecommendations:
         assert 'Trillingsgaard' in rec['kkc_reference']
 
     def test_severity_thresholds(self):
-        """Test severity level thresholds (høj < 2.5, medium < 3.5)."""
+        """Test severity level thresholds (høj < 3.5, medium < 4.9) - 7-point skala."""
         from analysis import get_kkc_recommendations
 
-        # Test høj severity (score < 2.5)
-        stats_high = {'MENING': {'avg_score': 2.4}}  # Under 2.5 = høj
+        # Test høj severity (score < 3.5)
+        stats_high = {'MENING': {'avg_score': 3.4}}  # Under 3.5 = høj
         recs = get_kkc_recommendations(stats_high)
         assert recs[0]['severity'] == 'høj'
 
-        # Test medium severity (score 2.5-3.5)
-        stats_medium = {'MENING': {'avg_score': 3.0}}  # 2.5 <= score < 3.5 = medium
+        # Test medium severity (score 3.5-4.9)
+        stats_medium = {'MENING': {'avg_score': 4.2}}  # 3.5 <= score < 4.9 = medium
         recs = get_kkc_recommendations(stats_medium)
         assert recs[0]['severity'] == 'medium'
 
-        # Test lav severity (score >= 3.5)
-        stats_low = {'MENING': {'avg_score': 4.0}}  # >= 3.5 = lav
+        # Test lav severity (score >= 4.9)
+        stats_low = {'MENING': {'avg_score': 5.5}}  # >= 4.9 = lav
         recs = get_kkc_recommendations(stats_low)
         assert recs[0]['severity'] == 'lav'
 
@@ -247,57 +247,57 @@ class TestStartHereRecommendation:
 
 
 class TestGapCalculations:
-    """Test gap calculations between employee and leader scores."""
+    """Test gap calculations between employee and leader scores (7-point skala)."""
 
     def test_gap_severity_critical(self):
-        """Test critical gap detection (>= 1.0 point difference)."""
-        # Gap >= 1.0 is critical per ANALYSELOGIK.md
-        employee_score = 2.0
-        leader_score = 3.5
+        """Test critical gap detection (>= 1.4 point difference for 7-point)."""
+        # Gap >= 1.4 is critical per 7-point scale
+        employee_score = 3.0
+        leader_score = 5.0
         gap = abs(employee_score - leader_score)
 
-        assert gap >= 1.0
+        assert gap >= 1.4
 
     def test_gap_severity_moderate(self):
-        """Test moderate gap detection (0.6 - 1.0 point difference)."""
-        employee_score = 3.0
-        leader_score = 3.7
+        """Test moderate gap detection (0.84 - 1.4 point difference for 7-point)."""
+        employee_score = 4.5
+        leader_score = 5.5
         gap = abs(employee_score - leader_score)
 
-        assert 0.6 <= gap < 1.0
+        assert 0.84 <= gap < 1.4
 
     def test_gap_no_misalignment(self):
-        """Test no misalignment for small differences (< 0.6)."""
-        employee_score = 3.5
-        leader_score = 3.7
+        """Test no misalignment for small differences (< 0.84 for 7-point)."""
+        employee_score = 5.0
+        leader_score = 5.5
         gap = abs(employee_score - leader_score)
 
-        has_misalignment = gap >= 0.6
+        has_misalignment = gap >= 0.84
         assert has_misalignment is False
 
 
 class TestSubstitutionLogic:
-    """Test substitution (tid) detection logic thresholds."""
+    """Test substitution (tid) detection logic thresholds (7-point skala)."""
 
     def test_tid_bias_threshold(self):
-        """Test that tid_bias >= 0.6 triggers flagging per ANALYSELOGIK.md."""
-        tid_bias = 0.6
-        flagged = tid_bias >= 0.6
+        """Test that tid_bias >= 0.84 triggers flagging for 7-point scale."""
+        tid_bias = 0.84
+        flagged = tid_bias >= 0.84
         assert flagged is True
 
-        tid_bias = 0.59
-        flagged = tid_bias >= 0.6
+        tid_bias = 0.83
+        flagged = tid_bias >= 0.84
         assert flagged is False
 
     def test_underliggende_threshold(self):
-        """Test that underliggende >= 3.5 indicates real time issue."""
-        # Per ANALYSELOGIK.md: underliggende >= 3.5 means real time problem
-        underliggende = 3.5
-        is_real_time_issue = underliggende >= 3.5
+        """Test that underliggende >= 4.9 indicates real time issue (7-point)."""
+        # Per 7-point scale: underliggende >= 4.9 means real time problem
+        underliggende = 4.9
+        is_real_time_issue = underliggende >= 4.9
         assert is_real_time_issue is True
 
-        underliggende = 3.4
-        is_real_time_issue = underliggende >= 3.5
+        underliggende = 4.8
+        is_real_time_issue = underliggende >= 4.9
         assert is_real_time_issue is False
 
 
@@ -345,57 +345,57 @@ class TestLayerInterpretation:
 
 
 class TestScoreConversions:
-    """Test score conversion utilities."""
+    """Test score conversion utilities (7-point skala)."""
 
     def test_reverse_scoring_formula(self):
-        """Test that reverse scoring works correctly (6 - score)."""
-        # For reverse-scored items: 1 becomes 5, 5 becomes 1
+        """Test that reverse scoring works correctly (8 - score) for 7-point scale."""
+        # For reverse-scored items: 1 becomes 7, 7 becomes 1
         raw_score = 2
-        reverse_scored = 6 - raw_score
+        reverse_scored = 8 - raw_score
 
-        assert reverse_scored == 4
+        assert reverse_scored == 6
 
-        raw_score = 5
-        reverse_scored = 6 - raw_score
+        raw_score = 7
+        reverse_scored = 8 - raw_score
         assert reverse_scored == 1
 
     def test_score_to_percentage_conversion(self):
-        """Test converting 1-5 score to 0-100 percentage."""
-        # Formula: (score - 1) / 4 * 100
+        """Test converting 1-7 score to 0-100 percentage."""
+        # Formula: (score / 7) * 100
         def score_to_pct(score):
-            return int((score - 1) / 4 * 100)
+            return round((score / 7) * 100, 1)
 
-        assert score_to_pct(1) == 0
-        assert score_to_pct(5) == 100
-        assert score_to_pct(3) == 50
+        assert score_to_pct(1) == 14.3  # ~14.3%
+        assert score_to_pct(7) == 100.0
+        assert score_to_pct(3.5) == 50.0
 
 
 class TestLeaderGapThresholds:
-    """Test leader gap analysis thresholds per ANALYSELOGIK.md."""
+    """Test leader gap analysis thresholds (7-point skala)."""
 
     def test_leader_gap_significant_threshold(self):
-        """Test leader gap detection threshold (> 1.0 point)."""
-        team_score = 2.5
-        leader_score = 4.0
+        """Test leader gap detection threshold (> 1.4 point for 7-point)."""
+        team_score = 3.5
+        leader_score = 5.5
         gap = abs(team_score - leader_score)
 
-        is_significant = gap > 1.0
+        is_significant = gap > 1.4
         assert is_significant is True
 
     def test_leader_blocked_both_low(self):
-        """Test leader blocked detection (both < 3.5)."""
-        team_score = 3.0
-        leader_score = 3.2
+        """Test leader blocked detection (both < 4.9 for 7-point)."""
+        team_score = 4.0
+        leader_score = 4.5
 
-        is_blocked = team_score < 3.5 and leader_score < 3.5
+        is_blocked = team_score < 4.9 and leader_score < 4.9
         assert is_blocked is True
 
     def test_leader_not_blocked_if_leader_good(self):
-        """Test not blocked when leader score is good."""
-        team_score = 2.5
-        leader_score = 4.0
+        """Test not blocked when leader score is good (>= 4.9)."""
+        team_score = 3.5
+        leader_score = 5.5
 
-        is_blocked = team_score < 3.5 and leader_score < 3.5
+        is_blocked = team_score < 4.9 and leader_score < 4.9
         assert is_blocked is False
 
 
@@ -571,117 +571,104 @@ class TestGetUnitStatsWithKnownData:
                 os.unlink(temp_db)
 
     def test_known_data_calculation(self):
-        """Test with specific known data: score 4 everywhere = 4.0 avg = 75%."""
-        # This verifies the formula: (avg_score - 1) / 4 * 100 = percentage
-        avg_score = 4.0
-        expected_pct = int((avg_score - 1) / 4 * 100)
+        """Test with specific known data: score 5.6 everywhere = 5.6 avg = 80% (7-point)."""
+        # This verifies the formula: (score / 7) * 100 = percentage
+        avg_score = 5.6
+        expected_pct = round((avg_score / 7) * 100, 1)
 
-        assert expected_pct == 75, f"Score 4.0 should be 75%, got {expected_pct}%"
+        assert expected_pct == 80.0, f"Score 5.6 should be 80%, got {expected_pct}%"
 
-        # Also test edge cases
-        assert int((5.0 - 1) / 4 * 100) == 100, "Score 5.0 should be 100%"
-        assert int((1.0 - 1) / 4 * 100) == 0, "Score 1.0 should be 0%"
-        assert int((3.0 - 1) / 4 * 100) == 50, "Score 3.0 should be 50%"
+        # Also test edge cases (7-point scale)
+        assert round((7.0 / 7) * 100, 1) == 100.0, "Score 7.0 should be 100%"
+        assert round((1.0 / 7) * 100, 1) == 14.3, "Score 1.0 should be ~14.3%"
+        assert round((3.5 / 7) * 100, 1) == 50.0, "Score 3.5 should be 50%"
 
 
 class TestReverseScoreCalculation:
     """
-    Test reverse_scored beregning - KRITISK for korrekte procenter.
-
-    Problemet der blev opdaget 2025-12-15:
-    - Raw average var 3.39 (vises som 57%)
-    - Med reverse_scored justering skulle det være 4.36 (84%)
-    - UI viste 57% fordi reverse_scored ikke blev anvendt korrekt
+    Test reverse_scored beregning - KRITISK for korrekte procenter (7-point skala).
 
     Formel for reverse_scored spørgsmål:
     - Normal: score bruges direkte
-    - Reverse: 6 - score (så 1 bliver 5, 2 bliver 4, etc.)
+    - Reverse: 8 - score (så 1 bliver 7, 2 bliver 6, etc.)
     """
 
     def test_reverse_score_formula(self):
-        """Test at reverse_scored formlen er korrekt: 6 - score."""
+        """Test at reverse_scored formlen er korrekt: 8 - score (7-point)."""
         # For reverse_scored=1 spørgsmål:
         # Lav score (1-2) = dårligt miljø = skal give høj adjusted score
-        # Høj score (4-5) = godt miljø = skal give lav adjusted score
+        # Høj score (6-7) = godt miljø = skal give lav adjusted score
 
         # Hvis medarbejder svarer 2 på "Jeg føler mig stresset" (reverse)
-        # betyder det lav stress = godt = adjusted score = 6 - 2 = 4
-        assert 6 - 2 == 4, "Score 2 on reverse question should become 4"
-        assert 6 - 1 == 5, "Score 1 on reverse question should become 5"
-        assert 6 - 5 == 1, "Score 5 on reverse question should become 1"
-        assert 6 - 3 == 3, "Score 3 on reverse question stays 3"
+        # betyder det lav stress = godt = adjusted score = 8 - 2 = 6
+        assert 8 - 2 == 6, "Score 2 on reverse question should become 6"
+        assert 8 - 1 == 7, "Score 1 on reverse question should become 7"
+        assert 8 - 7 == 1, "Score 7 on reverse question should become 1"
+        assert 8 - 4 == 4, "Score 4 on reverse question stays 4 (midpoint)"
 
     def test_mixed_scores_with_reverse(self):
         """
-        Test beregning med blandede normale og reverse spørgsmål.
-
-        Scenarie fra Hammerum Skole:
-        - Raw average: 3.39
-        - Efter reverse justering: 4.36
-        - Procent: 84%
+        Test beregning med blandede normale og reverse spørgsmål (7-point).
         """
         # Simuler 4 svar: 2 normale, 2 reverse
-        normal_scores = [4, 4]  # Bruges direkte
-        reverse_scores = [2, 2]  # Bliver til 6-2=4 hver
+        normal_scores = [6, 6]  # Bruges direkte
+        reverse_scores = [2, 2]  # Bliver til 8-2=6 hver
 
         # Beregn adjusted scores
-        adjusted_normal = normal_scores  # [4, 4]
-        adjusted_reverse = [6 - s for s in reverse_scores]  # [4, 4]
+        adjusted_normal = normal_scores  # [6, 6]
+        adjusted_reverse = [8 - s for s in reverse_scores]  # [6, 6]
 
         all_adjusted = adjusted_normal + adjusted_reverse
         avg_adjusted = sum(all_adjusted) / len(all_adjusted)
 
-        assert avg_adjusted == 4.0, f"Expected 4.0, got {avg_adjusted}"
+        assert avg_adjusted == 6.0, f"Expected 6.0, got {avg_adjusted}"
 
-        # Procent
-        pct = ((avg_adjusted - 1) / 4) * 100
-        assert pct == 75.0, f"Expected 75%, got {pct}%"
+        # Procent (7-point: score/7 * 100)
+        pct = (avg_adjusted / 7) * 100
+        assert abs(pct - 85.7) < 0.1, f"Expected ~85.7%, got {pct}%"
 
     def test_raw_vs_adjusted_difference(self):
         """
         Test at raw og adjusted gennemsnit er forskellige når der er reverse spørgsmål.
-
-        Dette er kerneproblemet: Hvis UI viser raw average i stedet for adjusted,
-        får man forkerte (lavere) procenter.
         """
         # Scenarie: Medarbejdere svarer lavt på reverse spørgsmål (= godt)
         # Men højt på normale spørgsmål (= også godt)
 
         scores = [
-            (4, False),  # Normal spørgsmål, score 4
-            (4, False),  # Normal spørgsmål, score 4
-            (2, True),   # Reverse spørgsmål, score 2 -> adjusted 4
-            (2, True),   # Reverse spørgsmål, score 2 -> adjusted 4
+            (6, False),  # Normal spørgsmål, score 6
+            (6, False),  # Normal spørgsmål, score 6
+            (2, True),   # Reverse spørgsmål, score 2 -> adjusted 6
+            (2, True),   # Reverse spørgsmål, score 2 -> adjusted 6
         ]
 
         # Raw average (FORKERT at bruge denne!)
         raw_avg = sum(s[0] for s in scores) / len(scores)
-        assert raw_avg == 3.0, f"Raw avg should be 3.0, got {raw_avg}"
+        assert raw_avg == 4.0, f"Raw avg should be 4.0, got {raw_avg}"
 
         # Adjusted average (KORREKT)
         adjusted_scores = [
-            6 - s[0] if s[1] else s[0]
+            8 - s[0] if s[1] else s[0]
             for s in scores
         ]
         adjusted_avg = sum(adjusted_scores) / len(adjusted_scores)
-        assert adjusted_avg == 4.0, f"Adjusted avg should be 4.0, got {adjusted_avg}"
+        assert adjusted_avg == 6.0, f"Adjusted avg should be 6.0, got {adjusted_avg}"
 
-        # Procent forskel
-        raw_pct = ((raw_avg - 1) / 4) * 100
-        adjusted_pct = ((adjusted_avg - 1) / 4) * 100
+        # Procent forskel (7-point: score/7 * 100)
+        raw_pct = (raw_avg / 7) * 100
+        adjusted_pct = (adjusted_avg / 7) * 100
 
-        assert raw_pct == 50.0, f"Raw % should be 50%, got {raw_pct}%"
-        assert adjusted_pct == 75.0, f"Adjusted % should be 75%, got {adjusted_pct}%"
+        assert abs(raw_pct - 57.1) < 0.1, f"Raw % should be ~57.1%, got {raw_pct}%"
+        assert abs(adjusted_pct - 85.7) < 0.1, f"Adjusted % should be ~85.7%, got {adjusted_pct}%"
 
-        # KRITISK: Der er 25 procentpoint forskel!
-        assert adjusted_pct - raw_pct == 25.0, "Should be 25 percentage points difference"
+        # KRITISK: Der er ~28.6 procentpoint forskel!
+        assert abs((adjusted_pct - raw_pct) - 28.6) < 0.1, "Should be ~28.6 percentage points difference"
 
     def test_sql_case_expression(self):
         """
-        Test at SQL CASE expression for reverse_scored er korrekt.
+        Test at SQL CASE expression for reverse_scored er korrekt (7-point).
 
         Den korrekte SQL er:
-        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END
+        CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END
         """
         import sqlite3
         import tempfile
@@ -717,9 +704,9 @@ class TestReverseScoreCalculation:
             conn.execute("INSERT INTO questions (id, field, reverse_scored) VALUES (3, 'TEST', 1)")
             conn.execute("INSERT INTO questions (id, field, reverse_scored) VALUES (4, 'TEST', 1)")
 
-            # Indsæt svar: normale=4, reverse=2
-            conn.execute("INSERT INTO responses (assessment_id, question_id, score) VALUES ('test', 1, 4)")
-            conn.execute("INSERT INTO responses (assessment_id, question_id, score) VALUES ('test', 2, 4)")
+            # Indsæt svar: normale=6, reverse=2
+            conn.execute("INSERT INTO responses (assessment_id, question_id, score) VALUES ('test', 1, 6)")
+            conn.execute("INSERT INTO responses (assessment_id, question_id, score) VALUES ('test', 2, 6)")
             conn.execute("INSERT INTO responses (assessment_id, question_id, score) VALUES ('test', 3, 2)")
             conn.execute("INSERT INTO responses (assessment_id, question_id, score) VALUES ('test', 4, 2)")
             conn.commit()
@@ -731,20 +718,20 @@ class TestReverseScoreCalculation:
                 WHERE r.assessment_id = 'test'
             """).fetchone()
 
-            assert raw_result['raw_avg'] == 3.0, f"Raw avg should be 3.0, got {raw_result['raw_avg']}"
+            assert raw_result['raw_avg'] == 4.0, f"Raw avg should be 4.0, got {raw_result['raw_avg']}"
 
-            # Test ADJUSTED average (KORREKT)
+            # Test ADJUSTED average (KORREKT - 7-point: 8 - score)
             adjusted_result = conn.execute("""
                 SELECT AVG(
-                    CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END
+                    CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END
                 ) as adjusted_avg
                 FROM responses r
                 JOIN questions q ON r.question_id = q.id
                 WHERE r.assessment_id = 'test'
             """).fetchone()
 
-            assert adjusted_result['adjusted_avg'] == 4.0, \
-                f"Adjusted avg should be 4.0, got {adjusted_result['adjusted_avg']}"
+            assert adjusted_result['adjusted_avg'] == 6.0, \
+                f"Adjusted avg should be 6.0, got {adjusted_result['adjusted_avg']}"
 
         finally:
             conn.close()
@@ -752,23 +739,19 @@ class TestReverseScoreCalculation:
                 os.unlink(temp_db)
 
     def test_to_percent_function(self):
-        """Test to_percent helper funktion."""
+        """Test to_percent helper funktion (7-point: score/7 * 100)."""
         def to_percent(score):
-            """Convert 1-5 score to percent (1=0%, 5=100%)"""
+            """Convert 1-7 score to percent (7-point scale)"""
             if score is None or score == 0:
                 return 0
-            return ((score - 1) / 4) * 100
+            return round((score / 7) * 100, 1)
 
         # Test alle værdier
-        assert to_percent(1.0) == 0.0, "Score 1 = 0%"
-        assert to_percent(2.0) == 25.0, "Score 2 = 25%"
-        assert to_percent(3.0) == 50.0, "Score 3 = 50%"
-        assert to_percent(4.0) == 75.0, "Score 4 = 75%"
-        assert to_percent(5.0) == 100.0, "Score 5 = 100%"
-
-        # Test mellemværdier
-        assert to_percent(3.5) == 62.5, "Score 3.5 = 62.5%"
-        assert abs(to_percent(4.36) - 84.0) < 0.01, "Score 4.36 ≈ 84%"  # Hammerum case
+        assert to_percent(1.0) == 14.3, "Score 1 = 14.3%"
+        assert to_percent(2.0) == 28.6, "Score 2 = 28.6%"
+        assert to_percent(3.5) == 50.0, "Score 3.5 = 50%"
+        assert to_percent(4.9) == 70.0, "Score 4.9 = 70%"
+        assert to_percent(7.0) == 100.0, "Score 7 = 100%"
 
         # Test edge cases
         assert to_percent(None) == 0, "None = 0%"
@@ -778,26 +761,21 @@ class TestReverseScoreCalculation:
         """
         REGRESSIONSTEST: vary_testdata() SKAL invertere scores for reverse_scored spørgsmål.
 
-        Bug opdaget 2025-12-15:
-        - vary_testdata() genererede høje scores (4.0-4.8) for ALLE spørgsmål
-        - Men reverse_scored spørgsmål skal have LAVE raw scores for at give høje adjusted scores
-        - Dette fik Hammerum Skole til at vise 57% i stedet for 79%
-
-        Fix: For reverse_scored spørgsmål: new_score = 6 - target_score
+        Fix for 7-point: For reverse_scored spørgsmål: new_score = 8 - target_score
         """
         # Simuler vary_testdata logik
-        target_score = 4  # Profilen siger vi vil have adjusted score 4
+        target_score = 6  # Profilen siger vi vil have adjusted score 6
 
         # For NORMAL spørgsmål: raw = target
         normal_raw = target_score
         normal_adjusted = normal_raw  # Ingen ændring
-        assert normal_adjusted == 4, "Normal: target 4 → adjusted 4"
+        assert normal_adjusted == 6, "Normal: target 6 → adjusted 6"
 
-        # For REVERSE spørgsmål: raw = 6 - target (så adjusted = 6 - raw = target)
-        reverse_raw = 6 - target_score  # = 2
-        reverse_adjusted = 6 - reverse_raw  # = 4
-        assert reverse_raw == 2, "Reverse: target 4 → raw 2"
-        assert reverse_adjusted == 4, "Reverse: raw 2 → adjusted 4"
+        # For REVERSE spørgsmål: raw = 8 - target (så adjusted = 8 - raw = target)
+        reverse_raw = 8 - target_score  # = 2
+        reverse_adjusted = 8 - reverse_raw  # = 6
+        assert reverse_raw == 2, "Reverse: target 6 → raw 2"
+        assert reverse_adjusted == 6, "Reverse: raw 2 → adjusted 6"
 
         # KRITISK: Begge typer giver SAMME adjusted score!
         assert normal_adjusted == reverse_adjusted, "Both types should give same adjusted score"
@@ -810,10 +788,10 @@ class TestReverseScoreCalculation:
         normal_adj_low = normal_raw_low
         assert normal_adj_low == 2
 
-        # Reverse: raw 4 → adjusted 2 (også dårligt)
-        reverse_raw_low = 6 - target_low  # = 4
-        reverse_adj_low = 6 - reverse_raw_low  # = 2
-        assert reverse_raw_low == 4
+        # Reverse: raw 6 → adjusted 2 (også dårligt)
+        reverse_raw_low = 8 - target_low  # = 6
+        reverse_adj_low = 8 - reverse_raw_low  # = 2
+        assert reverse_raw_low == 6
         assert reverse_adj_low == 2
 
         # KRITISK: Lavt target = lav adjusted for BEGGE typer

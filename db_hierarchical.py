@@ -79,7 +79,7 @@ def migrate_campaign_to_assessment():
                     assessment_id TEXT NOT NULL,
                     unit_id TEXT NOT NULL,
                     question_id INTEGER NOT NULL,
-                    score INTEGER NOT NULL CHECK(score BETWEEN 1 AND 5),
+                    score INTEGER NOT NULL CHECK(score BETWEEN 1 AND 7),
                     comment TEXT,
                     category_comment TEXT,
                     respondent_type TEXT DEFAULT 'employee',
@@ -162,7 +162,7 @@ def migrate_campaign_to_assessment():
                     assessment_id TEXT NOT NULL,
                     unit_id TEXT NOT NULL,
                     question_id INTEGER NOT NULL,
-                    score INTEGER NOT NULL CHECK(score BETWEEN 1 AND 5),
+                    score INTEGER NOT NULL CHECK(score BETWEEN 1 AND 7),
                     comment TEXT,
                     category_comment TEXT,
                     respondent_type TEXT DEFAULT 'employee',
@@ -333,7 +333,7 @@ def init_db():
                 assessment_id TEXT NOT NULL,
                 unit_id TEXT NOT NULL,
                 question_id INTEGER NOT NULL,
-                score INTEGER NOT NULL CHECK(score BETWEEN 1 AND 5),
+                score INTEGER NOT NULL CHECK(score BETWEEN 1 AND 7),
                 comment TEXT,
                 category_comment TEXT,
                 respondent_type TEXT DEFAULT 'employee',
@@ -481,7 +481,7 @@ def init_db():
                 token TEXT NOT NULL,
                 action_id TEXT NOT NULL,
                 field TEXT NOT NULL,
-                score INTEGER CHECK(score BETWEEN 1 AND 5),
+                score INTEGER CHECK(score BETWEEN 1 AND 7),
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (token) REFERENCES situation_tokens(token) ON DELETE CASCADE,
                 FOREIGN KEY (action_id) REFERENCES actions(id) ON DELETE CASCADE
@@ -917,7 +917,7 @@ def get_unit_stats(unit_id: str, assessment_id: str, include_children: bool = Tr
                 SELECT
                     q.field,
                     AVG(CASE
-                        WHEN q.reverse_scored = 1 THEN 6 - r.score
+                        WHEN q.reverse_scored = 1 THEN 8 - r.score
                         ELSE r.score
                     END) as avg_score,
                     COUNT(r.id) as response_count
@@ -934,7 +934,7 @@ def get_unit_stats(unit_id: str, assessment_id: str, include_children: bool = Tr
                 SELECT
                     q.field,
                     AVG(CASE
-                        WHEN q.reverse_scored = 1 THEN 6 - r.score
+                        WHEN q.reverse_scored = 1 THEN 8 - r.score
                         ELSE r.score
                     END) as avg_score,
                     COUNT(r.id) as response_count
@@ -1009,7 +1009,7 @@ def get_assessment_overview(assessment_id: str) -> List[Dict]:
                     r.unit_id,
                     ROUND(AVG(CASE
                         WHEN q.field = 'BESVÆR' AND q.reverse_scored = 0 THEN r.score
-                        WHEN q.field = 'BESVÆR' AND q.reverse_scored = 1 THEN 6 - r.score
+                        WHEN q.field = 'BESVÆR' AND q.reverse_scored = 1 THEN 8 - r.score
                         ELSE NULL
                     END), 1) as besvær_score
                 FROM responses r

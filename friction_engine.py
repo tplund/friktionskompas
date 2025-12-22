@@ -60,33 +60,33 @@ SUBSTITUTION_ITEMS = {
     'underliggende': [5, 10, 17, 18]   # Underliggende tilfredshed
 }
 
-# Grænseværdier
+# Grænseværdier (OPDATERET TIL 7-POINT SKALA)
 THRESHOLDS = {
-    # Procent-baseret farvecodning
+    # Procent-baseret farvecodning (uændret)
     'percent_green': 70,     # >= 70% = grøn (lav friktion)
     'percent_yellow': 50,    # >= 50% = gul (moderat friktion)
     # under 50% = rød (høj friktion)
 
-    # Score-baseret severity (1-5 skala)
-    'severity_high': 2.5,    # < 2.5 = høj severity
-    'severity_medium': 3.5,  # < 3.5 = medium severity
-    # >= 3.5 = lav severity
+    # Score-baseret severity (1-7 skala)
+    'severity_high': 3.5,    # < 3.5 = høj severity (~50%)
+    'severity_medium': 4.9,  # < 4.9 = medium severity (~70%)
+    # >= 4.9 = lav severity
 
-    # Gap mellem leder og medarbejder
-    'gap_significant': 1.0,  # > 1.0 = signifikant gap (20%)
-    'gap_moderate': 0.6,     # > 0.6 = moderat gap (12%)
+    # Gap mellem leder og medarbejder (skaleret til 7-point)
+    'gap_significant': 1.4,  # > 1.4 = signifikant gap (20%)
+    'gap_moderate': 0.84,    # > 0.84 = moderat gap (12%)
 
-    # Leder blokeret
-    'leader_blocked': 3.5,   # Både team og leder < 3.5
+    # Leder blokeret (skaleret til 7-point)
+    'leader_blocked': 4.9,   # Både team og leder < 4.9 (70%)
 
-    # Substitution (Kahneman)
-    'tid_bias': 0.6,         # TID_BIAS >= 0.6
-    'underliggende': 3.5,    # UNDERLIGGENDE >= 3.5
+    # Substitution (Kahneman) - skaleret til 7-point
+    'tid_bias': 0.84,        # TID_BIAS >= 0.84 (12%)
+    'underliggende': 4.9,    # UNDERLIGGENDE >= 4.9 (70%)
 
-    # Spredning (standardafvigelse)
-    'spread_low': 0.5,       # < 0.5 = lav spredning
-    'spread_medium': 1.0,    # < 1.0 = medium spredning
-    # >= 1.0 = høj spredning
+    # Spredning (standardafvigelse) - skaleret til 7-point
+    'spread_low': 0.7,       # < 0.7 = lav spredning
+    'spread_medium': 1.4,    # < 1.4 = medium spredning
+    # >= 1.4 = høj spredning
 }
 
 
@@ -159,38 +159,40 @@ class Warning:
 
 def score_to_percent(score: float) -> float:
     """
-    Konverter score (1-5) til procent (0-100).
+    Konverter score (1-7) til procent (0-100).
 
     Args:
-        score: Score på 1-5 skala
+        score: Score på 1-7 skala
 
     Returns:
         Procent 0-100
 
     Example:
-        >>> score_to_percent(3.5)
+        >>> score_to_percent(4.9)
         70.0
-        >>> score_to_percent(2.5)
+        >>> score_to_percent(3.5)
         50.0
+        >>> score_to_percent(7)
+        100.0
     """
     if score is None or score == 0:
         return 0.0
-    return round((score / 5) * 100, 1)
+    return round((score / 7) * 100, 1)
 
 
 def percent_to_score(percent: float) -> float:
     """
-    Konverter procent (0-100) til score (1-5).
+    Konverter procent (0-100) til score (1-7).
 
     Args:
         percent: Procent 0-100
 
     Returns:
-        Score på 1-5 skala
+        Score på 1-7 skala
     """
     if percent is None or percent == 0:
         return 0.0
-    return round((percent / 100) * 5, 2)
+    return round((percent / 100) * 7, 2)
 
 
 def adjust_score(raw_score: int, reverse_scored: bool = False) -> int:
@@ -198,20 +200,22 @@ def adjust_score(raw_score: int, reverse_scored: bool = False) -> int:
     Justér score baseret på om spørgsmålet er reverse-scored.
 
     Args:
-        raw_score: Rå score fra respondent (1-5)
+        raw_score: Rå score fra respondent (1-7)
         reverse_scored: Om spørgsmålet skal inverteres
 
     Returns:
-        Justeret score (1-5)
+        Justeret score (1-7)
 
     Example:
-        >>> adjust_score(5, reverse_scored=True)
+        >>> adjust_score(7, reverse_scored=True)
         1
-        >>> adjust_score(5, reverse_scored=False)
-        5
+        >>> adjust_score(7, reverse_scored=False)
+        7
+        >>> adjust_score(4, reverse_scored=True)
+        4  # Midtpunktet forbliver det samme
     """
     if reverse_scored:
-        return 6 - raw_score
+        return 8 - raw_score
     return raw_score
 
 
@@ -220,15 +224,15 @@ def get_severity(score: float) -> Severity:
     Bestem severity baseret på score.
 
     Args:
-        score: Score på 1-5 skala
+        score: Score på 1-7 skala
 
     Returns:
         Severity enum
 
     Grænseværdier (se ANALYSELOGIK.md):
-        < 2.5: høj (kritisk)
-        < 3.5: medium (problemområde)
-        >= 3.5: lav (acceptabel)
+        < 3.5: høj (kritisk, ~50%)
+        < 4.9: medium (problemområde, ~70%)
+        >= 4.9: lav (acceptabel)
     """
     if score < THRESHOLDS['severity_high']:
         return Severity.HIGH
@@ -517,28 +521,28 @@ def calculate_substitution_for_respondent(scores: Dict[int, int]) -> Dict:
     Beregn substitution for én respondent.
 
     Args:
-        scores: Dict med {sequence: score} for respondenten
+        scores: Dict med {sequence: score} for respondenten (1-7 skala)
 
     Returns:
         Dict med tid_mangel, proc, underliggende, tid_bias, flagged
 
     Formel (se ANALYSELOGIK.md sektion 1):
-        TID_MANGEL = 6 - item14
-        PROC = gennemsnit(item19, 6-item20, 6-item21, 6-item22)
+        TID_MANGEL = 8 - item14 (reverse scored, 1-7)
+        PROC = gennemsnit(item19, 8-item20, 8-item21, 8-item22)
         UNDERLIGGENDE = max(item5, item10, item17, item18)
         TID_BIAS = TID_MANGEL - PROC
-        FLAGGED = TID_BIAS >= 0.6 AND UNDERLIGGENDE >= 3.5
+        FLAGGED = TID_BIAS >= 0.84 AND UNDERLIGGENDE >= 4.9
     """
-    # TID_MANGEL = 6 - item14 (reverse scored)
-    tid_mangel = 6 - scores.get(14, 3)
+    # TID_MANGEL = 8 - item14 (reverse scored for 1-7)
+    tid_mangel = 8 - scores.get(14, 4)  # default 4 = midtpunkt på 1-7
 
     # PROC = gennemsnit af mekaniske friktioner
     # Item 19 er allerede reverse i DB, 20-22 skal inverteres
     proc_scores = [
-        scores.get(19, 3),
-        6 - scores.get(20, 3),
-        6 - scores.get(21, 3),
-        6 - scores.get(22, 3)
+        scores.get(19, 4),
+        8 - scores.get(20, 4),
+        8 - scores.get(21, 4),
+        8 - scores.get(22, 4)
     ]
     proc = sum(proc_scores) / len(proc_scores)
 
@@ -721,7 +725,7 @@ def get_profile_type(field_scores: Dict[str, FieldScore]) -> str:
     Bestem profiltype baseret på friktionsmønster.
 
     Args:
-        field_scores: FieldScores for alle felter
+        field_scores: FieldScores for alle felter (1-7 skala)
 
     Returns:
         Profiltype-streng
@@ -736,8 +740,11 @@ def get_profile_type(field_scores: Dict[str, FieldScore]) -> str:
     lowest_field, lowest_score = scores[0]
     highest_field, highest_score = scores[-1]
 
-    # Profiltypelogik
-    if lowest_score < 2.5:
+    # Profiltypelogik (thresholds skaleret til 1-7)
+    # 2.5 på 1-5 = 50% = 3.5 på 1-7
+    # 3.5 på 1-5 = 70% = 4.9 på 1-7
+    # 4.0 på 1-5 = 80% = 5.6 på 1-7
+    if lowest_score < 3.5:  # < 50%
         # Kritisk friktion
         if lowest_field == 'MENING':
             return "retningsløst_team"
@@ -748,15 +755,15 @@ def get_profile_type(field_scores: Dict[str, FieldScore]) -> str:
         else:
             return "bøvlet_team"
 
-    elif lowest_score < 3.5:
+    elif lowest_score < 4.9:  # < 70%
         # Moderat friktion
-        if highest_score - lowest_score > 1.5:
+        if highest_score - lowest_score > 2.1:  # 1.5 * 1.4 skalering
             return "ubalanceret_team"
         return "udviklingspotentiale"
 
     else:
-        # Lav friktion generelt
-        if all(s.avg_score >= 4.0 for s in field_scores.values()):
+        # Lav friktion generelt (>= 70%)
+        if all(s.avg_score >= 5.6 for s in field_scores.values()):  # >= 80%
             return "højtydende_team"
         return "velfungerende_team"
 

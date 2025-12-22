@@ -119,7 +119,7 @@ def admin_home():
         field_scores_query = """
             SELECT
                 q.field,
-                AVG(CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END) as avg_score,
+                AVG(CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END) as avg_score,
                 COUNT(*) as response_count
             FROM responses r
             JOIN questions q ON r.question_id = q.id
@@ -185,22 +185,22 @@ def admin_home():
 
                 AVG(CASE
                     WHEN q.field = 'MENING' THEN
-                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END
+                        CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END
                 END) as employee_mening,
 
                 AVG(CASE
                     WHEN q.field = 'TRYGHED' THEN
-                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END
+                        CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END
                 END) as employee_tryghed,
 
                 AVG(CASE
                     WHEN q.field = 'KAN' THEN
-                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END
+                        CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END
                 END) as employee_kan,
 
                 AVG(CASE
                     WHEN q.field = 'BESVÆR' THEN
-                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END
+                        CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END
                 END) as employee_besvaer
 
             FROM organizational_units ou
@@ -393,7 +393,7 @@ def admin_noegletal():
         field_scores_query = """
             SELECT
                 q.field,
-                AVG(CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END) as avg_score,
+                AVG(CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END) as avg_score,
                 COUNT(*) as response_count
             FROM responses r
             JOIN questions q ON r.question_id = q.id
@@ -533,7 +533,7 @@ def assessments_overview():
                     COUNT(DISTINCT r.id) as total_responses,
                     AVG(CASE
                         WHEN q.field = 'BESVÆR' THEN
-                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END
+                            CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END
                     END) as avg_besvaer
                 FROM assessments c
                 JOIN organizational_units ou ON c.target_unit_id = ou.id
@@ -555,7 +555,7 @@ def assessments_overview():
                     COUNT(DISTINCT r.id) as total_responses,
                     AVG(CASE
                         WHEN q.field = 'BESVÆR' THEN
-                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END
+                            CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END
                     END) as avg_besvaer
                 FROM assessments c
                 JOIN organizational_units ou ON c.target_unit_id = ou.id
@@ -628,15 +628,15 @@ def analyser():
                             a.period,
                             a.created_at,
                             AVG(CASE WHEN r.respondent_type = 'employee' THEN
-                                CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as overall,
+                                CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END END) as overall,
                             AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'MENING' THEN
-                                CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as mening,
+                                CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END END) as mening,
                             AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'TRYGHED' THEN
-                                CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as tryghed,
+                                CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END END) as tryghed,
                             AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'KAN' THEN
-                                CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as kan,
+                                CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END END) as kan,
                             AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'BESVÆR' THEN
-                                CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as besvaer
+                                CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END END) as besvaer
                         FROM assessments a
                         JOIN responses r ON a.id = r.assessment_id
                         JOIN questions q ON r.question_id = q.id
@@ -703,26 +703,26 @@ def analyser():
                         CAST(SUM(CASE WHEN r.respondent_type = 'employee' THEN 1 ELSE 0 END) AS REAL) / 24 as unique_respondents,
 
                         AVG(CASE WHEN r.respondent_type = 'employee' THEN
-                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_overall,
+                            CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END END) as employee_overall,
                         AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'MENING' THEN
-                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_mening,
+                            CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END END) as employee_mening,
                         AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'TRYGHED' THEN
-                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_tryghed,
+                            CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END END) as employee_tryghed,
                         AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'KAN' THEN
-                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_kan,
+                            CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END END) as employee_kan,
                         AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'BESVÆR' THEN
-                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_besvaer,
+                            CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END END) as employee_besvaer,
 
                         AVG(CASE WHEN r.respondent_type = 'leader_assess' THEN
-                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as leader_overall,
+                            CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END END) as leader_overall,
                         AVG(CASE WHEN r.respondent_type = 'leader_assess' AND q.field = 'MENING' THEN
-                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as leader_mening,
+                            CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END END) as leader_mening,
                         AVG(CASE WHEN r.respondent_type = 'leader_assess' AND q.field = 'TRYGHED' THEN
-                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as leader_tryghed,
+                            CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END END) as leader_tryghed,
                         AVG(CASE WHEN r.respondent_type = 'leader_assess' AND q.field = 'KAN' THEN
-                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as leader_kan,
+                            CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END END) as leader_kan,
                         AVG(CASE WHEN r.respondent_type = 'leader_assess' AND q.field = 'BESVÆR' THEN
-                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as leader_besvaer
+                            CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END END) as leader_besvaer
 
                     FROM organizational_units ou
                     JOIN assessments c ON c.target_unit_id = ou.id
@@ -790,26 +790,26 @@ def analyser():
                         CAST(SUM(CASE WHEN r.respondent_type = 'employee' THEN 1 ELSE 0 END) AS REAL) / 24 as unique_respondents,
 
                         AVG(CASE WHEN r.respondent_type = 'employee' THEN
-                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_overall,
+                            CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END END) as employee_overall,
                         AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'MENING' THEN
-                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_mening,
+                            CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END END) as employee_mening,
                         AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'TRYGHED' THEN
-                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_tryghed,
+                            CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END END) as employee_tryghed,
                         AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'KAN' THEN
-                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_kan,
+                            CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END END) as employee_kan,
                         AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'BESVÆR' THEN
-                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_besvaer,
+                            CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END END) as employee_besvaer,
 
                         AVG(CASE WHEN r.respondent_type = 'leader_assess' THEN
-                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as leader_overall,
+                            CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END END) as leader_overall,
                         AVG(CASE WHEN r.respondent_type = 'leader_assess' AND q.field = 'MENING' THEN
-                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as leader_mening,
+                            CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END END) as leader_mening,
                         AVG(CASE WHEN r.respondent_type = 'leader_assess' AND q.field = 'TRYGHED' THEN
-                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as leader_tryghed,
+                            CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END END) as leader_tryghed,
                         AVG(CASE WHEN r.respondent_type = 'leader_assess' AND q.field = 'KAN' THEN
-                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as leader_kan,
+                            CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END END) as leader_kan,
                         AVG(CASE WHEN r.respondent_type = 'leader_assess' AND q.field = 'BESVÆR' THEN
-                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as leader_besvaer
+                            CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END END) as leader_besvaer
 
                     FROM organizational_units child
                     JOIN descendants d ON d.root_child_id = child.id
@@ -849,27 +849,27 @@ def analyser():
 
                     -- Employee scores (aggregated across ALL assessments)
                     AVG(CASE WHEN r.respondent_type = 'employee' THEN
-                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_overall,
+                        CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END END) as employee_overall,
                     AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'MENING' THEN
-                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_mening,
+                        CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END END) as employee_mening,
                     AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'TRYGHED' THEN
-                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_tryghed,
+                        CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END END) as employee_tryghed,
                     AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'KAN' THEN
-                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_kan,
+                        CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END END) as employee_kan,
                     AVG(CASE WHEN r.respondent_type = 'employee' AND q.field = 'BESVÆR' THEN
-                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as employee_besvaer,
+                        CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END END) as employee_besvaer,
 
                     -- Leader assessment scores
                     AVG(CASE WHEN r.respondent_type = 'leader_assess' THEN
-                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as leader_overall,
+                        CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END END) as leader_overall,
                     AVG(CASE WHEN r.respondent_type = 'leader_assess' AND q.field = 'MENING' THEN
-                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as leader_mening,
+                        CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END END) as leader_mening,
                     AVG(CASE WHEN r.respondent_type = 'leader_assess' AND q.field = 'TRYGHED' THEN
-                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as leader_tryghed,
+                        CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END END) as leader_tryghed,
                     AVG(CASE WHEN r.respondent_type = 'leader_assess' AND q.field = 'KAN' THEN
-                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as leader_kan,
+                        CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END END) as leader_kan,
                     AVG(CASE WHEN r.respondent_type = 'leader_assess' AND q.field = 'BESVÆR' THEN
-                        CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as leader_besvaer
+                        CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END END) as leader_besvaer
 
                 FROM organizational_units ou
                 JOIN assessments c ON c.target_unit_id = ou.id
@@ -974,7 +974,7 @@ def org_dashboard(customer_id=None, unit_id=None):
                     COUNT(DISTINCT r.id) as response_count,
                     AVG(CASE
                         WHEN r.respondent_type = 'employee' THEN
-                            CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END
+                            CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END
                     END) as avg_score
                 FROM customers c
                 LEFT JOIN organizational_units ou ON ou.customer_id = c.id
@@ -1061,11 +1061,11 @@ def org_dashboard(customer_id=None, unit_id=None):
                     SELECT
                         COUNT(DISTINCT camp.id) as assessment_count,
                         COUNT(DISTINCT r.id) as response_count,
-                        AVG(CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END) as avg_score,
-                        AVG(CASE WHEN q.field = 'MENING' THEN CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as score_mening,
-                        AVG(CASE WHEN q.field = 'TRYGHED' THEN CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as score_tryghed,
-                        AVG(CASE WHEN q.field = 'KAN' THEN CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as score_kan,
-                        AVG(CASE WHEN q.field = 'BESVÆR' THEN CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as score_besvaer
+                        AVG(CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END) as avg_score,
+                        AVG(CASE WHEN q.field = 'MENING' THEN CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END END) as score_mening,
+                        AVG(CASE WHEN q.field = 'TRYGHED' THEN CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END END) as score_tryghed,
+                        AVG(CASE WHEN q.field = 'KAN' THEN CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END END) as score_kan,
+                        AVG(CASE WHEN q.field = 'BESVÆR' THEN CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END END) as score_besvaer
                     FROM subtree st
                     LEFT JOIN assessments camp ON camp.target_unit_id = st.id
                     LEFT JOIN responses r ON r.assessment_id = camp.id AND r.respondent_type = 'employee'
@@ -1135,11 +1135,11 @@ def org_dashboard(customer_id=None, unit_id=None):
                     SELECT
                         COUNT(DISTINCT camp.id) as assessment_count,
                         COUNT(DISTINCT r.id) as response_count,
-                        AVG(CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END) as avg_score,
-                        AVG(CASE WHEN q.field = 'MENING' THEN CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as score_mening,
-                        AVG(CASE WHEN q.field = 'TRYGHED' THEN CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as score_tryghed,
-                        AVG(CASE WHEN q.field = 'KAN' THEN CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as score_kan,
-                        AVG(CASE WHEN q.field = 'BESVÆR' THEN CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as score_besvaer
+                        AVG(CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END) as avg_score,
+                        AVG(CASE WHEN q.field = 'MENING' THEN CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END END) as score_mening,
+                        AVG(CASE WHEN q.field = 'TRYGHED' THEN CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END END) as score_tryghed,
+                        AVG(CASE WHEN q.field = 'KAN' THEN CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END END) as score_kan,
+                        AVG(CASE WHEN q.field = 'BESVÆR' THEN CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END END) as score_besvaer
                     FROM subtree st
                     LEFT JOIN assessments camp ON camp.target_unit_id = st.id
                     LEFT JOIN responses r ON r.assessment_id = camp.id AND r.respondent_type = 'employee'
@@ -1186,11 +1186,11 @@ def org_dashboard(customer_id=None, unit_id=None):
                     JOIN subtree st ON ou.parent_id = st.id
                 )
                 SELECT
-                    AVG(CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END) as avg_score,
-                    AVG(CASE WHEN q.field = 'MENING' THEN CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as mening,
-                    AVG(CASE WHEN q.field = 'TRYGHED' THEN CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as tryghed,
-                    AVG(CASE WHEN q.field = 'KAN' THEN CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as kan,
-                    AVG(CASE WHEN q.field = 'BESVÆR' THEN CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as besvaer,
+                    AVG(CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END) as avg_score,
+                    AVG(CASE WHEN q.field = 'MENING' THEN CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END END) as mening,
+                    AVG(CASE WHEN q.field = 'TRYGHED' THEN CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END END) as tryghed,
+                    AVG(CASE WHEN q.field = 'KAN' THEN CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END END) as kan,
+                    AVG(CASE WHEN q.field = 'BESVÆR' THEN CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END END) as besvaer,
                     COUNT(DISTINCT r.id) as response_count
                 FROM responses r
                 JOIN assessments camp ON r.assessment_id = camp.id
@@ -1202,11 +1202,11 @@ def org_dashboard(customer_id=None, unit_id=None):
             # Aggregér for hele kunden
             agg_scores = conn.execute("""
                 SELECT
-                    AVG(CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END) as avg_score,
-                    AVG(CASE WHEN q.field = 'MENING' THEN CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as mening,
-                    AVG(CASE WHEN q.field = 'TRYGHED' THEN CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as tryghed,
-                    AVG(CASE WHEN q.field = 'KAN' THEN CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as kan,
-                    AVG(CASE WHEN q.field = 'BESVÆR' THEN CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END END) as besvaer,
+                    AVG(CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END) as avg_score,
+                    AVG(CASE WHEN q.field = 'MENING' THEN CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END END) as mening,
+                    AVG(CASE WHEN q.field = 'TRYGHED' THEN CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END END) as tryghed,
+                    AVG(CASE WHEN q.field = 'KAN' THEN CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END END) as kan,
+                    AVG(CASE WHEN q.field = 'BESVÆR' THEN CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END END) as besvaer,
                     COUNT(DISTINCT r.id) as response_count
                 FROM responses r
                 JOIN assessments camp ON r.assessment_id = camp.id

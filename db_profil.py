@@ -96,7 +96,7 @@ def init_profil_tables():
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 session_id TEXT NOT NULL,
                 question_id INTEGER NOT NULL,
-                score INTEGER NOT NULL CHECK(score BETWEEN 1 AND 5),
+                score INTEGER NOT NULL CHECK(score BETWEEN 1 AND 7),
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
                 FOREIGN KEY (session_id) REFERENCES profil_sessions(id) ON DELETE CASCADE,
@@ -846,9 +846,9 @@ def get_response_matrix(session_id: str) -> Dict[str, Dict[str, float]]:
         layer = r['layer']
         score = r['score']
 
-        # Håndter omvendt scoring
+        # Håndter omvendt scoring (1-7 skala)
         if r['reverse_scored']:
-            score = 6 - score
+            score = 8 - score
 
         matrix[field][layer] = score
 

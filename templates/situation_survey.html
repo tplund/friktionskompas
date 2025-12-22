@@ -191,9 +191,15 @@
             }
             .scale {
                 flex-wrap: wrap;
+                gap: 4px;
             }
             .scale-option {
-                width: 18%;
+                width: calc(14% - 4px);
+                min-width: 36px;
+            }
+            .scale-option label {
+                padding: 10px 3px;
+                font-size: 14px;
             }
         }
     </style>
@@ -240,7 +246,7 @@
                         <div class="question-text">{{ q.text }}</div>
 
                         <div class="scale">
-                            {% for i in range(1, 6) %}
+                            {% for i in range(1, 8) %}
                             <div class="scale-option">
                                 <input type="radio"
                                        name="action_{{ action.id }}_{{ q.field }}"

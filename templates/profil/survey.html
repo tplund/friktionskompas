@@ -211,8 +211,11 @@
 
         @media (max-width: 600px) {
             .container { padding: 20px; }
-            .rating-scale { flex-wrap: wrap; }
-            .rating-option { flex: 0 0 18%; }
+            .rating-scale { flex-wrap: wrap; gap: 6px; }
+            .rating-option { flex: 0 0 calc(14% - 6px); min-width: 38px; }
+            .rating-option label { padding: 8px 4px; }
+            .rating-number { font-size: 16px; }
+            .rating-label { font-size: 8px; }
             .scale-legend { flex-direction: column; gap: 5px; }
         }
     </style>
@@ -237,8 +240,8 @@
 
         <div class="scale-legend">
             <span><strong>1</strong> = Aldrig / Slet ikke</span>
-            <span><strong>3</strong> = Nogle gange / Delvist</span>
-            <span><strong>5</strong> = Meget ofte / Meget stærkt</span>
+            <span><strong>4</strong> = Nogle gange / Delvist</span>
+            <span><strong>7</strong> = Meget ofte / Meget stærkt</span>
         </div>
 
         <form id="profilForm" action="/profil/{{ session_id }}/submit" method="POST">
@@ -263,7 +266,7 @@
                     </div>
                     <div class="question-text">{{ q.text_da }}</div>
                     <div class="rating-scale">
-                        {% for i in range(1, 6) %}
+                        {% for i in range(1, 8) %}
                         <div class="rating-option">
                             <input type="radio"
                                    id="q{{ q.id }}_{{ i }}"
@@ -273,7 +276,7 @@
                             <label for="q{{ q.id }}_{{ i }}">
                                 <span class="rating-number">{{ i }}</span>
                                 <span class="rating-label">
-                                    {% if i == 1 %}Aldrig{% elif i == 3 %}Nogle gange{% elif i == 5 %}Meget ofte{% endif %}
+                                    {% if i == 1 %}Aldrig{% elif i == 4 %}Delvist{% elif i == 7 %}Meget ofte{% endif %}
                                 </span>
                             </label>
                         </div>
