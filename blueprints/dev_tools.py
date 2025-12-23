@@ -850,8 +850,18 @@ def db_status():
 
         # Translations check
         try:
-            translations_count = conn.execute("SELECT COUNT(*) FROM translations").fetchone()[0]
-            translations_sample = conn.execute("SELECT key, da, en FROM translations LIMIT 5").fetchall()
+            translations_count = conn.execute("SELECT COUNT(DISTINCT key) FROM translations").fetchone()[0]
+            # Pivot the translations table to show da and en columns
+            translations_sample = conn.execute("""
+                SELECT
+                    t1.key,
+                    t1.value as da,
+                    COALESCE(t2.value, '-') as en
+                FROM translations t1
+                LEFT JOIN translations t2 ON t1.key = t2.key AND t2.language = 'en'
+                WHERE t1.language = 'da'
+                LIMIT 5
+            """).fetchall()
         except Exception as e:
             translations_count = 0
             translations_sample = []
