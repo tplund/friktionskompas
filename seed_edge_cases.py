@@ -112,10 +112,10 @@ def create_assessment_with_responses(conn, unit_id: str, name: str, questions: l
     # Generer medarbejder-responses
     for _ in range(response_count):
         for q_id, field, is_reverse in questions:
-            target = employee_scores.get(field, 3.0)
+            target = employee_scores.get(field, 4.0)
             # Tilføj varians
             score = target + random.uniform(-score_variance, score_variance)
-            score = max(1, min(5, round(score)))
+            score = max(1, min(7, round(score)))
 
             conn.execute("""
                 INSERT INTO responses (assessment_id, unit_id, question_id, score, created_at, respondent_type)
@@ -126,9 +126,9 @@ def create_assessment_with_responses(conn, unit_id: str, name: str, questions: l
     if leader_scores:
         for _ in range(leader_count):
             for q_id, field, is_reverse in questions:
-                target = leader_scores.get(field, 3.0)
+                target = leader_scores.get(field, 4.0)
                 score = target + random.uniform(-score_variance, score_variance)
-                score = max(1, min(5, round(score)))
+                score = max(1, min(7, round(score)))
 
                 conn.execute("""
                     INSERT INTO responses (assessment_id, unit_id, question_id, score, created_at, respondent_type)
@@ -138,9 +138,9 @@ def create_assessment_with_responses(conn, unit_id: str, name: str, questions: l
         # Også leader_self
         for _ in range(leader_count):
             for q_id, field, is_reverse in questions:
-                target = leader_scores.get(field, 3.0) + 0.5  # Ledere scorer ofte sig selv højere
+                target = leader_scores.get(field, 4.0) + 0.7  # Ledere scorer ofte sig selv højere
                 score = target + random.uniform(-score_variance, score_variance)
-                score = max(1, min(5, round(score)))
+                score = max(1, min(7, round(score)))
 
                 conn.execute("""
                     INSERT INTO responses (assessment_id, unit_id, question_id, score, created_at, respondent_type)
@@ -169,7 +169,7 @@ def main():
 
         test_parent_id = get_or_create_edge_case_unit(conn, "Edge Case Tests")
 
-        # === EDGE CASE 1: Stort gap (medarbejdere ~2.5, ledere ~4.0) ===
+        # === EDGE CASE 1: Stort gap (medarbejdere ~3.2, ledere ~5.8 på 7-point skala) ===
         print("\n2. STORT GAP (medarbejder vs. leder)")
         print("-" * 40)
 
@@ -177,11 +177,11 @@ def main():
         create_assessment_with_responses(
             conn, gap_unit_id, "Gap Test - Kritisk Forskel",
             questions,
-            employee_scores={'MENING': 2.3, 'TRYGHED': 2.5, 'KAN': 2.2, 'BESVÆR': 2.8},
-            leader_scores={'MENING': 4.0, 'TRYGHED': 4.2, 'KAN': 3.8, 'BESVÆR': 4.5},
+            employee_scores={'MENING': 3.0, 'TRYGHED': 3.3, 'KAN': 2.8, 'BESVÆR': 3.7},
+            leader_scores={'MENING': 5.5, 'TRYGHED': 5.8, 'KAN': 5.2, 'BESVÆR': 6.3},
             response_count=25,
             leader_count=3,
-            score_variance=0.3
+            score_variance=0.4
         )
 
         # === EDGE CASE 2: Meget lave scores (kritisk) ===
@@ -192,11 +192,11 @@ def main():
         create_assessment_with_responses(
             conn, low_unit_id, "Krise Test - Alt er Galt",
             questions,
-            employee_scores={'MENING': 1.5, 'TRYGHED': 1.3, 'KAN': 1.8, 'BESVÆR': 1.4},
-            leader_scores={'MENING': 2.0, 'TRYGHED': 1.8, 'KAN': 2.2, 'BESVÆR': 1.9},
+            employee_scores={'MENING': 1.8, 'TRYGHED': 1.5, 'KAN': 2.2, 'BESVÆR': 1.6},
+            leader_scores={'MENING': 2.5, 'TRYGHED': 2.2, 'KAN': 2.8, 'BESVÆR': 2.4},
             response_count=20,
             leader_count=2,
-            score_variance=0.4
+            score_variance=0.5
         )
 
         # === EDGE CASE 3: Meget høje scores (alt er fint) ===
@@ -207,11 +207,11 @@ def main():
         create_assessment_with_responses(
             conn, high_unit_id, "Succes Test - Høj Trivsel",
             questions,
-            employee_scores={'MENING': 4.5, 'TRYGHED': 4.7, 'KAN': 4.3, 'BESVÆR': 4.6},
-            leader_scores={'MENING': 4.6, 'TRYGHED': 4.8, 'KAN': 4.4, 'BESVÆR': 4.7},
+            employee_scores={'MENING': 6.3, 'TRYGHED': 6.6, 'KAN': 6.0, 'BESVÆR': 6.4},
+            leader_scores={'MENING': 6.4, 'TRYGHED': 6.7, 'KAN': 6.1, 'BESVÆR': 6.6},
             response_count=30,
             leader_count=4,
-            score_variance=0.3
+            score_variance=0.4
         )
 
         # === EDGE CASE 4: Høj spredning (uenige medarbejdere) ===
@@ -224,11 +224,11 @@ def main():
         create_assessment_with_responses(
             conn, spread_unit_id, "Spredning Test - Stor Uenighed",
             questions,
-            employee_scores={'MENING': 3.0, 'TRYGHED': 3.0, 'KAN': 3.0, 'BESVÆR': 3.0},
-            leader_scores={'MENING': 3.5, 'TRYGHED': 3.5, 'KAN': 3.5, 'BESVÆR': 3.5},
+            employee_scores={'MENING': 4.0, 'TRYGHED': 4.0, 'KAN': 4.0, 'BESVÆR': 4.0},
+            leader_scores={'MENING': 4.8, 'TRYGHED': 4.8, 'KAN': 4.8, 'BESVÆR': 4.8},
             response_count=40,
             leader_count=3,
-            score_variance=1.5  # Høj varians = stor spredning
+            score_variance=2.0  # Høj varians = stor spredning (øget for 7-point skala)
         )
 
         # === EDGE CASE 5: Kun TRYGHED er lav (test prioritering) ===
@@ -239,11 +239,11 @@ def main():
         create_assessment_with_responses(
             conn, tryghed_unit_id, "Tryghed Test - Kun Psykologisk Sikkerhed",
             questions,
-            employee_scores={'MENING': 4.0, 'TRYGHED': 2.0, 'KAN': 4.2, 'BESVÆR': 3.8},
-            leader_scores={'MENING': 4.2, 'TRYGHED': 3.8, 'KAN': 4.0, 'BESVÆR': 4.0},
+            employee_scores={'MENING': 5.5, 'TRYGHED': 2.5, 'KAN': 5.8, 'BESVÆR': 5.2},
+            leader_scores={'MENING': 5.8, 'TRYGHED': 5.2, 'KAN': 5.5, 'BESVÆR': 5.5},
             response_count=25,
             leader_count=3,
-            score_variance=0.4
+            score_variance=0.5
         )
 
         conn.commit()

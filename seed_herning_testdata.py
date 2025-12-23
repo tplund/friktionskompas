@@ -42,10 +42,10 @@ def get_questions(conn) -> list:
     """).fetchall()
 
 
-def generate_score(base_score: float, variance: float = 0.5) -> int:
-    """Genererer plausibel score (1-5) med varians"""
+def generate_score(base_score: float, variance: float = 0.7) -> int:
+    """Genererer plausibel score (1-7) med varians"""
     score = base_score + random.uniform(-variance, variance)
-    return max(1, min(5, round(score)))
+    return max(1, min(7, round(score)))
 
 
 def create_borgere_unit(conn) -> str:
@@ -110,37 +110,38 @@ def create_borgere_sub_units(conn, borgere_id: str) -> list:
 """
 Realistiske team-arketyper med VARIERET profil.
 Hver arketype har en unik friktionsprofil der afspejler typiske team-dynamikker.
+Scores er på 7-point skala (1-7).
 """
 TEAM_ARCHETYPES = {
     'travlt_team': {
         'description': 'Travlt Team - Høj kapacitet, men stresset',
-        'employee_scores': {'MENING': 3.8, 'TRYGHED': 3.2, 'KAN': 4.2, 'BESVÆR': 2.0},
-        'leader_scores': {'MENING': 4.0, 'TRYGHED': 3.8, 'KAN': 4.5, 'BESVÆR': 2.8},
+        'employee_scores': {'MENING': 5.2, 'TRYGHED': 4.3, 'KAN': 5.8, 'BESVÆR': 2.5},
+        'leader_scores': {'MENING': 5.5, 'TRYGHED': 5.2, 'KAN': 6.3, 'BESVÆR': 3.7},
     },
     'demotiveret_team': {
         'description': 'Demotiveret Team - Mangler mening og motivation',
-        'employee_scores': {'MENING': 2.2, 'TRYGHED': 3.5, 'KAN': 3.0, 'BESVÆR': 3.2},
-        'leader_scores': {'MENING': 3.0, 'TRYGHED': 3.8, 'KAN': 3.5, 'BESVÆR': 3.5},
+        'employee_scores': {'MENING': 2.8, 'TRYGHED': 4.8, 'KAN': 4.0, 'BESVÆR': 4.3},
+        'leader_scores': {'MENING': 4.0, 'TRYGHED': 5.2, 'KAN': 4.8, 'BESVÆR': 4.8},
     },
     'siloed_team': {
         'description': 'Siloed Team - Lav psykologisk sikkerhed',
-        'employee_scores': {'MENING': 3.5, 'TRYGHED': 2.0, 'KAN': 4.0, 'BESVÆR': 3.5},
-        'leader_scores': {'MENING': 3.8, 'TRYGHED': 3.5, 'KAN': 4.2, 'BESVÆR': 3.8},
+        'employee_scores': {'MENING': 4.8, 'TRYGHED': 2.5, 'KAN': 5.5, 'BESVÆR': 4.8},
+        'leader_scores': {'MENING': 5.2, 'TRYGHED': 4.8, 'KAN': 5.8, 'BESVÆR': 5.2},
     },
     'overbelastet_team': {
         'description': 'Overbelastet Team - Mangler ressourcer og energi',
-        'employee_scores': {'MENING': 3.0, 'TRYGHED': 2.8, 'KAN': 2.3, 'BESVÆR': 1.5},
-        'leader_scores': {'MENING': 3.5, 'TRYGHED': 3.2, 'KAN': 2.8, 'BESVÆR': 2.0},
+        'employee_scores': {'MENING': 4.0, 'TRYGHED': 3.7, 'KAN': 3.0, 'BESVÆR': 1.8},
+        'leader_scores': {'MENING': 4.8, 'TRYGHED': 4.3, 'KAN': 3.7, 'BESVÆR': 2.5},
     },
     'balanceret_team': {
         'description': 'Balanceret Team - Jævn men ikke exceptionel',
-        'employee_scores': {'MENING': 3.5, 'TRYGHED': 3.5, 'KAN': 3.5, 'BESVÆR': 3.5},
-        'leader_scores': {'MENING': 3.7, 'TRYGHED': 3.8, 'KAN': 3.6, 'BESVÆR': 3.8},
+        'employee_scores': {'MENING': 4.8, 'TRYGHED': 4.8, 'KAN': 4.8, 'BESVÆR': 4.8},
+        'leader_scores': {'MENING': 5.1, 'TRYGHED': 5.2, 'KAN': 4.9, 'BESVÆR': 5.2},
     },
     'nyt_team': {
         'description': 'Nyt Team - Høj motivation, lav rutine',
-        'employee_scores': {'MENING': 4.2, 'TRYGHED': 2.5, 'KAN': 2.8, 'BESVÆR': 3.0},
-        'leader_scores': {'MENING': 4.5, 'TRYGHED': 3.0, 'KAN': 3.2, 'BESVÆR': 3.5},
+        'employee_scores': {'MENING': 5.8, 'TRYGHED': 3.3, 'KAN': 3.7, 'BESVÆR': 4.0},
+        'leader_scores': {'MENING': 6.3, 'TRYGHED': 4.0, 'KAN': 4.3, 'BESVÆR': 4.8},
     },
 }
 
@@ -218,7 +219,7 @@ def generate_trend_assessments(conn, questions):
                     q_id, field, is_reverse = q
 
                     # Beregn score med forbedring over tid
-                    base = base_scores.get(field, 3.0) + improvement
+                    base = base_scores.get(field, 4.0) + improvement
                     # Tilføj individuel variation
                     score = generate_score(base, variance=0.6)
 
@@ -264,7 +265,7 @@ def generate_borgere_data(conn, borgere_unit_ids, questions):
             # B2C har mere spredning i scores (folk kommer fra meget forskellige situationer)
             for q in questions:
                 q_id, field, is_reverse = q
-                base = random.uniform(2.0, 4.0)  # Mere variation i B2C
+                base = random.uniform(2.5, 5.5)  # Mere variation i B2C (7-point skala)
                 score = generate_score(base, variance=1.0)
 
                 conn.execute("""

@@ -42,7 +42,7 @@ def generate_responses(assessment_id, unit_id, target_scores, respondent_type, n
     Args:
         assessment_id: Assessment ID
         unit_id: Unit ID
-        target_scores: Dict with field -> target score (1-5)
+        target_scores: Dict with field -> target score (1-7)
         respondent_type: 'employee' or 'leader_assess'
         num_respondents: Number of respondents to generate
 
@@ -53,19 +53,19 @@ def generate_responses(assessment_id, unit_id, target_scores, respondent_type, n
 
     for respondent_num in range(num_respondents):
         for field, questions in QUESTIONS.items():
-            target = target_scores.get(field, 3.0)
+            target = target_scores.get(field, 4.0)
 
             for q_id in questions:
                 # For reverse scored questions, we need to invert the target
                 if q_id in REVERSE_SCORED:
                     # If we want high adjusted score, we need LOW raw score
-                    raw_target = 6 - target
+                    raw_target = 8 - target
                 else:
                     raw_target = target
 
                 # Add small variation
-                score = raw_target + random.uniform(-0.3, 0.3)
-                score = max(1, min(5, score))  # Clamp to 1-5
+                score = raw_target + random.uniform(-0.4, 0.4)
+                score = max(1, min(7, score))  # Clamp to 1-7
                 score = round(score, 1)
 
                 responses.append({
@@ -184,36 +184,36 @@ def seed_esbjerg():
 
     all_responses = []
 
-    # 1. Birkebo - Normal case (average scores ~3.5)
+    # 1. Birkebo - Normal case (average scores ~4.8 on 7-point scale)
     print("  - Birkebo: Normal case")
     assess_id = create_assessment(conn, birkebo_id, "Birkebo Q4 2024", period="Q4 2024")
-    target = {'TRYGHED': 3.5, 'MENING': 3.4, 'KAN': 3.6, 'BESVÆR': 3.3}
+    target = {'TRYGHED': 4.8, 'MENING': 4.6, 'KAN': 4.9, 'BESVÆR': 4.5}
     all_responses.extend(generate_responses(assess_id, birkebo_id, target, 'employee', 9))
-    leader_target = {'TRYGHED': 3.6, 'MENING': 3.5, 'KAN': 3.5, 'BESVÆR': 3.4}
+    leader_target = {'TRYGHED': 4.9, 'MENING': 4.8, 'KAN': 4.8, 'BESVÆR': 4.6}
     all_responses.extend(generate_responses(assess_id, birkebo_id, leader_target, 'leader_assess', 1))
 
-    # 2. Skovbrynet - Success case (high scores ~4.5)
+    # 2. Skovbrynet - Success case (high scores ~6.2 on 7-point scale)
     print("  - Skovbrynet: Success case")
     assess_id = create_assessment(conn, skovbrynet_id, "Skovbrynet Q4 2024", period="Q4 2024")
-    target = {'TRYGHED': 4.5, 'MENING': 4.6, 'KAN': 4.4, 'BESVÆR': 4.3}
+    target = {'TRYGHED': 6.3, 'MENING': 6.4, 'KAN': 6.1, 'BESVÆR': 6.0}
     all_responses.extend(generate_responses(assess_id, skovbrynet_id, target, 'employee', 9))
-    leader_target = {'TRYGHED': 4.4, 'MENING': 4.5, 'KAN': 4.5, 'BESVÆR': 4.4}
+    leader_target = {'TRYGHED': 6.1, 'MENING': 6.3, 'KAN': 6.3, 'BESVÆR': 6.1}
     all_responses.extend(generate_responses(assess_id, skovbrynet_id, leader_target, 'leader_assess', 1))
 
-    # 3. Solhjem - Crisis case (low scores ~2.0)
+    # 3. Solhjem - Crisis case (low scores ~2.5 on 7-point scale)
     print("  - Solhjem: Crisis case")
     assess_id = create_assessment(conn, solhjem_id, "Solhjem Q4 2024", period="Q4 2024")
-    target = {'TRYGHED': 1.8, 'MENING': 1.9, 'KAN': 2.0, 'BESVÆR': 1.7}
+    target = {'TRYGHED': 2.2, 'MENING': 2.4, 'KAN': 2.5, 'BESVÆR': 2.1}
     all_responses.extend(generate_responses(assess_id, solhjem_id, target, 'employee', 9))
-    leader_target = {'TRYGHED': 2.0, 'MENING': 2.1, 'KAN': 2.2, 'BESVÆR': 1.9}
+    leader_target = {'TRYGHED': 2.5, 'MENING': 2.7, 'KAN': 2.8, 'BESVÆR': 2.4}
     all_responses.extend(generate_responses(assess_id, solhjem_id, leader_target, 'leader_assess', 1))
 
     # 4. Strandparken - Leader gap case (low employee, high leader)
     print("  - Strandparken: Leader gap case")
     assess_id = create_assessment(conn, strandparken_id, "Strandparken Q4 2024", period="Q4 2024")
-    target = {'TRYGHED': 2.5, 'MENING': 2.6, 'KAN': 2.4, 'BESVÆR': 2.5}
+    target = {'TRYGHED': 3.3, 'MENING': 3.4, 'KAN': 3.1, 'BESVÆR': 3.3}
     all_responses.extend(generate_responses(assess_id, strandparken_id, target, 'employee', 9))
-    leader_target = {'TRYGHED': 4.5, 'MENING': 4.4, 'KAN': 4.6, 'BESVÆR': 4.5}
+    leader_target = {'TRYGHED': 6.3, 'MENING': 6.1, 'KAN': 6.4, 'BESVÆR': 6.3}
     all_responses.extend(generate_responses(assess_id, strandparken_id, leader_target, 'leader_assess', 1))
 
     # 5. Handicapområdet - Empty unit (NO ASSESSMENT!)
@@ -223,20 +223,20 @@ def seed_esbjerg():
     # 6. Individuel Profil Test - B2C with 1 respondent
     print("  - Individuel Profil Test: B2C single respondent")
     assess_id = create_assessment(conn, individuel_id, "Individuel Test", 'profil_fuld', period="2024")
-    target = {'TRYGHED': 3.0, 'MENING': 4.0, 'KAN': 2.5, 'BESVÆR': 3.5}
+    target = {'TRYGHED': 4.0, 'MENING': 5.5, 'KAN': 3.3, 'BESVÆR': 4.8}
     all_responses.extend(generate_responses(assess_id, individuel_id, target, 'employee', 1))
 
     # 7. Minimal Data Test - B2C with identical scores
     print("  - Minimal Data Test: B2C identical scores")
     assess_id = create_assessment(conn, minimal_id, "Minimal Test", 'profil_fuld', period="2024")
-    target = {'TRYGHED': 3.0, 'MENING': 3.0, 'KAN': 3.0, 'BESVÆR': 3.0}
+    target = {'TRYGHED': 4.0, 'MENING': 4.0, 'KAN': 4.0, 'BESVÆR': 4.0}
     # Generate with NO variation
     for field, questions in QUESTIONS.items():
         for q_id in questions:
             if q_id in REVERSE_SCORED:
-                score = 3.0  # 6-3=3 for reverse
+                score = 4.0  # 8-4=4 for reverse on 7-point scale
             else:
-                score = 3.0
+                score = 4.0
             all_responses.append({
                 'assessment_id': assess_id,
                 'unit_id': minimal_id,
@@ -251,7 +251,7 @@ def seed_esbjerg():
     print("  - Substitution Test: Kahneman substitution pattern")
     assess_id = create_assessment(conn, substitution_id, "Substitution Analyse", period="Q4 2024")
     # High TRYGHED and KAN, low MENING and BESVÆR -> substitution!
-    target = {'TRYGHED': 4.0, 'MENING': 2.0, 'KAN': 4.0, 'BESVÆR': 2.0}
+    target = {'TRYGHED': 5.5, 'MENING': 2.5, 'KAN': 5.5, 'BESVÆR': 2.5}
     all_responses.extend(generate_responses(assess_id, substitution_id, target, 'employee', 9))
     all_responses.extend(generate_responses(assess_id, substitution_id, target, 'leader_assess', 1))
 
