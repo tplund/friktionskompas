@@ -1042,6 +1042,7 @@ def profil_start():
 
 
 @app.route('/profil/start', methods=['POST'])
+@csrf.exempt  # Public B2C endpoint - no login required
 def profil_create():
     """Opret ny session og redirect til spørgeskema"""
     name = request.form.get('name', '').strip() or None
@@ -1085,6 +1086,7 @@ def profil_survey(session_id):
 
 
 @app.route('/profil/<session_id>/submit', methods=['POST'])
+@csrf.exempt  # Public B2C survey submission - no login required
 def profil_submit(session_id):
     """Modtag svar og gem"""
     profil_session = get_profil_session(session_id)
