@@ -47,6 +47,26 @@ Grundig gennemgang af hele systemet før go-live.
 
 **Resultat:** Systemet er klar til go-live.
 
+### 📝 Spørgsmåls-kvalitet (Sproglig + Videnskabelig Review)
+Grundig gennemgang af alle spørgsmål i Friktionsprofilen.
+
+**Baggrund:** Nogle spørgsmål har uklar formulering, f.eks.:
+- "Jeg får hurtigt retning, når jeg tænker over noget"
+- "Jeg reagerer hurtigt fysisk, når noget virker uforudsigeligt"
+
+**Opgaver:**
+- [ ] **Sproglig review** - Gennemgå alle 40 spørgsmål for klarhed, naturligt dansk, entydighed
+- [ ] **Videnskabelig review** - Verificer at spørgsmål måler det intenderede (konstruktvaliditet)
+- [ ] **Reverse-scored konsistens** - Tjek at reverse-scored spørgsmål er intuitive at besvare
+- [ ] **Pilot-test** - Test med 5-10 brugere for forståelighed
+- [ ] **Dokumenter ændringer** - Opdater ANALYSELOGIK.md med begrundelser
+
+**Filer:**
+- `db_profil.py` - `_insert_legacy_questions()` funktion
+- `templates/profil/survey.html` - Visning af spørgsmål
+
+**Prioritet:** Medium (efter go-live, før bred udrulning)
+
 ### Central Beregningsmotor (friction_engine) ✅ FÆRDIG
 - [x] ~~**Opret `friction_engine.py`** - Samlet motor til alle friktionsberegninger~~
   - `calculate_field_scores(responses)` → {MENING: 3.5, TRYGHED: 2.8, ...}
