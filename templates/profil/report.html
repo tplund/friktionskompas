@@ -634,6 +634,25 @@
             </div>
         </div>
 
+        <!-- Par-sammenligning link (hvis del af par-måling) -->
+        {% if pair and pair.status == 'complete' %}
+        <div class="pair-link-section" style="margin-bottom: 30px; padding: 20px; background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%); border-radius: 12px; text-align: center;">
+            <h3 style="color: #2e7d32; margin-bottom: 15px;">👥 Par-sammenligning klar!</h3>
+            <p style="color: #555; margin-bottom: 15px;">Begge profiler er nu færdige - se jeres sammenligning.</p>
+            <a href="/profil/pair/{{ pair.id }}/compare" class="btn btn-primary" style="background: #2e7d32;">
+                Se par-sammenligning →
+            </a>
+        </div>
+        {% elif pair and pair.status != 'complete' %}
+        <div class="pair-link-section" style="margin-bottom: 30px; padding: 20px; background: #fff8e1; border-radius: 12px; border: 2px solid #ffb74d; text-align: center;">
+            <h3 style="color: #e65100; margin-bottom: 15px;">⏳ Venter på partner</h3>
+            <p style="color: #555; margin-bottom: 15px;">Din partner har ikke færdiggjort sin profil endnu.</p>
+            <a href="/profil/pair/{{ pair.id }}/status" class="btn btn-secondary" style="color: #e65100; border-color: #e65100;">
+                Se status →
+            </a>
+        </div>
+        {% endif %}
+
         <!-- Handlinger -->
         <div class="actions">
             <button class="btn btn-primary" onclick="window.print()">

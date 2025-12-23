@@ -11,7 +11,14 @@ from db_profil import (
     get_questions_by_field,
     save_responses,
     list_sessions,
-    generate_test_profiles
+    generate_test_profiles,
+    # Pair session functions
+    create_pair_session,
+    get_pair_session,
+    get_pair_session_by_code,
+    get_pair_session_by_profil_session,
+    join_pair_session,
+    update_pair_status
 )
 from analysis_profil import (
     get_full_analysis,
@@ -113,6 +120,13 @@ def profil_submit(session_id):
     # Marker som færdig
     complete_session(session_id)
 
+    # Tjek om dette er del af en par-session
+    pair = get_pair_session_by_profil_session(session_id)
+    if pair:
+        # Opdater par-status og redirect til par-side
+        update_pair_status(pair['id'])
+        return redirect(url_for('pair_status', pair_id=pair['id']))
+
     return redirect(url_for('profil_report', session_id=session_id))
 
 
@@ -124,6 +138,9 @@ def profil_report(session_id):
         flash('Profil ikke fundet', 'error')
         return redirect(url_for('profil_start'))
 
+    # Tjek om session er del af et par
+    pair = get_pair_session_by_profil_session(session_id)
+
     return render_template(
         'profil/report.html',
         session=analysis['session'],
@@ -131,7 +148,132 @@ def profil_report(session_id):
         color_matrix=analysis['color_matrix'],
         columns=analysis['columns'],
         summary=analysis['summary'],
-        interpretations=analysis['interpretations']
+        interpretations=analysis['interpretations'],
+        pair=pair  # Tilføjet for at vise link til par-sammenligning
+    )
+
+
+# ========================================
+# PAIR ROUTES (par-måling)
+# ========================================
+
+@app.route('/profil/pair/start', methods=['GET'])
+def pair_start():
+    """Vis startside for par-måling"""
+    return render_template('profil/pair_start.html')
+
+
+@app.route('/profil/pair/start', methods=['POST'])
+def pair_create():
+    """Opret par-session og redirect til survey"""
+    name = request.form.get('name', '').strip() or None
+    email = request.form.get('email', '').strip() or None
+
+    result = create_pair_session(
+        person_a_name=name,
+        person_a_email=email
+    )
+
+    # Gem pair_id i session så vi kan finde det efter survey
+    session['pair_id'] = result['pair_id']
+
+    return redirect(url_for('profil_survey', session_id=result['session_id']))
+
+
+@app.route('/profil/pair/join', methods=['GET'])
+def pair_join():
+    """Vis formular til at joine par-måling"""
+    code = request.args.get('code', '')
+    return render_template('profil/pair_join.html', prefilled_code=code)
+
+
+@app.route('/profil/pair/join', methods=['POST'])
+def pair_join_submit():
+    """Behandl join-request"""
+    code = request.form.get('code', '').strip().upper()
+    name = request.form.get('name', '').strip() or None
+    email = request.form.get('email', '').strip() or None
+
+    if not code:
+        flash('Indtast venligst en kode', 'error')
+        return redirect(url_for('pair_join'))
+
+    result = join_pair_session(
+        pair_code=code,
+        person_b_name=name,
+        person_b_email=email
+    )
+
+    if not result:
+        flash('Ugyldig kode eller koden er allerede brugt', 'error')
+        return redirect(url_for('pair_join'))
+
+    # Gem pair_id i session
+    session['pair_id'] = result['pair_id']
+
+    return redirect(url_for('profil_survey', session_id=result['session_id']))
+
+
+@app.route('/profil/pair/<pair_id>/status')
+def pair_status(pair_id):
+    """Vis status for par-måling (venter på partner)"""
+    pair = get_pair_session(pair_id)
+    if not pair:
+        flash('Par-session ikke fundet', 'error')
+        return redirect(url_for('profil_start'))
+
+    # Opdater status
+    status = update_pair_status(pair_id)
+    pair['status'] = status
+
+    if status == 'complete':
+        return redirect(url_for('pair_compare', pair_id=pair_id))
+
+    return render_template('profil/pair_waiting.html', pair=pair)
+
+
+@app.route('/profil/pair/<pair_id>/status/check')
+def pair_status_check(pair_id):
+    """API endpoint til at tjekke status (for auto-refresh)"""
+    from flask import jsonify
+
+    pair = get_pair_session(pair_id)
+    if not pair:
+        return jsonify({'error': 'Not found'}), 404
+
+    status = update_pair_status(pair_id)
+
+    return jsonify({
+        'status': status,
+        'redirect': url_for('pair_compare', pair_id=pair_id) if status == 'complete' else None
+    })
+
+
+@app.route('/profil/pair/<pair_id>/compare')
+def pair_compare(pair_id):
+    """Vis sammenligning af par"""
+    pair = get_pair_session(pair_id)
+    if not pair:
+        flash('Par-session ikke fundet', 'error')
+        return redirect(url_for('profil_start'))
+
+    if pair['status'] != 'complete':
+        return redirect(url_for('pair_status', pair_id=pair_id))
+
+    # Hent sammenligning via eksisterende compare_profiles funktion
+    comparison = compare_profiles(
+        pair['person_a_session_id'],
+        pair['person_b_session_id']
+    )
+
+    if not comparison:
+        flash('Kunne ikke generere sammenligning', 'error')
+        return redirect(url_for('pair_status', pair_id=pair_id))
+
+    return render_template(
+        'profil/pair_compare.html',
+        pair=pair,
+        comparison=comparison
     )
 
 

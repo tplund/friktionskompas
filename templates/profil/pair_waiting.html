@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <title>Venter på partner - Par-måling</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            max-width: 500px;
+            width: 100%;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .logo {
+            font-size: 48px;
+            margin-bottom: 15px;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        h1 {
+            color: #0f3460;
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #666;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .success-box {
+            background: #e8f5e9;
+            border: 1px solid #c8e6c9;
+            padding: 15px 20px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+        .success-box p {
+            color: #2e7d32;
+            font-size: 14px;
+        }
+
+        .code-display {
+            background: #f0f4f8;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+        .code-display label {
+            display: block;
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+        .code-value {
+            font-size: 36px;
+            font-weight: bold;
+            letter-spacing: 8px;
+            color: #0f3460;
+            font-family: 'Courier New', monospace;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 25px;
+        }
+        .action-btn {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #0f3460;
+            border-radius: 8px;
+            background: white;
+            color: #0f3460;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+            text-align: center;
+        }
+        .action-btn:hover {
+            background: #0f3460;
+            color: white;
+        }
+        .action-btn.copied {
+            background: #4caf50;
+            border-color: #4caf50;
+            color: white;
+        }
+
+        .share-link {
+            background: #fff9e6;
+            border: 1px solid #ffe082;
+            padding: 15px 20px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+        }
+        .share-link label {
+            display: block;
+            color: #f57c00;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+        .share-link code {
+            display: block;
+            color: #333;
+            font-size: 13px;
+            word-break: break-all;
+            font-family: 'Courier New', monospace;
+        }
+
+        .status-info {
+            text-align: center;
+            padding: 20px;
+            background: #f5f5f5;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+        .status-info .spinner {
+            width: 24px;
+            height: 24px;
+            border: 3px solid #e0e0e0;
+            border-top-color: #0f3460;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .status-info p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .partner-joined {
+            background: #e3f2fd;
+            border: 1px solid #bbdefb;
+        }
+        .partner-joined p {
+            color: #1565c0;
+        }
+
+        .privacy {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 12px;
+            color: #999;
+        }
+
+        .view-own-btn {
+            display: block;
+            text-align: center;
+            color: #666;
+            text-decoration: none;
+            font-size: 14px;
+            margin-top: 15px;
+        }
+        .view-own-btn:hover {
+            color: #0f3460;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">⏳</div>
+            <h1>Venter på din partner</h1>
+            <p class="subtitle">
+                Du har gennemført din del af par-målingen
+            </p>
+        </div>
+
+        <div class="success-box">
+            <p>✓ Din profil er gemt og klar til sammenligning</p>
+        </div>
+
+        <div class="code-display">
+            <label>Send denne kode til din partner:</label>
+            <div class="code-value" id="pairCode">{{ pair.pair_code }}</div>
+        </div>
+
+        <div class="action-buttons">
+            <button class="action-btn" id="copyBtn" onclick="copyCode()">
+                📋 Kopiér kode
+            </button>
+            <a href="mailto:?subject=Deltag i par-måling&body=Hej!%0A%0AJeg har taget en Friktionsprofil og vil gerne sammenligne med dig.%0A%0AGå til: https://friktionskompasset.dk/profil/pair/join%0AIndtast kode: {{ pair.pair_code }}%0A%0ADet tager kun 5-7 minutter." class="action-btn">
+                ✉️ Send email
+            </a>
+        </div>
+
+        <div class="share-link">
+            <label>Eller del dette link:</label>
+            <code id="shareLink">https://friktionskompasset.dk/profil/pair/join?code={{ pair.pair_code }}</code>
+        </div>
+
+        <div class="status-info {% if pair.status == 'partial' %}partner-joined{% endif %}" id="statusBox">
+            {% if pair.status == 'partial' %}
+                <p>🎉 Din partner er i gang med testen...</p>
+            {% else %}
+                <div class="spinner"></div>
+                <p>Siden opdaterer automatisk når din partner er færdig</p>
+            {% endif %}
+        </div>
+
+        <a href="/profil/{{ pair.person_a_session_id }}/report" class="view-own-btn">
+            Se din egen profil →
+        </a>
+
+        <p class="privacy">
+            Sammenligningen vises når begge har gennemført testen.
+        </p>
+    </div>
+
+    <script>
+        function copyCode() {
+            const code = document.getElementById('pairCode').textContent;
+            navigator.clipboard.writeText(code).then(() => {
+                const btn = document.getElementById('copyBtn');
+                btn.textContent = '✓ Kopieret!';
+                btn.classList.add('copied');
+                setTimeout(() => {
+                    btn.textContent = '📋 Kopiér kode';
+                    btn.classList.remove('copied');
+                }, 2000);
+            });
+        }
+
+        // Auto-refresh status every 5 seconds
+        function checkStatus() {
+            fetch('/profil/pair/{{ pair.id }}/status/check')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.redirect) {
+                        window.location.href = data.redirect;
+                    } else if (data.status === 'partial') {
+                        document.getElementById('statusBox').innerHTML = '<p>🎉 Din partner er i gang med testen...</p>';
+                        document.getElementById('statusBox').classList.add('partner-joined');
+                    }
+                })
+                .catch(err => console.log('Status check failed:', err));
+        }
+
+        // Check every 5 seconds
+        setInterval(checkStatus, 5000);
+    </script>
+</body>
+</html>

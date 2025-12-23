@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+    <title>Deltag i Par-måling - Friktionsprofil</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            max-width: 500px;
+            width: 100%;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .logo {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+        h1 {
+            color: #0f3460;
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #666;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .flash-messages {
+            margin-bottom: 20px;
+        }
+        .flash-error {
+            background: #fee;
+            border: 1px solid #fcc;
+            color: #c00;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            color: #333;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        .optional {
+            color: #999;
+            font-weight: normal;
+        }
+
+        .code-input-wrapper {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            margin-bottom: 10px;
+        }
+        .code-char {
+            width: 50px;
+            height: 60px;
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            text-transform: uppercase;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            transition: border-color 0.2s;
+        }
+        .code-char:focus {
+            outline: none;
+            border-color: #0f3460;
+        }
+
+        /* Hidden input for actual form submission */
+        #code {
+            display: none;
+        }
+
+        input[type="text"],
+        input[type="email"] {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.2s;
+        }
+        input:focus {
+            outline: none;
+            border-color: #0f3460;
+        }
+
+        .start-btn {
+            width: 100%;
+            background: linear-gradient(135deg, #0f3460 0%, #16213e 100%);
+            color: white;
+            border: none;
+            padding: 16px;
+            font-size: 18px;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 10px;
+        }
+        .start-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(15, 52, 96, 0.3);
+        }
+
+        .privacy {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 12px;
+            color: #999;
+        }
+
+        .time-estimate {
+            text-align: center;
+            margin-top: 15px;
+            padding: 10px;
+            background: #e8f5e9;
+            border-radius: 8px;
+            color: #2e7d32;
+            font-size: 14px;
+        }
+
+        .back-link {
+            display: block;
+            text-align: center;
+            margin-top: 20px;
+            color: #666;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        .back-link:hover {
+            color: #0f3460;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🔗</div>
+            <h1>Deltag i Par-måling</h1>
+            <p class="subtitle">
+                Indtast koden du har modtaget fra din partner
+            </p>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for category, message in messages %}
+                        <div class="flash-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <form action="/profil/pair/join" method="POST" id="joinForm">
+            <div class="form-group">
+                <label>Indtast 6-tegns kode</label>
+                <div class="code-input-wrapper">
+                    <input type="text" class="code-char" maxlength="1" data-index="0" autocomplete="off">
+                    <input type="text" class="code-char" maxlength="1" data-index="1" autocomplete="off">
+                    <input type="text" class="code-char" maxlength="1" data-index="2" autocomplete="off">
+                    <input type="text" class="code-char" maxlength="1" data-index="3" autocomplete="off">
+                    <input type="text" class="code-char" maxlength="1" data-index="4" autocomplete="off">
+                    <input type="text" class="code-char" maxlength="1" data-index="5" autocomplete="off">
+                </div>
+                <input type="hidden" id="code" name="code" value="{{ prefilled_code or '' }}">
+            </div>
+
+            <div class="form-group">
+                <label for="name">Dit navn <span class="optional">(valgfrit)</span></label>
+                <input type="text" id="name" name="name" placeholder="F.eks. Peter">
+            </div>
+
+            <div class="form-group">
+                <label for="email">Email <span class="optional">(valgfrit - til notifikation)</span></label>
+                <input type="email" id="email" name="email" placeholder="din@email.dk">
+            </div>
+
+            <button type="submit" class="start-btn">
+                Deltag i par-måling
+            </button>
+        </form>
+
+        <div class="time-estimate">
+            ⏱️ Ca. 5-7 minutter
+        </div>
+
+        <a href="/profil/pair/start" class="back-link">
+            ← Start din egen par-måling i stedet
+        </a>
+
+        <p class="privacy">
+            Dine svar behandles fortroligt. Kun din partner kan se sammenligningen.
+        </p>
+    </div>
+
+    <script>
+        // Handle code input with auto-advance
+        const codeInputs = document.querySelectorAll('.code-char');
+        const hiddenCode = document.getElementById('code');
+
+        function updateHiddenCode() {
+            let code = '';
+            codeInputs.forEach(input => {
+                code += input.value.toUpperCase();
+            });
+            hiddenCode.value = code;
+        }
+
+        codeInputs.forEach((input, index) => {
+            // Auto-uppercase and advance
+            input.addEventListener('input', (e) => {
+                input.value = input.value.toUpperCase();
+                updateHiddenCode();
+
+                if (input.value && index < 5) {
+                    codeInputs[index + 1].focus();
+                }
+            });
+
+            // Handle backspace
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Backspace' && !input.value && index > 0) {
+                    codeInputs[index - 1].focus();
+                }
+            });
+
+            // Handle paste
+            input.addEventListener('paste', (e) => {
+                e.preventDefault();
+                const paste = (e.clipboardData || window.clipboardData).getData('text').toUpperCase();
+                const chars = paste.replace(/[^A-Z0-9]/g, '').split('');
+
+                chars.forEach((char, i) => {
+                    if (codeInputs[index + i]) {
+                        codeInputs[index + i].value = char;
+                    }
+                });
+                updateHiddenCode();
+
+                // Focus last filled or next empty
+                const nextEmpty = [...codeInputs].findIndex(inp => !inp.value);
+                if (nextEmpty >= 0) {
+                    codeInputs[nextEmpty].focus();
+                } else {
+                    codeInputs[5].focus();
+                }
+            });
+        });
+
+        // Pre-fill if code provided
+        const prefilled = '{{ prefilled_code or "" }}';
+        if (prefilled) {
+            prefilled.split('').forEach((char, i) => {
+                if (codeInputs[i]) {
+                    codeInputs[i].value = char.toUpperCase();
+                }
+            });
+            updateHiddenCode();
+        }
+
+        // Focus first input on load
+        codeInputs[0].focus();
+    </script>
+</body>
+</html>

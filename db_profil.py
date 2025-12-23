@@ -119,6 +119,34 @@ def init_profil_tables():
             )
         """)
 
+        # Par-sessioner (to personer tager samme test)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS pair_sessions (
+                id TEXT PRIMARY KEY,
+                pair_code TEXT NOT NULL UNIQUE,
+
+                -- Person A (initiator)
+                person_a_name TEXT,
+                person_a_email TEXT,
+                person_a_session_id TEXT,
+
+                -- Person B (partner)
+                person_b_name TEXT,
+                person_b_email TEXT,
+                person_b_session_id TEXT,
+
+                -- Status: waiting, partial, complete
+                status TEXT DEFAULT 'waiting',
+
+                -- Metadata
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                completed_at TIMESTAMP,
+
+                FOREIGN KEY (person_a_session_id) REFERENCES profil_sessions(id),
+                FOREIGN KEY (person_b_session_id) REFERENCES profil_sessions(id)
+            )
+        """)
+
         # Indexes
         conn.execute("""
             CREATE INDEX IF NOT EXISTS idx_profil_responses_session
@@ -127,6 +155,10 @@ def init_profil_tables():
         conn.execute("""
             CREATE INDEX IF NOT EXISTS idx_profil_sessions_customer
             ON profil_sessions(customer_id)
+        """)
+        conn.execute("""
+            CREATE INDEX IF NOT EXISTS idx_pair_sessions_code
+            ON pair_sessions(pair_code)
         """)
 
         # Indsæt default spørgsmål hvis tom
@@ -895,6 +927,194 @@ def get_comparison(comparison_id: str) -> Optional[Dict]:
         if row:
             return dict(row)
     return None
+
+
+# ========================================
+# PAIR SESSION FUNCTIONS
+# ========================================
+
+import string
+
+def generate_pair_code() -> str:
+    """Genererer 6-tegns kode: ABC123 format (undgår forvekslelige tegn)"""
+    # Undgå forvekslelige tegn: 0/O, 1/I/L
+    alphabet = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
+    return ''.join(secrets.choice(alphabet) for _ in range(6))
+
+
+def create_pair_session(
+    person_a_name: Optional[str] = None,
+    person_a_email: Optional[str] = None
+) -> Dict[str, str]:
+    """
+    Opret ny par-session og tilhørende profil-session for person A.
+
+    Returns:
+        Dict med 'pair_id', 'pair_code', 'session_id'
+    """
+    pair_id = f"pair-{secrets.token_urlsafe(8)}"
+    pair_code = generate_pair_code()
+
+    # Opret profil-session for person A
+    session_id = f"profil-{secrets.token_urlsafe(12)}"
+
+    with get_db() as conn:
+        # Opret profil-session
+        conn.execute(
+            """INSERT INTO profil_sessions
+               (id, person_name, person_email, context, is_complete)
+               VALUES (?, ?, ?, 'pair', 0)""",
+            (session_id, person_a_name, person_a_email)
+        )
+
+        # Opret pair-session
+        conn.execute(
+            """INSERT INTO pair_sessions
+               (id, pair_code, person_a_name, person_a_email, person_a_session_id, status)
+               VALUES (?, ?, ?, ?, ?, 'waiting')""",
+            (pair_id, pair_code, person_a_name, person_a_email, session_id)
+        )
+
+    return {
+        'pair_id': pair_id,
+        'pair_code': pair_code,
+        'session_id': session_id
+    }
+
+
+def get_pair_session(pair_id: str) -> Optional[Dict]:
+    """Hent par-session med alle data"""
+    with get_db() as conn:
+        row = conn.execute(
+            """SELECT * FROM pair_sessions WHERE id = ?""",
+            (pair_id,)
+        ).fetchone()
+        if row:
+            return dict(row)
+    return None
+
+
+def get_pair_session_by_code(pair_code: str) -> Optional[Dict]:
+    """Hent par-session baseret på invitation-kode"""
+    with get_db() as conn:
+        row = conn.execute(
+            """SELECT * FROM pair_sessions WHERE pair_code = ?""",
+            (pair_code.upper(),)
+        ).fetchone()
+        if row:
+            return dict(row)
+    return None
+
+
+def get_pair_session_by_profil_session(session_id: str) -> Optional[Dict]:
+    """Find par-session hvis profil-session er del af et par"""
+    with get_db() as conn:
+        row = conn.execute(
+            """SELECT * FROM pair_sessions
+               WHERE person_a_session_id = ? OR person_b_session_id = ?""",
+            (session_id, session_id)
+        ).fetchone()
+        if row:
+            return dict(row)
+    return None
+
+
+def join_pair_session(
+    pair_code: str,
+    person_b_name: Optional[str] = None,
+    person_b_email: Optional[str] = None
+) -> Optional[Dict[str, str]]:
+    """
+    Person B joiner en eksisterende par-session.
+
+    Returns:
+        Dict med 'pair_id', 'session_id' eller None hvis kode ugyldig/allerede brugt
+    """
+    pair_code = pair_code.upper().strip()
+
+    with get_db() as conn:
+        # Find par-session
+        pair = conn.execute(
+            """SELECT * FROM pair_sessions WHERE pair_code = ?""",
+            (pair_code,)
+        ).fetchone()
+
+        if not pair:
+            return None  # Ugyldig kode
+
+        if pair['person_b_session_id']:
+            return None  # Kode allerede brugt
+
+        # Opret profil-session for person B
+        session_id = f"profil-{secrets.token_urlsafe(12)}"
+
+        conn.execute(
+            """INSERT INTO profil_sessions
+               (id, person_name, person_email, context, is_complete)
+               VALUES (?, ?, ?, 'pair', 0)""",
+            (session_id, person_b_name, person_b_email)
+        )
+
+        # Opdater pair-session
+        conn.execute(
+            """UPDATE pair_sessions
+               SET person_b_name = ?,
+                   person_b_email = ?,
+                   person_b_session_id = ?,
+                   status = 'partial'
+               WHERE id = ?""",
+            (person_b_name, person_b_email, session_id, pair['id'])
+        )
+
+    return {
+        'pair_id': pair['id'],
+        'session_id': session_id
+    }
+
+
+def update_pair_status(pair_id: str) -> str:
+    """
+    Opdater par-session status baseret på begge profil-sessioners completion.
+
+    Returns:
+        Ny status: 'waiting', 'partial', 'complete'
+    """
+    with get_db() as conn:
+        pair = conn.execute(
+            """SELECT ps.*,
+                      sa.is_complete as a_complete,
+                      sb.is_complete as b_complete
+               FROM pair_sessions ps
+               LEFT JOIN profil_sessions sa ON ps.person_a_session_id = sa.id
+               LEFT JOIN profil_sessions sb ON ps.person_b_session_id = sb.id
+               WHERE ps.id = ?""",
+            (pair_id,)
+        ).fetchone()
+
+        if not pair:
+            return 'unknown'
+
+        a_complete = pair['a_complete'] == 1 if pair['a_complete'] is not None else False
+        b_complete = pair['b_complete'] == 1 if pair['b_complete'] is not None else False
+
+        if a_complete and b_complete:
+            new_status = 'complete'
+            conn.execute(
+                """UPDATE pair_sessions
+                   SET status = 'complete', completed_at = CURRENT_TIMESTAMP
+                   WHERE id = ?""",
+                (pair_id,)
+            )
+        elif pair['person_b_session_id'] is not None:
+            new_status = 'partial'
+            conn.execute(
+                """UPDATE pair_sessions SET status = 'partial' WHERE id = ?""",
+                (pair_id,)
+            )
+        else:
+            new_status = 'waiting'
+
+        return new_status
 
 
 # ========================================
