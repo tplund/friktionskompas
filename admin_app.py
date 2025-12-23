@@ -1181,6 +1181,7 @@ def pair_start():
 
 
 @app.route('/profil/pair/start', methods=['POST'])
+@csrf.exempt  # Public B2C endpoint - no session required
 def pair_create():
     """Opret par-session og redirect til survey"""
     name = request.form.get('name', '').strip() or None
@@ -1205,6 +1206,7 @@ def pair_join():
 
 
 @app.route('/profil/pair/join', methods=['POST'])
+@csrf.exempt  # Public B2C endpoint - no session required
 def pair_join_submit():
     """Behandl join-request"""
     code = request.form.get('code', '').strip().upper()
