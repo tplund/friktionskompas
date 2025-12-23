@@ -47,25 +47,19 @@ Grundig gennemgang af hele systemet før go-live.
 
 **Resultat:** Systemet er klar til go-live.
 
-### 📝 Spørgsmåls-kvalitet (Sproglig + Videnskabelig Review)
+### 📝 Spørgsmåls-kvalitet (Sproglig + Videnskabelig Review) ✅ FÆRDIG
 Grundig gennemgang af alle spørgsmål i Friktionsprofilen.
 
-**Baggrund:** Nogle spørgsmål har uklar formulering, f.eks.:
-- "Jeg får hurtigt retning, når jeg tænker over noget"
-- "Jeg reagerer hurtigt fysisk, når noget virker uforudsigeligt"
+**Status:** Implementeret 2025-12-23. Se `AUDIT_QUESTION_QUALITY.md` for detaljer.
 
 **Opgaver:**
-- [ ] **Sproglig review** - Gennemgå alle 40 spørgsmål for klarhed, naturligt dansk, entydighed
-- [ ] **Videnskabelig review** - Verificer at spørgsmål måler det intenderede (konstruktvaliditet)
-- [ ] **Reverse-scored konsistens** - Tjek at reverse-scored spørgsmål er intuitive at besvare
-- [ ] **Pilot-test** - Test med 5-10 brugere for forståelighed
-- [ ] **Dokumenter ændringer** - Opdater ANALYSELOGIK.md med begrundelser
+- [x] **Sproglig review** - Gennemgået alle 30 spørgsmål for klarhed, naturligt dansk, entydighed
+- [x] **Videnskabelig review** - Verificeret at spørgsmål måler det intenderede (konstruktvaliditet)
+- [x] **Reverse-scored konsistens** - Tjekket at reverse-scored spørgsmål er intuitive at besvare
+- [ ] **Pilot-test** - Test med 5-10 brugere for forståelighed (TODO)
+- [ ] **Dokumenter ændringer** - Opdater ANALYSELOGIK.md med begrundelser (TODO)
 
-**Filer:**
-- `db_profil.py` - `_insert_legacy_questions()` funktion
-- `templates/profil/survey.html` - Visning af spørgsmål
-
-**Prioritet:** Medium (efter go-live, før bred udrulning)
+**Ændringer:** 15 af 30 spørgsmål blev opdateret for bedre klarhed og naturligt dansk.
 
 ### Central Beregningsmotor (friction_engine) ✅ FÆRDIG
 - [x] ~~**Opret `friction_engine.py`** - Samlet motor til alle friktionsberegninger~~

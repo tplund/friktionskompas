@@ -400,32 +400,32 @@ def _insert_legacy_questions(conn):
         # ================================================
 
         # TRYGHED - Sensitivitet
-        ("TRYGHED", "BIOLOGI", "Jeg reagerer hurtigt fysisk, når noget virker uforudsigeligt",
-         "Lige nu reagerer min krop hurtigt, når noget er uforudsigeligt", "sensitivity", 0, 1),
-        ("TRYGHED", "EMOTION", "Jeg opfanger små signaler eller stemninger meget tydeligt",
-         "Lige nu opfanger jeg signaler og stemninger meget tydeligt", "sensitivity", 0, 2),
-        ("TRYGHED", "INDRE", "Jeg bliver urolig, hvis min oplevelse af virkeligheden bliver udfordret",
-         "Lige nu bliver jeg urolig, hvis min virkelighed udfordres", "sensitivity", 0, 3),
+        ("TRYGHED", "BIOLOGI", "Jeg mærker fysisk uro (hjertebanken, spænding) når noget uventet sker",
+         "Lige nu mærker jeg fysisk uro, når noget uventet sker", "sensitivity", 0, 1),
+        ("TRYGHED", "EMOTION", "Jeg opfanger små signaler eller stemninger i omgivelserne",
+         "Lige nu opfanger jeg signaler og stemninger i omgivelserne", "sensitivity", 0, 2),
+        ("TRYGHED", "INDRE", "Jeg bliver urolig, når andre ser situationer helt anderledes end mig",
+         "Lige nu bliver jeg urolig, når andre ser tingene anderledes", "sensitivity", 0, 3),
         ("TRYGHED", "KOGNITION", "Jeg falder til ro, når jeg forstår, hvad der foregår",
          "Lige nu falder jeg til ro, når jeg forstår hvad der foregår", "sensitivity", 1, 4),
 
         # MENING - Sensitivitet
-        ("MENING", "BIOLOGI", "Når noget ikke giver mening, føles det fysisk forkert",
-         "Lige nu føles det fysisk forkert, når noget ikke giver mening", "sensitivity", 0, 5),
-        ("MENING", "EMOTION", "Jeg mærker stærkt, hvad der er vigtigt for mig",
-         "Lige nu mærker jeg stærkt, hvad der er vigtigt", "sensitivity", 0, 6),
-        ("MENING", "INDRE", "Jeg får hurtigt retning, når jeg tænker over noget",
-         "Lige nu får jeg hurtigt retning, når jeg tænker over det", "sensitivity", 1, 7),
+        ("MENING", "BIOLOGI", "Jeg mærker fysisk ubehag, når noget ikke giver mening",
+         "Lige nu mærker jeg fysisk ubehag, når noget ikke giver mening", "sensitivity", 0, 5),
+        ("MENING", "EMOTION", "Jeg har en klar fornemmelse af, hvad der er vigtigt for mig",
+         "Lige nu har jeg en klar fornemmelse af, hvad der er vigtigt", "sensitivity", 0, 6),
+        ("MENING", "INDRE", "Når jeg tænker over noget, finder jeg hurtigt ud af hvad jeg mener",
+         "Lige nu finder jeg hurtigt ud af, hvad jeg mener", "sensitivity", 1, 7),
         ("MENING", "KOGNITION", "Jeg kan holde meget pres ud, hvis meningen er klar",
          "Lige nu kan jeg holde pres ud, fordi meningen er klar", "sensitivity", 1, 8),
 
         # KAN - Sensitivitet
-        ("KAN", "BIOLOGI", "Jeg mærker energifald hurtigt i kroppen",
-         "Lige nu mærker jeg energifald hurtigt i kroppen", "sensitivity", 0, 9),
+        ("KAN", "BIOLOGI", "Jeg mærker det i kroppen, når min energi falder",
+         "Lige nu mærker jeg det i kroppen, når min energi falder", "sensitivity", 0, 9),
         ("KAN", "EMOTION", "Jeg bliver let overvældet, hvis der er mange ting på én gang",
          "Lige nu bliver jeg let overvældet af mange ting", "sensitivity", 0, 10),
-        ("KAN", "INDRE", "Jeg regulerer mig selv bedst ved at forstå, hvad jeg skal",
-         "Lige nu regulerer jeg mig bedst ved at forstå, hvad jeg skal", "sensitivity", 1, 11),
+        ("KAN", "INDRE", "Jeg fungerer bedst, når jeg forstår hvad der forventes af mig",
+         "Lige nu fungerer jeg bedst, når jeg forstår hvad der forventes", "sensitivity", 1, 11),
         ("KAN", "KOGNITION", "Jeg kan tænke klart, selv når jeg er presset",
          "Lige nu kan jeg tænke klart, selvom jeg er presset", "sensitivity", 1, 12),
 
@@ -434,8 +434,8 @@ def _insert_legacy_questions(conn):
          "Lige nu føles små ting tunge", "sensitivity", 0, 13),
         ("BESVÆR", "EMOTION", "Jeg undgår ting, der føles som bøvl eller kompleksitet",
          "Lige nu undgår jeg ting, der føles bøvlede", "sensitivity", 0, 14),
-        ("BESVÆR", "INDRE", "Jeg gør ting lettere ved at forstå processen",
-         "Lige nu gør jeg ting lettere ved at forstå processen", "sensitivity", 1, 15),
+        ("BESVÆR", "INDRE", "Når jeg forstår processen, føles opgaver lettere",
+         "Lige nu føles opgaver lettere, når jeg forstår processen", "sensitivity", 1, 15),
         ("BESVÆR", "KOGNITION", "Jeg mister overblik i opgaver med mange små elementer",
          "Lige nu mister jeg overblik i denne opgave", "sensitivity", 0, 16),
 
@@ -447,30 +447,30 @@ def _insert_legacy_questions(conn):
         # KAN - Kapacitet
         ("KAN", "INDRE", "Jeg kan godt gennemføre noget, selvom jeg ikke har lyst",
          "I denne situation kan jeg godt gøre det her, selvom jeg egentlig ikke har lyst", "capacity", 1, 17),
-        ("KAN", "KOGNITION", "Når jeg har besluttet mig for noget, får jeg det normalt gjort - også selvom det er kedeligt",
-         "Når jeg har besluttet mig for det her, kan jeg godt holde fast, også selvom det er kedeligt", "capacity", 1, 18),
+        ("KAN", "KOGNITION", "Når jeg har besluttet noget, får jeg det gjort - også selvom det er kedeligt",
+         "Når jeg har besluttet mig, kan jeg holde fast, også selvom det er kedeligt", "capacity", 1, 18),
 
         # BESVÆR - Kapacitet
-        ("BESVÆR", "KOGNITION", "Jeg laver ofte ting færdige, selvom de føles besværlige eller meningsløse",
+        ("BESVÆR", "KOGNITION", "Jeg gennemfører opgaver, selvom de føles besværlige",
          "Jeg kan godt færdiggøre det her, selvom det føles bøvlet", "capacity", 1, 19),
-        ("BESVÆR", "INDRE", "Jeg kan bære meget bøvl, hvis det er det, der skal til, for at tingene fungerer",
-         "Jeg kan godt bære det besvær, der følger med den her situation", "capacity", 1, 20),
+        ("BESVÆR", "INDRE", "Jeg kan håndtere meget bøvl, hvis det er nødvendigt",
+         "Jeg kan godt håndtere det besvær, der følger med", "capacity", 1, 20),
 
         # TRYGHED - Kapacitet (sårbarhed)
-        ("TRYGHED", "INDRE", "Jeg bliver meget ramt, hvis nogen stiller spørgsmålstegn ved mine intentioner",
-         "I denne situation bliver jeg ramt, hvis nogen udfordrer mine intentioner", "capacity", 0, 21),
+        ("TRYGHED", "INDRE", "Det påvirker mig, når andre tvivler på mine intentioner",
+         "I denne situation påvirker det mig, hvis nogen tvivler på mine intentioner", "capacity", 0, 21),
 
         # MENING - Kapacitet (sårbarhed)
-        ("MENING", "INDRE", "Jeg bliver stærkt påvirket, når nogen udfordrer min forståelse af, hvad der er rigtigt eller vigtigt",
-         "I denne situation bliver jeg påvirket, hvis min forståelse af hvad der er rigtigt udfordres", "capacity", 0, 22),
+        ("MENING", "INDRE", "Det påvirker mig, når andre udfordrer mine værdier",
+         "I denne situation påvirker det mig, hvis mine værdier udfordres", "capacity", 0, 22),
 
         # ================================================
         # BÅNDBREDDE-SPØRGSMÅL (2 nye)
         # Måler evne til at løfte pres opad i systemet
         # ================================================
 
-        ("TRYGHED", "EMOTION", "Når jeg bliver følelsesmæssigt presset, kan jeg normalt godt holde ud, indtil jeg har talt med nogen eller tænkt det igennem",
-         "I denne situation kan jeg holde ud følelsesmæssigt, indtil jeg får talt med nogen", "bandwidth", 1, 23),
+        ("TRYGHED", "EMOTION", "Når jeg er følelsesmæssigt presset, kan jeg holde ud til jeg får bearbejdet det",
+         "I denne situation kan jeg holde ud følelsesmæssigt, indtil jeg får bearbejdet det", "bandwidth", 1, 23),
         ("MENING", "KOGNITION", "Når noget rammer mig hårdt, kan jeg efter noget tid tænke klart over det",
          "I denne situation kan jeg tænke klart over det, selvom det rammer mig personligt", "bandwidth", 1, 24),
 
