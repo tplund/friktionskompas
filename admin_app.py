@@ -41,6 +41,7 @@ from friction_engine import (
     get_severity, get_spread_level, THRESHOLDS, FRICTION_FIELDS,
     Severity, SpreadLevel
 )
+from db import get_db
 from db_multitenant import (
     authenticate_user, create_customer, create_user, list_customers,
     list_users, get_customer_filter, get_customer, update_customer,
@@ -1112,7 +1113,31 @@ def profil_submit(session_id):
     pair = get_pair_session_by_profil_session(session_id)
     if pair:
         # Opdater par-status og redirect til par-side
-        update_pair_status(pair['id'])
+        status = update_pair_status(pair['id'])
+
+        # Send email til begge når begge er færdige
+        if status == 'complete':
+            from mailjet_integration import send_pair_completion_notification
+            compare_url = url_for('pair_compare', pair_id=pair['id'], _external=True)
+
+            # Email til person A
+            if pair.get('person_a_email'):
+                send_pair_completion_notification(
+                    to_email=pair['person_a_email'],
+                    recipient_name=pair.get('person_a_name', 'Du'),
+                    partner_name=pair.get('person_b_name', 'din partner'),
+                    comparison_url=compare_url
+                )
+
+            # Email til person B
+            if pair.get('person_b_email'):
+                send_pair_completion_notification(
+                    to_email=pair['person_b_email'],
+                    recipient_name=pair.get('person_b_name', 'Du'),
+                    partner_name=pair.get('person_a_name', 'din partner'),
+                    comparison_url=compare_url
+                )
+
         return redirect(url_for('pair_status', pair_id=pair['id']))
 
     return redirect(url_for('profil_report', session_id=session_id))
@@ -1294,6 +1319,47 @@ def pair_compare(pair_id):
         pair=pair,
         comparison=comparison
     )
+
+
+@app.route('/admin/pair-sessions')
+@login_required
+def admin_pair_sessions():
+    """Liste alle par-sessioner for admin"""
+    user = session['user']
+
+    with get_db() as conn:
+        # For superadmin: Alle par-sessioner med customer info
+        if user['role'] == 'superadmin':
+            rows = conn.execute("""
+                SELECT ps.*,
+                       c.name as customer_name,
+                       sa.created_at as a_started,
+                       sb.created_at as b_started
+                FROM pair_sessions ps
+                LEFT JOIN profil_sessions sa ON ps.person_a_session_id = sa.id
+                LEFT JOIN profil_sessions sb ON ps.person_b_session_id = sb.id
+                LEFT JOIN customers c ON sa.customer_id = c.id
+                ORDER BY ps.created_at DESC
+            """).fetchall()
+        else:
+            # For andre roller: kun egen kunde
+            customer_id = user.get('customer_id')
+            rows = conn.execute("""
+                SELECT ps.*,
+                       c.name as customer_name,
+                       sa.created_at as a_started,
+                       sb.created_at as b_started
+                FROM pair_sessions ps
+                LEFT JOIN profil_sessions sa ON ps.person_a_session_id = sa.id
+                LEFT JOIN profil_sessions sb ON ps.person_b_session_id = sb.id
+                LEFT JOIN customers c ON sa.customer_id = c.id
+                WHERE sa.customer_id = ?
+                ORDER BY ps.created_at DESC
+            """, (customer_id,)).fetchall()
+
+        pairs = [dict(row) for row in rows]
+
+    return render_template('admin/pair_sessions.html', pairs=pairs)
 
 
 @app.route('/profil/generate-test-data')

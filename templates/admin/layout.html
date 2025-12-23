@@ -859,6 +859,7 @@
                     <a href="#" class="dropdown-toggle {% if 'profil' in request.path and 'profil-questions' not in request.path %}active{% endif %}">🧠 {{ t('nav.friktionsprofil', 'Friktionsprofil') }} ▾</a>
                     <ul class="dropdown-menu">
                         <li><a href="/admin/profiler" {% if request.path == '/admin/profiler' %}class="active"{% endif %}>📋 {{ t('nav.alle_profiler', 'Alle profiler') }}</a></li>
+                        <li><a href="/admin/pair-sessions" {% if 'pair-sessions' in request.path %}class="active"{% endif %}>👥 Par-sessioner</a></li>
                         <li><a href="/friktionsprofil/" target="_blank">🧪 {{ t('nav.tag_test', 'Tag profil-test') }} ↗</a></li>
                         <li style="border-top: 1px solid rgba(255,255,255,0.1); margin: 5px 0;"></li>
                         <li><a href="/profil/local" target="_blank">🔒 {{ t('nav.lokal_profil', 'Lokal profil (B2C)') }} ↗</a></li>

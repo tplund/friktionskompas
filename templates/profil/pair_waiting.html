@@ -223,10 +223,19 @@
             {% if pair.status == 'partial' %}
                 <p>🎉 Din partner er i gang med testen...</p>
             {% else %}
-                <div class="spinner"></div>
-                <p>Siden opdaterer automatisk når din partner er færdig</p>
+                <p>⏳ Venter på din partner</p>
             {% endif %}
         </div>
+
+        {% if pair.person_a_email %}
+        <p class="email-note" style="text-align: center; font-size: 13px; color: #666; margin-top: 15px;">
+            ✉️ Du får en email til <strong>{{ pair.person_a_email }}</strong> når I begge er færdige.
+        </p>
+        {% else %}
+        <p class="email-note" style="text-align: center; font-size: 13px; color: #999; margin-top: 15px;">
+            Tip: Giv din partner linket og tjek tilbage senere, eller se din egen profil nu.
+        </p>
+        {% endif %}
 
         <a href="/profil/{{ pair.person_a_session_id }}/report" class="view-own-btn">
             Se din egen profil →

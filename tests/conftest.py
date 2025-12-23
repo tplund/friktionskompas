@@ -210,6 +210,37 @@ def _init_test_db(db_path):
         )
     """)
 
+    # Profil responses table
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS profil_responses (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id TEXT NOT NULL,
+            question_id INTEGER NOT NULL,
+            score INTEGER NOT NULL CHECK(score BETWEEN 1 AND 7),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (session_id) REFERENCES profil_sessions(id) ON DELETE CASCADE
+        )
+    """)
+
+    # Pair sessions table for par-maaling
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS pair_sessions (
+            id TEXT PRIMARY KEY,
+            pair_code TEXT NOT NULL UNIQUE,
+            person_a_name TEXT,
+            person_a_email TEXT,
+            person_a_session_id TEXT,
+            person_b_name TEXT,
+            person_b_email TEXT,
+            person_b_session_id TEXT,
+            status TEXT DEFAULT 'waiting',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            completed_at TIMESTAMP,
+            FOREIGN KEY (person_a_session_id) REFERENCES profil_sessions(id),
+            FOREIGN KEY (person_b_session_id) REFERENCES profil_sessions(id)
+        )
+    """)
+
     # Profil questions table
     conn.execute("""
         CREATE TABLE IF NOT EXISTS profil_questions (

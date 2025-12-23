@@ -1394,6 +1394,184 @@ def send_profil_batch(invitations: List[Dict], sender_name: str = "HR",
 
 
 # ========================================
+# PAIR COMPLETION NOTIFICATIONS
+# ========================================
+
+def send_pair_completion_notification(
+    to_email: str,
+    recipient_name: str,
+    partner_name: str,
+    comparison_url: str,
+    language: str = 'da'
+) -> bool:
+    """
+    Send email notification when a pair comparison is ready.
+
+    Args:
+        to_email: Recipient email
+        recipient_name: Name of the recipient
+        partner_name: Name of the partner
+        comparison_url: URL to the comparison page
+        language: Language code ('da' or 'en', default 'da')
+    """
+    if language == 'en':
+        subject = "Your pair comparison is ready!"
+        html_content = f'''
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+        .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+        .header {{ background: linear-gradient(135deg, #0f3460 0%, #16213e 100%);
+                  color: white; padding: 25px; border-radius: 8px 8px 0 0; text-align: center; }}
+        .content {{ background: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }}
+        .button {{ display: inline-block; background: #0f3460; color: white;
+                  padding: 14px 35px; text-decoration: none; border-radius: 6px;
+                  margin: 20px 0; font-weight: bold; }}
+        .footer {{ margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;
+                  font-size: 0.875rem; color: #6b7280; }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>👥 Pair Comparison Ready!</h2>
+        </div>
+        <div class="content">
+            <p>Hi {recipient_name or 'there'}!</p>
+
+            <p>Great news! Both you and <strong>{partner_name or 'your partner'}</strong> have completed
+            your friction profiles. Your comparison is now ready to view.</p>
+
+            <p style="text-align: center;">
+                <a href="{comparison_url}" class="button">
+                    View Comparison →
+                </a>
+            </p>
+
+            <p style="margin-top: 20px;">Or copy this link to your browser:<br>
+            <a href="{comparison_url}">{comparison_url}</a></p>
+
+            <div class="footer">
+                <p>This email was sent because you participated in a pair assessment on Friktionskompasset.</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+'''
+        text_content = f'''
+Pair Comparison Ready!
+
+Hi {recipient_name or 'there'}!
+
+Both you and {partner_name or 'your partner'} have completed your friction profiles.
+Your comparison is now ready to view.
+
+View comparison: {comparison_url}
+
+Best regards,
+Friktionskompasset
+'''
+    else:
+        subject = "Jeres par-sammenligning er klar!"
+        html_content = f'''
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+        .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+        .header {{ background: linear-gradient(135deg, #0f3460 0%, #16213e 100%);
+                  color: white; padding: 25px; border-radius: 8px 8px 0 0; text-align: center; }}
+        .content {{ background: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }}
+        .button {{ display: inline-block; background: #0f3460; color: white;
+                  padding: 14px 35px; text-decoration: none; border-radius: 6px;
+                  margin: 20px 0; font-weight: bold; }}
+        .footer {{ margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;
+                  font-size: 0.875rem; color: #6b7280; }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>👥 Par-sammenligning klar!</h2>
+        </div>
+        <div class="content">
+            <p>Hej {recipient_name or 'dig'}!</p>
+
+            <p>Godt nyt! Både du og <strong>{partner_name or 'din partner'}</strong> har gennemført
+            jeres friktionsprofiler. Jeres sammenligning er nu klar.</p>
+
+            <p style="text-align: center;">
+                <a href="{comparison_url}" class="button">
+                    Se sammenligning →
+                </a>
+            </p>
+
+            <p style="margin-top: 20px;">Eller kopier dette link til din browser:<br>
+            <a href="{comparison_url}">{comparison_url}</a></p>
+
+            <div class="footer">
+                <p>Du modtager denne email fordi du deltog i en par-måling på Friktionskompasset.</p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+'''
+        text_content = f'''
+Par-sammenligning klar!
+
+Hej {recipient_name or 'dig'}!
+
+Både du og {partner_name or 'din partner'} har gennemført jeres friktionsprofiler.
+Jeres sammenligning er nu klar.
+
+Se sammenligning: {comparison_url}
+
+Mvh
+Friktionskompasset
+'''
+
+    email_sender = get_email_sender(None)
+
+    message_data = {
+        "From": email_sender,
+        "To": [{"Email": to_email}],
+        "Subject": subject,
+        "TextPart": text_content,
+        "HTMLPart": html_content
+    }
+
+    # GDPR: Add List-Unsubscribe headers
+    message_data = add_unsubscribe_headers(message_data, to_email)
+
+    data = {'Messages': [message_data]}
+
+    try:
+        result = mailjet.send.create(data=data)
+        if result.status_code == 200:
+            response_data = result.json()
+            message_id = None
+            if 'Messages' in response_data and len(response_data['Messages']) > 0:
+                msg = response_data['Messages'][0]
+                if 'To' in msg and len(msg['To']) > 0:
+                    message_id = str(msg['To'][0].get('MessageID', ''))
+            log_email(to_email, subject, 'pair_completion', 'sent', message_id)
+            return True
+        else:
+            log_email(to_email, subject, 'pair_completion', 'error',
+                     error_message=f"Status {result.status_code}")
+            return False
+    except Exception as e:
+        logger.error("Error sending pair completion notification", exc_info=True)
+        log_email(to_email, subject, 'pair_completion', 'error', error_message=str(e))
+        return False
+
+
+# ========================================
 # CAMPAIGN COMPLETED NOTIFICATIONS
 # ========================================
 
