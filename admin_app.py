@@ -1281,6 +1281,21 @@ def profil_submit(session_id):
 def profil_report(session_id):
     """Vis rapport"""
     try:
+        # Debug: Tjek responses først
+        from db_profil import get_responses, get_response_matrix
+        responses = get_responses(session_id)
+        if not responses:
+            return f"<pre>Debug: No responses found for session {session_id}</pre>", 500
+
+        score_matrix = get_response_matrix(session_id)
+        # Check that all layers exist
+        for field in ['TRYGHED', 'MENING', 'KAN', 'BESVÆR']:
+            if field not in score_matrix:
+                return f"<pre>Debug: Missing field {field}\nResponses: {responses}\nMatrix: {score_matrix}</pre>", 500
+            for layer in ['BIOLOGI', 'EMOTION', 'INDRE', 'KOGNITION']:
+                if layer not in score_matrix[field]:
+                    return f"<pre>Debug: Missing layer {layer} in field {field}\nResponses: {responses}\nMatrix: {score_matrix}</pre>", 500
+
         analysis = get_profil_analysis(session_id)
         if not analysis:
             flash('Profil ikke fundet', 'error')
