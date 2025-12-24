@@ -50,16 +50,21 @@ Grundig gennemgang af hele systemet før go-live.
 ### 📝 Spørgsmåls-kvalitet (Sproglig + Videnskabelig Review) ✅ FÆRDIG
 Grundig gennemgang af alle spørgsmål i Friktionsprofilen.
 
-**Status:** Implementeret 2025-12-23. Se `AUDIT_QUESTION_QUALITY.md` for detaljer.
+**Status:** Implementeret og deployed 2025-12-24. Se `AUDIT_QUESTION_QUALITY.md` for detaljer.
 
 **Opgaver:**
 - [x] **Sproglig review** - Gennemgået alle 30 spørgsmål for klarhed, naturligt dansk, entydighed
 - [x] **Videnskabelig review** - Verificeret at spørgsmål måler det intenderede (konstruktvaliditet)
 - [x] **Reverse-scored konsistens** - Tjekket at reverse-scored spørgsmål er intuitive at besvare
+- [x] **Database opdateret** - Nye spørgsmålstekster synkroniseret til produktion
 - [ ] **Pilot-test** - Test med 5-10 brugere for forståelighed (TODO)
 - [ ] **Dokumenter ændringer** - Opdater ANALYSELOGIK.md med begrundelser (TODO)
 
-**Ændringer:** 15 af 30 spørgsmål blev opdateret for bedre klarhed og naturligt dansk.
+**Ændringer:** 15 af 30 spørgsmål blev opdateret:
+- Fjernet binære formuleringer ("meget", "hurtigt", "stærkt")
+- Erstattet fagsprog med naturligt dansk
+- Forkortet lange spørgsmål
+- Konkretiseret vage formuleringer
 
 ### Central Beregningsmotor (friction_engine) ✅ FÆRDIG
 - [x] ~~**Opret `friction_engine.py`** - Samlet motor til alle friktionsberegninger~~
@@ -366,11 +371,14 @@ Se detaljeret plan: `PLAN_situationsmaaling.md`
 
 > 💡 **Idé**: Bruge Facebook/Instagram annoncer til at drive trafik til gratis friktionsprofil-tests. Målgrupper med høj søgevolumen.
 
-#### Produkt 1: Parforhold-profil
+#### Produkt 1: Parforhold-profil ✅ CORE IMPLEMENTERET (2025-12-24)
+- [x] ~~**Par-måling flow**~~ - Person A starter → får 6-tegns kode → Person B joiner med kode
+- [x] ~~**Invitation flow**~~ - Bruger tager test → deler kode med partner → partner joiner
+- [x] ~~**Par-sammenligning**~~ - Vis begges profiler side-by-side med forskelle
+- [x] ~~**Vente-skærm**~~ - Auto-refresh når partner færdiggør
 - [ ] **Landing page** - "Test dit parforhold" / "Er I på samme side?"
-- [ ] **Invitation flow** - Bruger tager test → inviterer partner via email/SMS
-- [ ] **Par-sammenligning** - Vis begges profiler side om side
-- [ ] **Gap-analyse** - Hvor er I uenige? Hvor supplerer I hinanden?
+- [ ] **Gap-analyse** - Hvor er I uenige? Hvor supplerer I hinanden? (delvist i compare)
+- [ ] **Email-notifikation** - Send email når partner er færdig (valgfrit)
 - [ ] **Facebook annoncering** - Målret par, nyforlovede, samboende
 - [ ] **Automatiseret A/B test** - Forskellige hooks ("kommunikation", "stress", "prioriteter")
 
