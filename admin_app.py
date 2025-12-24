@@ -1164,35 +1164,29 @@ def pair_status_check(pair_id):
 @app.route('/profil/pair/<pair_id>/compare')
 def pair_compare(pair_id):
     """Vis sammenligning af par"""
-    try:
-        pair = get_pair_session(pair_id)
-        if not pair:
-            flash('Par-session ikke fundet', 'error')
-            return redirect(url_for('profil_start'))
+    pair = get_pair_session(pair_id)
+    if not pair:
+        flash('Par-session ikke fundet', 'error')
+        return redirect(url_for('profil_start'))
 
-        if pair['status'] != 'complete':
-            return redirect(url_for('pair_status', pair_id=pair_id))
+    if pair['status'] != 'complete':
+        return redirect(url_for('pair_status', pair_id=pair_id))
 
-        # Hent sammenligning via eksisterende compare_profiles funktion
-        comparison = compare_profil_profiles(
-            pair['person_a_session_id'],
-            pair['person_b_session_id']
-        )
+    # Hent sammenligning via eksisterende compare_profiles funktion
+    comparison = compare_profil_profiles(
+        pair['person_a_session_id'],
+        pair['person_b_session_id']
+    )
 
-        if not comparison:
-            flash('Kunne ikke generere sammenligning', 'error')
-            return redirect(url_for('pair_status', pair_id=pair_id))
+    if not comparison:
+        flash('Kunne ikke generere sammenligning', 'error')
+        return redirect(url_for('pair_status', pair_id=pair_id))
 
-        return render_template(
-            'profil/pair_compare.html',
-            pair=pair,
-            comparison=comparison
-        )
-    except Exception as e:
-        import traceback
-        error_details = traceback.format_exc()
-        logger.error(f"Error in pair_compare for {pair_id}: {error_details}")
-        return f"<pre>Error: {str(e)}\n\n{error_details}</pre>", 500
+    return render_template(
+        'profil/pair_compare.html',
+        pair=pair,
+        comparison=comparison
+    )
 
 
 # ========================================
@@ -1280,50 +1274,29 @@ def profil_submit(session_id):
 @app.route('/profil/<session_id>/report')
 def profil_report(session_id):
     """Vis rapport"""
-    try:
-        # Debug: Tjek responses først
-        from db_profil import get_responses, get_response_matrix
-        responses = get_responses(session_id)
-        if not responses:
-            return f"<pre>Debug: No responses found for session {session_id}</pre>", 500
+    analysis = get_profil_analysis(session_id)
+    if not analysis:
+        flash('Profil ikke fundet', 'error')
+        return redirect(url_for('profil_start'))
 
-        score_matrix = get_response_matrix(session_id)
-        # Check that all layers exist
-        for field in ['TRYGHED', 'MENING', 'KAN', 'BESVÆR']:
-            if field not in score_matrix:
-                return f"<pre>Debug: Missing field {field}\nResponses: {responses}\nMatrix: {score_matrix}</pre>", 500
-            for layer in ['BIOLOGI', 'EMOTION', 'INDRE', 'KOGNITION']:
-                if layer not in score_matrix[field]:
-                    return f"<pre>Debug: Missing layer {layer} in field {field}\nResponses: {responses}\nMatrix: {score_matrix}</pre>", 500
+    # Tilføj screening-resultater
+    from screening_profil import screen_profil
+    screening = screen_profil(session_id)
 
-        analysis = get_profil_analysis(session_id)
-        if not analysis:
-            flash('Profil ikke fundet', 'error')
-            return redirect(url_for('profil_start'))
+    # Tjek om session er del af et par
+    pair = get_pair_session_by_profil_session(session_id)
 
-        # Tilføj screening-resultater
-        from screening_profil import screen_profil
-        screening = screen_profil(session_id)
-
-        # Tjek om session er del af et par
-        pair = get_pair_session_by_profil_session(session_id)
-
-        return render_template(
-            'profil/report.html',
-            session=analysis['session'],
-            score_matrix=analysis['score_matrix'],
-            color_matrix=analysis['color_matrix'],
-            columns=analysis['columns'],
-            summary=analysis['summary'],
-            interpretations=analysis['interpretations'],
-            screening=screening,
-            pair=pair  # Tilføjet for at vise link til par-sammenligning
-        )
-    except Exception as e:
-        import traceback
-        error_details = traceback.format_exc()
-        logger.error(f"Error in profil_report for {session_id}: {error_details}")
-        return f"<pre>Error: {str(e)}\n\n{error_details}</pre>", 500
+    return render_template(
+        'profil/report.html',
+        session=analysis['session'],
+        score_matrix=analysis['score_matrix'],
+        color_matrix=analysis['color_matrix'],
+        columns=analysis['columns'],
+        summary=analysis['summary'],
+        interpretations=analysis['interpretations'],
+        screening=screening,
+        pair=pair  # Tilføjet for at vise link til par-sammenligning
+    )
 
 
 @app.route('/admin/profiler')
