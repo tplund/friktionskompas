@@ -1,5 +1,17 @@
 # Friktionskompasset - Claude Code Notes
 
+## Tilgængelige MCP Servere
+
+### Global (alle projekter)
+- **github** - Git/GitHub integration (PRs, issues, commits)
+- **fetch** - Web fetching og API kald
+
+### Projekt-specifik
+- **friktionskompas** - Custom MCP server til projektets API
+- **gtm-mcp-server** - Google Tag Manager integration (Stape)
+
+---
+
 ## VIGTIGT: Projekt Regler
 
 ### TODO-Liste Disciplin (KRITISK!)
