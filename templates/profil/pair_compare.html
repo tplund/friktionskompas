@@ -283,6 +283,110 @@
             background: #f0f4f8;
         }
 
+        /* Perception Gap / Overraskelser */
+        .surprises-section {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 40px;
+            border: 2px solid #f59e0b;
+        }
+        .surprises-section h2 {
+            color: #92400e;
+            font-size: 20px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .surprise-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .surprise-card:last-child {
+            margin-bottom: 0;
+        }
+        .surprise-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+            font-weight: 600;
+            color: #92400e;
+        }
+        .surprise-header .icon {
+            font-size: 24px;
+        }
+        .surprise-question {
+            font-style: italic;
+            color: #666;
+            margin-bottom: 15px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            line-height: 1.5;
+        }
+        .surprise-scores {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 15px;
+        }
+        .surprise-score {
+            flex: 1;
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .surprise-score.predicted {
+            background: #e0e7ff;
+            border: 2px dashed #6366f1;
+        }
+        .surprise-score.actual {
+            background: #d1fae5;
+            border: 2px solid #10b981;
+        }
+        .surprise-score .label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        .surprise-score .value {
+            font-size: 24px;
+            font-weight: 700;
+        }
+        .surprise-score.predicted .value { color: #4f46e5; }
+        .surprise-score.actual .value { color: #059669; }
+        .surprise-gap {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 10px;
+            background: #fef3c7;
+            border-radius: 6px;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+        .surprise-gap .arrow {
+            font-size: 20px;
+        }
+        .surprise-insight {
+            padding: 12px;
+            background: #f0fdf4;
+            border-radius: 6px;
+            border-left: 4px solid #22c55e;
+            color: #166534;
+            line-height: 1.5;
+        }
+        .no-surprises {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
         @media print {
             body { background: white; padding: 0; }
             .container { box-shadow: none; }
@@ -377,6 +481,60 @@
             {% for insight in comparison.insights %}
             <div class="insight">{{ insight }}</div>
             {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Perception Gaps / Overraskelser -->
+        {% if perception_gaps and perception_gaps.has_predictions and perception_gaps.biggest_surprises %}
+        <div class="surprises-section">
+            <h2><span class="icon">💡</span> De største overraskelser</h2>
+            <p style="margin-bottom: 20px; color: #78350f;">
+                Her er de steder hvor I gættede mest forkert på hinanden. Disse kan være gode samtale-startere!
+            </p>
+
+            {% for surprise in perception_gaps.biggest_surprises %}
+            <div class="surprise-card">
+                <div class="surprise-header">
+                    <span class="icon">🎯</span>
+                    {{ surprise.person_surprising }} overraskede {{ surprise.person_guessing }}
+                </div>
+
+                <div class="surprise-question">
+                    "{{ surprise.question_text }}"
+                </div>
+
+                <div class="surprise-scores">
+                    <div class="surprise-score predicted">
+                        <div class="label">{{ surprise.person_guessing }} gættede</div>
+                        <div class="value">{{ surprise.predicted }}</div>
+                    </div>
+                    <div class="surprise-score actual">
+                        <div class="label">{{ surprise.person_surprising }} svarede</div>
+                        <div class="value">{{ surprise.actual }}</div>
+                    </div>
+                </div>
+
+                <div class="surprise-gap">
+                    <span class="arrow">{% if surprise.gap > 0 %}📈{% else %}📉{% endif %}</span>
+                    Forskel: {{ surprise.abs_gap }} point
+                    {% if surprise.gap > 0 %}højere{% else %}lavere{% endif %} end forventet
+                </div>
+
+                <div class="surprise-insight">
+                    💬 {{ surprise.insight }}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% elif perception_gaps and perception_gaps.has_predictions %}
+        <div class="surprises-section">
+            <h2><span class="icon">💡</span> Perception gaps</h2>
+            <div class="no-surprises">
+                <p>Ingen store overraskelser fundet! I kender hinanden godt.</p>
+                <p style="font-size: 14px; color: #666; margin-top: 10px;">
+                    (Overraskelser vises når forskellen mellem gæt og virkelighed er 2 point eller mere)
+                </p>
+            </div>
         </div>
         {% endif %}
 

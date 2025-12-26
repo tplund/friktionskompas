@@ -23,7 +23,8 @@ from db_profil import (
 from analysis_profil import (
     get_full_analysis,
     get_color_matrix,
-    compare_profiles
+    compare_profiles,
+    calculate_perception_gaps
 )
 
 import os
@@ -90,11 +91,28 @@ def profil_survey(session_id):
 
     questions_by_field = get_questions_by_field()
 
+    # Tjek om dette er en par-session og find partnerens navn
+    is_pair_survey = False
+    partner_name = None
+
+    pair = get_pair_session_by_profil_session(session_id)
+    if pair:
+        is_pair_survey = True
+        # Find ud af om vi er person A eller B, og hent partnerens navn
+        if pair['person_a_session_id'] == session_id:
+            # Vi er person A, partneren er person B
+            partner_name = pair.get('person_b_name') or 'din partner'
+        else:
+            # Vi er person B, partneren er person A
+            partner_name = pair.get('person_a_name') or 'din partner'
+
     return render_template(
         'profil/survey.html',
         session_id=session_id,
         session=profil_session,
-        questions_by_field=questions_by_field
+        questions_by_field=questions_by_field,
+        is_pair_survey=is_pair_survey,
+        partner_name=partner_name
     )
 
 
@@ -106,16 +124,26 @@ def profil_submit(session_id):
         flash('Session ikke fundet', 'error')
         return redirect(url_for('profil_start'))
 
-    # Parse alle svar
-    responses = {}
-    for key, value in request.form.items():
-        if key.startswith('q_'):
-            question_id = int(key.replace('q_', ''))
-            score = int(value)
-            responses[question_id] = score
+    # Parse alle svar - nu med støtte for perception gap (dual-input)
+    own_responses = {}
+    pred_responses = {}
 
-    # Gem svar
-    save_responses(session_id, responses)
+    for key, value in request.form.items():
+        if key.startswith('q_') and key.endswith('_own'):
+            # Eget svar: q_123_own -> question_id = 123
+            question_id = int(key.replace('q_', '').replace('_own', ''))
+            own_responses[question_id] = int(value)
+        elif key.startswith('q_') and key.endswith('_pred'):
+            # Partner-gæt: q_123_pred -> question_id = 123
+            question_id = int(key.replace('q_', '').replace('_pred', ''))
+            pred_responses[question_id] = int(value)
+
+    # Gem egne svar
+    save_responses(session_id, own_responses, response_type='own')
+
+    # Gem partner-predictions hvis de findes (kun for par-surveys)
+    if pred_responses:
+        save_responses(session_id, pred_responses, response_type='prediction')
 
     # Marker som færdig
     complete_session(session_id)
@@ -270,10 +298,17 @@ def pair_compare(pair_id):
         flash('Kunne ikke generere sammenligning', 'error')
         return redirect(url_for('pair_status', pair_id=pair_id))
 
+    # Beregn perception gaps hvis de findes
+    perception_gaps = calculate_perception_gaps(
+        pair['person_a_session_id'],
+        pair['person_b_session_id']
+    )
+
     return render_template(
         'profil/pair_compare.html',
         pair=pair,
-        comparison=comparison
+        comparison=comparison,
+        perception_gaps=perception_gaps
     )
 
 

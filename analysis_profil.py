@@ -3,7 +3,7 @@ Analyse-funktioner for Friktionsprofil
 Beregner farvegrid, båndbredde, manifestationslag og fortolkninger
 """
 from typing import Dict, List, Optional, Tuple
-from db_profil import get_response_matrix, get_session
+from db_profil import get_response_matrix, get_session, get_responses_by_type, get_all_questions
 
 # Konstanter
 FIELDS = ['TRYGHED', 'MENING', 'KAN', 'BESVÆR']
@@ -349,6 +349,146 @@ def get_profile_summary_text(session_id: str) -> str:
         parts.append(f"- **{FIELD_LABELS[field]}**: {interpretation}")
 
     return "\n".join(parts)
+
+
+def calculate_perception_gaps(session_id_a: str, session_id_b: str) -> Optional[Dict]:
+    """
+    Beregner perception gaps mellem to par-profiler.
+
+    For hver person beregnes:
+    - Hvad de selv svarede (own)
+    - Hvad de troede partneren svarede (prediction)
+    - Hvad partneren faktisk svarede
+
+    Returns:
+        Dict med:
+        - a_gaps: {question_id: {predicted, actual, gap, question_text}}
+        - b_gaps: {question_id: {predicted, actual, gap, question_text}}
+        - biggest_surprises: Liste af de 3 største overraskelser med indsigtstekster
+    """
+    # Hent sessioner for at få navne
+    session_a = get_session(session_id_a)
+    session_b = get_session(session_id_b)
+
+    if not session_a or not session_b:
+        return None
+
+    name_a = session_a.get('person_name') or 'Person A'
+    name_b = session_b.get('person_name') or 'Person B'
+
+    # Hent svar for begge personer
+    a_own = get_responses_by_type(session_id_a, 'own')
+    a_pred = get_responses_by_type(session_id_a, 'prediction')
+    b_own = get_responses_by_type(session_id_b, 'own')
+    b_pred = get_responses_by_type(session_id_b, 'prediction')
+
+    # Hvis ingen predictions, returner tom struktur
+    if not a_pred and not b_pred:
+        return {
+            'a_gaps': {},
+            'b_gaps': {},
+            'biggest_surprises': [],
+            'has_predictions': False
+        }
+
+    # Hent spørgsmålstekster
+    questions = {q['id']: q for q in get_all_questions()}
+
+    # Beregn A's gaps (hvad A gættede om B vs hvad B faktisk svarede)
+    a_gaps = {}
+    for qid, predicted in a_pred.items():
+        actual = b_own.get(qid)
+        if actual is not None:
+            gap = actual - predicted
+            a_gaps[qid] = {
+                'predicted': predicted,
+                'actual': actual,
+                'gap': gap,
+                'abs_gap': abs(gap),
+                'question_text': questions.get(qid, {}).get('text_da', f'Spørgsmål {qid}'),
+                'surprise_direction': 'higher' if gap > 0 else ('lower' if gap < 0 else 'match')
+            }
+
+    # Beregn B's gaps (hvad B gættede om A vs hvad A faktisk svarede)
+    b_gaps = {}
+    for qid, predicted in b_pred.items():
+        actual = a_own.get(qid)
+        if actual is not None:
+            gap = actual - predicted
+            b_gaps[qid] = {
+                'predicted': predicted,
+                'actual': actual,
+                'gap': gap,
+                'abs_gap': abs(gap),
+                'question_text': questions.get(qid, {}).get('text_da', f'Spørgsmål {qid}'),
+                'surprise_direction': 'higher' if gap > 0 else ('lower' if gap < 0 else 'match')
+            }
+
+    # Find de største overraskelser (gaps >= 2 er signifikante)
+    all_surprises = []
+
+    for qid, gap_data in a_gaps.items():
+        if gap_data['abs_gap'] >= 2:
+            all_surprises.append({
+                'person_guessing': name_a,
+                'person_surprising': name_b,
+                'question_id': qid,
+                'question_text': gap_data['question_text'],
+                'predicted': gap_data['predicted'],
+                'actual': gap_data['actual'],
+                'gap': gap_data['gap'],
+                'abs_gap': gap_data['abs_gap'],
+                'insight': _generate_gap_insight(name_a, name_b, gap_data)
+            })
+
+    for qid, gap_data in b_gaps.items():
+        if gap_data['abs_gap'] >= 2:
+            all_surprises.append({
+                'person_guessing': name_b,
+                'person_surprising': name_a,
+                'question_id': qid,
+                'question_text': gap_data['question_text'],
+                'predicted': gap_data['predicted'],
+                'actual': gap_data['actual'],
+                'gap': gap_data['gap'],
+                'abs_gap': gap_data['abs_gap'],
+                'insight': _generate_gap_insight(name_b, name_a, gap_data)
+            })
+
+    # Sorter efter størrelse og tag top 3
+    all_surprises.sort(key=lambda x: x['abs_gap'], reverse=True)
+    biggest_surprises = all_surprises[:3]
+
+    return {
+        'a_gaps': a_gaps,
+        'b_gaps': b_gaps,
+        'biggest_surprises': biggest_surprises,
+        'has_predictions': len(a_pred) > 0 or len(b_pred) > 0,
+        'name_a': name_a,
+        'name_b': name_b
+    }
+
+
+def _generate_gap_insight(guesser: str, surpriser: str, gap_data: Dict) -> str:
+    """Generér indsigtstekst for en perception gap"""
+    gap = gap_data['gap']
+    question = gap_data['question_text']
+
+    # Fjern "Jeg" fra starten af spørgsmålet og gør det til tredje person
+    question_third_person = question
+    if question.lower().startswith('jeg '):
+        question_third_person = surpriser + ' ' + question[4:]
+
+    if gap > 0:
+        # Partneren scorede højere end forventet
+        intensity = "noget" if abs(gap) < 3 else "markant"
+        return f"{surpriser} oplever dette {intensity} mere intenst end {guesser} troede. Dette kan være værd at tale om."
+    else:
+        # Partneren scorede lavere end forventet
+        intensity = "noget" if abs(gap) < 3 else "markant"
+        return f"{surpriser} oplever dette {intensity} mindre intenst end {guesser} troede. Måske antager {guesser} for meget?"
+
+    return ""
 
 
 if __name__ == "__main__":

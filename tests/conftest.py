@@ -217,6 +217,7 @@ def _init_test_db(db_path):
             session_id TEXT NOT NULL,
             question_id INTEGER NOT NULL,
             score INTEGER NOT NULL CHECK(score BETWEEN 1 AND 7),
+            response_type TEXT DEFAULT 'own',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (session_id) REFERENCES profil_sessions(id) ON DELETE CASCADE
         )

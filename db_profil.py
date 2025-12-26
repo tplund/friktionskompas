@@ -97,12 +97,19 @@ def init_profil_tables():
                 session_id TEXT NOT NULL,
                 question_id INTEGER NOT NULL,
                 score INTEGER NOT NULL CHECK(score BETWEEN 1 AND 7),
+                response_type TEXT DEFAULT 'own',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
                 FOREIGN KEY (session_id) REFERENCES profil_sessions(id) ON DELETE CASCADE,
                 FOREIGN KEY (question_id) REFERENCES profil_questions(id)
             )
         """)
+
+        # Migration: Tilføj response_type kolonne hvis den mangler (for perception gap feature)
+        try:
+            conn.execute("ALTER TABLE profil_responses ADD COLUMN response_type TEXT DEFAULT 'own'")
+        except sqlite3.OperationalError:
+            pass  # Column already exists
 
         # Profil-sammenligning
         conn.execute("""
@@ -830,33 +837,61 @@ def get_screening_questions_legacy() -> List[Dict]:
 # LEGACY RESPONSE FUNCTIONS
 # ========================================
 
-def save_responses(session_id: str, responses: Dict[int, int]):
+def save_responses(session_id: str, responses: Dict[int, int], response_type: str = 'own'):
     """
     Gem svar for en session (legacy system)
     responses: {question_id: score}
+    response_type: 'own' (eget svar) eller 'prediction' (gæt på partner)
     """
     with get_db() as conn:
         for question_id, score in responses.items():
             conn.execute(
                 """INSERT INTO profil_responses
-                   (session_id, question_id, score)
-                   VALUES (?, ?, ?)""",
-                (session_id, question_id, score)
+                   (session_id, question_id, score, response_type)
+                   VALUES (?, ?, ?, ?)""",
+                (session_id, question_id, score, response_type)
             )
 
 
-def get_responses(session_id: str) -> List[Dict]:
-    """Hent alle svar for en session med spørgsmålsinfo (legacy system)"""
+def get_responses(session_id: str, response_type: str = None) -> List[Dict]:
+    """
+    Hent alle svar for en session med spørgsmålsinfo (legacy system)
+    response_type: None (alle), 'own' (egne svar), eller 'prediction' (gæt på partner)
+    """
+    with get_db() as conn:
+        if response_type:
+            rows = conn.execute(
+                """SELECT pr.*, pq.field, pq.layer, pq.text_da, pq.reverse_scored
+                   FROM profil_responses pr
+                   JOIN profil_questions pq ON pr.question_id = pq.id
+                   WHERE pr.session_id = ? AND pr.response_type = ?
+                   ORDER BY pq.sequence""",
+                (session_id, response_type)
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                """SELECT pr.*, pq.field, pq.layer, pq.text_da, pq.reverse_scored
+                   FROM profil_responses pr
+                   JOIN profil_questions pq ON pr.question_id = pq.id
+                   WHERE pr.session_id = ?
+                   ORDER BY pq.sequence""",
+                (session_id,)
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+
+def get_responses_by_type(session_id: str, response_type: str = 'own') -> Dict[int, int]:
+    """
+    Hent svar som dict {question_id: score} filtreret på type.
+    Bruges til perception gap beregning.
+    """
     with get_db() as conn:
         rows = conn.execute(
-            """SELECT pr.*, pq.field, pq.layer, pq.text_da, pq.reverse_scored
-               FROM profil_responses pr
-               JOIN profil_questions pq ON pr.question_id = pq.id
-               WHERE pr.session_id = ?
-               ORDER BY pq.sequence""",
-            (session_id,)
+            """SELECT question_id, score FROM profil_responses
+               WHERE session_id = ? AND response_type = ?""",
+            (session_id, response_type)
         ).fetchall()
-        return [dict(row) for row in rows]
+        return {row['question_id']: row['score'] for row in rows}
 
 
 def get_response_matrix(session_id: str) -> Dict[str, Dict[str, float]]:

@@ -20,7 +20,7 @@ from db_profil import (
     complete_session,
     get_questions_by_field
 )
-from analysis_profil import compare_profiles
+from analysis_profil import compare_profiles, calculate_perception_gaps
 
 
 class TestPairSessionDatabase:
@@ -265,3 +265,159 @@ class TestPairRoutes:
         data = response.get_json()
         assert 'status' in data
         assert data['status'] == 'waiting'
+
+
+class TestPerceptionGaps:
+    """Tests for perception gap / partner prediction functionality"""
+
+    def test_save_responses_with_type(self):
+        """Test saving responses with response_type parameter"""
+        result = create_pair_session('PersonA', 'a@example.com')
+        session_id = result['session_id']
+
+        questions = get_questions_by_field()
+        all_questions = []
+        for field, qs in questions.items():
+            all_questions.extend(qs)
+
+        # Save own responses
+        own_responses = {q['id']: 4 for q in all_questions}
+        save_responses(session_id, own_responses, response_type='own')
+
+        # Save predictions
+        pred_responses = {q['id']: 6 for q in all_questions}
+        save_responses(session_id, pred_responses, response_type='prediction')
+
+        # Verify both types were saved
+        from db_profil import get_responses_by_type
+        own = get_responses_by_type(session_id, 'own')
+        pred = get_responses_by_type(session_id, 'prediction')
+
+        assert len(own) == len(all_questions)
+        assert len(pred) == len(all_questions)
+        assert all(v == 4 for v in own.values())
+        assert all(v == 6 for v in pred.values())
+
+    def test_calculate_perception_gaps_no_predictions(self):
+        """Test perception gaps returns empty when no predictions exist"""
+        # Create pair with only 'own' responses
+        result = create_pair_session('PersonA', 'a@example.com')
+        join_result = join_pair_session(result['pair_code'], 'PersonB', 'b@example.com')
+
+        questions = get_questions_by_field()
+        all_questions = []
+        for field, qs in questions.items():
+            all_questions.extend(qs)
+
+        responses = {q['id']: 4 for q in all_questions}
+        save_responses(result['session_id'], responses, response_type='own')
+        complete_session(result['session_id'])
+        save_responses(join_result['session_id'], responses, response_type='own')
+        complete_session(join_result['session_id'])
+
+        # Calculate gaps
+        gaps = calculate_perception_gaps(result['session_id'], join_result['session_id'])
+
+        assert gaps is not None
+        assert gaps['has_predictions'] == False
+        assert len(gaps['biggest_surprises']) == 0
+
+    def test_calculate_perception_gaps_with_predictions(self):
+        """Test perception gaps calculation with predictions"""
+        # Create pair
+        result = create_pair_session('Anna', 'anna@example.com')
+        join_result = join_pair_session(result['pair_code'], 'Bo', 'bo@example.com')
+
+        questions = get_questions_by_field()
+        all_questions = []
+        for field, qs in questions.items():
+            all_questions.extend(qs)
+
+        # Anna's own scores and predictions
+        anna_own = {q['id']: 3 for q in all_questions}
+        anna_pred = {q['id']: 3 for q in all_questions}  # Tror Bo svarer 3
+        save_responses(result['session_id'], anna_own, response_type='own')
+        save_responses(result['session_id'], anna_pred, response_type='prediction')
+        complete_session(result['session_id'])
+
+        # Bo's own scores (different from Anna's prediction) and predictions
+        bo_own = {q['id']: 6 for q in all_questions}  # Bo svarer faktisk 6 (gap = 3!)
+        bo_pred = {q['id']: 3 for q in all_questions}  # Tror Anna svarer 3 (korrekt)
+        save_responses(join_result['session_id'], bo_own, response_type='own')
+        save_responses(join_result['session_id'], bo_pred, response_type='prediction')
+        complete_session(join_result['session_id'])
+
+        # Calculate gaps
+        gaps = calculate_perception_gaps(result['session_id'], join_result['session_id'])
+
+        assert gaps is not None
+        assert gaps['has_predictions'] == True
+        assert gaps['name_a'] == 'Anna'
+        assert gaps['name_b'] == 'Bo'
+
+        # Anna guessed wrong about Bo (predicted 3, actual 6)
+        assert len(gaps['a_gaps']) > 0
+        for qid, gap_data in gaps['a_gaps'].items():
+            assert gap_data['predicted'] == 3
+            assert gap_data['actual'] == 6
+            assert gap_data['gap'] == 3  # Bo scored higher
+            assert gap_data['abs_gap'] == 3
+
+        # Bo guessed correctly about Anna (predicted 3, actual 3)
+        for qid, gap_data in gaps['b_gaps'].items():
+            assert gap_data['gap'] == 0  # Correct guess
+
+        # Should have surprises from Anna's wrong guesses
+        assert len(gaps['biggest_surprises']) > 0
+        for surprise in gaps['biggest_surprises']:
+            assert surprise['person_guessing'] == 'Anna'
+            assert surprise['person_surprising'] == 'Bo'
+            assert surprise['abs_gap'] >= 2
+
+    def test_perception_gaps_biggest_surprises_sorted(self):
+        """Test that biggest surprises are sorted by gap size"""
+        result = create_pair_session('PersonA', 'a@example.com')
+        join_result = join_pair_session(result['pair_code'], 'PersonB', 'b@example.com')
+
+        questions = get_questions_by_field()
+        all_questions = []
+        for field, qs in questions.items():
+            all_questions.extend(qs)
+
+        # Create varying gaps
+        a_own = {}
+        a_pred = {}
+        b_own = {}
+        b_pred = {}
+
+        for i, q in enumerate(all_questions):
+            a_own[q['id']] = 4
+            b_pred[q['id']] = 4  # B guesses correctly
+
+            # A's predictions vary: some wrong, some right
+            if i < 3:
+                a_pred[q['id']] = 1  # Big gap (5)
+                b_own[q['id']] = 6
+            elif i < 6:
+                a_pred[q['id']] = 3  # Medium gap (2)
+                b_own[q['id']] = 5
+            else:
+                a_pred[q['id']] = 4  # No gap
+                b_own[q['id']] = 4
+
+        save_responses(result['session_id'], a_own, response_type='own')
+        save_responses(result['session_id'], a_pred, response_type='prediction')
+        complete_session(result['session_id'])
+
+        save_responses(join_result['session_id'], b_own, response_type='own')
+        save_responses(join_result['session_id'], b_pred, response_type='prediction')
+        complete_session(join_result['session_id'])
+
+        gaps = calculate_perception_gaps(result['session_id'], join_result['session_id'])
+
+        # Biggest surprises should be sorted descending by abs_gap
+        surprises = gaps['biggest_surprises']
+        assert len(surprises) == 3  # Max 3 surprises
+        assert surprises[0]['abs_gap'] >= surprises[1]['abs_gap']
+        if len(surprises) > 2:
+            assert surprises[1]['abs_gap'] >= surprises[2]['abs_gap']

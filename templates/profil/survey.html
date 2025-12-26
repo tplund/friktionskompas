@@ -209,6 +209,50 @@
             display: none;
         }
 
+        /* Perception Gap: Partner prediction styles */
+        .partner-section {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 2px dashed #dee2e6;
+        }
+        .partner-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+            color: #6c757d;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .partner-label .partner-icon {
+            font-size: 18px;
+        }
+        .partner-label .partner-name {
+            color: #0f3460;
+            font-weight: 600;
+        }
+        .partner-scale .rating-option label {
+            border-style: dashed;
+            background: #f8f9fa;
+        }
+        .partner-scale .rating-option input:checked + label {
+            border-style: solid;
+            background: #6c757d;
+            border-color: #6c757d;
+        }
+        .own-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+            color: #495057;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .own-label .own-icon {
+            font-size: 18px;
+        }
+
         @media (max-width: 600px) {
             .container { padding: 20px; }
             .rating-scale { flex-wrap: wrap; gap: 6px; }
@@ -260,20 +304,29 @@
                 </div>
 
                 {% for q in questions %}
-                <div class="question" data-question-id="{{ q.id }}">
+                <div class="question" data-question-id="{{ q.id }}" {% if is_pair_survey %}data-pair="true"{% endif %}>
                     <div class="question-meta">
                         <span class="layer-badge layer-{{ q.layer.lower() }}">{{ q.layer }}</span>
                     </div>
                     <div class="question-text">{{ q.text_da }}</div>
+
+                    {% if is_pair_survey %}
+                    <!-- Par-måling: Eget svar -->
+                    <div class="own-label">
+                        <span class="own-icon">👤</span>
+                        <span>Dit svar:</span>
+                    </div>
+                    {% endif %}
+
                     <div class="rating-scale">
                         {% for i in range(1, 8) %}
                         <div class="rating-option">
                             <input type="radio"
-                                   id="q{{ q.id }}_{{ i }}"
-                                   name="q_{{ q.id }}"
+                                   id="q{{ q.id }}_own_{{ i }}"
+                                   name="q_{{ q.id }}_own"
                                    value="{{ i }}"
                                    required>
-                            <label for="q{{ q.id }}_{{ i }}">
+                            <label for="q{{ q.id }}_own_{{ i }}">
                                 <span class="rating-number">{{ i }}</span>
                                 <span class="rating-label">
                                     {% if i == 1 %}Aldrig{% elif i == 4 %}Delvist{% elif i == 7 %}Meget ofte{% endif %}
@@ -282,6 +335,33 @@
                         </div>
                         {% endfor %}
                     </div>
+
+                    {% if is_pair_survey %}
+                    <!-- Par-måling: Gæt på partner -->
+                    <div class="partner-section">
+                        <div class="partner-label">
+                            <span class="partner-icon">👥</span>
+                            <span>Hvad tror du <span class="partner-name">{{ partner_name or 'din partner' }}</span> svarer?</span>
+                        </div>
+                        <div class="rating-scale partner-scale">
+                            {% for i in range(1, 8) %}
+                            <div class="rating-option">
+                                <input type="radio"
+                                       id="q{{ q.id }}_pred_{{ i }}"
+                                       name="q_{{ q.id }}_pred"
+                                       value="{{ i }}"
+                                       required>
+                                <label for="q{{ q.id }}_pred_{{ i }}">
+                                    <span class="rating-number">{{ i }}</span>
+                                    <span class="rating-label">
+                                        {% if i == 1 %}Aldrig{% elif i == 4 %}Delvist{% elif i == 7 %}Meget ofte{% endif %}
+                                    </span>
+                                </label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
                 </div>
                 {% endfor %}
             </div>
@@ -299,35 +379,68 @@
     </div>
 
     <script>
-        // Progress bar
+        // Progress bar - håndterer både normal og par-survey
         function updateProgress() {
             const questions = document.querySelectorAll('.question');
-            const answered = document.querySelectorAll('input[type="radio"]:checked').length;
-            const total = questions.length;
-            const percent = (answered / total) * 100;
+            let totalRequired = 0;
+            let answered = 0;
+
+            questions.forEach(q => {
+                const qId = q.dataset.questionId;
+                const isPair = q.dataset.pair === 'true';
+
+                // Eget svar (altid påkrævet)
+                totalRequired++;
+                if (document.querySelector(`input[name="q_${qId}_own"]:checked`)) {
+                    answered++;
+                }
+
+                // Partner-gæt (kun for par-survey)
+                if (isPair) {
+                    totalRequired++;
+                    if (document.querySelector(`input[name="q_${qId}_pred"]:checked`)) {
+                        answered++;
+                    }
+                }
+            });
+
+            const percent = totalRequired > 0 ? (answered / totalRequired) * 100 : 0;
             document.getElementById('progressBar').style.width = percent + '%';
         }
 
         // Validering
         document.getElementById('profilForm').addEventListener('submit', function(e) {
             const questions = document.querySelectorAll('.question');
-            const answered = document.querySelectorAll('input[type="radio"]:checked').length;
+            let allAnswered = true;
+            let firstUnanswered = null;
 
-            if (answered < questions.length) {
-                e.preventDefault();
-                document.getElementById('validationMsg').style.display = 'block';
+            for (const q of questions) {
+                const qId = q.dataset.questionId;
+                const isPair = q.dataset.pair === 'true';
 
-                // Find første ubesvaret
-                for (const q of questions) {
-                    const qId = q.dataset.questionId;
-                    const isAnswered = document.querySelector(`input[name="q_${qId}"]:checked`);
-                    if (!isAnswered) {
-                        q.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        q.style.boxShadow = '0 0 0 3px #e74c3c';
-                        setTimeout(() => q.style.boxShadow = '', 2000);
-                        break;
+                // Tjek eget svar
+                const ownAnswered = document.querySelector(`input[name="q_${qId}_own"]:checked`);
+                if (!ownAnswered) {
+                    allAnswered = false;
+                    if (!firstUnanswered) firstUnanswered = q;
+                }
+
+                // Tjek partner-gæt (kun for par-survey)
+                if (isPair) {
+                    const predAnswered = document.querySelector(`input[name="q_${qId}_pred"]:checked`);
+                    if (!predAnswered) {
+                        allAnswered = false;
+                        if (!firstUnanswered) firstUnanswered = q;
                     }
                 }
+            }
+
+            if (!allAnswered && firstUnanswered) {
+                e.preventDefault();
+                document.getElementById('validationMsg').style.display = 'block';
+                firstUnanswered.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                firstUnanswered.style.boxShadow = '0 0 0 3px #e74c3c';
+                setTimeout(() => firstUnanswered.style.boxShadow = '', 2000);
             }
         });
 
