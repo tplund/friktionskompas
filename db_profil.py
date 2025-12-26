@@ -145,6 +145,9 @@ def init_profil_tables():
                 -- Status: waiting, partial, complete
                 status TEXT DEFAULT 'waiting',
 
+                -- Mode: basis (kun egen), standard (egen + gæt), udvidet (+ relations-spørgsmål)
+                pair_mode TEXT DEFAULT 'standard',
+
                 -- Metadata
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 completed_at TIMESTAMP,
@@ -153,6 +156,12 @@ def init_profil_tables():
                 FOREIGN KEY (person_b_session_id) REFERENCES profil_sessions(id)
             )
         """)
+
+        # Migration: Tilføj pair_mode kolonne hvis den mangler
+        try:
+            conn.execute("ALTER TABLE pair_sessions ADD COLUMN pair_mode TEXT DEFAULT 'standard'")
+        except sqlite3.OperationalError:
+            pass  # Column already exists
 
         # Indexes
         conn.execute("""
@@ -979,10 +988,14 @@ def generate_pair_code() -> str:
 
 def create_pair_session(
     person_a_name: Optional[str] = None,
-    person_a_email: Optional[str] = None
+    person_a_email: Optional[str] = None,
+    pair_mode: str = 'standard'
 ) -> Dict[str, str]:
     """
     Opret ny par-session og tilhørende profil-session for person A.
+
+    Args:
+        pair_mode: 'basis' (kun egen), 'standard' (egen + gæt), 'udvidet' (+ relations)
 
     Returns:
         Dict med 'pair_id', 'pair_code', 'session_id'
@@ -1005,9 +1018,9 @@ def create_pair_session(
         # Opret pair-session
         conn.execute(
             """INSERT INTO pair_sessions
-               (id, pair_code, person_a_name, person_a_email, person_a_session_id, status)
-               VALUES (?, ?, ?, ?, ?, 'waiting')""",
-            (pair_id, pair_code, person_a_name, person_a_email, session_id)
+               (id, pair_code, person_a_name, person_a_email, person_a_session_id, status, pair_mode)
+               VALUES (?, ?, ?, ?, ?, 'waiting', ?)""",
+            (pair_id, pair_code, person_a_name, person_a_email, session_id, pair_mode)
         )
 
     return {

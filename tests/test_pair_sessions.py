@@ -37,6 +37,23 @@ class TestPairSessionDatabase:
         assert len(result['pair_code']) == 6
         assert result['session_id'].startswith('profil-')
 
+    def test_create_pair_session_with_mode(self):
+        """Test creating pair session with different modes"""
+        # Default mode is 'standard'
+        result1 = create_pair_session('TestUser1', 'test1@example.com')
+        pair1 = get_pair_session(result1['pair_id'])
+        assert pair1['pair_mode'] == 'standard'
+
+        # Basis mode
+        result2 = create_pair_session('TestUser2', 'test2@example.com', pair_mode='basis')
+        pair2 = get_pair_session(result2['pair_id'])
+        assert pair2['pair_mode'] == 'basis'
+
+        # Standard mode explicit
+        result3 = create_pair_session('TestUser3', 'test3@example.com', pair_mode='standard')
+        pair3 = get_pair_session(result3['pair_id'])
+        assert pair3['pair_mode'] == 'standard'
+
     def test_pair_code_format(self):
         """Test that pair codes are 6 uppercase alphanumeric chars without confusable chars"""
         result = create_pair_session('TestUser', 'test@example.com')

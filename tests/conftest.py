@@ -235,6 +235,7 @@ def _init_test_db(db_path):
             person_b_email TEXT,
             person_b_session_id TEXT,
             status TEXT DEFAULT 'waiting',
+            pair_mode TEXT DEFAULT 'standard',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             completed_at TIMESTAMP,
             FOREIGN KEY (person_a_session_id) REFERENCES profil_sessions(id),

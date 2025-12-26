@@ -94,17 +94,22 @@ def profil_survey(session_id):
     # Tjek om dette er en par-session og find partnerens navn
     is_pair_survey = False
     partner_name = None
+    pair_mode = None
 
     pair = get_pair_session_by_profil_session(session_id)
     if pair:
-        is_pair_survey = True
-        # Find ud af om vi er person A eller B, og hent partnerens navn
-        if pair['person_a_session_id'] == session_id:
-            # Vi er person A, partneren er person B
-            partner_name = pair.get('person_b_name') or 'din partner'
-        else:
-            # Vi er person B, partneren er person A
-            partner_name = pair.get('person_a_name') or 'din partner'
+        pair_mode = pair.get('pair_mode', 'standard')
+
+        # Vis kun dual-scale hvis mode er 'standard' eller 'udvidet'
+        if pair_mode in ('standard', 'udvidet'):
+            is_pair_survey = True
+            # Find ud af om vi er person A eller B, og hent partnerens navn
+            if pair['person_a_session_id'] == session_id:
+                # Vi er person A, partneren er person B
+                partner_name = pair.get('person_b_name') or 'din partner'
+            else:
+                # Vi er person B, partneren er person A
+                partner_name = pair.get('person_a_name') or 'din partner'
 
     return render_template(
         'profil/survey.html',
@@ -112,7 +117,8 @@ def profil_survey(session_id):
         session=profil_session,
         questions_by_field=questions_by_field,
         is_pair_survey=is_pair_survey,
-        partner_name=partner_name
+        partner_name=partner_name,
+        pair_mode=pair_mode
     )
 
 
@@ -196,10 +202,16 @@ def pair_create():
     """Opret par-session og redirect til survey"""
     name = request.form.get('name', '').strip() or None
     email = request.form.get('email', '').strip() or None
+    pair_mode = request.form.get('pair_mode', 'standard')
+
+    # Valider pair_mode
+    if pair_mode not in ('basis', 'standard', 'udvidet'):
+        pair_mode = 'standard'
 
     result = create_pair_session(
         person_a_name=name,
-        person_a_email=email
+        person_a_email=email,
+        pair_mode=pair_mode
     )
 
     # Gem pair_id i session så vi kan finde det efter survey
