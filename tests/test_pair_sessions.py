@@ -6,6 +6,7 @@ Tests cover:
 - Joining pair sessions with codes
 - Status updates
 - Comparison generation
+- Database schema verification (required columns)
 """
 import pytest
 from db_profil import (
@@ -21,6 +22,53 @@ from db_profil import (
     get_questions_by_field
 )
 from analysis_profil import compare_profiles, calculate_perception_gaps
+from db import get_db
+
+
+class TestDatabaseSchema:
+    """
+    Tests for required database columns.
+
+    These tests ensure that database migrations have been run correctly.
+    If these fail, the app will crash at runtime when users try to use features.
+
+    IMPORTANT: These tests catch issues where:
+    - Migrations haven't been run on production
+    - ALTER TABLE statements failed silently
+    - Test database schema differs from production
+    """
+
+    def test_profil_responses_has_response_type_column(self):
+        """
+        Verify profil_responses has response_type column.
+
+        This column is required for the perception gap feature where users
+        can save both their own answer and their prediction of partner's answer.
+
+        Added in: Perception gap feature (2025-12)
+        """
+        with get_db() as conn:
+            columns = [col[1] for col in conn.execute("PRAGMA table_info(profil_responses)").fetchall()]
+            assert 'response_type' in columns, (
+                "profil_responses missing 'response_type' column. "
+                "Run migration: curl https://friktionskompasset.dk/admin/run-profil-migration -H 'X-Admin-API-Key: ...'"
+            )
+
+    def test_pair_sessions_has_pair_mode_column(self):
+        """
+        Verify pair_sessions has pair_mode column.
+
+        This column is required for version selection (basis/standard/udvidet)
+        in pair assessments.
+
+        Added in: Version selection feature (2025-12)
+        """
+        with get_db() as conn:
+            columns = [col[1] for col in conn.execute("PRAGMA table_info(pair_sessions)").fetchall()]
+            assert 'pair_mode' in columns, (
+                "pair_sessions missing 'pair_mode' column. "
+                "Run migration: curl https://friktionskompasset.dk/admin/run-profil-migration -H 'X-Admin-API-Key: ...'"
+            )
 
 
 class TestPairSessionDatabase:

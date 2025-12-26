@@ -194,6 +194,7 @@ except Exception as e:
 - **Tilgængelige seed endpoints på Render:**
   - `curl https://friktionskompasset.dk/admin/seed-domains` - Seed/opdater domæner
   - `curl https://friktionskompasset.dk/admin/seed-translations` - Seed oversættelser
+  - `curl https://friktionskompasset.dk/admin/run-profil-migration` - Kør profil database migrationer
 - Render MCP kan bruges til at opdatere environment variables direkte
 - Tjek altid logs og status via MCP før du spørger brugeren
 
@@ -505,6 +506,37 @@ else:
 ```
 
 **Regressionstest:** `test_vary_testdata_must_invert_reverse_scored()` i `tests/test_analysis.py`
+
+---
+
+### Bug: Database migrationer kører ikke på Render persistent disk (2025-12-26)
+**Symptom:** 500 fejl ved submit af par-survey på produktion, selvom tests passerer lokalt.
+**Årsag:** Render har **persistent disk** der beholder databasen mellem deployments. ALTER TABLE migrationer kører kun ved første oprettelse. Tests bruger frisk database hver gang, så de fanger ikke problemet.
+
+**Teknisk forklaring:**
+- Lokal test: Frisk database → CREATE TABLE med nye kolonner → tests passerer ✅
+- Render: Eksisterende database → ALTER TABLE fejler silently → kolonner mangler ❌
+- Kode antager kolonner eksisterer → INSERT fejler med 500
+
+**Fix:**
+1. Tilføjet `/admin/run-profil-migration` endpoint der eksplicit kører migrationer
+2. **INGEN bagudkompatibilitet** - vi kører migrationen korrekt i stedet
+3. Tilføjet schema-validerings tests
+
+**Migration endpoint:**
+```bash
+curl https://friktionskompasset.dk/admin/run-profil-migration \
+     -H "X-Admin-API-Key: w_r0xNlJAzAm7XSKARbo2T4GkKCePxiqXroB2w0o29s"
+```
+
+**Regressionstest:** `TestDatabaseSchema` i `tests/test_pair_sessions.py`:
+- `test_profil_responses_has_response_type_column()`
+- `test_pair_sessions_has_pair_mode_column()`
+
+**Fremtidig forebyggelse:**
+- Ved nye database kolonner: Kør altid migration endpoint på Render efter deploy
+- Overvej at tilføje schema-tests for ALLE tabeller
+- Tests bør tjekke schema, ikke bare funktionalitet
 
 ---
 
