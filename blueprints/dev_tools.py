@@ -21,6 +21,7 @@ Routes:
 - /admin/export-db-backup - Export database as base64
 - /admin/recreate-assessments - Recreate missing assessments from responses
 - /admin/fix-default-preset - Fix default preset to Enterprise Full
+- /admin/run-profil-migration - Run profil table migrations
 """
 
 from flask import Blueprint, render_template, redirect, url_for, request, flash, jsonify, Response, session
@@ -39,6 +40,7 @@ from csv_upload_hierarchical import bulk_upload_from_csv
 from translations import seed_translations, clear_translation_cache
 from cache import get_cache_stats, invalidate_all
 from extensions import csrf
+from db_profil import init_profil_tables
 
 dev_tools_bp = Blueprint('dev_tools', __name__)
 
@@ -79,6 +81,41 @@ def admin_seed_translations():
     if 'db-status' in referrer:
         return redirect('/admin/db-status')
     flash('Oversættelser er seedet til databasen', 'success')
+    return redirect(request.referrer or url_for('admin_core.admin_home'))
+
+
+@dev_tools_bp.route('/admin/run-profil-migration', methods=['GET', 'POST'])
+@api_or_admin_required
+def run_profil_migration():
+    """Run profil table migrations (adds missing columns).
+
+    API Usage:
+        curl https://friktionskompasset.dk/admin/run-profil-migration \
+             -H "X-Admin-API-Key: YOUR_KEY"
+    """
+    from db import get_db as get_profil_db
+
+    # Run migration
+    init_profil_tables()
+
+    # Verify columns exist
+    with get_profil_db() as conn:
+        profil_responses_cols = [col[1] for col in conn.execute("PRAGMA table_info(profil_responses)").fetchall()]
+        pair_sessions_cols = [col[1] for col in conn.execute("PRAGMA table_info(pair_sessions)").fetchall()]
+
+    result = {
+        'success': True,
+        'message': 'Profil migrations completed',
+        'profil_responses_columns': profil_responses_cols,
+        'pair_sessions_columns': pair_sessions_cols,
+        'response_type_exists': 'response_type' in profil_responses_cols,
+        'pair_mode_exists': 'pair_mode' in pair_sessions_cols
+    }
+
+    if is_api_request():
+        return jsonify(result)
+
+    flash(f"Migration kørt. response_type: {result['response_type_exists']}, pair_mode: {result['pair_mode_exists']}", 'success')
     return redirect(request.referrer or url_for('admin_core.admin_home'))
 
 

@@ -853,25 +853,13 @@ def save_responses(session_id: str, responses: Dict[int, int], response_type: st
     response_type: 'own' (eget svar) eller 'prediction' (gæt på partner)
     """
     with get_db() as conn:
-        # Tjek om response_type kolonnen eksisterer (for bagudkompatibilitet)
-        columns = [col[1] for col in conn.execute("PRAGMA table_info(profil_responses)").fetchall()]
-        has_response_type = 'response_type' in columns
-
         for question_id, score in responses.items():
-            if has_response_type:
-                conn.execute(
-                    """INSERT INTO profil_responses
-                       (session_id, question_id, score, response_type)
-                       VALUES (?, ?, ?, ?)""",
-                    (session_id, question_id, score, response_type)
-                )
-            else:
-                conn.execute(
-                    """INSERT INTO profil_responses
-                       (session_id, question_id, score)
-                       VALUES (?, ?, ?)""",
-                    (session_id, question_id, score)
-                )
+            conn.execute(
+                """INSERT INTO profil_responses
+                   (session_id, question_id, score, response_type)
+                   VALUES (?, ?, ?, ?)""",
+                (session_id, question_id, score, response_type)
+            )
 
 
 def get_responses(session_id: str, response_type: str = None) -> List[Dict]:
@@ -880,11 +868,7 @@ def get_responses(session_id: str, response_type: str = None) -> List[Dict]:
     response_type: None (alle), 'own' (egne svar), eller 'prediction' (gæt på partner)
     """
     with get_db() as conn:
-        # Tjek om response_type kolonnen eksisterer (for bagudkompatibilitet)
-        columns = [col[1] for col in conn.execute("PRAGMA table_info(profil_responses)").fetchall()]
-        has_response_type = 'response_type' in columns
-
-        if response_type and has_response_type:
+        if response_type:
             rows = conn.execute(
                 """SELECT pr.*, pq.field, pq.layer, pq.text_da, pq.reverse_scored
                    FROM profil_responses pr
@@ -911,23 +895,11 @@ def get_responses_by_type(session_id: str, response_type: str = 'own') -> Dict[i
     Bruges til perception gap beregning.
     """
     with get_db() as conn:
-        # Tjek om response_type kolonnen eksisterer (for bagudkompatibilitet)
-        columns = [col[1] for col in conn.execute("PRAGMA table_info(profil_responses)").fetchall()]
-        has_response_type = 'response_type' in columns
-
-        if has_response_type:
-            rows = conn.execute(
-                """SELECT question_id, score FROM profil_responses
-                   WHERE session_id = ? AND response_type = ?""",
-                (session_id, response_type)
-            ).fetchall()
-        else:
-            # Fallback: returner alle svar som 'own' type
-            rows = conn.execute(
-                """SELECT question_id, score FROM profil_responses
-                   WHERE session_id = ?""",
-                (session_id,)
-            ).fetchall()
+        rows = conn.execute(
+            """SELECT question_id, score FROM profil_responses
+               WHERE session_id = ? AND response_type = ?""",
+            (session_id, response_type)
+        ).fetchall()
         return {row['question_id']: row['score'] for row in rows}
 
 
@@ -1043,25 +1015,13 @@ def create_pair_session(
             (session_id, person_a_name, person_a_email)
         )
 
-        # Tjek om pair_mode kolonnen eksisterer (for bagudkompatibilitet)
-        columns = [col[1] for col in conn.execute("PRAGMA table_info(pair_sessions)").fetchall()]
-        has_pair_mode = 'pair_mode' in columns
-
         # Opret pair-session
-        if has_pair_mode:
-            conn.execute(
-                """INSERT INTO pair_sessions
-                   (id, pair_code, person_a_name, person_a_email, person_a_session_id, status, pair_mode)
-                   VALUES (?, ?, ?, ?, ?, 'waiting', ?)""",
-                (pair_id, pair_code, person_a_name, person_a_email, session_id, pair_mode)
-            )
-        else:
-            conn.execute(
-                """INSERT INTO pair_sessions
-                   (id, pair_code, person_a_name, person_a_email, person_a_session_id, status)
-                   VALUES (?, ?, ?, ?, ?, 'waiting')""",
-                (pair_id, pair_code, person_a_name, person_a_email, session_id)
-            )
+        conn.execute(
+            """INSERT INTO pair_sessions
+               (id, pair_code, person_a_name, person_a_email, person_a_session_id, status, pair_mode)
+               VALUES (?, ?, ?, ?, ?, 'waiting', ?)""",
+            (pair_id, pair_code, person_a_name, person_a_email, session_id, pair_mode)
+        )
 
     return {
         'pair_id': pair_id,
