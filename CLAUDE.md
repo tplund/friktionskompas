@@ -32,6 +32,45 @@
 
 ---
 
+## 🚨 KRITISK: GIT RESET OG DATABASE SIKKERHED
+
+### ALDRIG brug `git reset --hard` uden at beskytte databasen først!
+
+**Hændelse 2025-12-27:** `git reset --hard` overskrev databasen med en gammel version og vi mistede testdata. Databasen ER i git history!
+
+### Sikker rollback procedure:
+
+```bash
+# 1. FØRST: Kopier databasen væk
+copy friktionskompas_v3.db friktionskompas_v3_BACKUP.db
+
+# 2. Derefter kan du reset
+git reset --hard <commit>
+
+# 3. Gendan databasen
+copy friktionskompas_v3_BACKUP.db friktionskompas_v3.db
+del friktionskompas_v3_BACKUP.db
+
+# 4. Kør migration hvis nødvendigt
+python -c "from db_hierarchical import init_db; init_db()"
+```
+
+### Alternativ: Brug checkout i stedet for reset
+
+```bash
+# Gendan specifikke filer UDEN at røre databasen
+git checkout <commit> -- admin_app.py templates/
+```
+
+### Hvis data går tabt - regenerer med seed scripts:
+
+```bash
+python seed_herning_testdata.py
+python seed_esbjerg_canonical.py
+```
+
+---
+
 ## ⛔ BESLUTNINGS-TJEKLISTE - TJEK INDEN DU STARTER!
 
 Før du laver ændringer i følgende områder, TJEK denne liste:
