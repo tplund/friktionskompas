@@ -201,34 +201,47 @@ def generate_trend_assessments(conn, questions):
             """, [assessment_id, assessment_name, unit_id, date_str, period_name])
 
             # Generer 25-35 responses per kampagne (medarbejdere + ledere)
-            response_count = random.randint(25, 35)
+            employee_count = random.randint(25, 35)
             leader_count = random.randint(2, 4)  # 2-4 ledere per måling
 
-            for r in range(response_count):
+            # Først: Generer medarbejder-responses
+            for r in range(employee_count):
                 response_time = datetime.strptime(date_str, '%Y-%m-%d') + timedelta(days=random.randint(0, 14))
-
-                # Bestem respondent type og tilhørende scores
-                if r < leader_count:
-                    respondent_type = 'leader_assess'
-                    base_scores = archetype['leader_scores']
-                else:
-                    respondent_type = 'employee'
-                    base_scores = archetype['employee_scores']
+                base_scores = archetype['employee_scores']
 
                 for q in questions:
                     q_id, field, is_reverse = q
-
-                    # Beregn score med forbedring over tid
                     base = base_scores.get(field, 4.0) + improvement
-                    # Tilføj individuel variation
                     score = generate_score(base, variance=0.6)
 
                     conn.execute("""
                         INSERT INTO responses (assessment_id, unit_id, question_id, score, created_at, respondent_type)
-                        VALUES (?, ?, ?, ?, ?, ?)
-                    """, [assessment_id, unit_id, q_id, score, response_time.isoformat(), respondent_type])
+                        VALUES (?, ?, ?, ?, ?, 'employee')
+                    """, [assessment_id, unit_id, q_id, score, response_time.isoformat()])
 
-            print(f"    {period_name}: {response_count} responses ({leader_count} ledere)")
+            # Derefter: Generer leder-responses (BÅDE leader_assess OG leader_self)
+            for l in range(leader_count):
+                response_time = datetime.strptime(date_str, '%Y-%m-%d') + timedelta(days=random.randint(0, 14))
+                base_scores = archetype['leader_scores']
+
+                # Hver leder giver BEGGE typer svar:
+                # 1. leader_assess = lederens vurdering af teamet
+                # 2. leader_self = lederens selv-vurdering (bruges til orange stjerne på grafen)
+                for resp_type in ['leader_assess', 'leader_self']:
+                    for q in questions:
+                        q_id, field, is_reverse = q
+                        base = base_scores.get(field, 4.0) + improvement
+                        # Lidt variation mellem assess og self
+                        variance = 0.6 if resp_type == 'leader_assess' else 0.5
+                        score = generate_score(base, variance=variance)
+
+                        conn.execute("""
+                            INSERT INTO responses (assessment_id, unit_id, question_id, score, created_at, respondent_type)
+                            VALUES (?, ?, ?, ?, ?, ?)
+                        """, [assessment_id, unit_id, q_id, score, response_time.isoformat(), resp_type])
+
+            total_responses = employee_count + (leader_count * 2)  # *2 fordi hver leder har assess + self
+            print(f"    {period_name}: {total_responses} responses ({employee_count} medarbejdere, {leader_count} ledere med assess+self)")
 
 
 def generate_borgere_data(conn, borgere_unit_ids, questions):
