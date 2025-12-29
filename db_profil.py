@@ -163,6 +163,9 @@ def init_profil_tables():
         except sqlite3.OperationalError:
             pass  # Column already exists
 
+        # Fix NULL pair_mode values (fra foer migrationen)
+        conn.execute("UPDATE pair_sessions SET pair_mode = 'standard' WHERE pair_mode IS NULL")
+
         # Indexes
         conn.execute("""
             CREATE INDEX IF NOT EXISTS idx_profil_responses_session

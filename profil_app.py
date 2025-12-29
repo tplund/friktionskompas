@@ -99,7 +99,7 @@ def profil_survey(session_id):
     partner_name = None
 
     if pair:
-        pair_mode = pair.get('pair_mode', 'standard')
+        pair_mode = pair.get('pair_mode') or 'standard'  # Handle NULL values
         # Find partnerens navn baseret på hvilken person vi er
         if pair['person_a_session_id'] == session_id:
             partner_name = pair.get('person_b_name') or 'din partner'
@@ -129,7 +129,7 @@ def profil_submit(session_id):
 
     # Tjek om dette er del af en par-session
     pair = get_pair_session_by_profil_session(session_id)
-    pair_mode = pair.get('pair_mode', 'basis') if pair else 'basis'
+    pair_mode = (pair.get('pair_mode') or 'standard') if pair else 'basis'
 
     # Parse svar baseret på pair_mode
     # Form field format: q_{id}_own, q_{id}_pred, q_{id}_meta (eller bare q_{id} for legacy)
@@ -327,7 +327,7 @@ def pair_compare(pair_id):
         return redirect(url_for('pair_status', pair_id=pair_id))
 
     # Beregn perception gaps (for standard og udvidet mode)
-    pair_mode = pair.get('pair_mode', 'basis')
+    pair_mode = pair.get('pair_mode') or 'standard'
     perception_gaps = None
     meta_gaps = None
 
