@@ -156,6 +156,150 @@
             margin-bottom: 0;
         }
 
+        /* Surprises section */
+        .surprises-section {
+            background: linear-gradient(135deg, #fdf2f8 0%, #fce7f3 100%);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 40px;
+            border: 2px solid #fbcfe8;
+        }
+        .surprises-section h2 {
+            color: #9d174d;
+            font-size: 20px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .surprise-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .surprise-card:last-child {
+            margin-bottom: 0;
+        }
+        .surprise-header {
+            font-weight: 600;
+            color: #9d174d;
+            margin-bottom: 12px;
+            font-size: 14px;
+        }
+        .surprise-question {
+            font-style: italic;
+            color: #666;
+            margin-bottom: 15px;
+            padding-left: 15px;
+            border-left: 3px solid #fbcfe8;
+        }
+        .surprise-scores {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        .score-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .score-label {
+            font-size: 13px;
+            color: #666;
+            min-width: 100px;
+        }
+        .score-dots {
+            display: flex;
+            gap: 4px;
+        }
+        .score-dot {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 2px solid #e5e7eb;
+        }
+        .score-dot.filled {
+            background: #ec4899;
+            border-color: #ec4899;
+        }
+        .score-dot.predicted.filled {
+            background: #8b5cf6;
+            border-color: #8b5cf6;
+        }
+        .score-number {
+            font-weight: 600;
+            font-size: 13px;
+            color: #333;
+            margin-left: 8px;
+        }
+        .surprise-insight {
+            background: #fdf2f8;
+            padding: 12px 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            color: #9d174d;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+        .surprise-insight::before {
+            content: '💬';
+            flex-shrink: 0;
+        }
+
+        /* Blind spots section */
+        .blindspots-section {
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 40px;
+            border: 2px solid #fcd34d;
+        }
+        .blindspots-section h2 {
+            color: #92400e;
+            font-size: 20px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .blindspot-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .blindspot-header {
+            font-weight: 600;
+            color: #92400e;
+            margin-bottom: 12px;
+            font-size: 14px;
+        }
+        .blindspot-insight {
+            background: #fef3c7;
+            padding: 12px 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            color: #92400e;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+        .blindspot-insight::before {
+            content: '👁️';
+            flex-shrink: 0;
+        }
+
+        .no-surprises {
+            text-align: center;
+            padding: 30px;
+            color: #666;
+        }
+
         /* Field comparison */
         .field-comparison {
             margin-bottom: 40px;
@@ -377,6 +521,88 @@
             {% for insight in comparison.insights %}
             <div class="insight">{{ insight }}</div>
             {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Perception Gaps / Overraskelser (kun for standard/udvidet mode) -->
+        {% if perception_gaps and perception_gaps.biggest_surprises %}
+        <div class="surprises-section">
+            <h2>De Største Overraskelser</h2>
+            <p style="color: #9d174d; margin-bottom: 20px; font-size: 14px;">
+                Hvor gættede I forkert på hinandens svar? Her er de største overraskelser:
+            </p>
+
+            {% for surprise in perception_gaps.biggest_surprises %}
+            <div class="surprise-card">
+                <div class="surprise-header">
+                    {{ surprise.surprised_name }} overraskede {{ surprise.guesser_name }}:
+                </div>
+                <div class="surprise-question">
+                    "{{ surprise.question_text }}"
+                </div>
+                <div class="surprise-scores">
+                    <div class="score-row">
+                        <span class="score-label">{{ surprise.guesser_name }} gættede:</span>
+                        <div class="score-dots">
+                            {% for i in range(1, 8) %}
+                            <div class="score-dot predicted {% if i <= surprise.predicted %}filled{% endif %}"></div>
+                            {% endfor %}
+                        </div>
+                        <span class="score-number">({{ surprise.predicted }})</span>
+                    </div>
+                    <div class="score-row">
+                        <span class="score-label">{{ surprise.surprised_name }} svarede:</span>
+                        <div class="score-dots">
+                            {% for i in range(1, 8) %}
+                            <div class="score-dot {% if i <= surprise.actual %}filled{% endif %}"></div>
+                            {% endfor %}
+                        </div>
+                        <span class="score-number">({{ surprise.actual }})</span>
+                    </div>
+                </div>
+                <div class="surprise-insight">
+                    {{ surprise.insight }}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% elif pair_mode in ['standard', 'udvidet'] %}
+        <div class="surprises-section">
+            <h2>De Største Overraskelser</h2>
+            <div class="no-surprises">
+                I kender hinanden godt! Der var ingen store overraskelser (forskel på 2+ point).
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Blinde Pletter (kun for udvidet mode) -->
+        {% if meta_gaps and meta_gaps.biggest_blind_spots %}
+        <div class="blindspots-section">
+            <h2>Blinde Pletter</h2>
+            <p style="color: #92400e; margin-bottom: 20px; font-size: 14px;">
+                Hvor er der forskel mellem hvad I tror partneren ser, og hvad de faktisk ser?
+            </p>
+
+            {% for blindspot in meta_gaps.biggest_blind_spots %}
+            <div class="blindspot-card">
+                <div class="blindspot-header">
+                    {{ blindspot.name }}s blinde plet:
+                </div>
+                <div class="surprise-question">
+                    "{{ blindspot.question_text }}"
+                </div>
+                <div class="blindspot-insight">
+                    {{ blindspot.insight }}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% elif pair_mode == 'udvidet' %}
+        <div class="blindspots-section">
+            <h2>Blinde Pletter</h2>
+            <div class="no-surprises">
+                Godt selvindblik! I har god fornemmelse for hvordan partneren ser jer.
+            </div>
         </div>
         {% endif %}
 

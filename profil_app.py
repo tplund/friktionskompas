@@ -10,6 +10,7 @@ from db_profil import (
     complete_session,
     get_questions_by_field,
     save_responses,
+    get_responses_by_type,
     list_sessions,
     generate_test_profiles,
     # Pair session functions
@@ -23,7 +24,9 @@ from db_profil import (
 from analysis_profil import (
     get_full_analysis,
     get_color_matrix,
-    compare_profiles
+    compare_profiles,
+    calculate_perception_gaps,
+    calculate_meta_gaps
 )
 
 import os
@@ -90,40 +93,87 @@ def profil_survey(session_id):
 
     questions_by_field = get_questions_by_field()
 
+    # Tjek om dette er del af en par-session
+    pair = get_pair_session_by_profil_session(session_id)
+    pair_mode = None
+    partner_name = None
+
+    if pair:
+        pair_mode = pair.get('pair_mode', 'standard')
+        # Find partnerens navn baseret på hvilken person vi er
+        if pair['person_a_session_id'] == session_id:
+            partner_name = pair.get('person_b_name') or 'din partner'
+        else:
+            partner_name = pair.get('person_a_name') or 'din partner'
+
     return render_template(
         'profil/survey.html',
         session_id=session_id,
         session=profil_session,
-        questions_by_field=questions_by_field
+        questions_by_field=questions_by_field,
+        pair=pair,
+        pair_mode=pair_mode,
+        partner_name=partner_name
     )
 
 
 @app.route('/profil/<session_id>/submit', methods=['POST'])
 def profil_submit(session_id):
     """Modtag svar og gem"""
+    import re
+
     profil_session = get_session(session_id)
     if not profil_session:
         flash('Session ikke fundet', 'error')
         return redirect(url_for('profil_start'))
 
-    # Parse alle svar
-    responses = {}
-    for key, value in request.form.items():
-        if key.startswith('q_'):
-            question_id = int(key.replace('q_', ''))
-            score = int(value)
-            responses[question_id] = score
+    # Tjek om dette er del af en par-session
+    pair = get_pair_session_by_profil_session(session_id)
+    pair_mode = pair.get('pair_mode', 'basis') if pair else 'basis'
 
-    # Gem svar
-    save_responses(session_id, responses)
+    # Parse svar baseret på pair_mode
+    # Form field format: q_{id}_own, q_{id}_pred, q_{id}_meta (eller bare q_{id} for legacy)
+    own_responses = {}
+    pred_responses = {}
+    meta_responses = {}
+
+    for key, value in request.form.items():
+        if not key.startswith('q_'):
+            continue
+
+        # Parse key format: q_123_own, q_123_pred, q_123_meta, eller q_123 (legacy)
+        match = re.match(r'q_(\d+)(?:_(own|pred|meta))?$', key)
+        if not match:
+            continue
+
+        question_id = int(match.group(1))
+        response_type = match.group(2) or 'own'  # Default til 'own' for legacy
+        score = int(value)
+
+        if response_type == 'own':
+            own_responses[question_id] = score
+        elif response_type == 'pred':
+            pred_responses[question_id] = score
+        elif response_type == 'meta':
+            meta_responses[question_id] = score
+
+    # Gem egne svar (altid)
+    if own_responses:
+        save_responses(session_id, own_responses, response_type='own')
+
+    # Gem predictions (kun for standard og udvidet mode)
+    if pred_responses and pair_mode in ('standard', 'udvidet'):
+        save_responses(session_id, pred_responses, response_type='prediction')
+
+    # Gem meta-predictions (kun for udvidet mode)
+    if meta_responses and pair_mode == 'udvidet':
+        save_responses(session_id, meta_responses, response_type='meta_prediction')
 
     # Marker som færdig
     complete_session(session_id)
 
-    # Tjek om dette er del af en par-session
-    pair = get_pair_session_by_profil_session(session_id)
+    # Redirect til par-status eller rapport
     if pair:
-        # Opdater par-status og redirect til par-side
         update_pair_status(pair['id'])
         return redirect(url_for('pair_status', pair_id=pair['id']))
 
@@ -168,10 +218,16 @@ def pair_create():
     """Opret par-session og redirect til survey"""
     name = request.form.get('name', '').strip() or None
     email = request.form.get('email', '').strip() or None
+    pair_mode = request.form.get('pair_mode', 'standard')
+
+    # Valider pair_mode
+    if pair_mode not in ('basis', 'standard', 'udvidet'):
+        pair_mode = 'standard'
 
     result = create_pair_session(
         person_a_name=name,
-        person_a_email=email
+        person_a_email=email,
+        pair_mode=pair_mode
     )
 
     # Gem pair_id i session så vi kan finde det efter survey
@@ -270,10 +326,30 @@ def pair_compare(pair_id):
         flash('Kunne ikke generere sammenligning', 'error')
         return redirect(url_for('pair_status', pair_id=pair_id))
 
+    # Beregn perception gaps (for standard og udvidet mode)
+    pair_mode = pair.get('pair_mode', 'basis')
+    perception_gaps = None
+    meta_gaps = None
+
+    if pair_mode in ('standard', 'udvidet'):
+        perception_gaps = calculate_perception_gaps(
+            pair['person_a_session_id'],
+            pair['person_b_session_id']
+        )
+
+    if pair_mode == 'udvidet':
+        meta_gaps = calculate_meta_gaps(
+            pair['person_a_session_id'],
+            pair['person_b_session_id']
+        )
+
     return render_template(
         'profil/pair_compare.html',
         pair=pair,
-        comparison=comparison
+        comparison=comparison,
+        perception_gaps=perception_gaps,
+        meta_gaps=meta_gaps,
+        pair_mode=pair_mode
     )
 
 

@@ -97,12 +97,19 @@ def init_profil_tables():
                 session_id TEXT NOT NULL,
                 question_id INTEGER NOT NULL,
                 score INTEGER NOT NULL CHECK(score BETWEEN 1 AND 7),
+                response_type TEXT DEFAULT 'own',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
                 FOREIGN KEY (session_id) REFERENCES profil_sessions(id) ON DELETE CASCADE,
                 FOREIGN KEY (question_id) REFERENCES profil_questions(id)
             )
         """)
+
+        # Migration: Tilfoej response_type kolonne hvis den mangler
+        try:
+            conn.execute("ALTER TABLE profil_responses ADD COLUMN response_type TEXT DEFAULT 'own'")
+        except sqlite3.OperationalError:
+            pass  # Column already exists
 
         # Profil-sammenligning
         conn.execute("""
@@ -135,6 +142,9 @@ def init_profil_tables():
                 person_b_email TEXT,
                 person_b_session_id TEXT,
 
+                -- Par-mode: basis, standard, udvidet
+                pair_mode TEXT DEFAULT 'standard',
+
                 -- Status: waiting, partial, complete
                 status TEXT DEFAULT 'waiting',
 
@@ -146,6 +156,12 @@ def init_profil_tables():
                 FOREIGN KEY (person_b_session_id) REFERENCES profil_sessions(id)
             )
         """)
+
+        # Migration: Tilfoej pair_mode kolonne hvis den mangler
+        try:
+            conn.execute("ALTER TABLE pair_sessions ADD COLUMN pair_mode TEXT DEFAULT 'standard'")
+        except sqlite3.OperationalError:
+            pass  # Column already exists
 
         # Indexes
         conn.execute("""
@@ -830,19 +846,34 @@ def get_screening_questions_legacy() -> List[Dict]:
 # LEGACY RESPONSE FUNCTIONS
 # ========================================
 
-def save_responses(session_id: str, responses: Dict[int, int]):
+def save_responses(session_id: str, responses: Dict[int, int], response_type: str = 'own'):
     """
     Gem svar for en session (legacy system)
     responses: {question_id: score}
+    response_type: 'own' | 'prediction' | 'meta_prediction'
     """
     with get_db() as conn:
         for question_id, score in responses.items():
             conn.execute(
                 """INSERT INTO profil_responses
-                   (session_id, question_id, score)
-                   VALUES (?, ?, ?)""",
-                (session_id, question_id, score)
+                   (session_id, question_id, score, response_type)
+                   VALUES (?, ?, ?, ?)""",
+                (session_id, question_id, score, response_type)
             )
+
+
+def get_responses_by_type(session_id: str, response_type: str) -> List[Dict]:
+    """Hent svar for en session filtreret på response_type"""
+    with get_db() as conn:
+        rows = conn.execute(
+            """SELECT pr.*, pq.field, pq.layer, pq.text_da, pq.reverse_scored
+               FROM profil_responses pr
+               JOIN profil_questions pq ON pr.question_id = pq.id
+               WHERE pr.session_id = ? AND pr.response_type = ?
+               ORDER BY pq.sequence""",
+            (session_id, response_type)
+        ).fetchall()
+        return [dict(row) for row in rows]
 
 
 def get_responses(session_id: str) -> List[Dict]:
@@ -944,13 +975,22 @@ def generate_pair_code() -> str:
 
 def create_pair_session(
     person_a_name: Optional[str] = None,
-    person_a_email: Optional[str] = None
+    person_a_email: Optional[str] = None,
+    pair_mode: str = 'standard'
 ) -> Dict[str, str]:
     """
     Opret ny par-session og tilhørende profil-session for person A.
 
+    Args:
+        person_a_name: Navn paa person A
+        person_a_email: Email paa person A
+        pair_mode: 'basis' | 'standard' | 'udvidet'
+            - basis: Kun egne svar (~5 min)
+            - standard: + Gaet paa partner (~7 min)
+            - udvidet: + Meta-prediction (~10 min)
+
     Returns:
-        Dict med 'pair_id', 'pair_code', 'session_id'
+        Dict med 'pair_id', 'pair_code', 'session_id', 'pair_mode'
     """
     pair_id = f"pair-{secrets.token_urlsafe(8)}"
     pair_code = generate_pair_code()
@@ -967,18 +1007,19 @@ def create_pair_session(
             (session_id, person_a_name, person_a_email)
         )
 
-        # Opret pair-session
+        # Opret pair-session med pair_mode
         conn.execute(
             """INSERT INTO pair_sessions
-               (id, pair_code, person_a_name, person_a_email, person_a_session_id, status)
-               VALUES (?, ?, ?, ?, ?, 'waiting')""",
-            (pair_id, pair_code, person_a_name, person_a_email, session_id)
+               (id, pair_code, person_a_name, person_a_email, person_a_session_id, pair_mode, status)
+               VALUES (?, ?, ?, ?, ?, ?, 'waiting')""",
+            (pair_id, pair_code, person_a_name, person_a_email, session_id, pair_mode)
         )
 
     return {
         'pair_id': pair_id,
         'pair_code': pair_code,
-        'session_id': session_id
+        'session_id': session_id,
+        'pair_mode': pair_mode
     }
 
 

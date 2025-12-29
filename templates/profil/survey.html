@@ -209,6 +209,72 @@
             display: none;
         }
 
+        /* Par-maling: Dual/triple scale styles */
+        .response-section {
+            margin-bottom: 15px;
+        }
+        .response-section:last-child {
+            margin-bottom: 0;
+        }
+        .response-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .response-label .label-icon {
+            font-size: 16px;
+        }
+        .response-label.prediction-label {
+            color: #8b5cf6;
+        }
+        .response-label.meta-label {
+            color: #f59e0b;
+        }
+        .prediction-scale .rating-option input:checked + label {
+            border-color: #8b5cf6;
+            background: #8b5cf6;
+        }
+        .prediction-scale .rating-option label:hover {
+            border-color: #8b5cf6;
+            background: #f5f3ff;
+        }
+        .meta-scale .rating-option input:checked + label {
+            border-color: #f59e0b;
+            background: #f59e0b;
+        }
+        .meta-scale .rating-option label:hover {
+            border-color: #f59e0b;
+            background: #fffbeb;
+        }
+        .pair-info-banner {
+            background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .pair-info-banner .pair-icon {
+            font-size: 24px;
+        }
+        .pair-info-banner .pair-text {
+            flex: 1;
+        }
+        .pair-info-banner .pair-text strong {
+            display: block;
+            margin-bottom: 2px;
+        }
+        .pair-info-banner .pair-text span {
+            font-size: 13px;
+            opacity: 0.9;
+        }
+
         @media (max-width: 600px) {
             .container { padding: 20px; }
             .rating-scale { flex-wrap: wrap; gap: 6px; }
@@ -244,6 +310,22 @@
             <span><strong>7</strong> = Meget ofte / Meget stærkt</span>
         </div>
 
+        {% if pair_mode and pair_mode != 'basis' %}
+        <div class="pair-info-banner">
+            <span class="pair-icon">👥</span>
+            <div class="pair-text">
+                <strong>Par-måling{% if pair_mode == 'udvidet' %} (Udvidet){% endif %}</strong>
+                <span>
+                    {% if pair_mode == 'standard' %}
+                        Svar på hvert spørgsmål for dig selv, og gæt derefter på hvad {{ partner_name or 'din partner' }} svarer.
+                    {% elif pair_mode == 'udvidet' %}
+                        Svar for dig selv, gæt på {{ partner_name or 'din partner' }}, og gæt på hvad de tror om dig.
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+        {% endif %}
+
         <form id="profilForm" action="/profil/{{ session_id }}/submit" method="POST">
             {% for field, questions in questions_by_field.items() %}
             <div class="question-group">
@@ -265,23 +347,78 @@
                         <span class="layer-badge layer-{{ q.layer.lower() }}">{{ q.layer }}</span>
                     </div>
                     <div class="question-text">{{ q.text_da }}</div>
-                    <div class="rating-scale">
-                        {% for i in range(1, 8) %}
-                        <div class="rating-option">
-                            <input type="radio"
-                                   id="q{{ q.id }}_{{ i }}"
-                                   name="q_{{ q.id }}"
-                                   value="{{ i }}"
-                                   required>
-                            <label for="q{{ q.id }}_{{ i }}">
-                                <span class="rating-number">{{ i }}</span>
-                                <span class="rating-label">
-                                    {% if i == 1 %}Aldrig{% elif i == 4 %}Delvist{% elif i == 7 %}Meget ofte{% endif %}
-                                </span>
-                            </label>
+
+                    <!-- Dit eget svar -->
+                    <div class="response-section">
+                        {% if pair_mode and pair_mode != 'basis' %}
+                        <div class="response-label">
+                            <span class="label-icon">👤</span> Dit svar
                         </div>
-                        {% endfor %}
+                        {% endif %}
+                        <div class="rating-scale">
+                            {% for i in range(1, 8) %}
+                            <div class="rating-option">
+                                <input type="radio"
+                                       id="q{{ q.id }}_own_{{ i }}"
+                                       name="q_{{ q.id }}_own"
+                                       value="{{ i }}"
+                                       required>
+                                <label for="q{{ q.id }}_own_{{ i }}">
+                                    <span class="rating-number">{{ i }}</span>
+                                    <span class="rating-label">
+                                        {% if i == 1 %}Aldrig{% elif i == 4 %}Delvist{% elif i == 7 %}Meget ofte{% endif %}
+                                    </span>
+                                </label>
+                            </div>
+                            {% endfor %}
+                        </div>
                     </div>
+
+                    {% if pair_mode and pair_mode in ['standard', 'udvidet'] %}
+                    <!-- Gaet paa partner -->
+                    <div class="response-section">
+                        <div class="response-label prediction-label">
+                            <span class="label-icon">💭</span> Hvad tror du {{ partner_name or 'din partner' }} svarer?
+                        </div>
+                        <div class="rating-scale prediction-scale">
+                            {% for i in range(1, 8) %}
+                            <div class="rating-option">
+                                <input type="radio"
+                                       id="q{{ q.id }}_pred_{{ i }}"
+                                       name="q_{{ q.id }}_pred"
+                                       value="{{ i }}"
+                                       required>
+                                <label for="q{{ q.id }}_pred_{{ i }}">
+                                    <span class="rating-number">{{ i }}</span>
+                                </label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if pair_mode == 'udvidet' %}
+                    <!-- Meta-prediction: Hvad tror partner om dig -->
+                    <div class="response-section">
+                        <div class="response-label meta-label">
+                            <span class="label-icon">🔮</span> Hvad tror du {{ partner_name or 'din partner' }} svarer OM DIG?
+                        </div>
+                        <div class="rating-scale meta-scale">
+                            {% for i in range(1, 8) %}
+                            <div class="rating-option">
+                                <input type="radio"
+                                       id="q{{ q.id }}_meta_{{ i }}"
+                                       name="q_{{ q.id }}_meta"
+                                       value="{{ i }}"
+                                       required>
+                                <label for="q{{ q.id }}_meta_{{ i }}">
+                                    <span class="rating-number">{{ i }}</span>
+                                </label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
                 </div>
                 {% endfor %}
             </div>
@@ -299,11 +436,15 @@
     </div>
 
     <script>
+        // Beregn antal forventede svar per spoergsmaal (baseret paa pair_mode)
+        const pairMode = '{{ pair_mode or "" }}';
+        const responsesPerQuestion = pairMode === 'udvidet' ? 3 : (pairMode === 'standard' ? 2 : 1);
+
         // Progress bar
         function updateProgress() {
             const questions = document.querySelectorAll('.question');
             const answered = document.querySelectorAll('input[type="radio"]:checked').length;
-            const total = questions.length;
+            const total = questions.length * responsesPerQuestion;
             const percent = (answered / total) * 100;
             document.getElementById('progressBar').style.width = percent + '%';
         }
@@ -311,27 +452,51 @@
         // Validering
         document.getElementById('profilForm').addEventListener('submit', function(e) {
             const questions = document.querySelectorAll('.question');
-            const answered = document.querySelectorAll('input[type="radio"]:checked').length;
+            let allAnswered = true;
+            let firstUnanswered = null;
 
-            if (answered < questions.length) {
+            for (const q of questions) {
+                const qId = q.dataset.questionId;
+
+                // Tjek eget svar
+                const ownAnswered = document.querySelector(`input[name="q_${qId}_own"]:checked`);
+                if (!ownAnswered) {
+                    allAnswered = false;
+                    if (!firstUnanswered) firstUnanswered = q;
+                }
+
+                // Tjek prediction (hvis standard/udvidet)
+                if (pairMode === 'standard' || pairMode === 'udvidet') {
+                    const predAnswered = document.querySelector(`input[name="q_${qId}_pred"]:checked`);
+                    if (!predAnswered) {
+                        allAnswered = false;
+                        if (!firstUnanswered) firstUnanswered = q;
+                    }
+                }
+
+                // Tjek meta (hvis udvidet)
+                if (pairMode === 'udvidet') {
+                    const metaAnswered = document.querySelector(`input[name="q_${qId}_meta"]:checked`);
+                    if (!metaAnswered) {
+                        allAnswered = false;
+                        if (!firstUnanswered) firstUnanswered = q;
+                    }
+                }
+            }
+
+            if (!allAnswered) {
                 e.preventDefault();
                 document.getElementById('validationMsg').style.display = 'block';
 
-                // Find første ubesvaret
-                for (const q of questions) {
-                    const qId = q.dataset.questionId;
-                    const isAnswered = document.querySelector(`input[name="q_${qId}"]:checked`);
-                    if (!isAnswered) {
-                        q.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        q.style.boxShadow = '0 0 0 3px #e74c3c';
-                        setTimeout(() => q.style.boxShadow = '', 2000);
-                        break;
-                    }
+                if (firstUnanswered) {
+                    firstUnanswered.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    firstUnanswered.style.boxShadow = '0 0 0 3px #e74c3c';
+                    setTimeout(() => firstUnanswered.style.boxShadow = '', 2000);
                 }
             }
         });
 
-        // Lyt efter ændringer
+        // Lyt efter aendringer
         document.querySelectorAll('input[type="radio"]').forEach(input => {
             input.addEventListener('change', function() {
                 updateProgress();

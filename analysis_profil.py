@@ -3,7 +3,7 @@ Analyse-funktioner for Friktionsprofil
 Beregner farvegrid, båndbredde, manifestationslag og fortolkninger
 """
 from typing import Dict, List, Optional, Tuple
-from db_profil import get_response_matrix, get_session
+from db_profil import get_response_matrix, get_session, get_responses_by_type, get_pair_session
 
 # Konstanter
 FIELDS = ['TRYGHED', 'MENING', 'KAN', 'BESVÆR']
@@ -315,6 +315,265 @@ def generate_comparison_insights(analysis_1: Dict, analysis_2: Dict, differences
             )
 
     return insights
+
+
+def calculate_perception_gaps(session_id_a: str, session_id_b: str) -> Optional[Dict]:
+    """
+    Beregner perception gaps mellem to par-profiler.
+
+    For hver person: sammenlign hvad partneren gættede (prediction)
+    med hvad personen faktisk svarede (own).
+
+    Returns:
+        {
+            'a_gaps': {question_id: {predicted, actual, gap, question_text}},
+            'b_gaps': {question_id: {predicted, actual, gap, question_text}},
+            'biggest_surprises': [
+                {
+                    'surprised_person': 'A'/'B',
+                    'surprised_name': str,
+                    'guesser_name': str,
+                    'question_text': str,
+                    'field': str,
+                    'predicted': int,
+                    'actual': int,
+                    'gap': int,
+                    'insight': str
+                }
+            ]
+        }
+    """
+    # Hent sessions
+    session_a = get_session(session_id_a)
+    session_b = get_session(session_id_b)
+    if not session_a or not session_b:
+        return None
+
+    name_a = session_a.get('person_name') or 'Person A'
+    name_b = session_b.get('person_name') or 'Person B'
+
+    # Hent svar
+    # A's egne svar og B's gæt på A
+    a_own = {r['question_id']: r for r in get_responses_by_type(session_id_a, 'own')}
+    b_predictions_for_a = {r['question_id']: r for r in get_responses_by_type(session_id_b, 'prediction')}
+
+    # B's egne svar og A's gæt på B
+    b_own = {r['question_id']: r for r in get_responses_by_type(session_id_b, 'own')}
+    a_predictions_for_b = {r['question_id']: r for r in get_responses_by_type(session_id_a, 'prediction')}
+
+    # Beregn gaps for A (B gættede på A)
+    a_gaps = {}
+    for q_id, own_resp in a_own.items():
+        pred_resp = b_predictions_for_a.get(q_id)
+        if pred_resp:
+            gap = own_resp['score'] - pred_resp['score']
+            a_gaps[q_id] = {
+                'predicted': pred_resp['score'],
+                'actual': own_resp['score'],
+                'gap': gap,
+                'abs_gap': abs(gap),
+                'question_text': own_resp.get('text_da', ''),
+                'field': own_resp.get('field', ''),
+                'layer': own_resp.get('layer', ''),
+                'guesser': name_b,
+                'owner': name_a
+            }
+
+    # Beregn gaps for B (A gættede på B)
+    b_gaps = {}
+    for q_id, own_resp in b_own.items():
+        pred_resp = a_predictions_for_b.get(q_id)
+        if pred_resp:
+            gap = own_resp['score'] - pred_resp['score']
+            b_gaps[q_id] = {
+                'predicted': pred_resp['score'],
+                'actual': own_resp['score'],
+                'gap': gap,
+                'abs_gap': abs(gap),
+                'question_text': own_resp.get('text_da', ''),
+                'field': own_resp.get('field', ''),
+                'layer': own_resp.get('layer', ''),
+                'guesser': name_a,
+                'owner': name_b
+            }
+
+    # Find de største overraskelser (|gap| >= 2)
+    all_gaps = []
+
+    for q_id, gap_data in a_gaps.items():
+        if gap_data['abs_gap'] >= 2:
+            all_gaps.append({
+                'surprised_person': 'A',
+                'surprised_name': name_a,
+                'guesser_name': name_b,
+                'question_id': q_id,
+                'question_text': gap_data['question_text'],
+                'field': gap_data['field'],
+                'layer': gap_data['layer'],
+                'predicted': gap_data['predicted'],
+                'actual': gap_data['actual'],
+                'gap': gap_data['gap'],
+                'abs_gap': gap_data['abs_gap'],
+                'insight': generate_gap_insight(
+                    name_a, name_b, gap_data['gap'],
+                    gap_data['question_text'], gap_data['field']
+                )
+            })
+
+    for q_id, gap_data in b_gaps.items():
+        if gap_data['abs_gap'] >= 2:
+            all_gaps.append({
+                'surprised_person': 'B',
+                'surprised_name': name_b,
+                'guesser_name': name_a,
+                'question_id': q_id,
+                'question_text': gap_data['question_text'],
+                'field': gap_data['field'],
+                'layer': gap_data['layer'],
+                'predicted': gap_data['predicted'],
+                'actual': gap_data['actual'],
+                'gap': gap_data['gap'],
+                'abs_gap': gap_data['abs_gap'],
+                'insight': generate_gap_insight(
+                    name_b, name_a, gap_data['gap'],
+                    gap_data['question_text'], gap_data['field']
+                )
+            })
+
+    # Sorter efter absolut gap og tag top 3
+    all_gaps.sort(key=lambda x: x['abs_gap'], reverse=True)
+    biggest_surprises = all_gaps[:3]
+
+    return {
+        'a_gaps': a_gaps,
+        'b_gaps': b_gaps,
+        'biggest_surprises': biggest_surprises,
+        'total_gap_count': len([g for g in all_gaps if g['abs_gap'] >= 2]),
+        'name_a': name_a,
+        'name_b': name_b
+    }
+
+
+def generate_gap_insight(surprised_name: str, guesser_name: str,
+                         gap: int, question_text: str, field: str) -> str:
+    """
+    Genererer indsigtstekst for en perception gap
+    """
+    field_label = FIELD_LABELS.get(field, field)
+
+    if gap > 0:
+        # Surprised person scorede højere end gættet (mere friktion)
+        if gap >= 3:
+            return f"{surprised_name} oplever betydeligt mere {field_label.lower()}-friktion end {guesser_name} troede."
+        else:
+            return f"{surprised_name} oplever mere {field_label.lower()}-friktion end {guesser_name} forventede."
+    else:
+        # Surprised person scorede lavere end gættet (mindre friktion)
+        if gap <= -3:
+            return f"{surprised_name} oplever betydeligt mindre {field_label.lower()}-friktion end {guesser_name} troede."
+        else:
+            return f"{surprised_name} er mere robust på dette punkt end {guesser_name} forventede."
+
+
+def calculate_meta_gaps(session_id_a: str, session_id_b: str) -> Optional[Dict]:
+    """
+    Beregner meta-perception gaps (udvidet mode).
+
+    For hver person: sammenlign hvad de tror partneren tror om dem (meta)
+    med hvad partneren faktisk gættede (prediction).
+
+    Dette afslører "blinde pletter" - hvor er der forskel mellem
+    hvad personen tror andre ser, og hvad andre faktisk ser?
+
+    Returns:
+        {
+            'a_blind_spots': [...],  # Hvor A misforstår hvad B tror
+            'b_blind_spots': [...],  # Hvor B misforstår hvad A tror
+            'biggest_blind_spots': Top 3 med indsigtstekster
+        }
+    """
+    # Hent sessions
+    session_a = get_session(session_id_a)
+    session_b = get_session(session_id_b)
+    if not session_a or not session_b:
+        return None
+
+    name_a = session_a.get('person_name') or 'Person A'
+    name_b = session_b.get('person_name') or 'Person B'
+
+    # A's meta (hvad A tror B gætter om A) vs B's prediction (hvad B faktisk gætter om A)
+    a_meta = {r['question_id']: r for r in get_responses_by_type(session_id_a, 'meta_prediction')}
+    b_predictions_for_a = {r['question_id']: r for r in get_responses_by_type(session_id_b, 'prediction')}
+
+    # B's meta vs A's prediction
+    b_meta = {r['question_id']: r for r in get_responses_by_type(session_id_b, 'meta_prediction')}
+    a_predictions_for_b = {r['question_id']: r for r in get_responses_by_type(session_id_a, 'prediction')}
+
+    # Beregn A's blinde pletter
+    a_blind_spots = []
+    for q_id, meta_resp in a_meta.items():
+        actual_pred = b_predictions_for_a.get(q_id)
+        if actual_pred:
+            gap = actual_pred['score'] - meta_resp['score']
+            if abs(gap) >= 2:
+                a_blind_spots.append({
+                    'question_id': q_id,
+                    'question_text': meta_resp.get('text_da', ''),
+                    'field': meta_resp.get('field', ''),
+                    'meta_score': meta_resp['score'],
+                    'actual_prediction': actual_pred['score'],
+                    'gap': gap,
+                    'abs_gap': abs(gap),
+                    'insight': generate_blind_spot_insight(name_a, name_b, gap, meta_resp.get('field', ''))
+                })
+
+    # Beregn B's blinde pletter
+    b_blind_spots = []
+    for q_id, meta_resp in b_meta.items():
+        actual_pred = a_predictions_for_b.get(q_id)
+        if actual_pred:
+            gap = actual_pred['score'] - meta_resp['score']
+            if abs(gap) >= 2:
+                b_blind_spots.append({
+                    'question_id': q_id,
+                    'question_text': meta_resp.get('text_da', ''),
+                    'field': meta_resp.get('field', ''),
+                    'meta_score': meta_resp['score'],
+                    'actual_prediction': actual_pred['score'],
+                    'gap': gap,
+                    'abs_gap': abs(gap),
+                    'insight': generate_blind_spot_insight(name_b, name_a, gap, meta_resp.get('field', ''))
+                })
+
+    # Kombiner og sorter
+    all_blind_spots = (
+        [{'person': 'A', 'name': name_a, **bs} for bs in a_blind_spots] +
+        [{'person': 'B', 'name': name_b, **bs} for bs in b_blind_spots]
+    )
+    all_blind_spots.sort(key=lambda x: x['abs_gap'], reverse=True)
+
+    return {
+        'a_blind_spots': a_blind_spots,
+        'b_blind_spots': b_blind_spots,
+        'biggest_blind_spots': all_blind_spots[:3],
+        'name_a': name_a,
+        'name_b': name_b
+    }
+
+
+def generate_blind_spot_insight(person_name: str, partner_name: str,
+                                gap: int, field: str) -> str:
+    """
+    Genererer indsigtstekst for en blind plet
+    """
+    field_label = FIELD_LABELS.get(field, field)
+
+    if gap > 0:
+        # Partner gætter højere end person troede
+        return f"{person_name} undervurderer hvor meget {partner_name} ser {field_label.lower()}-friktion."
+    else:
+        # Partner gætter lavere end person troede
+        return f"{person_name} overvurderer hvor sårbar {partner_name} opfatter dem som på {field_label.lower()}."
 
 
 def get_profile_summary_text(session_id: str) -> str:

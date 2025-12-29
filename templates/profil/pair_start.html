@@ -84,6 +84,68 @@
             border-color: #0f3460;
         }
 
+        /* Mode selector styles */
+        .mode-selector {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .mode-option {
+            position: relative;
+            cursor: pointer;
+        }
+        .mode-option input {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+        .mode-card {
+            display: block;
+            padding: 14px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            transition: all 0.2s;
+        }
+        .mode-option input:checked + .mode-card {
+            border-color: #0f3460;
+            background: #f0f4f8;
+        }
+        .mode-card:hover {
+            border-color: #0f3460;
+        }
+        .mode-card .mode-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 4px;
+        }
+        .mode-card .mode-badge {
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-weight: 500;
+        }
+        .mode-badge.recommended {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+        .mode-badge.advanced {
+            background: #fff3e0;
+            color: #e65100;
+        }
+        .mode-card .mode-desc {
+            font-size: 12px;
+            color: #666;
+            line-height: 1.4;
+        }
+        .mode-card .mode-time {
+            font-size: 11px;
+            color: #999;
+            margin-top: 4px;
+        }
+
         .start-btn {
             width: 100%;
             background: linear-gradient(135deg, #0f3460 0%, #16213e 100%);
@@ -190,6 +252,54 @@
             <div class="form-group">
                 <label for="email">Email <span class="optional">(valgfrit - til notifikation)</span></label>
                 <input type="email" id="email" name="email" placeholder="din@email.dk">
+            </div>
+
+            <div class="form-group">
+                <label>Vælg type</label>
+                <div class="mode-selector">
+                    <label class="mode-option">
+                        <input type="radio" name="pair_mode" value="standard" checked>
+                        <div class="mode-card">
+                            <div class="mode-title">
+                                Standard
+                                <span class="mode-badge recommended">Anbefalet</span>
+                            </div>
+                            <div class="mode-desc">
+                                Svar på spørgsmålene og gæt på din partners svar.
+                                Se hvor I overrasker hinanden.
+                            </div>
+                            <div class="mode-time">Ca. 7-10 min per person</div>
+                        </div>
+                    </label>
+
+                    <label class="mode-option">
+                        <input type="radio" name="pair_mode" value="basis">
+                        <div class="mode-card">
+                            <div class="mode-title">
+                                Basis
+                            </div>
+                            <div class="mode-desc">
+                                Kun jeres egne svar - simpel side-by-side sammenligning.
+                            </div>
+                            <div class="mode-time">Ca. 5-7 min per person</div>
+                        </div>
+                    </label>
+
+                    <label class="mode-option">
+                        <input type="radio" name="pair_mode" value="udvidet">
+                        <div class="mode-card">
+                            <div class="mode-title">
+                                Udvidet
+                                <span class="mode-badge advanced">Avanceret</span>
+                            </div>
+                            <div class="mode-desc">
+                                Tilføjer meta-perspektiv: Hvad tror du din partner
+                                tror om dig? Afslører blinde pletter.
+                            </div>
+                            <div class="mode-time">Ca. 12-15 min per person</div>
+                        </div>
+                    </label>
+                </div>
             </div>
 
             <button type="submit" class="start-btn">
