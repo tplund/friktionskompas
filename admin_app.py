@@ -1170,51 +1170,66 @@ def pair_status_check(pair_id):
 @app.route('/profil/pair/<pair_id>/compare')
 def pair_compare(pair_id):
     """Vis sammenligning af par"""
-    pair = get_pair_session(pair_id)
-    if not pair:
-        flash('Par-session ikke fundet', 'error')
+    from logging_config import get_logger
+    logger = get_logger(__name__)
+
+    try:
+        pair = get_pair_session(pair_id)
+        if not pair:
+            flash('Par-session ikke fundet', 'error')
+            return redirect(url_for('profil_start'))
+
+        if pair['status'] != 'complete':
+            return redirect(url_for('pair_status', pair_id=pair_id))
+
+        logger.info(f"pair_compare: pair_id={pair_id}, pair_mode={pair.get('pair_mode')}")
+
+        # Hent sammenligning via eksisterende compare_profiles funktion
+        comparison = compare_profil_profiles(
+            pair['person_a_session_id'],
+            pair['person_b_session_id']
+        )
+
+        if not comparison:
+            flash('Kunne ikke generere sammenligning', 'error')
+            return redirect(url_for('pair_status', pair_id=pair_id))
+
+        # Beregn perception gaps (for standard og udvidet mode)
+        pair_mode = pair.get('pair_mode') or 'standard'
+        perception_gaps = None
+        meta_gaps = None
+
+        if pair_mode in ('standard', 'udvidet'):
+            from analysis_profil import calculate_perception_gaps
+            logger.info(f"pair_compare: calculating perception_gaps")
+            perception_gaps = calculate_perception_gaps(
+                pair['person_a_session_id'],
+                pair['person_b_session_id']
+            )
+            logger.info(f"pair_compare: perception_gaps={perception_gaps is not None}")
+
+        if pair_mode == 'udvidet':
+            from analysis_profil import calculate_meta_gaps
+            logger.info(f"pair_compare: calculating meta_gaps")
+            meta_gaps = calculate_meta_gaps(
+                pair['person_a_session_id'],
+                pair['person_b_session_id']
+            )
+            logger.info(f"pair_compare: meta_gaps={meta_gaps is not None}")
+
+        return render_template(
+            'profil/pair_compare.html',
+            pair=pair,
+            comparison=comparison,
+            perception_gaps=perception_gaps,
+            meta_gaps=meta_gaps,
+            pair_mode=pair_mode
+        )
+
+    except Exception as e:
+        logger.error(f"pair_compare FAILED for pair_id={pair_id}: {e}", exc_info=True)
+        flash('Der opstod en fejl ved visning af sammenligning.', 'error')
         return redirect(url_for('profil_start'))
-
-    if pair['status'] != 'complete':
-        return redirect(url_for('pair_status', pair_id=pair_id))
-
-    # Hent sammenligning via eksisterende compare_profiles funktion
-    comparison = compare_profil_profiles(
-        pair['person_a_session_id'],
-        pair['person_b_session_id']
-    )
-
-    if not comparison:
-        flash('Kunne ikke generere sammenligning', 'error')
-        return redirect(url_for('pair_status', pair_id=pair_id))
-
-    # Beregn perception gaps (for standard og udvidet mode)
-    pair_mode = pair.get('pair_mode') or 'standard'
-    perception_gaps = None
-    meta_gaps = None
-
-    if pair_mode in ('standard', 'udvidet'):
-        from analysis_profil import calculate_perception_gaps
-        perception_gaps = calculate_perception_gaps(
-            pair['person_a_session_id'],
-            pair['person_b_session_id']
-        )
-
-    if pair_mode == 'udvidet':
-        from analysis_profil import calculate_meta_gaps
-        meta_gaps = calculate_meta_gaps(
-            pair['person_a_session_id'],
-            pair['person_b_session_id']
-        )
-
-    return render_template(
-        'profil/pair_compare.html',
-        pair=pair,
-        comparison=comparison,
-        perception_gaps=perception_gaps,
-        meta_gaps=meta_gaps,
-        pair_mode=pair_mode
-    )
 
 
 # ========================================
@@ -1263,93 +1278,104 @@ def profil_survey(session_id):
 def profil_submit(session_id):
     """Modtag svar og gem"""
     import re
+    from logging_config import get_logger
+    logger = get_logger(__name__)
 
-    profil_session = get_profil_session(session_id)
-    if not profil_session:
-        flash('Session ikke fundet', 'error')
+    try:
+        profil_session = get_profil_session(session_id)
+        if not profil_session:
+            flash('Session ikke fundet', 'error')
+            return redirect(url_for('profil_start'))
+
+        # Tjek om dette er del af en par-session
+        pair = get_pair_session_by_profil_session(session_id)
+        pair_mode = (pair.get('pair_mode') or 'standard') if pair else 'basis'
+        logger.info(f"profil_submit: session={session_id}, pair_mode={pair_mode}, has_pair={pair is not None}")
+
+        # Parse svar baseret på pair_mode
+        # Form field format: q_{id}_own, q_{id}_pred, q_{id}_meta (eller bare q_{id} for legacy)
+        own_responses = {}
+        pred_responses = {}
+        meta_responses = {}
+
+        for key, value in request.form.items():
+            if not key.startswith('q_'):
+                continue
+
+            # Parse key format: q_123_own, q_123_pred, q_123_meta, eller q_123 (legacy)
+            match = re.match(r'q_(\d+)(?:_(own|pred|meta))?$', key)
+            if not match:
+                continue
+
+            question_id = int(match.group(1))
+            response_type = match.group(2) or 'own'  # Default til 'own' for legacy
+            score = int(value)
+
+            if response_type == 'own':
+                own_responses[question_id] = score
+            elif response_type == 'pred':
+                pred_responses[question_id] = score
+            elif response_type == 'meta':
+                meta_responses[question_id] = score
+
+        logger.info(f"profil_submit: parsed own={len(own_responses)}, pred={len(pred_responses)}, meta={len(meta_responses)}")
+
+        # Gem egne svar (altid)
+        if own_responses:
+            save_profil_responses(session_id, own_responses, response_type='own')
+
+        # Gem predictions (kun for standard og udvidet mode)
+        if pred_responses and pair_mode in ('standard', 'udvidet'):
+            save_profil_responses(session_id, pred_responses, response_type='prediction')
+
+        # Gem meta-predictions (kun for udvidet mode)
+        if meta_responses and pair_mode == 'udvidet':
+            save_profil_responses(session_id, meta_responses, response_type='meta_prediction')
+
+        # Marker som færdig
+        complete_profil_session(session_id)
+        logger.info(f"profil_submit: session completed")
+
+        if pair:
+            # Opdater par-status og redirect til par-side
+            status = update_pair_status(pair['id'])
+            logger.info(f"profil_submit: pair status updated to {status}")
+
+            # Send email til begge når begge er færdige
+            if status == 'complete':
+                try:
+                    from mailjet_integration import send_pair_completion_notification
+                    compare_url = url_for('pair_compare', pair_id=pair['id'], _external=True)
+
+                    # Email til person A
+                    if pair.get('person_a_email'):
+                        send_pair_completion_notification(
+                            to_email=pair['person_a_email'],
+                            recipient_name=pair.get('person_a_name', 'Du'),
+                            partner_name=pair.get('person_b_name', 'din partner'),
+                            comparison_url=compare_url
+                        )
+
+                    # Email til person B
+                    if pair.get('person_b_email'):
+                        send_pair_completion_notification(
+                            to_email=pair['person_b_email'],
+                            recipient_name=pair.get('person_b_name', 'Du'),
+                            partner_name=pair.get('person_a_name', 'din partner'),
+                            comparison_url=compare_url
+                        )
+                except Exception as e:
+                    # Log fejl men lad submit fortsætte - email er ikke kritisk
+                    logger.error(f"Failed to send pair completion emails: {e}", exc_info=True)
+
+            return redirect(url_for('pair_status', pair_id=pair['id']))
+
+        return redirect(url_for('profil_report', session_id=session_id))
+
+    except Exception as e:
+        logger.error(f"profil_submit FAILED for session={session_id}: {e}", exc_info=True)
+        flash('Der opstod en fejl. Prøv venligst igen.', 'error')
         return redirect(url_for('profil_start'))
-
-    # Tjek om dette er del af en par-session
-    pair = get_pair_session_by_profil_session(session_id)
-    pair_mode = (pair.get('pair_mode') or 'standard') if pair else 'basis'
-
-    # Parse svar baseret på pair_mode
-    # Form field format: q_{id}_own, q_{id}_pred, q_{id}_meta (eller bare q_{id} for legacy)
-    own_responses = {}
-    pred_responses = {}
-    meta_responses = {}
-
-    for key, value in request.form.items():
-        if not key.startswith('q_'):
-            continue
-
-        # Parse key format: q_123_own, q_123_pred, q_123_meta, eller q_123 (legacy)
-        match = re.match(r'q_(\d+)(?:_(own|pred|meta))?$', key)
-        if not match:
-            continue
-
-        question_id = int(match.group(1))
-        response_type = match.group(2) or 'own'  # Default til 'own' for legacy
-        score = int(value)
-
-        if response_type == 'own':
-            own_responses[question_id] = score
-        elif response_type == 'pred':
-            pred_responses[question_id] = score
-        elif response_type == 'meta':
-            meta_responses[question_id] = score
-
-    # Gem egne svar (altid)
-    if own_responses:
-        save_profil_responses(session_id, own_responses, response_type='own')
-
-    # Gem predictions (kun for standard og udvidet mode)
-    if pred_responses and pair_mode in ('standard', 'udvidet'):
-        save_profil_responses(session_id, pred_responses, response_type='prediction')
-
-    # Gem meta-predictions (kun for udvidet mode)
-    if meta_responses and pair_mode == 'udvidet':
-        save_profil_responses(session_id, meta_responses, response_type='meta_prediction')
-
-    # Marker som færdig
-    complete_profil_session(session_id)
-
-    if pair:
-        # Opdater par-status og redirect til par-side
-        status = update_pair_status(pair['id'])
-
-        # Send email til begge når begge er færdige
-        if status == 'complete':
-            try:
-                from mailjet_integration import send_pair_completion_notification
-                compare_url = url_for('pair_compare', pair_id=pair['id'], _external=True)
-
-                # Email til person A
-                if pair.get('person_a_email'):
-                    send_pair_completion_notification(
-                        to_email=pair['person_a_email'],
-                        recipient_name=pair.get('person_a_name', 'Du'),
-                        partner_name=pair.get('person_b_name', 'din partner'),
-                        comparison_url=compare_url
-                    )
-
-                # Email til person B
-                if pair.get('person_b_email'):
-                    send_pair_completion_notification(
-                        to_email=pair['person_b_email'],
-                        recipient_name=pair.get('person_b_name', 'Du'),
-                        partner_name=pair.get('person_a_name', 'din partner'),
-                        comparison_url=compare_url
-                    )
-            except Exception as e:
-                # Log fejl men lad submit fortsætte - email er ikke kritisk
-                from logging_config import get_logger
-                logger = get_logger(__name__)
-                logger.error(f"Failed to send pair completion emails: {e}", exc_info=True)
-
-        return redirect(url_for('pair_status', pair_id=pair['id']))
-
-    return redirect(url_for('profil_report', session_id=session_id))
 
 
 @app.route('/profil/<session_id>/report')
