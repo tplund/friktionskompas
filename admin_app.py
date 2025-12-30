@@ -1421,6 +1421,42 @@ def profil_admin_list():
     return render_template('profil/admin_list.html', sessions=sessions)
 
 
+@app.route('/api/debug/profil-schema')
+def debug_profil_schema():
+    """Midlertidigt endpoint til at tjekke profil database schema"""
+    from flask import jsonify
+    from db_profil import get_db
+
+    try:
+        with get_db() as conn:
+            # Check profil_responses columns
+            cols = conn.execute("PRAGMA table_info(profil_responses)").fetchall()
+            responses_cols = [{"name": c[1], "type": c[2], "notnull": c[3], "default": c[4]} for c in cols]
+
+            # Check pair_sessions columns
+            cols = conn.execute("PRAGMA table_info(pair_sessions)").fetchall()
+            pair_cols = [{"name": c[1], "type": c[2]} for c in cols]
+
+            # Check recent responses
+            recent = conn.execute("""
+                SELECT session_id, response_type, COUNT(*) as cnt
+                FROM profil_responses
+                GROUP BY session_id, response_type
+                ORDER BY rowid DESC
+                LIMIT 10
+            """).fetchall()
+            recent_data = [{"session_id": r[0][:15], "type": r[1], "count": r[2]} for r in recent]
+
+            return jsonify({
+                "profil_responses_columns": responses_cols,
+                "pair_sessions_columns": pair_cols,
+                "recent_responses": recent_data,
+                "has_response_type": any(c["name"] == "response_type" for c in responses_cols)
+            })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route('/profil/compare/<session1>/<session2>')
 def profil_compare(session1, session2):
     """Sammenlign to profiler"""
