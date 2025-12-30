@@ -1320,26 +1320,32 @@ def profil_submit(session_id):
 
         # Send email til begge når begge er færdige
         if status == 'complete':
-            from mailjet_integration import send_pair_completion_notification
-            compare_url = url_for('pair_compare', pair_id=pair['id'], _external=True)
+            try:
+                from mailjet_integration import send_pair_completion_notification
+                compare_url = url_for('pair_compare', pair_id=pair['id'], _external=True)
 
-            # Email til person A
-            if pair.get('person_a_email'):
-                send_pair_completion_notification(
-                    to_email=pair['person_a_email'],
-                    recipient_name=pair.get('person_a_name', 'Du'),
-                    partner_name=pair.get('person_b_name', 'din partner'),
-                    comparison_url=compare_url
-                )
+                # Email til person A
+                if pair.get('person_a_email'):
+                    send_pair_completion_notification(
+                        to_email=pair['person_a_email'],
+                        recipient_name=pair.get('person_a_name', 'Du'),
+                        partner_name=pair.get('person_b_name', 'din partner'),
+                        comparison_url=compare_url
+                    )
 
-            # Email til person B
-            if pair.get('person_b_email'):
-                send_pair_completion_notification(
-                    to_email=pair['person_b_email'],
-                    recipient_name=pair.get('person_b_name', 'Du'),
-                    partner_name=pair.get('person_a_name', 'din partner'),
-                    comparison_url=compare_url
-                )
+                # Email til person B
+                if pair.get('person_b_email'):
+                    send_pair_completion_notification(
+                        to_email=pair['person_b_email'],
+                        recipient_name=pair.get('person_b_name', 'Du'),
+                        partner_name=pair.get('person_a_name', 'din partner'),
+                        comparison_url=compare_url
+                    )
+            except Exception as e:
+                # Log fejl men lad submit fortsætte - email er ikke kritisk
+                from logging_config import get_logger
+                logger = get_logger(__name__)
+                logger.error(f"Failed to send pair completion emails: {e}", exc_info=True)
 
         return redirect(url_for('pair_status', pair_id=pair['id']))
 
