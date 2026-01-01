@@ -111,6 +111,33 @@ def init_profil_tables():
         except sqlite3.OperationalError:
             pass  # Column already exists
 
+        # Migration: Fix CHECK constraint fra (1-5) til (1-7)
+        # SQLite tillader ikke ændring af constraints, så vi skal recreate tabellen
+        schema = conn.execute(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name='profil_responses'"
+        ).fetchone()
+        if schema and 'BETWEEN 1 AND 5' in schema[0]:
+            print("Migration: Fixing profil_responses CHECK constraint (1-5 -> 1-7)...")
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS profil_responses_new (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    session_id TEXT NOT NULL,
+                    question_id INTEGER NOT NULL,
+                    score INTEGER NOT NULL CHECK(score BETWEEN 1 AND 7),
+                    response_type TEXT DEFAULT 'own',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (session_id) REFERENCES profil_sessions(id) ON DELETE CASCADE,
+                    FOREIGN KEY (question_id) REFERENCES profil_questions(id)
+                )
+            """)
+            conn.execute("""
+                INSERT INTO profil_responses_new (id, session_id, question_id, score, response_type, created_at)
+                SELECT id, session_id, question_id, score, response_type, created_at FROM profil_responses
+            """)
+            conn.execute("DROP TABLE profil_responses")
+            conn.execute("ALTER TABLE profil_responses_new RENAME TO profil_responses")
+            print("Migration: CHECK constraint fixed!")
+
         # Profil-sammenligning
         conn.execute("""
             CREATE TABLE IF NOT EXISTS profil_comparisons (
