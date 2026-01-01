@@ -185,6 +185,10 @@ def init_profil_tables():
 
         if count == 0:
             _insert_legacy_questions(conn)
+        elif count < 30:
+            # Migration: Tilføj manglende spørgsmål (capacity, bandwidth, screening)
+            # Dette sker hvis databasen har de gamle 16 sensitivitets-spørgsmål men mangler de nye
+            _add_missing_legacy_questions(conn, count)
 
 
 def init_friktionsprofil_tables():
@@ -545,6 +549,70 @@ def _insert_legacy_questions(conn):
                VALUES (?, ?, ?, ?, ?, ?, ?)""",
             (field, layer, text, state_text, q_type, reverse, seq)
         )
+
+
+def _add_missing_legacy_questions(conn, existing_count):
+    """Tilføj manglende legacy-spørgsmål til eksisterende database.
+
+    Denne migration kører hvis databasen har færre end 30 spørgsmål,
+    hvilket typisk betyder at kun de originale 16 sensitivitets-spørgsmål
+    blev seedet før kapacitets-, båndbredde- og screening-spørgsmål blev tilføjet.
+    """
+    # De ekstra spørgsmål der blev tilføjet efter de første 16
+    extra_questions = [
+        # KAPACITETS-SPØRGSMÅL (8 stk - sequence 17-24)
+        ("KAN", "INDRE", "Jeg kan godt gennemføre noget, selvom jeg ikke har lyst",
+         "I denne situation kan jeg godt gøre det her, selvom jeg egentlig ikke har lyst", "capacity", 1, 17),
+        ("KAN", "KOGNITION", "Når jeg har besluttet noget, får jeg det gjort - også selvom det er kedeligt",
+         "Når jeg har besluttet mig, kan jeg holde fast, også selvom det er kedeligt", "capacity", 1, 18),
+        ("BESVÆR", "KOGNITION", "Jeg gennemfører opgaver, selvom de føles besværlige",
+         "Jeg kan godt færdiggøre det her, selvom det føles bøvlet", "capacity", 1, 19),
+        ("BESVÆR", "INDRE", "Jeg kan håndtere meget bøvl, hvis det er nødvendigt",
+         "Jeg kan godt håndtere det besvær, der følger med", "capacity", 1, 20),
+        ("TRYGHED", "INDRE", "Det påvirker mig, når andre tvivler på mine intentioner",
+         "I denne situation påvirker det mig, hvis nogen tvivler på mine intentioner", "capacity", 0, 21),
+        ("MENING", "INDRE", "Det påvirker mig, når andre udfordrer mine værdier",
+         "I denne situation påvirker det mig, hvis mine værdier udfordres", "capacity", 0, 22),
+
+        # BÅNDBREDDE-SPØRGSMÅL (2 stk - sequence 23-24)
+        ("TRYGHED", "EMOTION", "Når jeg er følelsesmæssigt presset, kan jeg holde ud til jeg får bearbejdet det",
+         "I denne situation kan jeg holde ud følelsesmæssigt, indtil jeg får bearbejdet det", "bandwidth", 1, 23),
+        ("MENING", "KOGNITION", "Når noget rammer mig hårdt, kan jeg efter noget tid tænke klart over det",
+         "I denne situation kan jeg tænke klart over det, selvom det rammer mig personligt", "bandwidth", 1, 24),
+
+        # SCREENING-SPØRGSMÅL (6 stk - sequence 101-106)
+        ("TRYGHED", "GENERAL", "Jeg føler mig ofte urolig eller på vagt i hverdagen",
+         "Lige nu føler jeg mig urolig eller på vagt", "screening", 0, 101),
+        ("MENING", "GENERAL", "Det er tydeligt for mig, hvad der er vigtigt i mit liv",
+         "Lige nu er det tydeligt for mig, hvad der er vigtigt", "screening", 1, 102),
+        ("KAN", "GENERAL", "Jeg har generelt nemt ved at få gjort det, jeg skal",
+         "Lige nu har jeg nemt ved at få gjort det, jeg skal", "screening", 1, 103),
+        ("BESVÆR", "GENERAL", "Hverdagen føles ofte bøvlet og tung",
+         "Lige nu føles tingene bøvlede og tunge", "screening", 0, 104),
+        ("LAG", "BIOLOGI", "Når jeg bliver presset, mærker jeg det mest i kroppen",
+         "Lige nu mærker jeg presset mest i kroppen", "screening", 0, 105),
+        ("LAG", "INDRE", "Når jeg bliver presset, føler jeg mest, at jeg er forkert",
+         "Lige nu føler jeg mest, at jeg er forkert", "screening", 0, 106),
+    ]
+
+    # Tjek hvilke sequence-numre der allerede eksisterer
+    existing_seqs = {row[0] for row in conn.execute(
+        "SELECT sequence FROM profil_questions"
+    ).fetchall()}
+
+    added = 0
+    for field, layer, text, state_text, q_type, reverse, seq in extra_questions:
+        if seq not in existing_seqs:
+            conn.execute(
+                """INSERT INTO profil_questions
+                   (field, layer, text_da, state_text_da, question_type, reverse_scored, sequence)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                (field, layer, text, state_text, q_type, reverse, seq)
+            )
+            added += 1
+
+    if added > 0:
+        print(f"Migration: Tilføjede {added} manglende profil_questions")
 
 
 # ========================================
