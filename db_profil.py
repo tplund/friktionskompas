@@ -217,6 +217,10 @@ def init_profil_tables():
             # Dette sker hvis databasen har de gamle 16 sensitivitets-spørgsmål men mangler de nye
             _add_missing_legacy_questions(conn, count)
 
+        # Migration: Opdater sensitivity-spørgsmål til forbedrede formuleringer (2025-01)
+        # De originale spørgsmål havde social desirability bias - de nye har trade-offs
+        _migrate_sensitivity_question_texts(conn)
+
 
 def init_friktionsprofil_tables():
     """Initialize new screening and deep measurement tables"""
@@ -446,48 +450,49 @@ def _insert_legacy_questions(conn):
     # Format: (field, layer, text_da, state_text_da, question_type, reverse_scored, sequence)
     questions = [
         # ================================================
-        # SENSITIVITETS-SPØRGSMÅL (de oprindelige 16)
+        # SENSITIVITETS-SPØRGSMÅL (16 stk - forbedrede formuleringer 2025-01)
+        # Designet med trade-offs og neutral valens for bedre variation
         # ================================================
 
         # TRYGHED - Sensitivitet
-        ("TRYGHED", "BIOLOGI", "Jeg mærker fysisk uro (hjertebanken, spænding) når noget uventet sker",
-         "Lige nu mærker jeg fysisk uro, når noget uventet sker", "sensitivity", 0, 1),
-        ("TRYGHED", "EMOTION", "Jeg opfanger små signaler eller stemninger i omgivelserne",
-         "Lige nu opfanger jeg signaler og stemninger i omgivelserne", "sensitivity", 0, 2),
-        ("TRYGHED", "INDRE", "Jeg bliver urolig, når andre ser situationer helt anderledes end mig",
-         "Lige nu bliver jeg urolig, når andre ser tingene anderledes", "sensitivity", 0, 3),
-        ("TRYGHED", "KOGNITION", "Jeg falder til ro, når jeg forstår, hvad der foregår",
-         "Lige nu falder jeg til ro, når jeg forstår hvad der foregår", "sensitivity", 1, 4),
+        ("TRYGHED", "BIOLOGI", "Jeg foretrækker at vide hvad der skal ske, også hvis det koster spontanitet",
+         "Lige nu foretrækker jeg forudsigelighed over spontanitet", "sensitivity", 0, 1),
+        ("TRYGHED", "EMOTION", "Jeg bruger tid på at analysere stemningen i et rum før jeg slapper af",
+         "Lige nu bruger jeg tid på at læse stemningen", "sensitivity", 0, 2),
+        ("TRYGHED", "INDRE", "Når nogen ser en situation helt anderledes end mig, bliver jeg usikker",
+         "Lige nu bliver jeg usikker, når andre ser tingene anderledes", "sensitivity", 0, 3),
+        ("TRYGHED", "KOGNITION", "Jeg har brug for at forstå 'hvorfor' før jeg kan acceptere en beslutning",
+         "Lige nu har jeg brug for at forstå baggrunden før jeg accepterer", "sensitivity", 1, 4),
 
         # MENING - Sensitivitet
-        ("MENING", "BIOLOGI", "Jeg mærker fysisk ubehag, når noget ikke giver mening",
-         "Lige nu mærker jeg fysisk ubehag, når noget ikke giver mening", "sensitivity", 0, 5),
-        ("MENING", "EMOTION", "Jeg har en klar fornemmelse af, hvad der er vigtigt for mig",
-         "Lige nu har jeg en klar fornemmelse af, hvad der er vigtigt", "sensitivity", 0, 6),
-        ("MENING", "INDRE", "Når jeg tænker over noget, finder jeg hurtigt ud af hvad jeg mener",
-         "Lige nu finder jeg hurtigt ud af, hvad jeg mener", "sensitivity", 1, 7),
-        ("MENING", "KOGNITION", "Jeg kan holde meget pres ud, hvis meningen er klar",
-         "Lige nu kan jeg holde pres ud, fordi meningen er klar", "sensitivity", 1, 8),
+        ("MENING", "BIOLOGI", "Jeg bliver irriteret over opgaver jeg ikke kan se formålet med",
+         "Lige nu bliver jeg irriteret over formålsløse opgaver", "sensitivity", 0, 5),
+        ("MENING", "EMOTION", "Jeg har svært ved at engagere mig i noget jeg ikke personligt brænder for",
+         "Lige nu har jeg svært ved at engagere mig uden personlig interesse", "sensitivity", 0, 6),
+        ("MENING", "INDRE", "Jeg kan dvæle længe ved beslutninger for at finde den 'rigtige' vej",
+         "Lige nu dvæler jeg ved beslutninger", "sensitivity", 1, 7),
+        ("MENING", "KOGNITION", "Uden et klart 'hvorfor' mister jeg hurtigt motivationen under pres",
+         "Lige nu mister jeg motivationen hvis meningen er uklar", "sensitivity", 1, 8),
 
         # KAN - Sensitivitet
-        ("KAN", "BIOLOGI", "Jeg mærker det i kroppen, når min energi falder",
-         "Lige nu mærker jeg det i kroppen, når min energi falder", "sensitivity", 0, 9),
-        ("KAN", "EMOTION", "Jeg bliver let overvældet, hvis der er mange ting på én gang",
-         "Lige nu bliver jeg let overvældet af mange ting", "sensitivity", 0, 10),
-        ("KAN", "INDRE", "Jeg fungerer bedst, når jeg forstår hvad der forventes af mig",
-         "Lige nu fungerer jeg bedst, når jeg forstår hvad der forventes", "sensitivity", 1, 11),
-        ("KAN", "KOGNITION", "Jeg kan tænke klart, selv når jeg er presset",
-         "Lige nu kan jeg tænke klart, selvom jeg er presset", "sensitivity", 1, 12),
+        ("KAN", "BIOLOGI", "Jeg bliver hurtigt træt af opgaver der kræver vedvarende koncentration",
+         "Lige nu bliver jeg træt af krævende koncentration", "sensitivity", 0, 9),
+        ("KAN", "EMOTION", "Jeg arbejder bedst med én ting ad gangen, selv hvis det tager længere tid",
+         "Lige nu foretrækker jeg én ting ad gangen", "sensitivity", 0, 10),
+        ("KAN", "INDRE", "Jeg har brug for klare instrukser for at komme godt i gang",
+         "Lige nu har jeg brug for klare instrukser", "sensitivity", 1, 11),
+        ("KAN", "KOGNITION", "Under pres reagerer jeg først, og tænker bagefter",
+         "Lige nu reagerer jeg før jeg tænker", "sensitivity", 1, 12),
 
         # BESVÆR - Sensitivitet
-        ("BESVÆR", "BIOLOGI", "Små ting kan føles tunge, når jeg er træt",
-         "Lige nu føles små ting tunge", "sensitivity", 0, 13),
-        ("BESVÆR", "EMOTION", "Jeg undgår ting, der føles som bøvl eller kompleksitet",
-         "Lige nu undgår jeg ting, der føles bøvlede", "sensitivity", 0, 14),
-        ("BESVÆR", "INDRE", "Når jeg forstår processen, føles opgaver lettere",
-         "Lige nu føles opgaver lettere, når jeg forstår processen", "sensitivity", 1, 15),
-        ("BESVÆR", "KOGNITION", "Jeg mister overblik i opgaver med mange små elementer",
-         "Lige nu mister jeg overblik i denne opgave", "sensitivity", 0, 16),
+        ("BESVÆR", "BIOLOGI", "Jeg skyder ofte småting til hjørne, selvom de hober sig op",
+         "Lige nu skyder jeg småting til hjørne", "sensitivity", 0, 13),
+        ("BESVÆR", "EMOTION", "Jeg vælger sommetider den nemme løsning, selv hvis den ikke er den bedste",
+         "Lige nu vælger jeg den nemme løsning", "sensitivity", 0, 14),
+        ("BESVÆR", "INDRE", "Jeg bruger tid på at optimere processer, også når det ikke er nødvendigt",
+         "Lige nu optimerer jeg selvom det ikke er nødvendigt", "sensitivity", 1, 15),
+        ("BESVÆR", "KOGNITION", "Jeg foretrækker at se helheden frem for detaljer",
+         "Lige nu foretrækker jeg helhed over detaljer", "sensitivity", 0, 16),
 
         # ================================================
         # KAPACITETS-SPØRGSMÅL (8 nye)
@@ -640,6 +645,81 @@ def _add_missing_legacy_questions(conn, existing_count):
 
     if added > 0:
         print(f"Migration: Tilføjede {added} manglende profil_questions")
+
+
+def _migrate_sensitivity_question_texts(conn):
+    """
+    Migration: Opdater sensitivity-spørgsmål til forbedrede formuleringer.
+
+    De originale spørgsmål havde:
+    - Social desirability bias (lyder "gode" at svare ja til)
+    - Universelle oplevelser (alle kan nikke)
+    - Ingen trade-offs (ingen pris ved at svare højt)
+
+    De nye spørgsmål har:
+    - Konkrete situationer med trade-offs
+    - Neutral valens (hverken godt eller dårligt at score højt)
+    - Bedre til at differentiere svar mellem partnere
+    """
+    # Nye formuleringer: sequence -> (text_da, state_text_da)
+    # Kun sensitivity-spørgsmål (sequence 1-16)
+    new_texts = {
+        1: ("Jeg foretrækker at vide hvad der skal ske, også hvis det koster spontanitet",
+            "Lige nu foretrækker jeg forudsigelighed over spontanitet"),
+        2: ("Jeg bruger tid på at analysere stemningen i et rum før jeg slapper af",
+            "Lige nu bruger jeg tid på at læse stemningen"),
+        3: ("Når nogen ser en situation helt anderledes end mig, bliver jeg usikker",
+            "Lige nu bliver jeg usikker, når andre ser tingene anderledes"),
+        4: ("Jeg har brug for at forstå 'hvorfor' før jeg kan acceptere en beslutning",
+            "Lige nu har jeg brug for at forstå baggrunden før jeg accepterer"),
+        5: ("Jeg bliver irriteret over opgaver jeg ikke kan se formålet med",
+            "Lige nu bliver jeg irriteret over formålsløse opgaver"),
+        6: ("Jeg har svært ved at engagere mig i noget jeg ikke personligt brænder for",
+            "Lige nu har jeg svært ved at engagere mig uden personlig interesse"),
+        7: ("Jeg kan dvæle længe ved beslutninger for at finde den 'rigtige' vej",
+            "Lige nu dvæler jeg ved beslutninger"),
+        8: ("Uden et klart 'hvorfor' mister jeg hurtigt motivationen under pres",
+            "Lige nu mister jeg motivationen hvis meningen er uklar"),
+        9: ("Jeg bliver hurtigt træt af opgaver der kræver vedvarende koncentration",
+            "Lige nu bliver jeg træt af krævende koncentration"),
+        10: ("Jeg arbejder bedst med én ting ad gangen, selv hvis det tager længere tid",
+             "Lige nu foretrækker jeg én ting ad gangen"),
+        11: ("Jeg har brug for klare instrukser for at komme godt i gang",
+             "Lige nu har jeg brug for klare instrukser"),
+        12: ("Under pres reagerer jeg først, og tænker bagefter",
+             "Lige nu reagerer jeg før jeg tænker"),
+        13: ("Jeg skyder ofte småting til hjørne, selvom de hober sig op",
+             "Lige nu skyder jeg småting til hjørne"),
+        14: ("Jeg vælger sommetider den nemme løsning, selv hvis den ikke er den bedste",
+             "Lige nu vælger jeg den nemme løsning"),
+        15: ("Jeg bruger tid på at optimere processer, også når det ikke er nødvendigt",
+             "Lige nu optimerer jeg selvom det ikke er nødvendigt"),
+        16: ("Jeg foretrækker at se helheden frem for detaljer",
+             "Lige nu foretrækker jeg helhed over detaljer"),
+    }
+
+    # Tjek om migration allerede er kørt (tjek spørgsmål 1's tekst)
+    current_q1 = conn.execute(
+        "SELECT text_da FROM profil_questions WHERE sequence = 1"
+    ).fetchone()
+
+    if current_q1 and "foretrækker at vide hvad" in current_q1[0]:
+        return  # Migration allerede kørt
+
+    # Opdater alle sensitivity-spørgsmål
+    updated = 0
+    for seq, (text_da, state_text_da) in new_texts.items():
+        result = conn.execute(
+            """UPDATE profil_questions
+               SET text_da = ?, state_text_da = ?
+               WHERE sequence = ? AND question_type = 'sensitivity'""",
+            (text_da, state_text_da, seq)
+        )
+        if result.rowcount > 0:
+            updated += 1
+
+    if updated > 0:
+        print(f"Migration: Opdaterede {updated} sensitivity-spørgsmål til nye formuleringer")
 
 
 # ========================================
