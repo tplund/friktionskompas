@@ -50,21 +50,29 @@ Grundig gennemgang af hele systemet før go-live.
 ### 📝 Spørgsmåls-kvalitet (Sproglig + Videnskabelig Review) ✅ FÆRDIG
 Grundig gennemgang af alle spørgsmål i Friktionsprofilen.
 
-**Status:** Implementeret og deployed 2025-12-24. Se `AUDIT_QUESTION_QUALITY.md` for detaljer.
+**Status:** Implementeret og deployed 2025-12-24 + 2025-01-03. Se `AUDIT_QUESTION_QUALITY.md` for detaljer.
 
 **Opgaver:**
 - [x] **Sproglig review** - Gennemgået alle 30 spørgsmål for klarhed, naturligt dansk, entydighed
 - [x] **Videnskabelig review** - Verificeret at spørgsmål måler det intenderede (konstruktvaliditet)
 - [x] **Reverse-scored konsistens** - Tjekket at reverse-scored spørgsmål er intuitive at besvare
 - [x] **Database opdateret** - Nye spørgsmålstekster synkroniseret til produktion
+- [x] **Trade-off formuleringer (2025-01-03)** - Alle 16 sensitivity-spørgsmål reformuleret med trade-offs
 - [ ] **Pilot-test** - Test med 5-10 brugere for forståelighed (TODO)
-- [ ] **Dokumenter ændringer** - Opdater ANALYSELOGIK.md med begrundelser (TODO)
 
-**Ændringer:** 15 af 30 spørgsmål blev opdateret:
+**Ændringer (2025-12-24):** 15 af 30 spørgsmål opdateret:
 - Fjernet binære formuleringer ("meget", "hurtigt", "stærkt")
 - Erstattet fagsprog med naturligt dansk
 - Forkortet lange spørgsmål
 - Konkretiseret vage formuleringer
+
+**Ændringer (2025-01-03):** 16 sensitivity-spørgsmål reformuleret:
+- Problem: Spørgsmålene var for lette at svare "7" på (social desirability bias)
+- Løsning: Trade-off formuleringer ("X, også hvis det koster Y")
+- Adfærdsbeskrivelser frem for selvperception ("Jeg gør X" i stedet for "Jeg føler X")
+- Neutral valens (hverken godt eller dårligt at score højt)
+- Bedre for par-sammenligning (partneren har faktisk en mening om dit svar)
+- Migration: `_migrate_sensitivity_question_texts()` i `db_profil.py`
 
 ### Central Beregningsmotor (friction_engine) ✅ FÆRDIG
 - [x] ~~**Opret `friction_engine.py`** - Samlet motor til alle friktionsberegninger~~
