@@ -176,3 +176,43 @@ def api_docs_openapi_json():
     with open(yaml_path, 'r', encoding='utf-8') as f:
         spec = yaml.safe_load(f)
     return jsonify(spec)
+
+
+@api_admin_bp.route('/admin/fix-user-role', methods=['POST'])
+@csrf.exempt
+@api_or_admin_required
+def api_fix_user_role():
+    """Fix user role - set a user to superadmin.
+
+    API Usage:
+        curl -X POST https://friktionskompasset.dk/api/admin/fix-user-role \
+             -H "X-Admin-API-Key: YOUR_KEY" \
+             -H "Content-Type: application/json" \
+             -d '{"email": "user@example.com", "role": "superadmin"}'
+    """
+    data = request.get_json() or {}
+    email = data.get('email', '').lower().strip()
+    new_role = data.get('role', 'superadmin')
+
+    if not email:
+        return jsonify({'success': False, 'error': 'Email required'}), 400
+
+    if new_role not in ('superadmin', 'admin', 'manager', 'user'):
+        return jsonify({'success': False, 'error': 'Invalid role'}), 400
+
+    with get_db() as conn:
+        # Find user
+        user = conn.execute('SELECT id, email, role FROM users WHERE email = ?', (email,)).fetchone()
+        if not user:
+            return jsonify({'success': False, 'error': f'User not found: {email}'}), 404
+
+        old_role = user['role']
+
+        # Update role
+        conn.execute('UPDATE users SET role = ? WHERE email = ?', (new_role, email))
+        conn.commit()
+
+    return jsonify({
+        'success': True,
+        'message': f'Updated {email} from {old_role} to {new_role}'
+    })
