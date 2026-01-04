@@ -838,6 +838,16 @@ Domæner konfigureres i `admin_seed_domains()` i `admin_app.py`:
 
 ## Testdata Strategi: To Kunder
 
+### KRITISK: 7-Point Skala (Opdateret 2026-01-04)
+**AL data bruger nu 7-point Likert skala (1-7), IKKE 5-point!**
+
+Farve-thresholds for 7-point skala:
+- **GRØN (high):** score >= 4.9 (70% eller højere)
+- **GUL (medium):** score >= 3.5 (50-70%)
+- **RØD (low):** score < 3.5 (under 50%)
+
+Reverse scoring: `8 - score` (IKKE `6 - score`)
+
 ### Oversigt
 | Kunde | Formål | Data |
 |-------|--------|------|
@@ -854,18 +864,19 @@ Domæner konfigureres i `admin_seed_domains()` i `admin_app.py`:
 1. **ALDRIG** ændr Esbjerg-data uden at opdatere ESBJERG_TESTDATA.md
 2. **ALTID** kør `pytest tests/test_esbjerg_canonical.py` efter ændringer
 3. Esbjerg-data er designet til at fange specifikke bugs
+4. Inkluderer `leader_self` responses for gap-analyse
 
-**Esbjerg Test-Scenarier:**
-| Unit | Test Case | Forventet Resultat |
-|------|-----------|-------------------|
-| Birkebo | Normal scores (~3.5) | Grøn/gul indikatorer |
-| Skovbrynet | Høje scores (>4.0) | Grønne indikatorer |
-| Solhjem | Krise scores (<2.5) | Røde indikatorer |
-| Strandparken | Leader gap (>1.5) | Gap-advarsel ikon |
-| Handicapområdet | Tom enhed | Ingen crash, "-" vises |
-| Individuel Profil | B2C, 1 respondent | Korrekt visning |
-| Minimal Data | Identiske scores | Ingen division-by-zero |
-| Substitution Test | Kahneman pattern | Substitution-ikon |
+**Esbjerg Test-Scenarier (7-point skala):**
+| Unit | Test Case | Score Range | Forventet Farve |
+|------|-----------|-------------|-----------------|
+| Birkebo | Normal scores | 4.5-4.9 | GUL (borderline GRØN) |
+| Skovbrynet | Høje scores | 6.0-6.4 | GRØN |
+| Solhjem | Krise scores | 2.1-2.8 | RØD |
+| Strandparken | Leader gap | 3.3 vs 6.3 | Gap-advarsel |
+| Handicapområdet | Tom enhed | - | Ingen crash |
+| Individuel Profil | B2C, 1 respondent | - | Korrekt visning |
+| Minimal Data | Identiske scores | 4.0 | Ingen division-by-zero |
+| Substitution Test | Kahneman pattern | 5.5/2.5 | Substitution-ikon |
 
 **Seed Esbjerg:**
 ```bash
@@ -885,7 +896,16 @@ Herning Kommune bruges til demo og showcase. Data kan ændres frit.
 |----------|------|--------|
 | **Trend Data** | Birk Skole, Aktivitetscentret Midt | Q1-Q4 2025 |
 | **B2C** | Individuel Screening, Par-profiler | Uden leder |
-| **Edge Cases** | Edge Case Tests unit | Advarsels-scenarier |
+| **Variation** | Forskellige skoler | Forskellige farver |
+
+**Tilføj Variation til Herning (efter seed):**
+Dev Tools har en "Vary Testdata" funktion der tilføjer realistisk variation:
+- Birk Skole: GRØN (høje scores)
+- Hammerum Skole: GRØN (høje scores)
+- Gødstrup Skole: RØD (lave scores)
+- Andre: GUL (middel scores)
+
+Lokalt kan du køre variation via Python (se `blueprints/dev_tools.py:vary_testdata`).
 
 **Seed Herning:**
 ```bash
