@@ -607,6 +607,14 @@ Baseret på fuld teknisk audit. Se `docs/AUDIT_2025-12-20.md` for detaljer.
 
 _Ingen kendte bugs pt._
 
+### ✅ Fikset (2026-01-04)
+- [x] **Cross-customer unit aggregation bug** - Når "Alle kunder" var valgt i dropdown og bruger klikkede på "Social- og Sundhedsforvaltningen" (som eksisterer i både Herning og Esbjerg), blev børn fra BEGGE kunder vist. Fixed ved at tilføje `customer_id` filter til alle `full_path LIKE` joins i `admin_core.py`.
+
+### ✅ Fikset (2026-01-03/04)
+- [x] **Alle scores viste GRØN** - Dashboard templates havde hardcoded 5-point skala thresholds. Fixed alle til 7-point: score < 3.5 = RØD, 3.5-4.9 = GUL, >= 4.9 = GRØN.
+- [x] **Manglende leader_self responses** - Esbjerg testdata manglede `leader_self` responses, som bruges til gap-analyse. Fixed i `seed_esbjerg_canonical.py`.
+- [x] **Test thresholds forkerte** - `test_esbjerg_canonical.py` brugte 5-point skala værdier. Opdateret alle til 7-point.
+
 ---
 
 ## 🚀 Deploy & Hosting

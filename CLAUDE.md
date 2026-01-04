@@ -96,6 +96,43 @@ Før du laver ændringer i følgende områder, TJEK denne liste:
 - ✅ Logging: Centraliseret struktureret logging (JSON format)
 - ✅ **Flask App Factory Pattern** (implementeret 2025-12-22)
 
+### 5. 7-Point Likert Skala (KRITISK!)
+Systemet bruger **7-point Likert skala** (1-7), IKKE 5-point!
+
+**Farve-thresholds i templates:**
+- **RØD (krise):** `score < 3.5` (under 50%)
+- **GUL (advarsel):** `score >= 3.5 AND score < 4.9` (50-70%)
+- **GRØN (god):** `score >= 4.9` (over 70%)
+
+**Reverse scoring formel:**
+```python
+adjusted_score = 8 - raw_score  # IKKE 6 - raw_score!
+```
+
+**Bar-bredde beregning:**
+```javascript
+width = ((score - 1) / 6 * 100) + '%'  // IKKE score/5*100!
+```
+
+**Gap thresholds:**
+- Signifikant gap: `> 1.4` points
+- Moderat gap: `> 0.84` points
+
+### 6. Cross-Customer Data Isolation (KRITISK!)
+Når queries bruger `full_path LIKE` til at aggregere børne-enheder, SKAL der også filtreres på `customer_id`:
+
+**FORKERT:**
+```sql
+LEFT JOIN organizational_units children ON children.full_path LIKE ou.full_path || '%'
+```
+
+**KORREKT:**
+```sql
+LEFT JOIN organizational_units children ON children.full_path LIKE ou.full_path || '%' AND children.customer_id = ou.customer_id
+```
+
+**Hvorfor:** Enheder fra forskellige kunder kan have samme `full_path` (fx "Social- og Sundhedsforvaltningen" i både Herning og Esbjerg). Uden `customer_id` filter vil data blandes på tværs af kunder.
+
 ---
 
 ## Flask App Factory Pattern (2025-12-22)
