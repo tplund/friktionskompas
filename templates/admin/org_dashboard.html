@@ -347,7 +347,7 @@
     <!-- NIVEAU 1: Kunde-oversigt -->
     <div class="cards-grid">
         {% for item in items %}
-        <div class="org-card {% if item.avg_score and item.avg_score < 3.0 %}has-problems{% endif %}"
+        <div class="org-card {% if item.avg_score and item.avg_score < 4.2 %}has-problems{% endif %}"
              onclick="window.location='{{ url_for('admin_core.org_dashboard', customer_id=item.id) }}'">
             <div class="org-card-header">
                 <div>
@@ -419,7 +419,7 @@
     {% if items %}
     <div class="cards-grid">
         {% for item in items %}
-        <div class="org-card {% if item.avg_score and item.avg_score < 3.0 %}has-problems{% endif %}"
+        <div class="org-card {% if item.avg_score and item.avg_score < 4.2 %}has-problems{% endif %}"
              {% if item.child_count > 0 %}
              onclick="window.location='{{ url_for('admin_core.org_dashboard', customer_id=customer_id, unit_id=item.id) }}'"
              {% elif item.direct_assessment_id %}

@@ -537,14 +537,14 @@
     {% if field_scores %}
     <div class="friction-bars">
         {% for field in field_scores %}
-        {% set score_class = 'low' if field.avg_score < 2.5 else ('medium' if field.avg_score < 3.5 else 'high') %}
+        {% set score_class = 'low' if field.avg_score < 3.5 else ('medium' if field.avg_score < 4.9 else 'high') %}
         <div class="friction-item {{ score_class }}" onclick="location.href='/admin/analyser?sort={{ field.field|lower }}&order=asc'">
             <div class="header">
                 <span class="field-name">{{ field.field }}</span>
                 <span class="field-score">{{ "%.1f"|format(field.avg_score) }}</span>
             </div>
             <div class="bar">
-                <div class="bar-fill" style="width: {{ (field.avg_score / 5 * 100)|int }}%"></div>
+                <div class="bar-fill" style="width: {{ ((field.avg_score - 1) / 6 * 100)|int }}%"></div>
             </div>
         </div>
         {% endfor %}
@@ -592,7 +592,7 @@
                     {% for field in ['employee_tryghed', 'employee_mening', 'employee_kan', 'employee_besvaer'] %}
                     {% if unit[field] %}
                         {% set score = unit[field] %}
-                        {% set score_class = 'low' if score < 2.5 else ('medium' if score < 3.5 else 'high') %}
+                        {% set score_class = 'low' if score < 3.5 else ('medium' if score < 4.9 else 'high') %}
                         <span class="score-badge {{ score_class }}">{{ "%.1f"|format(score) }}</span>
                     {% else %}
                         <span class="score-badge na">-</span>
