@@ -455,9 +455,12 @@
 
         <!-- Friktionskompas (Radar Chart) -->
         <div class="comparison-section">
-            <h2>🧭 Friktionskompas</h2>
+            <h2>Friktionskompas</h2>
             <p style="color: #666; margin-bottom: 20px; font-size: 14px;">
                 Sammenlign jeres profiler visuelt. Blå = {{ pair.person_a_name or 'Person A' }}, Pink = {{ pair.person_b_name or 'Person B' }}.
+                {% if pair_mode in ['standard', 'udvidet'] %}
+                <br>Stiplede linjer viser hvad I gættede om hinanden.
+                {% endif %}
             </p>
 
             <div style="display: flex; justify-content: center; align-items: center; padding: 20px;">
@@ -531,6 +534,75 @@
                     <circle cx="{{ p2_x3 }}" cy="{{ p2_y3 }}" r="6" fill="#ec4899" stroke="white" stroke-width="2"/>
                     <circle cx="{{ p2_x4 }}" cy="{{ p2_y4 }}" r="6" fill="#ec4899" stroke="white" stroke-width="2"/>
 
+                    {% if pair_mode in ['standard', 'udvidet'] and perception_gaps %}
+                    <!-- Prediction polygons (dashed lines) -->
+                    <!-- Calculate A's prediction of B (blue dashed) - from b_gaps which contains A's predictions about B -->
+                    {% set pred_a_of_b = namespace(tryghed=[], mening=[], kan=[], besvaer=[]) %}
+                    {% for q_id, gap_data in perception_gaps.b_gaps.items() %}
+                        {% if gap_data.field == 'TRYGHED' %}
+                            {% set _ = pred_a_of_b.tryghed.append(gap_data.predicted) %}
+                        {% elif gap_data.field == 'MENING' %}
+                            {% set _ = pred_a_of_b.mening.append(gap_data.predicted) %}
+                        {% elif gap_data.field == 'KAN' %}
+                            {% set _ = pred_a_of_b.kan.append(gap_data.predicted) %}
+                        {% elif gap_data.field == 'BESVÆR' %}
+                            {% set _ = pred_a_of_b.besvaer.append(gap_data.predicted) %}
+                        {% endif %}
+                    {% endfor %}
+
+                    <!-- Calculate B's prediction of A (pink dashed) - from a_gaps which contains B's predictions about A -->
+                    {% set pred_b_of_a = namespace(tryghed=[], mening=[], kan=[], besvaer=[]) %}
+                    {% for q_id, gap_data in perception_gaps.a_gaps.items() %}
+                        {% if gap_data.field == 'TRYGHED' %}
+                            {% set _ = pred_b_of_a.tryghed.append(gap_data.predicted) %}
+                        {% elif gap_data.field == 'MENING' %}
+                            {% set _ = pred_b_of_a.mening.append(gap_data.predicted) %}
+                        {% elif gap_data.field == 'KAN' %}
+                            {% set _ = pred_b_of_a.kan.append(gap_data.predicted) %}
+                        {% elif gap_data.field == 'BESVÆR' %}
+                            {% set _ = pred_b_of_a.besvaer.append(gap_data.predicted) %}
+                        {% endif %}
+                    {% endfor %}
+
+                    <!-- A's prediction of B (blue dashed) -->
+                    {% if pred_a_of_b.tryghed|length > 0 and pred_a_of_b.mening|length > 0 and pred_a_of_b.kan|length > 0 and pred_a_of_b.besvaer|length > 0 %}
+                        {% set pred_ab_tryghed = to_percent((pred_a_of_b.tryghed|sum) / (pred_a_of_b.tryghed|length)) %}
+                        {% set pred_ab_mening = to_percent((pred_a_of_b.mening|sum) / (pred_a_of_b.mening|length)) %}
+                        {% set pred_ab_kan = to_percent((pred_a_of_b.kan|sum) / (pred_a_of_b.kan|length)) %}
+                        {% set pred_ab_besvaer = to_percent((pred_a_of_b.besvaer|sum) / (pred_a_of_b.besvaer|length)) %}
+
+                        {% set pred_ab_x1 = 300 %}
+                        {% set pred_ab_y1 = 300 - (pred_ab_mening * 2.2) %}
+                        {% set pred_ab_x2 = 300 + (pred_ab_tryghed * 2.2) %}
+                        {% set pred_ab_y2 = 300 %}
+                        {% set pred_ab_x3 = 300 %}
+                        {% set pred_ab_y3 = 300 + (pred_ab_kan * 2.2) %}
+                        {% set pred_ab_x4 = 300 - (pred_ab_besvaer * 2.2) %}
+                        {% set pred_ab_y4 = 300 %}
+                        <polygon points="{{ pred_ab_x1 }},{{ pred_ab_y1 }} {{ pred_ab_x2 }},{{ pred_ab_y2 }} {{ pred_ab_x3 }},{{ pred_ab_y3 }} {{ pred_ab_x4 }},{{ pred_ab_y4 }}"
+                                 fill="none" stroke="#3b82f6" stroke-width="2" stroke-dasharray="8,4" opacity="0.6"/>
+                    {% endif %}
+
+                    <!-- B's prediction of A (pink dashed) -->
+                    {% if pred_b_of_a.tryghed|length > 0 and pred_b_of_a.mening|length > 0 and pred_b_of_a.kan|length > 0 and pred_b_of_a.besvaer|length > 0 %}
+                        {% set pred_ba_tryghed = to_percent((pred_b_of_a.tryghed|sum) / (pred_b_of_a.tryghed|length)) %}
+                        {% set pred_ba_mening = to_percent((pred_b_of_a.mening|sum) / (pred_b_of_a.mening|length)) %}
+                        {% set pred_ba_kan = to_percent((pred_b_of_a.kan|sum) / (pred_b_of_a.kan|length)) %}
+                        {% set pred_ba_besvaer = to_percent((pred_b_of_a.besvaer|sum) / (pred_b_of_a.besvaer|length)) %}
+
+                        {% set pred_ba_x1 = 300 %}
+                        {% set pred_ba_y1 = 300 - (pred_ba_mening * 2.2) %}
+                        {% set pred_ba_x2 = 300 + (pred_ba_tryghed * 2.2) %}
+                        {% set pred_ba_y2 = 300 %}
+                        {% set pred_ba_x3 = 300 %}
+                        {% set pred_ba_y3 = 300 + (pred_ba_kan * 2.2) %}
+                        {% set pred_ba_x4 = 300 - (pred_ba_besvaer * 2.2) %}
+                        {% set pred_ba_y4 = 300 %}
+                        <polygon points="{{ pred_ba_x1 }},{{ pred_ba_y1 }} {{ pred_ba_x2 }},{{ pred_ba_y2 }} {{ pred_ba_x3 }},{{ pred_ba_y3 }} {{ pred_ba_x4 }},{{ pred_ba_y4 }}"
+                                 fill="none" stroke="#ec4899" stroke-width="2" stroke-dasharray="8,4" opacity="0.6"/>
+                    {% endif %}
+                    {% endif %}
+
                     <!-- Score labels -->
                     <text x="{{ p1_x1 - 25 }}" y="{{ p1_y1 }}" font-size="11" fill="#3b82f6" font-weight="bold">{{ "%.0f"|format(p1_mening_field) }}%</text>
                     <text x="{{ p2_x1 + 10 }}" y="{{ p2_y1 }}" font-size="11" fill="#ec4899" font-weight="bold">{{ "%.0f"|format(p2_mening_field) }}%</text>
@@ -538,15 +610,25 @@
             </div>
 
             <!-- Legend -->
-            <div style="display: flex; justify-content: center; gap: 40px; margin-top: 10px;">
+            <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 20px 40px; margin-top: 10px;">
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <div style="width: 20px; height: 3px; background: #3b82f6;"></div>
-                    <span style="font-size: 14px; color: #374151;">{{ pair.person_a_name or 'Person A' }}</span>
+                    <span style="font-size: 14px; color: #374151;">{{ pair.person_a_name or 'Person A' }} (faktisk)</span>
                 </div>
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <div style="width: 20px; height: 3px; background: #ec4899;"></div>
-                    <span style="font-size: 14px; color: #374151;">{{ pair.person_b_name or 'Person B' }}</span>
+                    <span style="font-size: 14px; color: #374151;">{{ pair.person_b_name or 'Person B' }} (faktisk)</span>
                 </div>
+                {% if pair_mode in ['standard', 'udvidet'] %}
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <svg width="20" height="3"><line x1="0" y1="1.5" x2="20" y2="1.5" stroke="#3b82f6" stroke-width="2" stroke-dasharray="4,2"/></svg>
+                    <span style="font-size: 14px; color: #374151;">{{ pair.person_a_name or 'Person A' }}s gæt om {{ pair.person_b_name or 'Person B' }}</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <svg width="20" height="3"><line x1="0" y1="1.5" x2="20" y2="1.5" stroke="#ec4899" stroke-width="2" stroke-dasharray="4,2"/></svg>
+                    <span style="font-size: 14px; color: #374151;">{{ pair.person_b_name or 'Person B' }}s gæt om {{ pair.person_a_name or 'Person A' }}</span>
+                </div>
+                {% endif %}
             </div>
         </div>
 
