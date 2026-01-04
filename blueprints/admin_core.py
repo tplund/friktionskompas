@@ -175,10 +175,10 @@ def admin_home():
                 ou.level,
                 ou.parent_id,
 
-                -- Tæl antal målinger for denne enhed OG børn
+                -- Tæl antal målinger for denne enhed OG børn (filtreret på kunde)
                 (SELECT COUNT(*) FROM assessments a
                  JOIN organizational_units ou2 ON a.target_unit_id = ou2.id
-                 WHERE ou2.full_path LIKE ou.full_path || '%') as assessment_count,
+                 WHERE ou2.full_path LIKE ou.full_path || '%' AND ou2.customer_id = ou.customer_id) as assessment_count,
 
                 -- Total responses for denne enhed OG børn
                 COUNT(DISTINCT r.id) as total_responses,
@@ -204,8 +204,8 @@ def admin_home():
                 END) as employee_besvaer
 
             FROM organizational_units ou
-            -- Join med alle børne-units for at aggregere
-            LEFT JOIN organizational_units children ON children.full_path LIKE ou.full_path || '%'
+            -- Join med alle børne-units for at aggregere (filtreret på kunde)
+            LEFT JOIN organizational_units children ON children.full_path LIKE ou.full_path || '%' AND children.customer_id = ou.customer_id
             LEFT JOIN assessments c ON c.target_unit_id = children.id
             LEFT JOIN responses r ON c.id = r.assessment_id AND r.respondent_type = 'employee'
             LEFT JOIN questions q ON r.question_id = q.id
@@ -296,10 +296,10 @@ def admin_units():
                 FROM organizational_units ou
                 LEFT JOIN organizational_units children ON children.parent_id = ou.id
                 LEFT JOIN (
-                    SELECT ou2.id, ou2.full_path, ou2.employee_count FROM organizational_units ou2
+                    SELECT ou2.id, ou2.full_path, ou2.customer_id, ou2.employee_count FROM organizational_units ou2
                     LEFT JOIN organizational_units c ON ou2.id = c.parent_id
                     WHERE c.id IS NULL
-                ) leaf ON leaf.full_path LIKE ou.full_path || '%'
+                ) leaf ON leaf.full_path LIKE ou.full_path || '%' AND leaf.customer_id = ou.customer_id
                 WHERE ou.customer_id = ?
                 GROUP BY ou.id
                 ORDER BY ou.full_path
@@ -312,7 +312,7 @@ def admin_units():
                 WHERE ou.customer_id = ?
             """, [customer_filter]).fetchone()['cnt']
         else:
-            # Admin ser alt (ingen filter)
+            # Admin ser alt (ingen filter) - men stadig filtreret på kunde for full_path matches
             all_units = conn.execute("""
                 SELECT
                     ou.*,
@@ -322,10 +322,10 @@ def admin_units():
                 FROM organizational_units ou
                 LEFT JOIN organizational_units children ON children.parent_id = ou.id
                 LEFT JOIN (
-                    SELECT ou2.id, ou2.full_path, ou2.employee_count FROM organizational_units ou2
+                    SELECT ou2.id, ou2.full_path, ou2.customer_id, ou2.employee_count FROM organizational_units ou2
                     LEFT JOIN organizational_units c ON ou2.id = c.parent_id
                     WHERE c.id IS NULL
-                ) leaf ON leaf.full_path LIKE ou.full_path || '%'
+                ) leaf ON leaf.full_path LIKE ou.full_path || '%' AND leaf.customer_id = ou.customer_id
                 GROUP BY ou.id
                 ORDER BY ou.full_path
             """).fetchall()
