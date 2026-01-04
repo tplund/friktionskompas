@@ -191,6 +191,7 @@ def seed_esbjerg():
     all_responses.extend(generate_responses(assess_id, birkebo_id, target, 'employee', 9))
     leader_target = {'TRYGHED': 4.9, 'MENING': 4.8, 'KAN': 4.8, 'BESVÆR': 4.6}
     all_responses.extend(generate_responses(assess_id, birkebo_id, leader_target, 'leader_assess', 1))
+    all_responses.extend(generate_responses(assess_id, birkebo_id, leader_target, 'leader_self', 1))
 
     # 2. Skovbrynet - Success case (high scores ~6.2 on 7-point scale)
     print("  - Skovbrynet: Success case")
@@ -199,6 +200,7 @@ def seed_esbjerg():
     all_responses.extend(generate_responses(assess_id, skovbrynet_id, target, 'employee', 9))
     leader_target = {'TRYGHED': 6.1, 'MENING': 6.3, 'KAN': 6.3, 'BESVÆR': 6.1}
     all_responses.extend(generate_responses(assess_id, skovbrynet_id, leader_target, 'leader_assess', 1))
+    all_responses.extend(generate_responses(assess_id, skovbrynet_id, leader_target, 'leader_self', 1))
 
     # 3. Solhjem - Crisis case (low scores ~2.5 on 7-point scale)
     print("  - Solhjem: Crisis case")
@@ -207,6 +209,7 @@ def seed_esbjerg():
     all_responses.extend(generate_responses(assess_id, solhjem_id, target, 'employee', 9))
     leader_target = {'TRYGHED': 2.5, 'MENING': 2.7, 'KAN': 2.8, 'BESVÆR': 2.4}
     all_responses.extend(generate_responses(assess_id, solhjem_id, leader_target, 'leader_assess', 1))
+    all_responses.extend(generate_responses(assess_id, solhjem_id, leader_target, 'leader_self', 1))
 
     # 4. Strandparken - Leader gap case (low employee, high leader)
     print("  - Strandparken: Leader gap case")
@@ -215,6 +218,7 @@ def seed_esbjerg():
     all_responses.extend(generate_responses(assess_id, strandparken_id, target, 'employee', 9))
     leader_target = {'TRYGHED': 6.3, 'MENING': 6.1, 'KAN': 6.4, 'BESVÆR': 6.3}
     all_responses.extend(generate_responses(assess_id, strandparken_id, leader_target, 'leader_assess', 1))
+    all_responses.extend(generate_responses(assess_id, strandparken_id, leader_target, 'leader_self', 1))
 
     # 5. Handicapområdet - Empty unit (NO ASSESSMENT!)
     print("  - Handicapområdet: Empty unit (no assessment)")
@@ -254,6 +258,7 @@ def seed_esbjerg():
     target = {'TRYGHED': 5.5, 'MENING': 2.5, 'KAN': 5.5, 'BESVÆR': 2.5}
     all_responses.extend(generate_responses(assess_id, substitution_id, target, 'employee', 9))
     all_responses.extend(generate_responses(assess_id, substitution_id, target, 'leader_assess', 1))
+    all_responses.extend(generate_responses(assess_id, substitution_id, target, 'leader_self', 1))
 
     # Insert all responses
     print(f"\n4. Inserting {len(all_responses)} responses...")

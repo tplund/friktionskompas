@@ -1,7 +1,7 @@
 # Esbjerg Kommune - Kanonisk Testdata
 
 **Status:** KANONISK - DATA MÅ IKKE ÆNDRES UDEN DOKUMENTATION
-**Opdateret:** 2025-12-23
+**Opdateret:** 2026-01-04
 **Formål:** Stabil testdata der fanger bugs og edge cases
 **Skala:** 7-point Likert (1-7)
 
@@ -55,7 +55,7 @@ Esbjerg Kommune (cust-SHKIi10cOe8) - 13 enheder total
 | KAN | 4.9 | 4.8 | Grøn/gul |
 | BESVÆR | 4.5 | 4.6 | Grøn/gul |
 
-**Respondenter:** 9 medarbejdere, 1 leder
+**Respondenter:** 9 medarbejdere (employee), 1 leder (leader_assess + leader_self)
 
 ---
 
@@ -70,7 +70,7 @@ Esbjerg Kommune (cust-SHKIi10cOe8) - 13 enheder total
 | KAN | 6.1 | 6.3 | Grøn |
 | BESVÆR | 6.0 | 6.1 | Grøn |
 
-**Respondenter:** 9 medarbejdere, 1 leder
+**Respondenter:** 9 medarbejdere (employee), 1 leder (leader_assess + leader_self)
 
 ---
 
@@ -85,7 +85,7 @@ Esbjerg Kommune (cust-SHKIi10cOe8) - 13 enheder total
 | KAN | 2.5 | 2.8 | Rød |
 | BESVÆR | 2.1 | 2.4 | Rød |
 
-**Respondenter:** 9 medarbejdere, 1 leder
+**Respondenter:** 9 medarbejdere (employee), 1 leder (leader_assess + leader_self)
 **Forventede advarsler:** Krise-indikator (score < 3.5)
 
 ---
@@ -101,7 +101,7 @@ Esbjerg Kommune (cust-SHKIi10cOe8) - 13 enheder total
 | KAN | 3.1 | 6.4 | 3.3 | Gap-advarsel |
 | BESVÆR | 3.3 | 6.3 | 3.0 | Gap-advarsel |
 
-**Respondenter:** 9 medarbejdere, 1 leder
+**Respondenter:** 9 medarbejdere (employee), 1 leder (leader_assess + leader_self)
 **Forventede advarsler:** Leader-gap ikon (gap > 1.4)
 
 ---
@@ -160,7 +160,7 @@ Esbjerg Kommune (cust-SHKIi10cOe8) - 13 enheder total
 | KAN | 5.5 | 5.5 | Høj |
 | BESVÆR | 2.5 | 2.5 | LAV - substitution! |
 
-**Respondenter:** 9 medarbejdere, 1 leder
+**Respondenter:** 9 medarbejdere (employee), 1 leder (leader_assess + leader_self)
 **Forventede advarsler:** Substitution-ikon (siger tid/besvær, mener mening)
 
 ---

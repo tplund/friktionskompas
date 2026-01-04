@@ -76,20 +76,20 @@ class TestEsbjergScores:
     """Tests for Esbjerg score profiles"""
 
     def _get_unit_scores(self, db, unit_name):
-        """Helper: Get average employee scores for a unit"""
+        """Helper: Get average employee scores for a unit (7-point skala)"""
         return db.execute("""
             SELECT
                 AVG(CASE WHEN q.field = 'TRYGHED' THEN
-                    CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END
+                    CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END
                 END) as tryghed,
                 AVG(CASE WHEN q.field = 'MENING' THEN
-                    CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END
+                    CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END
                 END) as mening,
                 AVG(CASE WHEN q.field = 'KAN' THEN
-                    CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END
+                    CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END
                 END) as kan,
                 AVG(CASE WHEN q.field = 'BESVÆR' THEN
-                    CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END
+                    CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END
                 END) as besvaer
             FROM organizational_units ou
             JOIN assessments a ON a.target_unit_id = ou.id
@@ -99,34 +99,34 @@ class TestEsbjergScores:
         """, [ESBJERG_CUSTOMER_ID, unit_name]).fetchone()
 
     def test_birkebo_has_average_scores(self, db):
-        """Birkebo skal have gennemsnitlige scores omkring 3.5"""
+        """Birkebo skal have gennemsnitlige scores omkring 4.5-4.9 (7-point skala)"""
         scores = self._get_unit_scores(db, 'Birkebo')
         assert scores is not None, "Birkebo data mangler!"
 
         for field in ['tryghed', 'mening', 'kan', 'besvaer']:
             score = scores[field]
-            assert 3.0 <= score <= 4.0, \
-                f"Birkebo {field} skal være 3.0-4.0, fik {score:.2f}"
+            assert 4.0 <= score <= 5.5, \
+                f"Birkebo {field} skal være 4.0-5.5, fik {score:.2f}"
 
     def test_skovbrynet_has_high_scores(self, db):
-        """Skovbrynet skal have høje scores (over 4.0)"""
+        """Skovbrynet skal have høje scores (over 5.5 på 7-point skala)"""
         scores = self._get_unit_scores(db, 'Skovbrynet')
         assert scores is not None, "Skovbrynet data mangler!"
 
         for field in ['tryghed', 'mening', 'kan', 'besvaer']:
             score = scores[field]
-            assert score >= 4.0, \
-                f"Skovbrynet {field} skal være >= 4.0, fik {score:.2f}"
+            assert score >= 5.5, \
+                f"Skovbrynet {field} skal være >= 5.5, fik {score:.2f}"
 
     def test_solhjem_has_crisis_scores(self, db):
-        """Solhjem skal have lave scores (under 2.5)"""
+        """Solhjem skal have lave scores (under 3.0 på 7-point skala)"""
         scores = self._get_unit_scores(db, 'Solhjem')
         assert scores is not None, "Solhjem data mangler!"
 
         for field in ['tryghed', 'mening', 'kan', 'besvaer']:
             score = scores[field]
-            assert score <= 2.5, \
-                f"Solhjem {field} skal være <= 2.5, fik {score:.2f}"
+            assert score <= 3.0, \
+                f"Solhjem {field} skal være <= 3.0, fik {score:.2f}"
 
     def test_strandparken_has_leader_gap(self, db):
         """Strandparken skal have stort gap mellem medarbejder og leder (> 1.5)"""
@@ -181,28 +181,28 @@ class TestEsbjergB2C:
             WHERE ou.customer_id = ? AND ou.name = 'Minimal Data Test'
         """, [ESBJERG_CUSTOMER_ID]).fetchone()
 
-        assert result['min_score'] == result['max_score'] == 3.0, \
-            f"Minimal Data Test skal have alle scores = 3.0, fik min={result['min_score']}, max={result['max_score']}"
+        assert result['min_score'] == result['max_score'] == 4.0, \
+            f"Minimal Data Test skal have alle scores = 4.0 (7-point skala), fik min={result['min_score']}, max={result['max_score']}"
 
 
 class TestEsbjergSubstitution:
     """Tests for Kahneman substitution pattern"""
 
     def test_substitution_pattern_exists(self, db):
-        """Substitution Test skal have lav MENING og BESVÆR, høj TRYGHED og KAN"""
+        """Substitution Test skal have lav MENING og BESVÆR, høj TRYGHED og KAN (7-point skala)"""
         result = db.execute("""
             SELECT
                 AVG(CASE WHEN q.field = 'TRYGHED' THEN
-                    CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END
+                    CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END
                 END) as tryghed,
                 AVG(CASE WHEN q.field = 'MENING' THEN
-                    CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END
+                    CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END
                 END) as mening,
                 AVG(CASE WHEN q.field = 'KAN' THEN
-                    CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END
+                    CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END
                 END) as kan,
                 AVG(CASE WHEN q.field = 'BESVÆR' THEN
-                    CASE WHEN q.reverse_scored = 1 THEN 6 - r.score ELSE r.score END
+                    CASE WHEN q.reverse_scored = 1 THEN 8 - r.score ELSE r.score END
                 END) as besvaer
             FROM organizational_units ou
             JOIN assessments a ON a.target_unit_id = ou.id
@@ -211,17 +211,17 @@ class TestEsbjergSubstitution:
             WHERE ou.customer_id = ? AND ou.name = 'Substitution Test'
         """, [ESBJERG_CUSTOMER_ID]).fetchone()
 
-        # TRYGHED og KAN skal være høje (> 3.5)
-        assert result['tryghed'] >= 3.5, \
-            f"Substitution TRYGHED skal være >= 3.5, fik {result['tryghed']:.2f}"
-        assert result['kan'] >= 3.5, \
-            f"Substitution KAN skal være >= 3.5, fik {result['kan']:.2f}"
+        # TRYGHED og KAN skal være høje (>= 5.0 på 7-point skala)
+        assert result['tryghed'] >= 5.0, \
+            f"Substitution TRYGHED skal være >= 5.0, fik {result['tryghed']:.2f}"
+        assert result['kan'] >= 5.0, \
+            f"Substitution KAN skal være >= 5.0, fik {result['kan']:.2f}"
 
-        # MENING og BESVÆR skal være lave (< 2.5)
-        assert result['mening'] <= 2.5, \
-            f"Substitution MENING skal være <= 2.5, fik {result['mening']:.2f}"
-        assert result['besvaer'] <= 2.5, \
-            f"Substitution BESVÆR skal være <= 2.5, fik {result['besvaer']:.2f}"
+        # MENING og BESVÆR skal være lave (<= 3.0 på 7-point skala)
+        assert result['mening'] <= 3.0, \
+            f"Substitution MENING skal være <= 3.0, fik {result['mening']:.2f}"
+        assert result['besvaer'] <= 3.0, \
+            f"Substitution BESVÆR skal være <= 3.0, fik {result['besvaer']:.2f}"
 
 
 class TestEsbjergDataIntegrity:
@@ -244,7 +244,7 @@ class TestEsbjergDataIntegrity:
             f"Følgende assessments har ingen svar: {[r['name'] for r in result]}"
 
     def test_response_scores_are_valid(self, db):
-        """Alle scores skal være mellem 1 og 5"""
+        """Alle scores skal være mellem 1 og 7 (7-point Likert skala)"""
         result = db.execute("""
             SELECT COUNT(*) as invalid_count
             FROM responses r
@@ -252,8 +252,8 @@ class TestEsbjergDataIntegrity:
             WHERE a.target_unit_id IN (
                 SELECT id FROM organizational_units WHERE customer_id = ?
             )
-            AND (r.score < 1 OR r.score > 5)
+            AND (r.score < 1 OR r.score > 7)
         """, [ESBJERG_CUSTOMER_ID]).fetchone()
 
         assert result['invalid_count'] == 0, \
-            f"Fandt {result['invalid_count']} svar med ugyldig score (ikke 1-5)"
+            f"Fandt {result['invalid_count']} svar med ugyldig score (ikke 1-7)"
