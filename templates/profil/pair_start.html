@@ -307,11 +307,26 @@
             </button>
         </form>
 
-        <div class="time-estimate">
-            ⏱️ Ca. 5-7 minutter per person
+        <div class="time-estimate" id="timeEstimate">
+            ⏱️ Ca. 7-10 minutter per person
         </div>
 
         <div class="divider"><span>eller</span></div>
+
+        <script>
+            // Update time estimate based on selected mode
+            const timeEstimates = {
+                'standard': 'Ca. 7-10 minutter per person',
+                'basis': 'Ca. 5-7 minutter per person',
+                'udvidet': 'Ca. 12-15 minutter per person'
+            };
+
+            document.querySelectorAll('input[name="pair_mode"]').forEach(radio => {
+                radio.addEventListener('change', function() {
+                    document.getElementById('timeEstimate').textContent = '⏱️ ' + timeEstimates[this.value];
+                });
+            });
+        </script>
 
         <a href="/profil/pair/join" class="secondary-link">
             Har du en kode? Deltag her

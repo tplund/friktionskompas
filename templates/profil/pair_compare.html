@@ -300,67 +300,6 @@
             color: #666;
         }
 
-        /* Field comparison */
-        .field-comparison {
-            margin-bottom: 40px;
-        }
-        .field-header {
-            padding: 15px 20px;
-            border-radius: 8px;
-            margin-bottom: 15px;
-            color: white;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .field-tryghed { background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%); }
-        .field-mening { background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%); }
-        .field-kan { background: linear-gradient(135deg, #3498db 0%, #2980b9 100%); }
-        .field-besvaer { background: linear-gradient(135deg, #e67e22 0%, #d35400 100%); }
-
-        .layer-comparison {
-            display: grid;
-            grid-template-columns: 100px 1fr 80px 1fr 100px;
-            gap: 10px;
-            align-items: center;
-            padding: 10px 0;
-            border-bottom: 1px solid #e5e7eb;
-        }
-        .layer-comparison:last-child {
-            border-bottom: none;
-        }
-        .layer-name {
-            font-weight: 600;
-            color: #666;
-            font-size: 13px;
-        }
-        .score-bar {
-            height: 24px;
-            border-radius: 4px;
-            position: relative;
-        }
-        .score-bar-fill {
-            height: 100%;
-            border-radius: 4px;
-            transition: width 0.5s;
-        }
-        .score-bar-fill.person-1 { background: #3b82f6; }
-        .score-bar-fill.person-2 { background: #ec4899; }
-        .score-value {
-            font-size: 14px;
-            font-weight: 600;
-            text-align: center;
-        }
-        .diff-indicator {
-            text-align: center;
-            font-size: 13px;
-            font-weight: 600;
-        }
-        .diff-indicator.higher { color: #dc2626; }
-        .diff-indicator.lower { color: #16a34a; }
-        .diff-indicator.same { color: #9ca3af; }
-
         /* Summary cards */
         .summary-cards {
             display: grid;
@@ -514,6 +453,103 @@
             </div>
         </div>
 
+        <!-- Friktionskompas (Radar Chart) -->
+        <div class="comparison-section">
+            <h2>🧭 Friktionskompas</h2>
+            <p style="color: #666; margin-bottom: 20px; font-size: 14px;">
+                Sammenlign jeres profiler visuelt. Blå = {{ pair.person_a_name or 'Person A' }}, Pink = {{ pair.person_b_name or 'Person B' }}.
+            </p>
+
+            <div style="display: flex; justify-content: center; align-items: center; padding: 20px;">
+                {% set p1_mening = to_percent(comparison.profile_1.summary.total_avg_score) if comparison.profile_1.summary else 50 %}
+                {% set p1_tryghed = to_percent((comparison.profile_1.score_matrix.TRYGHED.BIOLOGI + comparison.profile_1.score_matrix.TRYGHED.EMOTION + comparison.profile_1.score_matrix.TRYGHED.INDRE + comparison.profile_1.score_matrix.TRYGHED.KOGNITION) / 4) %}
+                {% set p1_mening_field = to_percent((comparison.profile_1.score_matrix.MENING.BIOLOGI + comparison.profile_1.score_matrix.MENING.EMOTION + comparison.profile_1.score_matrix.MENING.INDRE + comparison.profile_1.score_matrix.MENING.KOGNITION) / 4) %}
+                {% set p1_kan = to_percent((comparison.profile_1.score_matrix.KAN.BIOLOGI + comparison.profile_1.score_matrix.KAN.EMOTION + comparison.profile_1.score_matrix.KAN.INDRE + comparison.profile_1.score_matrix.KAN.KOGNITION) / 4) %}
+                {% set p1_besvaer = to_percent((comparison.profile_1.score_matrix['BESVÆR'].BIOLOGI + comparison.profile_1.score_matrix['BESVÆR'].EMOTION + comparison.profile_1.score_matrix['BESVÆR'].INDRE + comparison.profile_1.score_matrix['BESVÆR'].KOGNITION) / 4) %}
+
+                {% set p2_tryghed = to_percent((comparison.profile_2.score_matrix.TRYGHED.BIOLOGI + comparison.profile_2.score_matrix.TRYGHED.EMOTION + comparison.profile_2.score_matrix.TRYGHED.INDRE + comparison.profile_2.score_matrix.TRYGHED.KOGNITION) / 4) %}
+                {% set p2_mening_field = to_percent((comparison.profile_2.score_matrix.MENING.BIOLOGI + comparison.profile_2.score_matrix.MENING.EMOTION + comparison.profile_2.score_matrix.MENING.INDRE + comparison.profile_2.score_matrix.MENING.KOGNITION) / 4) %}
+                {% set p2_kan = to_percent((comparison.profile_2.score_matrix.KAN.BIOLOGI + comparison.profile_2.score_matrix.KAN.EMOTION + comparison.profile_2.score_matrix.KAN.INDRE + comparison.profile_2.score_matrix.KAN.KOGNITION) / 4) %}
+                {% set p2_besvaer = to_percent((comparison.profile_2.score_matrix['BESVÆR'].BIOLOGI + comparison.profile_2.score_matrix['BESVÆR'].EMOTION + comparison.profile_2.score_matrix['BESVÆR'].INDRE + comparison.profile_2.score_matrix['BESVÆR'].KOGNITION) / 4) %}
+
+                <svg viewBox="-80 -60 760 760" style="max-width: 600px; width: 100%;">
+                    <!-- Grid circles -->
+                    <circle cx="300" cy="300" r="220" fill="none" stroke="#e5e7eb" stroke-width="2"/>
+                    <circle cx="300" cy="300" r="165" fill="none" stroke="#e5e7eb" stroke-width="1"/>
+                    <circle cx="300" cy="300" r="110" fill="none" stroke="#e5e7eb" stroke-width="1"/>
+                    <circle cx="300" cy="300" r="55" fill="none" stroke="#e5e7eb" stroke-width="1"/>
+
+                    <!-- Axes -->
+                    <line x1="300" y1="300" x2="300" y2="80" stroke="#9ca3af" stroke-width="2"/>
+                    <line x1="300" y1="300" x2="520" y2="300" stroke="#9ca3af" stroke-width="2"/>
+                    <line x1="300" y1="300" x2="300" y2="520" stroke="#9ca3af" stroke-width="2"/>
+                    <line x1="300" y1="300" x2="80" y2="300" stroke="#9ca3af" stroke-width="2"/>
+
+                    <!-- Labels -->
+                    <text x="300" y="40" text-anchor="middle" font-size="18" font-weight="bold" fill="#374151">MENING</text>
+                    <text x="560" y="308" text-anchor="start" font-size="18" font-weight="bold" fill="#374151">TRYGHED</text>
+                    <text x="300" y="570" text-anchor="middle" font-size="18" font-weight="bold" fill="#374151">KAN</text>
+                    <text x="40" y="308" text-anchor="end" font-size="18" font-weight="bold" fill="#374151">BESVÆR</text>
+
+                    <!-- Percentage labels -->
+                    <text x="300" y="190" text-anchor="middle" font-size="12" fill="#9ca3af">50%</text>
+                    <text x="300" y="135" text-anchor="middle" font-size="12" fill="#9ca3af">75%</text>
+
+                    <!-- Person 1 polygon (blue) -->
+                    {% set p1_x1 = 300 %}
+                    {% set p1_y1 = 300 - (p1_mening_field * 2.2) %}
+                    {% set p1_x2 = 300 + (p1_tryghed * 2.2) %}
+                    {% set p1_y2 = 300 %}
+                    {% set p1_x3 = 300 %}
+                    {% set p1_y3 = 300 + (p1_kan * 2.2) %}
+                    {% set p1_x4 = 300 - (p1_besvaer * 2.2) %}
+                    {% set p1_y4 = 300 %}
+                    <polygon points="{{ p1_x1 }},{{ p1_y1 }} {{ p1_x2 }},{{ p1_y2 }} {{ p1_x3 }},{{ p1_y3 }} {{ p1_x4 }},{{ p1_y4 }}"
+                             fill="rgba(59, 130, 246, 0.15)" stroke="#3b82f6" stroke-width="3"/>
+
+                    <!-- Person 1 points -->
+                    <circle cx="{{ p1_x1 }}" cy="{{ p1_y1 }}" r="6" fill="#3b82f6" stroke="white" stroke-width="2"/>
+                    <circle cx="{{ p1_x2 }}" cy="{{ p1_y2 }}" r="6" fill="#3b82f6" stroke="white" stroke-width="2"/>
+                    <circle cx="{{ p1_x3 }}" cy="{{ p1_y3 }}" r="6" fill="#3b82f6" stroke="white" stroke-width="2"/>
+                    <circle cx="{{ p1_x4 }}" cy="{{ p1_y4 }}" r="6" fill="#3b82f6" stroke="white" stroke-width="2"/>
+
+                    <!-- Person 2 polygon (pink) -->
+                    {% set p2_x1 = 300 %}
+                    {% set p2_y1 = 300 - (p2_mening_field * 2.2) %}
+                    {% set p2_x2 = 300 + (p2_tryghed * 2.2) %}
+                    {% set p2_y2 = 300 %}
+                    {% set p2_x3 = 300 %}
+                    {% set p2_y3 = 300 + (p2_kan * 2.2) %}
+                    {% set p2_x4 = 300 - (p2_besvaer * 2.2) %}
+                    {% set p2_y4 = 300 %}
+                    <polygon points="{{ p2_x1 }},{{ p2_y1 }} {{ p2_x2 }},{{ p2_y2 }} {{ p2_x3 }},{{ p2_y3 }} {{ p2_x4 }},{{ p2_y4 }}"
+                             fill="rgba(236, 72, 153, 0.15)" stroke="#ec4899" stroke-width="3"/>
+
+                    <!-- Person 2 points -->
+                    <circle cx="{{ p2_x1 }}" cy="{{ p2_y1 }}" r="6" fill="#ec4899" stroke="white" stroke-width="2"/>
+                    <circle cx="{{ p2_x2 }}" cy="{{ p2_y2 }}" r="6" fill="#ec4899" stroke="white" stroke-width="2"/>
+                    <circle cx="{{ p2_x3 }}" cy="{{ p2_y3 }}" r="6" fill="#ec4899" stroke="white" stroke-width="2"/>
+                    <circle cx="{{ p2_x4 }}" cy="{{ p2_y4 }}" r="6" fill="#ec4899" stroke="white" stroke-width="2"/>
+
+                    <!-- Score labels -->
+                    <text x="{{ p1_x1 - 25 }}" y="{{ p1_y1 }}" font-size="11" fill="#3b82f6" font-weight="bold">{{ "%.0f"|format(p1_mening_field) }}%</text>
+                    <text x="{{ p2_x1 + 10 }}" y="{{ p2_y1 }}" font-size="11" fill="#ec4899" font-weight="bold">{{ "%.0f"|format(p2_mening_field) }}%</text>
+                </svg>
+            </div>
+
+            <!-- Legend -->
+            <div style="display: flex; justify-content: center; gap: 40px; margin-top: 10px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div style="width: 20px; height: 3px; background: #3b82f6;"></div>
+                    <span style="font-size: 14px; color: #374151;">{{ pair.person_a_name or 'Person A' }}</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div style="width: 20px; height: 3px; background: #ec4899;"></div>
+                    <span style="font-size: 14px; color: #374151;">{{ pair.person_b_name or 'Person B' }}</span>
+                </div>
+            </div>
+        </div>
+
         <!-- Insights -->
         {% if comparison.insights %}
         <div class="insights-section">
@@ -639,35 +675,6 @@
                 </div>
             </div>
         </div>
-
-        <!-- Detailed field comparison -->
-        {% for field in ['TRYGHED', 'MENING', 'KAN', 'BESVÆR'] %}
-        <div class="field-comparison">
-            <div class="field-header field-{{ field.lower() }}">
-                {% if field == 'TRYGHED' %}🛡️ Tryghed
-                {% elif field == 'MENING' %}🧭 Mening
-                {% elif field == 'KAN' %}⚡ Kan
-                {% else %}🏔️ Besvær{% endif %}
-            </div>
-
-            {% for layer in ['BIOLOGI', 'EMOTION', 'INDRE', 'KOGNITION'] %}
-            {% set diff = comparison.differences[field].layers[layer] %}
-            <div class="layer-comparison">
-                <div class="layer-name">{{ layer }}</div>
-                <div class="score-bar">
-                    <div class="score-bar-fill person-1" style="width: {{ (diff.score_1 / 7 * 100)|int }}%"></div>
-                </div>
-                <div class="score-value">{{ diff.score_1 }} vs {{ diff.score_2 }}</div>
-                <div class="score-bar" style="direction: rtl;">
-                    <div class="score-bar-fill person-2" style="width: {{ (diff.score_2 / 7 * 100)|int }}%"></div>
-                </div>
-                <div class="diff-indicator {% if diff.difference > 0.5 %}higher{% elif diff.difference < -0.5 %}lower{% else %}same{% endif %}">
-                    {% if diff.difference > 0 %}+{% endif %}{{ diff.difference }}
-                </div>
-            </div>
-            {% endfor %}
-        </div>
-        {% endfor %}
 
         <!-- Actions -->
         <div class="actions">
