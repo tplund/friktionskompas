@@ -6,23 +6,39 @@
     <meta name="robots" content="noindex, nofollow">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+
+    <!-- Google Fonts: DM Sans (headings) + Inter (body) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <!-- Nordic Clarity Design System -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/animations.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/utilities.css') }}">
+
     <title>{% block title %}Admin{% endblock %} - {{ domain_config.branding_company_name or 'Friktionskompasset' }}</title>
     <style>
         :root {
-            --primary-color: {{ domain_config.branding_primary_color or '#3b82f6' }};
+            --primary-color: {{ domain_config.branding_primary_color or 'var(--color-primary)' }};
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
-            background: #f9fafb;
+            font-family: var(--font-body);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+        h1, h2, h3, h4, h5, h6 {
+            font-family: var(--font-heading);
         }
 
         /* Navigation */
         .nav {
-            background: #1f2937;
+            background: var(--gray-900);
             color: white;
             padding: 0;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: var(--shadow-md);
         }
         .nav-container {
             max-width: 1400px;
@@ -30,54 +46,70 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 0 20px;
+            padding: 0 var(--space-5);
         }
         .nav-brand {
-            font-size: 1.25rem;
-            font-weight: 600;
-            padding: 20px 0;
+            font-family: var(--font-heading);
+            font-size: var(--text-xl);
+            font-weight: var(--font-semibold);
+            padding: var(--space-5) 0;
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+        }
+        .nav-brand-icon {
+            width: 24px;
+            height: 24px;
+            color: var(--color-primary-400);
         }
 
         /* Top menu - View switcher */
         .view-switcher {
             display: flex;
-            gap: 5px;
+            gap: var(--space-1);
             list-style: none;
             background: rgba(0,0,0,0.2);
-            padding: 5px;
-            border-radius: 8px;
+            padding: var(--space-1);
+            border-radius: var(--radius-lg);
         }
         .view-switcher a {
             color: rgba(255,255,255,0.7);
             text-decoration: none;
-            padding: 10px 20px;
-            display: block;
-            transition: all 0.2s;
-            border-radius: 6px;
-            font-weight: 500;
+            padding: var(--space-2-5) var(--space-5);
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            transition: var(--transition-default);
+            border-radius: var(--radius-md);
+            font-weight: var(--font-medium);
+            font-size: var(--text-sm);
         }
         .view-switcher a:hover {
             background: rgba(255,255,255,0.1);
             color: white;
         }
         .view-switcher a.active {
-            background: #3b82f6;
+            background: var(--color-primary);
             color: white;
+        }
+        .view-switcher .nav-icon {
+            width: 16px;
+            height: 16px;
         }
 
         /* Submenu */
         .submenu {
-            background: #374151;
+            background: var(--gray-700);
             border-top: 1px solid rgba(255,255,255,0.1);
         }
         .submenu-container {
             max-width: 1400px;
             margin: 0 auto;
-            padding: 0 20px;
+            padding: 0 var(--space-5);
         }
         .submenu-links {
             display: flex;
-            gap: 5px;
+            gap: var(--space-1);
             list-style: none;
             padding: 0;
             margin: 0;
@@ -85,19 +117,25 @@
         .submenu-links a {
             color: rgba(255,255,255,0.8);
             text-decoration: none;
-            padding: 12px 15px;
-            display: block;
-            transition: all 0.2s;
-            font-size: 0.875rem;
+            padding: var(--space-3) var(--space-4);
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+            transition: var(--transition-default);
+            font-size: var(--text-sm);
         }
         .submenu-links a:hover {
             background: rgba(255,255,255,0.1);
             color: white;
         }
         .submenu-links a.active {
-            background: rgba(59, 130, 246, 0.3);
+            background: rgba(79, 70, 229, 0.3);
             color: white;
-            border-bottom: 2px solid #3b82f6;
+            border-bottom: 2px solid var(--color-primary);
+        }
+        .submenu-links .nav-icon {
+            width: 16px;
+            height: 16px;
         }
 
         /* Dropdown menu i submenu */
@@ -112,79 +150,94 @@
             position: absolute;
             top: 100%;
             left: 0;
-            background: #1f2937;
-            border-radius: 0 0 6px 6px;
-            min-width: 180px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            z-index: 100;
+            background: var(--gray-900);
+            border-radius: 0 0 var(--radius-md) var(--radius-md);
+            min-width: 200px;
+            box-shadow: var(--shadow-xl);
+            z-index: var(--z-dropdown);
             list-style: none;
-            padding: 5px 0;
+            padding: var(--space-1) 0;
         }
         .submenu-dropdown:hover .dropdown-menu {
             display: block;
+            animation: slideDown 200ms ease;
         }
         .submenu-dropdown .dropdown-menu a {
-            padding: 10px 15px;
-            display: block;
+            padding: var(--space-2-5) var(--space-4);
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
             color: rgba(255,255,255,0.8);
             text-decoration: none;
-            font-size: 0.85rem;
+            font-size: var(--text-sm);
+            transition: var(--transition-colors);
         }
         .submenu-dropdown .dropdown-menu a:hover {
             background: rgba(255,255,255,0.1);
             color: white;
         }
         .submenu-dropdown .dropdown-menu a.active {
-            background: rgba(59, 130, 246, 0.3);
+            background: rgba(79, 70, 229, 0.3);
             border-bottom: none;
+        }
+        .submenu-dropdown .dropdown-menu .nav-icon {
+            width: 14px;
+            height: 14px;
+            opacity: 0.7;
         }
 
         .nav-user {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: var(--space-2);
             color: rgba(255,255,255,0.8);
-            font-size: 0.875rem;
+            font-size: var(--text-sm);
         }
         .nav-user-info {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: var(--space-2);
         }
         .user-badge {
-            display: inline-block;
-            background: #3b82f6;
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-1);
+            background: var(--color-primary);
             color: white;
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 0.75rem;
-            font-weight: 600;
+            padding: var(--space-1) var(--space-2-5);
+            border-radius: var(--radius-full);
+            font-size: var(--text-xs);
+            font-weight: var(--font-semibold);
         }
         .nav-divider {
             width: 1px;
             height: 20px;
             background: rgba(255,255,255,0.2);
-            margin: 0 8px;
+            margin: 0 var(--space-2);
         }
         .nav-actions {
             display: flex;
             align-items: center;
-            gap: 4px;
+            gap: var(--space-1);
         }
         .nav-actions a {
             color: rgba(255,255,255,0.8);
             text-decoration: none;
-            padding: 6px 12px;
-            border-radius: 6px;
-            transition: all 0.2s;
+            padding: var(--space-1-5) var(--space-3);
+            border-radius: var(--radius-md);
+            transition: var(--transition-default);
             display: inline-flex;
             align-items: center;
-            gap: 5px;
-            font-size: 0.85rem;
+            gap: var(--space-1-5);
+            font-size: var(--text-sm);
         }
         .nav-actions a:hover {
             background: rgba(255,255,255,0.1);
             color: white;
+        }
+        .nav-actions .nav-icon {
+            width: 16px;
+            height: 16px;
         }
 
         /* Language dropdown */
@@ -278,30 +331,34 @@
         .container {
             max-width: 1400px;
             margin: 0 auto;
-            padding: 20px;
+            padding: var(--space-5);
+        }
+        .main-content {
+            animation: fadeInUp 400ms ease-out;
         }
 
         /* Toast notifications */
         .toast-container {
             position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 10000;
+            top: var(--space-6);
+            right: var(--space-6);
+            z-index: var(--z-toast);
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: var(--space-3);
             max-width: 400px;
         }
         .toast {
-            padding: 16px 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            padding: var(--space-4) var(--space-5);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
             display: flex;
             align-items: center;
-            gap: 12px;
-            animation: slideIn 0.3s ease-out;
+            gap: var(--space-3);
+            animation: slideInRight 300ms ease-out;
             cursor: pointer;
-            transition: opacity 0.3s, transform 0.3s;
+            transition: var(--transition-default);
+            background: var(--bg-primary);
         }
         .toast:hover {
             transform: translateX(-5px);
@@ -311,29 +368,32 @@
             transform: translateX(100%);
         }
         .toast-icon {
-            font-size: 1.2rem;
+            font-size: var(--text-xl);
             flex-shrink: 0;
+            width: 24px;
+            height: 24px;
         }
         .toast-message {
             flex: 1;
-            font-size: 0.95rem;
-            line-height: 1.4;
+            font-size: var(--text-sm);
+            line-height: var(--leading-relaxed);
         }
         .toast-close {
             background: none;
             border: none;
-            font-size: 1.2rem;
+            font-size: var(--text-xl);
             cursor: pointer;
             opacity: 0.6;
             padding: 0;
             line-height: 1;
+            transition: opacity 150ms;
         }
         .toast-close:hover { opacity: 1; }
-        .toast.success { background: #d1fae5; color: #065f46; border-left: 4px solid #10b981; }
-        .toast.error { background: #fee2e2; color: #991b1b; border-left: 4px solid #ef4444; }
-        .toast.warning { background: #fef3c7; color: #92400e; border-left: 4px solid #f59e0b; }
-        .toast.info { background: #dbeafe; color: #1e40af; border-left: 4px solid #3b82f6; }
-        @keyframes slideIn {
+        .toast.success { background: var(--score-green-50); color: var(--score-green-text); border-left: 4px solid var(--score-green); }
+        .toast.error { background: var(--score-red-50); color: var(--score-red-text); border-left: 4px solid var(--score-red); }
+        .toast.warning { background: var(--score-yellow-50); color: var(--score-yellow-text); border-left: 4px solid var(--score-yellow); }
+        .toast.info { background: var(--color-primary-50); color: var(--color-primary-800); border-left: 4px solid var(--color-primary); }
+        @keyframes slideInRight {
             from { opacity: 0; transform: translateX(100%); }
             to { opacity: 1; transform: translateX(0); }
         }
@@ -584,13 +644,13 @@
             position: absolute;
             top: -40px;
             left: 0;
-            background: #3b82f6;
+            background: var(--color-primary);
             color: white;
-            padding: 8px 16px;
+            padding: var(--space-2) var(--space-4);
             z-index: 10000;
             text-decoration: none;
-            font-weight: 600;
-            border-radius: 0 0 4px 0;
+            font-weight: var(--font-semibold);
+            border-radius: 0 0 var(--radius-sm) 0;
         }
         .skip-link:focus {
             top: 0;
@@ -603,7 +663,7 @@
         select:focus,
         textarea:focus,
         [tabindex]:focus {
-            outline: 2px solid #3b82f6;
+            outline: 2px solid var(--color-primary);
             outline-offset: 2px;
         }
         /* Remove outline for mouse users, keep for keyboard */
@@ -615,7 +675,7 @@
         button:focus-visible,
         input:focus-visible,
         select:focus-visible {
-            outline: 2px solid #3b82f6;
+            outline: 2px solid var(--color-primary);
             outline-offset: 2px;
         }
     </style>
@@ -629,9 +689,9 @@
         <div class="nav-container">
             <div class="nav-brand">
                 {% if domain_config and domain_config.branding_logo_url %}
-                <img src="{{ domain_config.branding_logo_url }}" alt="{{ domain_config.branding_company_name or 'Logo' }}" style="height: 28px; margin-right: 8px; vertical-align: middle;">
+                <img src="{{ domain_config.branding_logo_url }}" alt="{{ domain_config.branding_company_name or 'Logo' }}" style="height: 28px;">
                 {% else %}
-                🏢
+                <i data-lucide="building-2" class="nav-brand-icon"></i>
                 {% endif %}
                 {{ domain_config.branding_company_name if domain_config and domain_config.branding_company_name else 'Friktionskompasset' }}
             </div>
@@ -639,9 +699,9 @@
             {% if session.user.role == 'admin' and not session.impersonating %}
             <!-- View switcher - kun for admin -->
             <ul class="view-switcher">
-                <li><a href="/admin/view/user" {% if session.get('view_mode') == 'user' %}class="active"{% endif %}>👤 Brugervisning</a></li>
-                <li><a href="/admin/view/manager" {% if session.get('view_mode') == 'manager' %}class="active"{% endif %}>👔 Ledervisning</a></li>
-                <li><a href="/admin/view/admin" {% if session.get('view_mode', 'admin') == 'admin' %}class="active"{% endif %}>🔧 Adminvisning</a></li>
+                <li><a href="/admin/view/user" {% if session.get('view_mode') == 'user' %}class="active"{% endif %}><i data-lucide="user" class="nav-icon"></i> Brugervisning</a></li>
+                <li><a href="/admin/view/manager" {% if session.get('view_mode') == 'manager' %}class="active"{% endif %}><i data-lucide="briefcase" class="nav-icon"></i> Ledervisning</a></li>
+                <li><a href="/admin/view/admin" {% if session.get('view_mode', 'admin') == 'admin' %}class="active"{% endif %}><i data-lucide="wrench" class="nav-icon"></i> Adminvisning</a></li>
             </ul>
             {% endif %}
 
@@ -666,9 +726,9 @@
             <!-- Role simulation for superadmin -->
             <div class="role-switcher" style="margin-left: 10px;">
                 <select id="roleSelect" onchange="switchRole(this.value)" style="padding: 6px 12px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.1); color: white; font-size: 0.85rem; cursor: pointer;">
-                    <option value="" {% if not session.simulated_role %}selected{% endif %}>👑 Superadmin</option>
-                    <option value="admin" {% if session.simulated_role == 'admin' %}selected{% endif %}>🔧 Admin</option>
-                    <option value="manager" {% if session.simulated_role == 'manager' %}selected{% endif %}>👔 Manager</option>
+                    <option value="" {% if not session.simulated_role %}selected{% endif %}>Superadmin</option>
+                    <option value="admin" {% if session.simulated_role == 'admin' %}selected{% endif %}>Admin</option>
+                    <option value="manager" {% if session.simulated_role == 'manager' %}selected{% endif %}>Manager</option>
                 </select>
             </div>
             {% endif %}
@@ -715,19 +775,12 @@
                     </div>
 
                     <a href="/admin/my-account">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                            <circle cx="12" cy="7" r="4"></circle>
-                        </svg>
+                        <i data-lucide="user" class="nav-icon"></i>
                         {{ t('nav.my_account') }}
                     </a>
 
                     <a href="/logout">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                            <polyline points="16,17 21,12 16,7"></polyline>
-                            <line x1="21" y1="12" x2="9" y2="12"></line>
-                        </svg>
+                        <i data-lucide="log-out" class="nav-icon"></i>
                         {{ t('nav.logout') }}
                     </a>
                 </div>
@@ -761,7 +814,7 @@
         <div class="mobile-menu-section">
             <div class="mobile-menu-section-title">Superadmin</div>
             <select onchange="switchCustomer(this.value)">
-                <option value="">🌍 Alle kunder</option>
+                <option value="">Alle kunder</option>
                 {% for customer in customers %}
                 <option value="{{ customer.id }}" {% if session.customer_filter == customer.id %}selected{% endif %}>
                     {{ customer.name }}
@@ -769,9 +822,9 @@
                 {% endfor %}
             </select>
             <select onchange="switchRole(this.value)">
-                <option value="" {% if not session.simulated_role %}selected{% endif %}>👑 Superadmin</option>
-                <option value="admin" {% if session.simulated_role == 'admin' %}selected{% endif %}>🔧 Admin</option>
-                <option value="manager" {% if session.simulated_role == 'manager' %}selected{% endif %}>👔 Manager</option>
+                <option value="" {% if not session.simulated_role %}selected{% endif %}>Superadmin</option>
+                <option value="admin" {% if session.simulated_role == 'admin' %}selected{% endif %}>Admin</option>
+                <option value="manager" {% if session.simulated_role == 'manager' %}selected{% endif %}>Manager</option>
             </select>
         </div>
         {% endif %}
@@ -779,33 +832,33 @@
         <!-- Navigation -->
         <div class="mobile-menu-section">
             <div class="mobile-menu-section-title">Navigation</div>
-            <a href="/admin" {% if request.path == '/admin' %}class="active"{% endif %}>🏠 Dashboard</a>
-            <a href="/admin/assessments-overview">📋 Målinger</a>
-            <a href="/admin/analyser">📊 Analyser</a>
-            <a href="/admin/tasks">🎯 Situationsmålinger</a>
-            <a href="/admin/profiler">🧠 Friktionsprofil</a>
-            <a href="/admin/units">🌳 Organisationer</a>
-            <a href="/admin/customers">👥 Kunder & Brugere</a>
+            <a href="/admin" {% if request.path == '/admin' %}class="active"{% endif %}><i data-lucide="home" class="nav-icon"></i> Dashboard</a>
+            <a href="/admin/assessments-overview"><i data-lucide="clipboard-list" class="nav-icon"></i> Målinger</a>
+            <a href="/admin/analyser"><i data-lucide="bar-chart-3" class="nav-icon"></i> Analyser</a>
+            <a href="/admin/tasks"><i data-lucide="target" class="nav-icon"></i> Situationsmålinger</a>
+            <a href="/admin/profiler"><i data-lucide="brain" class="nav-icon"></i> Friktionsprofil</a>
+            <a href="/admin/units"><i data-lucide="git-branch" class="nav-icon"></i> Organisationer</a>
+            <a href="/admin/customers"><i data-lucide="users" class="nav-icon"></i> Kunder & Brugere</a>
         </div>
 
         <!-- Settings -->
         <div class="mobile-menu-section">
             <div class="mobile-menu-section-title">Indstillinger</div>
-            <a href="/admin/my-branding">🎨 Branding</a>
-            <a href="/admin/email-stats">📧 Email Status</a>
-            <a href="/admin/backup">💾 Backup</a>
-            <a href="/admin/bulk-export">📊 Bulk Eksport</a>
-            <a href="/admin/dev-tools">🔧 Dev Tools</a>
+            <a href="/admin/my-branding"><i data-lucide="palette" class="nav-icon"></i> Branding</a>
+            <a href="/admin/email-stats"><i data-lucide="mail" class="nav-icon"></i> Email Status</a>
+            <a href="/admin/backup"><i data-lucide="save" class="nav-icon"></i> Backup</a>
+            <a href="/admin/bulk-export"><i data-lucide="file-down" class="nav-icon"></i> Bulk Eksport</a>
+            <a href="/admin/dev-tools"><i data-lucide="wrench" class="nav-icon"></i> Dev Tools</a>
         </div>
 
         <!-- Account -->
         <div class="mobile-menu-section">
             <div class="mobile-menu-section-title">Konto</div>
             <a href="/set-language/{{ 'en' if get_user_language() == 'da' else 'da' }}">
-                {% if get_user_language() == 'da' %}🇬🇧 English{% else %}🇩🇰 Dansk{% endif %}
+                <i data-lucide="globe" class="nav-icon"></i> {% if get_user_language() == 'da' %}English{% else %}Dansk{% endif %}
             </a>
-            <a href="/admin/my-account">👤 Min konto</a>
-            <a href="/logout" style="color: #f87171;">🚪 Log ud</a>
+            <a href="/admin/my-account"><i data-lucide="user" class="nav-icon"></i> Min konto</a>
+            <a href="/logout" style="color: #f87171;"><i data-lucide="log-out" class="nav-icon"></i> Log ud</a>
         </div>
     </div>
 
@@ -817,90 +870,90 @@
             {% if view_mode == 'user' %}
             <!-- Brugervisning submenu -->
             <ul class="submenu-links">
-                <li><a href="/admin/user-view/survey" {% if 'user-view' in request.path %}class="active"{% endif %}>📝 Spørgeskema</a></li>
+                <li><a href="/admin/user-view/survey" {% if 'user-view' in request.path %}class="active"{% endif %}><i data-lucide="file-text" class="nav-icon"></i> Spørgeskema</a></li>
             </ul>
 
             {% elif view_mode == 'manager' or effective_role == 'manager' %}
             <!-- Ledervisning submenu -->
             <ul class="submenu-links">
-                <li><a href="/admin/analyser" {% if 'analyser' in request.path %}class="active"{% endif %}>📊 Analyser</a></li>
-                <li><a href="/admin" {% if request.path == '/admin' and 'assessment' not in request.path %}class="active"{% endif %}>🏢 Organisationer</a></li>
+                <li><a href="/admin/analyser" {% if 'analyser' in request.path %}class="active"{% endif %}><i data-lucide="bar-chart-3" class="nav-icon"></i> Analyser</a></li>
+                <li><a href="/admin" {% if request.path == '/admin' and 'assessment' not in request.path %}class="active"{% endif %}><i data-lucide="building-2" class="nav-icon"></i> Organisationer</a></li>
             </ul>
 
             {% else %}
             <!-- Adminvisning submenu - reorganiseret med dropdowns -->
             <ul class="submenu-links">
                 <!-- Dashboard - kombineret oversigt (KPIs + Trend + Analyser) -->
-                <li><a href="/admin" {% if request.path == '/admin' %}class="active"{% endif %}>🏠 {{ t('nav.dashboard') }}</a></li>
+                <li><a href="/admin" {% if request.path == '/admin' %}class="active"{% endif %}><i data-lucide="home" class="nav-icon"></i> {{ t('nav.dashboard') }}</a></li>
 
                 <!-- Målinger dropdown -->
                 <li class="submenu-dropdown">
-                    <a href="#" class="dropdown-toggle {% if 'assessments' in request.path or 'scheduled' in request.path or 'analyser' in request.path %}active{% endif %}">📋 {{ t('nav.maalinger', 'Målinger') }} ▾</a>
+                    <a href="#" class="dropdown-toggle {% if 'assessments' in request.path or 'scheduled' in request.path or 'analyser' in request.path %}active{% endif %}"><i data-lucide="clipboard-list" class="nav-icon"></i> {{ t('nav.maalinger', 'Målinger') }} <i data-lucide="chevron-down" style="width:12px;height:12px;margin-left:2px;"></i></a>
                     <ul class="dropdown-menu">
-                        <li><a href="/admin/assessments-overview" {% if 'assessments-overview' in request.path %}class="active"{% endif %}>📋 {{ t('nav.alle_maalinger') }}</a></li>
-                        <li><a href="/admin/scheduled-assessments" {% if 'scheduled-assessments' in request.path %}class="active"{% endif %}>📅 {{ t('nav.planlagte', 'Planlagte') }}</a></li>
-                        <li><a href="/admin/assessment/new" {% if 'assessment/new' in request.path %}class="active"{% endif %}>➕ {{ t('nav.ny_maaling', 'Ny måling') }}</a></li>
+                        <li><a href="/admin/assessments-overview" {% if 'assessments-overview' in request.path %}class="active"{% endif %}><i data-lucide="list" class="nav-icon"></i> {{ t('nav.alle_maalinger') }}</a></li>
+                        <li><a href="/admin/scheduled-assessments" {% if 'scheduled-assessments' in request.path %}class="active"{% endif %}><i data-lucide="calendar" class="nav-icon"></i> {{ t('nav.planlagte', 'Planlagte') }}</a></li>
+                        <li><a href="/admin/assessment/new" {% if 'assessment/new' in request.path %}class="active"{% endif %}><i data-lucide="plus" class="nav-icon"></i> {{ t('nav.ny_maaling', 'Ny måling') }}</a></li>
                         <li style="border-top: 1px solid rgba(255,255,255,0.1); margin: 5px 0;"></li>
-                        <li><a href="/admin/analyser" {% if 'analyser' in request.path %}class="active"{% endif %}>📊 {{ t('nav.analyser') }}</a></li>
+                        <li><a href="/admin/analyser" {% if 'analyser' in request.path %}class="active"{% endif %}><i data-lucide="bar-chart-3" class="nav-icon"></i> {{ t('nav.analyser') }}</a></li>
                     </ul>
                 </li>
 
                 <!-- Situationsmålinger dropdown -->
                 <li class="submenu-dropdown">
-                    <a href="#" class="dropdown-toggle {% if 'tasks' in request.path or active_page == 'tasks' %}active{% endif %}">🎯 Situationsmålinger ▾</a>
+                    <a href="#" class="dropdown-toggle {% if 'tasks' in request.path or active_page == 'tasks' %}active{% endif %}"><i data-lucide="target" class="nav-icon"></i> Situationsmålinger <i data-lucide="chevron-down" style="width:12px;height:12px;margin-left:2px;"></i></a>
                     <ul class="dropdown-menu">
-                        <li><a href="/admin/tasks" {% if request.path == '/admin/tasks' %}class="active"{% endif %}>📋 Alle opgaver</a></li>
-                        <li><a href="/admin/tasks/new" {% if 'tasks/new' in request.path %}class="active"{% endif %}>➕ Ny opgave</a></li>
+                        <li><a href="/admin/tasks" {% if request.path == '/admin/tasks' %}class="active"{% endif %}><i data-lucide="list" class="nav-icon"></i> Alle opgaver</a></li>
+                        <li><a href="/admin/tasks/new" {% if 'tasks/new' in request.path %}class="active"{% endif %}><i data-lucide="plus" class="nav-icon"></i> Ny opgave</a></li>
                     </ul>
                 </li>
 
                 <!-- Friktionsprofil dropdown -->
                 <li class="submenu-dropdown">
-                    <a href="#" class="dropdown-toggle {% if 'profil' in request.path and 'profil-questions' not in request.path %}active{% endif %}">🧠 {{ t('nav.friktionsprofil', 'Friktionsprofil') }} ▾</a>
+                    <a href="#" class="dropdown-toggle {% if 'profil' in request.path and 'profil-questions' not in request.path %}active{% endif %}"><i data-lucide="brain" class="nav-icon"></i> {{ t('nav.friktionsprofil', 'Friktionsprofil') }} <i data-lucide="chevron-down" style="width:12px;height:12px;margin-left:2px;"></i></a>
                     <ul class="dropdown-menu">
-                        <li><a href="/admin/profiler" {% if request.path == '/admin/profiler' %}class="active"{% endif %}>📋 {{ t('nav.alle_profiler', 'Alle profiler') }}</a></li>
-                        <li><a href="/admin/pair-sessions" {% if 'pair-sessions' in request.path %}class="active"{% endif %}>👥 Par-sessioner</a></li>
-                        <li><a href="/friktionsprofil/" target="_blank">🧪 {{ t('nav.tag_test', 'Tag profil-test') }} ↗</a></li>
+                        <li><a href="/admin/profiler" {% if request.path == '/admin/profiler' %}class="active"{% endif %}><i data-lucide="list" class="nav-icon"></i> {{ t('nav.alle_profiler', 'Alle profiler') }}</a></li>
+                        <li><a href="/admin/pair-sessions" {% if 'pair-sessions' in request.path %}class="active"{% endif %}><i data-lucide="users" class="nav-icon"></i> Par-sessioner</a></li>
+                        <li><a href="/friktionsprofil/" target="_blank"><i data-lucide="flask-conical" class="nav-icon"></i> {{ t('nav.tag_test', 'Tag profil-test') }} <i data-lucide="external-link" style="width:10px;height:10px;"></i></a></li>
                         <li style="border-top: 1px solid rgba(255,255,255,0.1); margin: 5px 0;"></li>
-                        <li><a href="/profil/local" target="_blank">🔒 {{ t('nav.lokal_profil', 'Lokal profil (B2C)') }} ↗</a></li>
+                        <li><a href="/profil/local" target="_blank"><i data-lucide="lock" class="nav-icon"></i> {{ t('nav.lokal_profil', 'Lokal profil (B2C)') }} <i data-lucide="external-link" style="width:10px;height:10px;"></i></a></li>
                     </ul>
                 </li>
 
                 <!-- Organisation dropdown -->
                 <li class="submenu-dropdown">
-                    <a href="#" class="dropdown-toggle {% if 'units' in request.path or 'customers' in request.path or 'domains' in request.path %}active{% endif %}">🏢 {{ t('nav.organisation', 'Organisation') }} ▾</a>
+                    <a href="#" class="dropdown-toggle {% if 'units' in request.path or 'customers' in request.path or 'domains' in request.path %}active{% endif %}"><i data-lucide="building-2" class="nav-icon"></i> {{ t('nav.organisation', 'Organisation') }} <i data-lucide="chevron-down" style="width:12px;height:12px;margin-left:2px;"></i></a>
                     <ul class="dropdown-menu">
-                        <li><a href="/admin/units" {% if 'units' in request.path %}class="active"{% endif %}>🌳 {{ t('nav.organisationer') }}</a></li>
-                        <li><a href="/admin/customers" {% if 'customers' in request.path %}class="active"{% endif %}>👥 {{ t('nav.kunder_brugere') }}</a></li>
+                        <li><a href="/admin/units" {% if 'units' in request.path %}class="active"{% endif %}><i data-lucide="git-branch" class="nav-icon"></i> {{ t('nav.organisationer') }}</a></li>
+                        <li><a href="/admin/customers" {% if 'customers' in request.path %}class="active"{% endif %}><i data-lucide="users" class="nav-icon"></i> {{ t('nav.kunder_brugere') }}</a></li>
                         {% if effective_role in ['admin', 'superadmin'] %}
-                        <li><a href="/admin/domains" {% if 'domains' in request.path %}class="active"{% endif %}>🌐 {{ t('nav.domaener', 'Domæner') }}</a></li>
+                        <li><a href="/admin/domains" {% if 'domains' in request.path %}class="active"{% endif %}><i data-lucide="globe" class="nav-icon"></i> {{ t('nav.domaener', 'Domæner') }}</a></li>
                         {% endif %}
                     </ul>
                 </li>
 
                 <!-- Indstillinger dropdown -->
                 <li class="submenu-dropdown">
-                    <a href="#" class="dropdown-toggle {% if 'email' in request.path or 'profil-questions' in request.path or 'backup' in request.path or 'dev-tools' in request.path or 'my-branding' in request.path or 'auth-config' in request.path or 'assessment-types' in request.path or 'impersonate' in request.path or 'api-keys' in request.path %}active{% endif %}">⚙️ {{ t('nav.indstillinger') }} ▾</a>
+                    <a href="#" class="dropdown-toggle {% if 'email' in request.path or 'profil-questions' in request.path or 'backup' in request.path or 'dev-tools' in request.path or 'my-branding' in request.path or 'auth-config' in request.path or 'assessment-types' in request.path or 'impersonate' in request.path or 'api-keys' in request.path %}active{% endif %}"><i data-lucide="settings" class="nav-icon"></i> {{ t('nav.indstillinger') }} <i data-lucide="chevron-down" style="width:12px;height:12px;margin-left:2px;"></i></a>
                     <ul class="dropdown-menu">
-                        <li><a href="/admin/my-branding" {% if 'my-branding' in request.path %}class="active"{% endif %}>🎨 {{ t('nav.branding', 'Min Branding') }}</a></li>
+                        <li><a href="/admin/my-branding" {% if 'my-branding' in request.path %}class="active"{% endif %}><i data-lucide="palette" class="nav-icon"></i> {{ t('nav.branding', 'Min Branding') }}</a></li>
                         {% if effective_role == 'superadmin' or actual_role == 'superadmin' %}
-                        <li><a href="/admin/auth-config" {% if 'auth-config' in request.path %}class="active"{% endif %}>🔐 {{ t('nav.auth_config', 'Auth Konfiguration') }}</a></li>
-                        <li><a href="/admin/assessment-types" {% if 'assessment-types' in request.path %}class="active"{% endif %}>📋 {{ t('nav.assessment_types', 'Målingstyper') }}</a></li>
-                        <li><a href="/admin/impersonate" {% if 'impersonate' in request.path %}class="active"{% endif %}>👤 {{ t('nav.impersonate', 'Impersoner bruger') }}</a></li>
+                        <li><a href="/admin/auth-config" {% if 'auth-config' in request.path %}class="active"{% endif %}><i data-lucide="shield" class="nav-icon"></i> {{ t('nav.auth_config', 'Auth Konfiguration') }}</a></li>
+                        <li><a href="/admin/assessment-types" {% if 'assessment-types' in request.path %}class="active"{% endif %}><i data-lucide="file-cog" class="nav-icon"></i> {{ t('nav.assessment_types', 'Målingstyper') }}</a></li>
+                        <li><a href="/admin/impersonate" {% if 'impersonate' in request.path %}class="active"{% endif %}><i data-lucide="user-check" class="nav-icon"></i> {{ t('nav.impersonate', 'Impersoner bruger') }}</a></li>
                         {% endif %}
                         <li style="border-top: 1px solid rgba(255,255,255,0.1); margin: 5px 0;"></li>
-                        <li><a href="/admin/profil-questions" {% if 'profil-questions' in request.path %}class="active"{% endif %}>📝 {{ t('nav.profil_spoergsmaal', 'Profil-spørgsmål') }}</a></li>
-                        <li><a href="/admin/email-stats" {% if 'email-stats' in request.path %}class="active"{% endif %}>📧 {{ t('nav.email_status', 'Email Status') }}</a></li>
-                        <li><a href="/admin/email-templates" {% if 'email-templates' in request.path %}class="active"{% endif %}>✉️ {{ t('nav.email_templates', 'Email Templates') }}</a></li>
+                        <li><a href="/admin/profil-questions" {% if 'profil-questions' in request.path %}class="active"{% endif %}><i data-lucide="file-question" class="nav-icon"></i> {{ t('nav.profil_spoergsmaal', 'Profil-spørgsmål') }}</a></li>
+                        <li><a href="/admin/email-stats" {% if 'email-stats' in request.path %}class="active"{% endif %}><i data-lucide="mail" class="nav-icon"></i> {{ t('nav.email_status', 'Email Status') }}</a></li>
+                        <li><a href="/admin/email-templates" {% if 'email-templates' in request.path %}class="active"{% endif %}><i data-lucide="mail-check" class="nav-icon"></i> {{ t('nav.email_templates', 'Email Templates') }}</a></li>
                         {% if effective_role in ['admin', 'superadmin'] %}
-                        <li><a href="/admin/api-keys" {% if 'api-keys' in request.path %}class="active"{% endif %}>🔑 API Keys</a></li>
+                        <li><a href="/admin/api-keys" {% if 'api-keys' in request.path %}class="active"{% endif %}><i data-lucide="key" class="nav-icon"></i> API Keys</a></li>
                         {% endif %}
                         <li style="border-top: 1px solid rgba(255,255,255,0.1); margin: 5px 0;"></li>
-                        <li><a href="/admin/backup" {% if 'backup' in request.path %}class="active"{% endif %}>💾 {{ t('nav.backup', 'Backup & Restore') }}</a></li>
-                        <li><a href="/admin/bulk-export" {% if 'bulk-export' in request.path %}class="active"{% endif %}>📊 {{ t('nav.bulk_export', 'Bulk Eksport') }}</a></li>
-                        <li><a href="/admin/audit-log" {% if 'audit-log' in request.path %}class="active"{% endif %}>📋 {{ t('nav.audit_log', 'Audit Log') }}</a></li>
-                        <li><a href="/admin/gdpr" {% if 'gdpr' in request.path %}class="active"{% endif %}>🔒 GDPR & Data</a></li>
-                        <li><a href="/admin/dev-tools" {% if 'dev-tools' in request.path %}class="active"{% endif %}>🔧 {{ t('nav.dev_tools', 'Dev Tools') }}</a></li>
+                        <li><a href="/admin/backup" {% if 'backup' in request.path %}class="active"{% endif %}><i data-lucide="save" class="nav-icon"></i> {{ t('nav.backup', 'Backup & Restore') }}</a></li>
+                        <li><a href="/admin/bulk-export" {% if 'bulk-export' in request.path %}class="active"{% endif %}><i data-lucide="file-down" class="nav-icon"></i> {{ t('nav.bulk_export', 'Bulk Eksport') }}</a></li>
+                        <li><a href="/admin/audit-log" {% if 'audit-log' in request.path %}class="active"{% endif %}><i data-lucide="scroll-text" class="nav-icon"></i> {{ t('nav.audit_log', 'Audit Log') }}</a></li>
+                        <li><a href="/admin/gdpr" {% if 'gdpr' in request.path %}class="active"{% endif %}><i data-lucide="shield-check" class="nav-icon"></i> GDPR & Data</a></li>
+                        <li><a href="/admin/dev-tools" {% if 'dev-tools' in request.path %}class="active"{% endif %}><i data-lucide="wrench" class="nav-icon"></i> {{ t('nav.dev_tools', 'Dev Tools') }}</a></li>
                     </ul>
                 </li>
             </ul>
@@ -911,7 +964,7 @@
     <!-- Toast container for notifications -->
     <div id="toastContainer" class="toast-container" role="alert" aria-live="polite"></div>
 
-    <main id="main-content" class="container" role="main">
+    <main id="main-content" class="container main-content" role="main">
         {% block content %}{% endblock %}
     </main>
 
@@ -1118,18 +1171,23 @@
         toast.className = 'toast ' + type;
 
         var icons = {
-            'success': '✓',
-            'error': '✕',
-            'warning': '⚠',
-            'info': 'ℹ'
+            'success': '<i data-lucide="check-circle" class="toast-icon"></i>',
+            'error': '<i data-lucide="x-circle" class="toast-icon"></i>',
+            'warning': '<i data-lucide="alert-triangle" class="toast-icon"></i>',
+            'info': '<i data-lucide="info" class="toast-icon"></i>'
         };
 
         toast.innerHTML =
-            '<span class="toast-icon">' + (icons[type] || icons.info) + '</span>' +
+            (icons[type] || icons.info) +
             '<span class="toast-message">' + message + '</span>' +
-            '<button class="toast-close" onclick="closeToast(this.parentElement)">×</button>';
+            '<button class="toast-close" onclick="closeToast(this.parentElement)"><i data-lucide="x" style="width:16px;height:16px;"></i></button>';
 
         container.appendChild(toast);
+
+        // Initialize Lucide icons in the new toast
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
 
         // Auto-dismiss
         setTimeout(function() {
@@ -1441,6 +1499,9 @@
     });
     </script>
     <script src="{{ url_for('static', filename='js/modal-utils.js') }}"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script src="{{ url_for('static', filename='js/page-transitions.js') }}"></script>
     <script>
     // Auto-inject CSRF tokens into all POST forms
     (function() {

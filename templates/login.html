@@ -10,80 +10,89 @@
     <link rel="canonical" href="{{ request.url_root }}login">
     <title>{{ t('login.title') }} - Friktionskompasset</title>
 
+    <!-- Google Fonts: DM Sans (headings) + Inter (body) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <!-- Nordic Clarity Design System -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/animations.css') }}">
+
     {{ gtm_head() }}
 
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
-            background: linear-gradient(135deg, #475569 0%, #334155 100%);
+            font-family: var(--font-body);
+            background: linear-gradient(135deg, var(--color-primary-800) 0%, var(--color-primary-900) 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 20px;
+            padding: var(--space-5);
         }
         .login-container {
             background: white;
-            border-radius: 16px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            padding: 50px;
+            border-radius: var(--radius-2xl);
+            box-shadow: var(--shadow-2xl);
+            padding: var(--space-12);
             width: 100%;
             max-width: 450px;
+            animation: scaleIn 400ms ease-out;
         }
         .logo {
             text-align: center;
-            margin-bottom: 40px;
+            margin-bottom: var(--space-10);
         }
         .logo h1 {
-            font-size: 2rem;
-            color: #1f2937;
-            margin-bottom: 10px;
+            font-family: var(--font-heading);
+            font-size: var(--text-3xl);
+            color: var(--text-primary);
+            margin-bottom: var(--space-2);
         }
         .logo p {
-            color: #6b7280;
-            font-size: 0.875rem;
+            color: var(--text-secondary);
+            font-size: var(--text-sm);
         }
         .form-group {
-            margin-bottom: 25px;
+            margin-bottom: var(--space-6);
         }
         .form-group label {
             display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-            color: #1f2937;
-            font-size: 0.875rem;
+            margin-bottom: var(--space-2);
+            font-weight: var(--font-semibold);
+            color: var(--text-primary);
+            font-size: var(--text-sm);
         }
         .form-group input {
             width: 100%;
-            padding: 14px;
-            border: 2px solid #e5e7eb;
-            border-radius: 8px;
-            font-size: 1rem;
-            transition: all 0.2s;
+            padding: var(--space-3-5);
+            border: 2px solid var(--border-light);
+            border-radius: var(--radius-md);
+            font-size: var(--text-base);
+            font-family: var(--font-body);
+            transition: var(--transition-default);
         }
         .form-group input:focus {
             outline: none;
-            border-color: #475569;
-            box-shadow: 0 0 0 3px rgba(71, 85, 105, 0.1);
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 3px var(--color-primary-100);
         }
         .form-group.has-error input {
-            border-color: #ef4444;
-            background-color: #fef2f2;
+            border-color: var(--score-red);
+            background-color: var(--score-red-50);
         }
         .form-group.has-error input:focus {
-            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
+            box-shadow: 0 0 0 3px var(--score-red-100);
         }
         .form-error {
-            color: #dc2626;
-            font-size: 0.8rem;
-            margin-top: 5px;
+            color: var(--score-red);
+            font-size: var(--text-xs);
+            margin-top: var(--space-1);
             display: flex;
             align-items: center;
-            gap: 4px;
-        }
-        .form-error::before {
-            content: '⚠';
+            gap: var(--space-1);
         }
         /* Focus styling for accessibility */
         input:focus,
@@ -519,6 +528,10 @@
         });
     });
     </script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script src="{{ url_for('static', filename='js/page-transitions.js') }}"></script>
 
     {{ cookie_consent_init() }}
 </body>

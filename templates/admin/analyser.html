@@ -5,17 +5,18 @@
 {% block extra_css %}
 <style>
     .card {
-        background: white;
-        border-radius: 12px;
-        padding: 30px;
-        margin-bottom: 20px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        background: var(--bg-primary);
+        border-radius: var(--radius-xl);
+        padding: var(--space-8);
+        margin-bottom: var(--space-5);
+        box-shadow: var(--shadow-sm);
+        border: 1px solid var(--border-light);
     }
 
     .filters {
         display: flex;
-        gap: 20px;
-        margin-bottom: 30px;
+        gap: var(--space-5);
+        margin-bottom: var(--space-8);
         align-items: end;
     }
 
@@ -25,66 +26,82 @@
 
     .filter-group label {
         display: block;
-        margin-bottom: 5px;
-        font-weight: 500;
-        color: #374151;
+        margin-bottom: var(--space-1);
+        font-weight: var(--font-medium);
+        color: var(--text-primary);
+        font-size: var(--text-sm);
     }
 
     .filter-group select {
         width: 100%;
-        padding: 8px 12px;
-        border: 1px solid #d1d5db;
-        border-radius: 6px;
-        font-size: 0.875rem;
+        padding: var(--space-2) var(--space-3);
+        border: 1px solid var(--border-default);
+        border-radius: var(--radius-md);
+        font-size: var(--text-sm);
+        font-family: var(--font-body);
+        transition: var(--transition-default);
+    }
+
+    .filter-group select:focus {
+        outline: none;
+        border-color: var(--color-primary);
+        box-shadow: 0 0 0 3px var(--color-primary-100);
     }
 
     .stats-row {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 20px;
-        margin-bottom: 30px;
+        gap: var(--space-5);
+        margin-bottom: var(--space-8);
     }
 
     .stat-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, var(--color-primary-600) 0%, var(--color-primary-800) 100%);
         color: white;
-        padding: 20px;
-        border-radius: 8px;
+        padding: var(--space-5);
+        border-radius: var(--radius-lg);
         text-align: center;
+        transition: var(--transition-default);
+    }
+
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-primary);
     }
 
     .stat-card.secondary {
-        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        background: linear-gradient(135deg, var(--accent-pink) 0%, var(--score-red-500) 100%);
     }
 
     .stat-label {
-        font-size: 0.875rem;
+        font-size: var(--text-sm);
         opacity: 0.9;
-        margin-bottom: 5px;
+        margin-bottom: var(--space-1);
     }
 
     .stat-value {
-        font-size: 2rem;
-        font-weight: 700;
+        font-size: var(--text-3xl);
+        font-weight: var(--font-bold);
     }
 
     .overview-table {
         width: 100%;
         border-collapse: separate;
-        border-spacing: 0 8px;
+        border-spacing: 0 var(--space-2);
     }
 
     .overview-table thead th {
-        background: #f9fafb;
-        padding: 12px 8px;
+        background: var(--gray-50);
+        padding: var(--space-3) var(--space-2);
         text-align: center;
-        font-weight: 600;
-        color: #374151;
-        font-size: 0.75rem;
+        font-weight: var(--font-semibold);
+        color: var(--gray-700);
+        font-size: var(--text-xs);
         position: sticky;
         top: 0;
         cursor: pointer;
         user-select: none;
+        transition: var(--transition-fast);
     }
 
     .overview-table thead th:first-child {
@@ -92,7 +109,7 @@
     }
 
     .overview-table thead th:hover {
-        background: #f3f4f6;
+        background: var(--gray-100);
     }
 
     .overview-table thead th.sortable::after {
@@ -111,103 +128,103 @@
     }
 
     .overview-table tbody tr {
-        background: white;
-        transition: all 0.2s;
+        background: var(--bg-primary);
+        transition: var(--transition-default);
         cursor: pointer;
     }
 
     .overview-table tbody tr:hover {
-        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        box-shadow: var(--shadow-md);
         transform: translateY(-2px);
     }
 
     .overview-table tbody td {
-        padding: 16px 8px;
-        border-top: 1px solid #e5e7eb;
-        border-bottom: 1px solid #e5e7eb;
+        padding: var(--space-4) var(--space-2);
+        border-top: 1px solid var(--border-light);
+        border-bottom: 1px solid var(--border-light);
     }
 
     .overview-table tbody tr td:first-child {
-        border-left: 1px solid #e5e7eb;
-        border-radius: 8px 0 0 8px;
+        border-left: 1px solid var(--border-light);
+        border-radius: var(--radius-md) 0 0 var(--radius-md);
     }
 
     .overview-table tbody tr td:last-child {
-        border-right: 1px solid #e5e7eb;
-        border-radius: 0 8px 8px 0;
+        border-right: 1px solid var(--border-light);
+        border-radius: 0 var(--radius-md) var(--radius-md) 0;
     }
 
     .unit-name {
-        font-weight: 600;
-        color: #1f2937;
-        margin-bottom: 4px;
+        font-weight: var(--font-semibold);
+        color: var(--gray-900);
+        margin-bottom: var(--space-1);
     }
 
     .unit-level {
-        font-size: 0.75rem;
-        color: #6b7280;
+        font-size: var(--text-xs);
+        color: var(--gray-500);
     }
 
     .score-cell {
         text-align: center;
-        font-weight: 700;
-        font-size: 1.5rem;
-        padding: 12px 8px;
+        font-weight: var(--font-bold);
+        font-size: var(--text-2xl);
+        padding: var(--space-3) var(--space-2);
     }
 
     .percent-label {
         font-size: 0.7rem;
-        font-weight: 400;
-        color: #6b7280;
+        font-weight: var(--font-normal);
+        color: var(--gray-500);
         display: block;
-        margin-top: 2px;
+        margin-top: var(--space-0-5);
     }
 
-    /* Percent-based color coding */
+    /* Percent-based color coding - using score thresholds */
     .score-high {
-        color: #166534;
+        color: var(--score-green-700);
     }
 
     .score-medium {
-        color: #854d0e;
+        color: var(--score-yellow-700);
     }
 
     .score-low {
-        color: #991b1b;
+        color: var(--score-red-700);
         font-weight: 800;
     }
 
     .score-none {
-        color: #9ca3af;
-        font-size: 1rem;
+        color: var(--gray-400);
+        font-size: var(--text-base);
     }
 
     .gap-cell {
         text-align: center;
-        padding: 8px;
+        padding: var(--space-2);
     }
 
     .gap-indicator {
         display: inline-block;
-        padding: 6px 12px;
-        border-radius: 6px;
-        font-weight: 600;
-        font-size: 0.875rem;
+        padding: var(--space-1-5) var(--space-3);
+        border-radius: var(--radius-md);
+        font-weight: var(--font-semibold);
+        font-size: var(--text-sm);
     }
 
     .gap-ok {
-        background: #dcfce7;
-        color: #166534;
+        background: var(--score-green-100);
+        color: var(--score-green-700);
     }
 
     .gap-warning {
-        background: #fef9c3;
-        color: #854d0e;
+        background: var(--score-yellow-100);
+        color: var(--score-yellow-700);
     }
 
     .gap-critical {
-        background: #fee2e2;
-        color: #991b1b;
+        background: var(--score-red-100);
+        color: var(--score-red-700);
         animation: pulse 2s infinite;
     }
 
@@ -217,64 +234,65 @@
     }
 
     .gap-none {
-        color: #9ca3af;
+        color: var(--gray-400);
     }
 
     .responses-count {
         text-align: center;
-        color: #6b7280;
-        font-size: 0.875rem;
+        color: var(--gray-500);
+        font-size: var(--text-sm);
     }
 
     .empty-state {
         text-align: center;
-        padding: 60px 20px;
-        color: #6b7280;
+        padding: var(--space-16) var(--space-5);
+        color: var(--gray-500);
     }
 
     .empty-state-icon {
         font-size: 4rem;
-        margin-bottom: 20px;
+        margin-bottom: var(--space-5);
         opacity: 0.5;
     }
 
     .legend {
         display: flex;
-        gap: 30px;
+        gap: var(--space-8);
         justify-content: center;
-        margin-top: 30px;
-        padding: 20px;
-        background: #f9fafb;
-        border-radius: 8px;
+        margin-top: var(--space-8);
+        padding: var(--space-5);
+        background: var(--gray-50);
+        border-radius: var(--radius-lg);
         flex-wrap: wrap;
     }
 
     .legend-section {
         display: flex;
         flex-direction: column;
-        gap: 8px;
+        gap: var(--space-2);
     }
 
     .legend-title {
-        font-weight: 600;
-        color: #374151;
-        margin-bottom: 4px;
-        font-size: 0.75rem;
+        font-weight: var(--font-semibold);
+        color: var(--gray-700);
+        margin-bottom: var(--space-1);
+        font-size: var(--text-xs);
         text-transform: uppercase;
+        letter-spacing: 0.5px;
     }
 
     .legend-item {
         display: flex;
         align-items: center;
-        gap: 8px;
-        font-size: 0.875rem;
+        gap: var(--space-2);
+        font-size: var(--text-sm);
     }
 
     .legend-box {
         width: 20px;
         height: 20px;
-        border-radius: 4px;
-        font-weight: 700;
+        border-radius: var(--radius-sm);
+        font-weight: var(--font-bold);
     }
 
     .field-header {
@@ -288,11 +306,11 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        padding: 6px 8px;
-        border-radius: 6px;
-        font-size: 1rem;
+        padding: var(--space-1-5) var(--space-2);
+        border-radius: var(--radius-md);
+        font-size: var(--text-base);
         cursor: help;
-        transition: transform 0.2s;
+        transition: var(--transition-fast);
     }
 
     .alert-badge:hover {
@@ -300,63 +318,64 @@
     }
 
     .alert-substitution {
-        background: #fef3c7;
-        border: 1px solid #fbbf24;
+        background: var(--score-yellow-100);
+        border: 1px solid var(--score-yellow-400);
     }
 
     .alert-gap {
-        background: #fee2e2;
-        border: 1px solid #f87171;
+        background: var(--score-red-100);
+        border: 1px solid var(--score-red-400);
     }
 
     .alert-blocked {
-        background: #ffedd5;
-        border: 1px solid #fb923c;
+        background: var(--accent-orange-100);
+        border: 1px solid var(--accent-orange-400);
     }
 
     /* Trend card styles */
     .trend-card {
-        background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-        border: 1px solid #bae6fd;
-        border-radius: 12px;
-        padding: 20px 25px;
-        margin-bottom: 25px;
+        background: linear-gradient(135deg, var(--color-primary-50) 0%, var(--color-primary-100) 100%);
+        border: 1px solid var(--color-primary-200);
+        border-radius: var(--radius-xl);
+        padding: var(--space-5) var(--space-6);
+        margin-bottom: var(--space-6);
     }
 
     .trend-header {
         display: flex;
         align-items: center;
-        gap: 10px;
-        margin-bottom: 15px;
+        gap: var(--space-2-5);
+        margin-bottom: var(--space-4);
     }
 
     .trend-header h3 {
         margin: 0;
-        font-size: 1rem;
-        color: #0c4a6e;
+        font-size: var(--text-base);
+        font-family: var(--font-heading);
+        color: var(--color-primary-900);
     }
 
     .trend-header .period-info {
-        color: #0369a1;
-        font-size: 0.85rem;
+        color: var(--color-primary-700);
+        font-size: var(--text-sm);
     }
 
     .trend-grid {
         display: grid;
         grid-template-columns: repeat(5, 1fr);
-        gap: 15px;
+        gap: var(--space-4);
     }
 
     .trend-item {
         text-align: center;
-        padding: 12px;
-        background: white;
-        border-radius: 8px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        padding: var(--space-3);
+        background: var(--bg-primary);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-xs);
     }
 
     .trend-item.overall {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, var(--color-primary-500) 0%, var(--color-primary-700) 100%);
         color: white;
     }
 
@@ -365,32 +384,33 @@
     }
 
     .trend-label {
-        font-size: 0.75rem;
-        color: #6b7280;
+        font-size: var(--text-xs);
+        color: var(--gray-500);
         text-transform: uppercase;
-        margin-bottom: 5px;
+        margin-bottom: var(--space-1);
+        letter-spacing: 0.5px;
     }
 
     .trend-change {
-        font-size: 1.5rem;
-        font-weight: 700;
+        font-size: var(--text-2xl);
+        font-weight: var(--font-bold);
     }
 
     .trend-positive {
-        color: #16a34a;
+        color: var(--score-green);
     }
 
     .trend-negative {
-        color: #dc2626;
+        color: var(--score-red);
     }
 
     .trend-neutral {
-        color: #6b7280;
+        color: var(--gray-500);
     }
 
     .trend-arrow {
-        font-size: 0.9rem;
-        margin-right: 2px;
+        font-size: var(--text-sm);
+        margin-right: var(--space-0-5);
     }
 
     @media (max-width: 768px) {
@@ -405,29 +425,29 @@
     /* Mobile responsive styles */
     @media (max-width: 767px) {
         .card {
-            padding: 15px;
-            margin-bottom: 15px;
+            padding: var(--space-4);
+            margin-bottom: var(--space-4);
         }
 
         .card h2 {
-            font-size: 1.1rem;
+            font-size: var(--text-lg);
         }
 
         .filters {
             flex-direction: column;
-            gap: 10px;
+            gap: var(--space-2-5);
         }
 
         .stats-row {
             grid-template-columns: 1fr 1fr;
-            gap: 10px;
+            gap: var(--space-2-5);
         }
 
         .stat-card {
-            padding: 15px;
+            padding: var(--space-4);
         }
         .stat-value {
-            font-size: 1.5rem;
+            font-size: var(--text-2xl);
         }
 
         /* Make table scroll horizontally */
@@ -435,18 +455,18 @@
             display: block;
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
-            font-size: 0.85rem;
+            font-size: var(--text-sm);
         }
 
         .overview-table thead th,
         .overview-table tbody td {
-            padding: 10px 6px;
+            padding: var(--space-2-5) var(--space-1-5);
             white-space: nowrap;
         }
 
         .score-cell {
-            font-size: 1.1rem;
-            padding: 8px 4px;
+            font-size: var(--text-lg);
+            padding: var(--space-2) var(--space-1);
         }
 
         .percent-label {
@@ -454,7 +474,7 @@
         }
 
         .unit-name {
-            font-size: 0.85rem;
+            font-size: var(--text-sm);
         }
 
         .unit-level {
@@ -462,14 +482,14 @@
         }
 
         .alert-badge {
-            padding: 4px 6px;
-            font-size: 0.85rem;
+            padding: var(--space-1) var(--space-1-5);
+            font-size: var(--text-sm);
         }
 
         .legend {
             flex-direction: column;
-            gap: 20px;
-            padding: 15px;
+            gap: var(--space-5);
+            padding: var(--space-4);
         }
 
         .legend-section {
@@ -478,17 +498,17 @@
 
         /* Trend chart */
         .trend-card {
-            padding: 15px;
+            padding: var(--space-4);
         }
 
         .trend-header h3 {
-            font-size: 0.9rem;
+            font-size: var(--text-sm);
         }
 
         /* Header layout */
         .card > div:first-child {
             flex-direction: column;
-            gap: 15px;
+            gap: var(--space-4);
             align-items: flex-start !important;
         }
 
@@ -504,21 +524,21 @@
 <div class="card">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
         <div>
-            <h2 style="margin: 0;">📊 {{ t('analyser.title') }}{% if selected_unit_name %}: {{ selected_unit_name }}{% endif %}</h2>
+            <h2 style="margin: 0;"><i data-lucide="bar-chart-3" style="width: 24px; height: 24px; display: inline-block; vertical-align: middle; margin-right: 8px;"></i>{{ t('analyser.title') }}{% if selected_unit_name %}: {{ selected_unit_name }}{% endif %}</h2>
             {% if current_unit_id %}
             <div style="margin-top: 8px;">
                 <a href="/admin/analyser" style="color: #6366f1; font-size: 0.85rem; text-decoration: none;">&larr; Vis alle enheder</a>
             </div>
             {% endif %}
         </div>
-        <a href="/admin/assessment/new" class="btn" style="background: #10b981; color: white; padding: 10px 20px; text-decoration: none; border-radius: 8px; font-weight: 500;">➕ {{ t('analyser.new_analysis') }}</a>
+        <a href="/admin/assessment/new" class="btn" style="background: var(--score-green); color: white; padding: 10px 20px; text-decoration: none; border-radius: var(--radius-lg); font-weight: 500; display: inline-flex; align-items: center; gap: 6px;"><i data-lucide="plus" style="width: 16px; height: 16px;"></i> {{ t('analyser.new_analysis') }}</a>
     </div>
 
     {% if trend_data and trend_data.assessments %}
     <!-- Trend over time chart -->
     <div class="trend-card">
         <div class="trend-header">
-            <span>📈</span>
+            <i data-lucide="trending-up" style="width: 20px; height: 20px; color: var(--color-primary-600);"></i>
             <h3>{{ t('analyser.trend_title') }}</h3>
             <span class="period-info">{{ trend_data.assessment_count }} {{ t('analyser.assessments') }}</span>
         </div>
@@ -599,7 +619,7 @@
                 <tr onclick="window.location='/admin/assessment/{{ unit.assessment_id }}/detailed'">
                     <td>
                         <div class="unit-name">
-                            📊 {{ unit.assessment_name or unit.name }}
+                            <i data-lucide="bar-chart-3" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle; margin-right: 4px;"></i> {{ unit.assessment_name or unit.name }}
                         </div>
                         <div class="unit-level">{{ unit.period or '' }}</div>
                     </td>
@@ -611,7 +631,7 @@
                 <tr onclick="window.location='/admin/analyser?unit_id={{ unit.id }}'">
                     <td>
                         <div class="unit-name">
-                            {% if unit.level == 0 %}🏢{% elif unit.level == 1 %}📁{% elif unit.level == 2 %}📂{% else %}📄{% endif %}
+                            {% if unit.level == 0 %}<i data-lucide="building-2" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle; margin-right: 4px;"></i>{% elif unit.level == 1 %}<i data-lucide="folder" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle; margin-right: 4px;"></i>{% elif unit.level == 2 %}<i data-lucide="folder-open" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle; margin-right: 4px;"></i>{% else %}<i data-lucide="file-text" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle; margin-right: 4px;"></i>{% endif %}
                             {{ unit.name }}
                         </div>
                         <div class="unit-level">{{ unit.assessment_count }} måling{{ 'er' if unit.assessment_count != 1 else '' }}</div>
@@ -623,13 +643,13 @@
                     <td style="text-align: center; padding: 8px;">
                         <div style="display: flex; gap: 6px; justify-content: center; flex-wrap: wrap;">
                             {% if unit.has_substitution %}
-                            <span class="alert-badge alert-substitution" title="Substitution (Kahneman): Siger 'mangler tid' men mener 'er utilfreds'">🔄</span>
+                            <span class="alert-badge alert-substitution" title="Substitution (Kahneman): Siger 'mangler tid' men mener 'er utilfreds'"><i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i></span>
                             {% endif %}
                             {% if unit.has_leader_gap %}
-                            <span class="alert-badge alert-gap" title="Stor forskel mellem leder og medarbejdere">⚠️</span>
+                            <span class="alert-badge alert-gap" title="Stor forskel mellem leder og medarbejdere"><i data-lucide="alert-triangle" style="width: 14px; height: 14px;"></i></span>
                             {% endif %}
                             {% if unit.has_leader_blocked %}
-                            <span class="alert-badge alert-blocked" title="Lederens egne friktioner blokerer">🚧</span>
+                            <span class="alert-badge alert-blocked" title="Lederens egne friktioner blokerer"><i data-lucide="construction" style="width: 14px; height: 14px;"></i></span>
                             {% endif %}
                             {% if not unit.has_substitution and not unit.has_leader_gap and not unit.has_leader_blocked %}
                             <span style="color: #9ca3af; font-size: 0.75rem;">-</span>
@@ -698,15 +718,15 @@
         <div class="legend-section">
             <div class="legend-title">{{ t('analyser.warnings') }}</div>
             <div class="legend-item">
-                <span class="alert-badge alert-substitution">🔄</span>
+                <span class="alert-badge alert-substitution"><i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i></span>
                 <span>{{ t('analyser.alert_substitution') }}</span>
             </div>
             <div class="legend-item">
-                <span class="alert-badge alert-gap">⚠️</span>
+                <span class="alert-badge alert-gap"><i data-lucide="alert-triangle" style="width: 14px; height: 14px;"></i></span>
                 <span>{{ t('analyser.alert_gap') }}</span>
             </div>
             <div class="legend-item">
-                <span class="alert-badge alert-blocked">🚧</span>
+                <span class="alert-badge alert-blocked"><i data-lucide="construction" style="width: 14px; height: 14px;"></i></span>
                 <span>{{ t('analyser.alert_blocked') }}</span>
             </div>
         </div>
@@ -714,7 +734,7 @@
 
     {% else %}
     <div class="empty-state">
-        <div class="empty-state-icon">📊</div>
+        <div class="empty-state-icon"><i data-lucide="bar-chart-3" style="width: 64px; height: 64px; color: var(--gray-400);"></i></div>
         <h3 style="margin-bottom: 10px;">{{ t('analyser.no_data') }}</h3>
         <p style="margin-bottom: 30px;">{{ t('analyser.no_data_desc') }}</p>
     </div>

@@ -26,13 +26,26 @@
     <link rel="canonical" href="{{ request.url if request is defined else '' }}">
     <title>{{ t('landing.meta.title') }}</title>
 
+    <!-- Google Fonts: DM Sans (headings) + Inter (body) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <!-- Nordic Clarity Design System -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/animations.css') }}">
+
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            line-height: 1.6;
-            color: #1f2937;
+            font-family: var(--font-body);
+            line-height: var(--leading-normal);
+            color: var(--text-primary);
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            font-family: var(--font-heading);
         }
 
         /* Navigation */
@@ -41,91 +54,100 @@
             top: 0;
             left: 0;
             right: 0;
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            padding: 15px 30px;
+            background: var(--glass-bg);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            padding: var(--space-4) var(--space-8);
             display: flex;
             justify-content: space-between;
             align-items: center;
-            z-index: 1000;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            z-index: var(--z-fixed);
+            box-shadow: var(--shadow-sm);
+            animation: fadeInDown 400ms ease-out;
         }
         .nav-brand {
-            font-size: 1.25rem;
-            font-weight: 700;
-            color: #1f2937;
+            font-family: var(--font-heading);
+            font-size: var(--text-xl);
+            font-weight: var(--font-bold);
+            color: var(--text-primary);
             text-decoration: none;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: var(--space-2);
         }
         .nav-links {
             display: flex;
-            gap: 20px;
+            gap: var(--space-5);
             align-items: center;
         }
         .nav-links a {
-            color: #4b5563;
+            color: var(--text-secondary);
             text-decoration: none;
-            font-weight: 500;
-            transition: color 0.2s;
+            font-weight: var(--font-medium);
+            transition: var(--transition-colors);
         }
         .nav-links a:hover {
-            color: #3b82f6;
+            color: var(--color-primary);
         }
         .btn-nav {
-            background: #3b82f6;
+            background: var(--color-primary);
             color: white !important;
-            padding: 10px 20px;
-            border-radius: 8px;
+            padding: var(--space-2-5) var(--space-5);
+            border-radius: var(--radius-md);
+            transition: var(--transition-default);
         }
         .btn-nav:hover {
-            background: #2563eb;
+            background: var(--color-primary-hover);
+            transform: translateY(-1px);
         }
 
         /* Hero Section */
         .hero {
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            background: linear-gradient(135deg, var(--gray-900) 0%, var(--gray-800) 50%, var(--color-primary-900) 100%);
             color: white;
-            padding: 150px 30px 100px;
+            padding: 150px var(--space-8) 100px;
             text-align: center;
         }
         .hero h1 {
-            font-size: 3rem;
+            font-size: var(--text-5xl);
             font-weight: 800;
-            margin-bottom: 20px;
+            margin-bottom: var(--space-5);
             max-width: 800px;
             margin-left: auto;
             margin-right: auto;
+            animation: fadeInUp 600ms ease-out;
         }
         .hero p {
-            font-size: 1.25rem;
-            color: #94a3b8;
+            font-size: var(--text-xl);
+            color: var(--gray-400);
             max-width: 600px;
-            margin: 0 auto 40px;
+            margin: 0 auto var(--space-10);
+            animation: fadeInUp 600ms ease-out 100ms both;
         }
         .hero-buttons {
             display: flex;
-            gap: 15px;
+            gap: var(--space-4);
             justify-content: center;
             flex-wrap: wrap;
+            animation: fadeInUp 600ms ease-out 200ms both;
         }
         .btn {
-            padding: 16px 32px;
-            border-radius: 10px;
-            font-size: 1.1rem;
-            font-weight: 600;
+            padding: var(--space-4) var(--space-8);
+            border-radius: var(--radius-lg);
+            font-size: var(--text-lg);
+            font-weight: var(--font-semibold);
             text-decoration: none;
-            transition: all 0.2s;
+            transition: var(--transition-default);
             display: inline-block;
         }
         .btn-primary {
-            background: #15803d;
+            background: var(--score-green);
             color: white;
         }
         .btn-primary:hover {
-            background: #166534;
+            background: var(--score-green-700);
             transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
         }
         .btn-secondary {
             background: rgba(255,255,255,0.1);
@@ -136,13 +158,16 @@
             background: rgba(255,255,255,0.2);
         }
         .hero-badge {
-            display: inline-block;
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-2);
             background: rgba(34, 197, 94, 0.2);
             color: #22c55e;
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-size: 0.9rem;
-            margin-bottom: 20px;
+            padding: var(--space-2) var(--space-4);
+            border-radius: var(--radius-full);
+            font-size: var(--text-sm);
+            margin-bottom: var(--space-5);
+            animation: fadeInDown 600ms ease-out;
         }
 
         /* What is friction section */
@@ -587,5 +612,9 @@
         });
     });
     </script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script src="{{ url_for('static', filename='js/page-transitions.js') }}"></script>
 </body>
 </html>

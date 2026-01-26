@@ -5,67 +5,71 @@
 {% block extra_css %}
 <style>
     .card {
-        background: white;
-        border-radius: 8px;
-        padding: 25px;
-        margin-bottom: 20px;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-        border: 1px solid #e5e7eb;
+        background: var(--bg-primary);
+        border-radius: var(--radius-lg);
+        padding: var(--space-6);
+        margin-bottom: var(--space-5);
+        box-shadow: var(--shadow-sm);
+        border: 1px solid var(--border-light);
     }
-    .card h2 { margin-bottom: 20px; color: #374151; font-weight: 600; }
+    .card h2 { margin-bottom: var(--space-5); color: var(--gray-700); font-weight: var(--font-semibold); font-family: var(--font-heading); }
 
     .btn {
-        background: #4f46e5;
+        background: var(--color-primary);
         color: white;
-        padding: 10px 18px;
+        padding: var(--space-2-5) var(--space-4);
         text-decoration: none;
-        border-radius: 6px;
+        border-radius: var(--radius-md);
         display: inline-block;
-        font-weight: 500;
+        font-weight: var(--font-medium);
         border: none;
         cursor: pointer;
-        font-size: 0.875rem;
-        transition: all 0.15s;
+        font-size: var(--text-sm);
+        transition: var(--transition-default);
     }
-    .btn:hover { background: #4338ca; }
-    .btn-secondary { background: #6b7280; }
-    .btn-secondary:hover { background: #4b5563; }
+    .btn:hover { background: var(--color-primary-hover); }
+    .btn-secondary { background: var(--gray-500); }
+    .btn-secondary:hover { background: var(--gray-600); }
 
     .stats {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-        gap: 15px;
-        margin-bottom: 25px;
+        gap: var(--space-4);
+        margin-bottom: var(--space-6);
     }
     .stat-box {
-        background: #f9fafb;
-        padding: 15px;
-        border-radius: 6px;
-        border: 1px solid #e5e7eb;
+        background: var(--gray-50);
+        padding: var(--space-4);
+        border-radius: var(--radius-md);
+        border: 1px solid var(--border-light);
+        transition: var(--transition-default);
     }
-    .stat-box .label { color: #6b7280; font-size: 0.8rem; }
-    .stat-box .value { color: #374151; font-size: 1.5rem; font-weight: 600; margin-top: 4px; }
+    .stat-box:hover {
+        box-shadow: var(--shadow-sm);
+    }
+    .stat-box .label { color: var(--gray-500); font-size: var(--text-xs); }
+    .stat-box .value { color: var(--gray-700); font-size: var(--text-2xl); font-weight: var(--font-semibold); margin-top: var(--space-1); }
 
     /* Organisationstræ */
     .org-tree {
-        margin: 15px 0;
+        margin: var(--space-4) 0;
     }
     .tree-node {
-        margin: 4px 0;
-        padding: 12px 15px;
-        background: #fafafa;
-        border-left: 3px solid #6366f1;
-        border-radius: 4px;
-        transition: all 0.15s;
+        margin: var(--space-1) 0;
+        padding: var(--space-3) var(--space-4);
+        background: var(--gray-50);
+        border-left: 3px solid var(--color-primary);
+        border-radius: var(--radius-sm);
+        transition: var(--transition-default);
     }
     .tree-node:hover {
-        background: #eef2ff;
-        border-left-color: #4f46e5;
+        background: var(--color-primary-50);
+        border-left-color: var(--color-primary-hover);
     }
-    .tree-node.level-0 { margin-left: 0; border-left-color: #6366f1; }
-    .tree-node.level-1 { margin-left: 25px; border-left-color: #8b5cf6; }
-    .tree-node.level-2 { margin-left: 50px; border-left-color: #a78bfa; }
-    .tree-node.level-3 { margin-left: 75px; border-left-color: #c4b5fd; }
+    .tree-node.level-0 { margin-left: 0; border-left-color: var(--color-primary); }
+    .tree-node.level-1 { margin-left: 25px; border-left-color: var(--accent-purple); }
+    .tree-node.level-2 { margin-left: 50px; border-left-color: var(--accent-purple-400); }
+    .tree-node.level-3 { margin-left: 75px; border-left-color: var(--accent-purple-300); }
 
     .tree-node.collapsed {
         display: none;
@@ -101,14 +105,14 @@
         justify-content: space-between;
     }
     .tree-node-title {
-        font-weight: 500;
-        color: #374151;
-        font-size: 0.95rem;
+        font-weight: var(--font-medium);
+        color: var(--gray-700);
+        font-size: var(--text-sm);
     }
     .tree-node-meta {
-        color: #9ca3af;
-        font-size: 0.8rem;
-        margin-top: 3px;
+        color: var(--gray-400);
+        font-size: var(--text-xs);
+        margin-top: var(--space-1);
     }
     .tree-node-actions {
         display: flex;
@@ -146,31 +150,31 @@
         background: #f3f4f6;
     }
     .btn-detail {
-        color: #4f46e5;
+        color: var(--color-primary);
         background: transparent;
         text-decoration: none;
-        font-size: 0.8rem;
-        font-weight: 500;
-        padding: 5px 10px;
-        border-radius: 4px;
-        border: 1px solid #c7d2fe;
+        font-size: var(--text-xs);
+        font-weight: var(--font-medium);
+        padding: var(--space-1) var(--space-2-5);
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--color-primary-200);
         cursor: pointer;
-        transition: all 0.15s;
+        transition: var(--transition-default);
     }
     .btn-detail:hover {
-        color: #4338ca;
-        background: #eef2ff;
-        border-color: #a5b4fc;
+        color: var(--color-primary-hover);
+        background: var(--color-primary-50);
+        border-color: var(--color-primary-300);
     }
 
     .empty {
-        color: #9ca3af;
+        color: var(--gray-400);
         font-style: italic;
-        padding: 30px;
+        padding: var(--space-8);
         text-align: center;
-        background: #fafafa;
-        border-radius: 6px;
-        border: 1px solid #e5e7eb;
+        background: var(--gray-50);
+        border-radius: var(--radius-md);
+        border: 1px solid var(--border-light);
     }
 
     .action-buttons {
@@ -182,31 +186,32 @@
     /* Bulk select mode */
     .bulk-mode-toggle {
         background: transparent;
-        color: #6b7280;
-        padding: 6px 12px;
-        border: 1px solid #d1d5db;
-        border-radius: 4px;
+        color: var(--gray-500);
+        padding: var(--space-1-5) var(--space-3);
+        border: 1px solid var(--gray-300);
+        border-radius: var(--radius-sm);
         cursor: pointer;
-        font-size: 0.8rem;
+        font-size: var(--text-xs);
+        transition: var(--transition-default);
     }
     .bulk-mode-toggle:hover {
-        background: #f3f4f6;
-        color: #374151;
+        background: var(--gray-100);
+        color: var(--gray-700);
     }
     .bulk-mode-toggle.active {
-        background: #dc2626;
+        background: var(--score-red);
         color: white;
-        border-color: #dc2626;
+        border-color: var(--score-red);
     }
     .bulk-controls {
         display: none;
-        background: #f9fafb;
-        border: 1px solid #e5e7eb;
-        border-radius: 6px;
-        padding: 12px 15px;
-        margin: 12px 0;
+        background: var(--gray-50);
+        border: 1px solid var(--border-light);
+        border-radius: var(--radius-md);
+        padding: var(--space-3) var(--space-4);
+        margin: var(--space-3) 0;
         align-items: center;
-        gap: 12px;
+        gap: var(--space-3);
         flex-wrap: wrap;
     }
     .bulk-controls.visible {
@@ -275,66 +280,68 @@
     /* Drag and drop styles */
     .tree-node.dragging {
         opacity: 0.5;
-        background: #dbeafe !important;
+        background: var(--color-primary-100) !important;
     }
     .tree-node.drag-over {
-        background: #fef3c7 !important;
-        border-left-color: #f59e0b !important;
-        box-shadow: 0 0 0 2px #fbbf24;
+        background: var(--score-yellow-100) !important;
+        border-left-color: var(--score-yellow) !important;
+        box-shadow: 0 0 0 2px var(--score-yellow-300);
     }
     .tree-node.drag-over-invalid {
-        background: #fee2e2 !important;
-        border-left-color: #dc2626 !important;
+        background: var(--score-red-100) !important;
+        border-left-color: var(--score-red) !important;
     }
     .drag-handle {
         cursor: grab;
-        color: #9ca3af;
-        margin-right: 8px;
+        color: var(--gray-400);
+        margin-right: var(--space-2);
         font-size: 14px;
         user-select: none;
     }
     .drag-handle:hover {
-        color: #6b7280;
+        color: var(--gray-500);
     }
     .drag-handle:active {
         cursor: grabbing;
     }
     .drop-zone-toplevel {
         display: none;
-        padding: 15px;
-        margin: 10px 0;
-        border: 2px dashed #d1d5db;
-        border-radius: 6px;
+        padding: var(--space-4);
+        margin: var(--space-2-5) 0;
+        border: 2px dashed var(--gray-300);
+        border-radius: var(--radius-md);
         text-align: center;
-        color: #6b7280;
-        background: #f9fafb;
+        color: var(--gray-500);
+        background: var(--gray-50);
+        transition: var(--transition-default);
     }
     .drop-zone-toplevel.visible {
         display: block;
     }
     .drop-zone-toplevel.drag-over {
-        border-color: #3b82f6;
-        background: #dbeafe;
-        color: #1e40af;
+        border-color: var(--color-primary);
+        background: var(--color-primary-100);
+        color: var(--color-primary-700);
     }
     .drag-mode-toggle {
         background: transparent;
-        color: #6b7280;
-        padding: 6px 12px;
-        border: 1px solid #d1d5db;
-        border-radius: 4px;
+        color: var(--gray-500);
+        padding: var(--space-1-5) var(--space-3);
+        border: 1px solid var(--gray-300);
+        border-radius: var(--radius-sm);
         cursor: pointer;
-        font-size: 0.8rem;
-        margin-left: 8px;
+        font-size: var(--text-xs);
+        margin-left: var(--space-2);
+        transition: var(--transition-default);
     }
     .drag-mode-toggle:hover {
-        background: #f3f4f6;
-        color: #374151;
+        background: var(--gray-100);
+        color: var(--gray-700);
     }
     .drag-mode-toggle.active {
-        background: #3b82f6;
+        background: var(--color-primary);
         color: white;
-        border-color: #3b82f6;
+        border-color: var(--color-primary);
     }
 
     /* Mobile responsive styles */

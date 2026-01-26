@@ -9,132 +9,151 @@
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <title>{{ t('register.title', 'Opret konto') }} - Friktionskompasset</title>
 
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <!-- Design Tokens -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
+
     {{ gtm_head() }}
 
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
-            background: linear-gradient(135deg, #475569 0%, #334155 100%);
+            font-family: var(--font-body);
+            background: linear-gradient(135deg, var(--gray-900) 0%, var(--gray-800) 50%, var(--color-primary-900) 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 20px;
+            padding: var(--space-5);
         }
         .container {
-            background: white;
-            border-radius: 16px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            padding: 50px;
+            background: var(--bg-primary);
+            border-radius: var(--radius-2xl);
+            box-shadow: var(--shadow-2xl);
+            padding: var(--space-12);
             width: 100%;
             max-width: 450px;
+            animation: fadeInUp 400ms ease-out;
+        }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
         .logo {
             text-align: center;
-            margin-bottom: 40px;
+            margin-bottom: var(--space-10);
         }
         .logo h1 {
-            font-size: 2rem;
-            color: #1f2937;
-            margin-bottom: 10px;
+            font-family: var(--font-heading);
+            font-size: var(--text-3xl);
+            color: var(--gray-900);
+            margin-bottom: var(--space-2);
         }
         .logo p {
-            color: #6b7280;
-            font-size: 0.875rem;
+            color: var(--gray-500);
+            font-size: var(--text-sm);
         }
         .form-group {
-            margin-bottom: 25px;
+            margin-bottom: var(--space-6);
         }
         .form-group label {
             display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-            color: #1f2937;
-            font-size: 0.875rem;
+            margin-bottom: var(--space-2);
+            font-weight: var(--font-semibold);
+            color: var(--gray-900);
+            font-size: var(--text-sm);
         }
         .form-group input {
             width: 100%;
-            padding: 14px;
-            border: 2px solid #e5e7eb;
-            border-radius: 8px;
-            font-size: 1rem;
-            transition: all 0.2s;
+            padding: var(--space-3-5);
+            border: 2px solid var(--border-light);
+            border-radius: var(--radius-lg);
+            font-size: var(--text-base);
+            font-family: var(--font-body);
+            transition: var(--transition-default);
         }
         .form-group input:focus {
             outline: none;
-            border-color: #475569;
-            box-shadow: 0 0 0 3px rgba(71, 85, 105, 0.1);
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 3px var(--color-primary-100);
         }
         .btn {
             width: 100%;
-            background: linear-gradient(135deg, #475569 0%, #334155 100%);
+            background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-700) 100%);
             color: white;
-            padding: 14px;
+            padding: var(--space-3-5);
             border: none;
-            border-radius: 8px;
-            font-size: 1rem;
-            font-weight: 600;
+            border-radius: var(--radius-lg);
+            font-size: var(--text-base);
+            font-weight: var(--font-semibold);
+            font-family: var(--font-body);
             cursor: pointer;
-            transition: all 0.2s;
+            transition: var(--transition-default);
         }
         .btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(71, 85, 105, 0.3);
+            box-shadow: var(--shadow-primary);
         }
         .flash {
-            padding: 12px 16px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            font-size: 0.875rem;
+            padding: var(--space-3) var(--space-4);
+            border-radius: var(--radius-lg);
+            margin-bottom: var(--space-5);
+            font-size: var(--text-sm);
         }
         .flash.success {
-            background: #d1fae5;
-            color: #065f46;
+            background: var(--score-green-100);
+            color: var(--score-green-800);
         }
         .flash.error {
-            background: #fee2e2;
-            color: #991b1b;
+            background: var(--score-red-100);
+            color: var(--score-red-700);
         }
         .links {
             text-align: center;
-            margin-top: 30px;
-            padding-top: 30px;
-            border-top: 1px solid #e5e7eb;
+            margin-top: var(--space-8);
+            padding-top: var(--space-8);
+            border-top: 1px solid var(--border-light);
+            color: var(--gray-600);
+            font-size: var(--text-sm);
         }
         .links a {
-            color: #475569;
+            color: var(--color-primary);
             text-decoration: none;
-            font-size: 0.875rem;
+            font-weight: var(--font-medium);
         }
         .links a:hover {
             text-decoration: underline;
         }
         /* OAuth Buttons */
         .oauth-buttons {
-            margin-bottom: 25px;
+            margin-bottom: var(--space-6);
         }
         .oauth-btn {
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 12px;
+            gap: var(--space-3);
             width: 100%;
-            padding: 12px 16px;
-            border: 2px solid #e5e7eb;
-            border-radius: 8px;
-            font-size: 0.95rem;
-            font-weight: 500;
+            padding: var(--space-3) var(--space-4);
+            border: 2px solid var(--border-light);
+            border-radius: var(--radius-lg);
+            font-size: var(--text-sm);
+            font-weight: var(--font-medium);
+            font-family: var(--font-body);
             cursor: pointer;
-            transition: all 0.2s;
+            transition: var(--transition-default);
             text-decoration: none;
-            margin-bottom: 12px;
-            background: white;
-            color: #1f2937;
+            margin-bottom: var(--space-3);
+            background: var(--bg-primary);
+            color: var(--gray-900);
         }
         .oauth-btn:hover {
-            border-color: #9ca3af;
-            background: #f9fafb;
+            border-color: var(--gray-400);
+            background: var(--gray-50);
         }
         .oauth-btn.microsoft { border-color: #00a4ef; color: #00a4ef; }
         .oauth-btn.microsoft:hover { background: #00a4ef; color: white; }
@@ -145,18 +164,18 @@
             display: flex;
             align-items: center;
             text-align: center;
-            margin: 25px 0;
-            color: #9ca3af;
-            font-size: 0.875rem;
+            margin: var(--space-6) 0;
+            color: var(--gray-400);
+            font-size: var(--text-sm);
         }
         .divider::before,
         .divider::after {
             content: '';
             flex: 1;
-            border-bottom: 1px solid #e5e7eb;
+            border-bottom: 1px solid var(--border-light);
         }
         .divider span {
-            padding: 0 15px;
+            padding: 0 var(--space-4);
         }
     </style>
 </head>

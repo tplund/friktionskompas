@@ -6,18 +6,37 @@
     <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
     <title>{% block title %}Friktionsprofil{% endblock %} - Friktionskompasset</title>
 
+    <!-- Google Fonts: DM Sans (headings) + Inter (body) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <!-- Design Tokens - MUST be loaded BEFORE Bootstrap for correct variable precedence -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/design-tokens.css') }}">
+
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
 
+    <!-- Bootstrap overrides using design tokens -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/profil-overrides.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/animations.css') }}">
+
     <style>
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            font-family: var(--font-body);
+            background: linear-gradient(135deg, var(--gray-900) 0%, var(--gray-800) 50%, var(--color-primary-900) 100%);
             min-height: 100vh;
         }
         .navbar-brand {
-            font-weight: 600;
+            font-family: var(--font-heading);
+            font-weight: var(--font-semibold);
+            display: flex;
+            align-items: center;
+            gap: var(--space-2);
+        }
+        main {
+            animation: fadeInUp 400ms ease-out;
         }
 
         /* Print styles */
@@ -40,7 +59,7 @@
     <nav class="navbar navbar-dark bg-dark no-print">
         <div class="container">
             <a class="navbar-brand" href="/friktionsprofil/">
-                <i class="bi bi-compass"></i> Friktionsprofil
+                <i data-lucide="compass" style="width: 20px; height: 20px;"></i> Friktionsprofil
             </a>
             <div class="navbar-text text-white-50">
                 Kortlæg din reguleringsarkitektur
@@ -55,6 +74,10 @@
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script src="{{ url_for('static', filename='js/page-transitions.js') }}"></script>
 
     {% block extra_js %}{% endblock %}
 </body>

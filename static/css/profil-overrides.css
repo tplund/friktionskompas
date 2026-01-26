@@ -1,0 +1,486 @@
+/**
+ * Friktionskompasset Profile Overrides
+ * Nordic Clarity Design System
+ *
+ * Bootstrap 5.3 compatibility layer for profil templates
+ * Load this AFTER Bootstrap CSS and design-tokens.css
+ */
+
+/* ============================================
+ * FONT OVERRIDES
+ * Override Bootstrap's system font stack
+ * ============================================ */
+
+body {
+  font-family: var(--font-body, 'Inter', -apple-system, BlinkMacSystemFont, sans-serif);
+}
+
+h1, h2, h3, h4, h5, h6,
+.h1, .h2, .h3, .h4, .h5, .h6 {
+  font-family: var(--font-heading, 'DM Sans', sans-serif);
+  font-weight: var(--font-semibold, 600);
+}
+
+/* ============================================
+ * COLOR OVERRIDES
+ * Map Bootstrap color classes to design tokens
+ * ============================================ */
+
+/* Primary color */
+.text-primary {
+  color: var(--color-primary) !important;
+}
+
+.bg-primary {
+  background-color: var(--color-primary) !important;
+}
+
+.btn-primary {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.btn-primary:hover,
+.btn-primary:focus {
+  background-color: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
+}
+
+.btn-outline-primary {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.btn-outline-primary:hover {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+/* Success color - score green */
+.text-success {
+  color: var(--score-green) !important;
+}
+
+.bg-success {
+  background-color: var(--score-green) !important;
+}
+
+.btn-success {
+  background-color: var(--score-green);
+  border-color: var(--score-green);
+}
+
+.btn-success:hover,
+.btn-success:focus {
+  background-color: var(--score-green-700);
+  border-color: var(--score-green-700);
+}
+
+/* Warning color - score yellow */
+.text-warning {
+  color: var(--score-yellow) !important;
+}
+
+.bg-warning {
+  background-color: var(--score-yellow) !important;
+}
+
+.btn-warning {
+  background-color: var(--score-yellow);
+  border-color: var(--score-yellow);
+  color: white;
+}
+
+.btn-warning:hover,
+.btn-warning:focus {
+  background-color: var(--score-yellow-700);
+  border-color: var(--score-yellow-700);
+  color: white;
+}
+
+/* Danger color - score red */
+.text-danger {
+  color: var(--score-red) !important;
+}
+
+.bg-danger {
+  background-color: var(--score-red) !important;
+}
+
+.btn-danger {
+  background-color: var(--score-red);
+  border-color: var(--score-red);
+}
+
+.btn-danger:hover,
+.btn-danger:focus {
+  background-color: var(--score-red-700);
+  border-color: var(--score-red-700);
+}
+
+/* ============================================
+ * CARD OVERRIDES
+ * Enhance Bootstrap cards with design system
+ * ============================================ */
+
+.card {
+  border: 1px solid var(--border-light, #e2e8f0);
+  border-radius: var(--radius-lg, 0.75rem);
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition-default);
+}
+
+.card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.card-header {
+  background: var(--bg-secondary, #f8fafc);
+  border-bottom: 1px solid var(--border-light, #e2e8f0);
+  font-family: var(--font-heading);
+  font-weight: var(--font-semibold);
+}
+
+.card-footer {
+  background: var(--bg-secondary, #f8fafc);
+  border-top: 1px solid var(--border-light, #e2e8f0);
+}
+
+/* ============================================
+ * FORM OVERRIDES
+ * ============================================ */
+
+.form-control {
+  border-color: var(--border-default, #cbd5e1);
+  border-radius: var(--radius-md, 0.5rem);
+  transition: var(--transition-default);
+}
+
+.form-control:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-100);
+}
+
+.form-label {
+  font-weight: var(--font-medium);
+  color: var(--text-primary);
+}
+
+/* ============================================
+ * BUTTON ENHANCEMENTS
+ * ============================================ */
+
+.btn {
+  font-family: var(--font-body);
+  font-weight: var(--font-medium);
+  border-radius: var(--radius-md, 0.5rem);
+  transition: var(--transition-default);
+}
+
+.btn:focus {
+  box-shadow: 0 0 0 3px var(--color-primary-200);
+}
+
+/* ============================================
+ * ALERT OVERRIDES
+ * ============================================ */
+
+.alert {
+  border-radius: var(--radius-lg, 0.75rem);
+  border: none;
+}
+
+.alert-success {
+  background: var(--score-green-50);
+  color: var(--score-green-text);
+  border-left: 4px solid var(--score-green);
+}
+
+.alert-warning {
+  background: var(--score-yellow-50);
+  color: var(--score-yellow-text);
+  border-left: 4px solid var(--score-yellow);
+}
+
+.alert-danger {
+  background: var(--score-red-50);
+  color: var(--score-red-text);
+  border-left: 4px solid var(--score-red);
+}
+
+.alert-info,
+.alert-primary {
+  background: var(--color-primary-50);
+  color: var(--color-primary-800);
+  border-left: 4px solid var(--color-primary);
+}
+
+/* ============================================
+ * BADGE OVERRIDES
+ * ============================================ */
+
+.badge {
+  font-weight: var(--font-medium);
+  border-radius: var(--radius-default);
+}
+
+.badge.bg-success,
+.badge.text-bg-success {
+  background-color: var(--score-green-100) !important;
+  color: var(--score-green-text) !important;
+}
+
+.badge.bg-warning,
+.badge.text-bg-warning {
+  background-color: var(--score-yellow-100) !important;
+  color: var(--score-yellow-text) !important;
+}
+
+.badge.bg-danger,
+.badge.text-bg-danger {
+  background-color: var(--score-red-100) !important;
+  color: var(--score-red-text) !important;
+}
+
+.badge.bg-primary,
+.badge.text-bg-primary {
+  background-color: var(--color-primary-100) !important;
+  color: var(--color-primary-700) !important;
+}
+
+/* ============================================
+ * PROGRESS BAR OVERRIDES
+ * ============================================ */
+
+.progress {
+  border-radius: var(--radius-full);
+  background: var(--gray-200);
+  height: 8px;
+}
+
+.progress-bar {
+  border-radius: var(--radius-full);
+}
+
+.progress-bar.bg-success {
+  background: linear-gradient(90deg, var(--score-green-500), var(--score-green)) !important;
+}
+
+.progress-bar.bg-warning {
+  background: linear-gradient(90deg, var(--score-yellow-500), var(--score-yellow)) !important;
+}
+
+.progress-bar.bg-danger {
+  background: linear-gradient(90deg, var(--score-red-500), var(--score-red)) !important;
+}
+
+/* ============================================
+ * TABLE OVERRIDES
+ * ============================================ */
+
+.table {
+  --bs-table-striped-bg: var(--bg-secondary);
+  --bs-table-hover-bg: var(--bg-tertiary);
+}
+
+.table > thead > tr > th {
+  font-size: var(--text-xs);
+  font-weight: var(--font-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+}
+
+/* ============================================
+ * MODAL OVERRIDES
+ * ============================================ */
+
+.modal-content {
+  border: none;
+  border-radius: var(--radius-xl, 1rem);
+  box-shadow: var(--shadow-2xl);
+}
+
+.modal-header {
+  border-bottom: 1px solid var(--border-light);
+}
+
+.modal-footer {
+  border-top: 1px solid var(--border-light);
+  background: var(--bg-secondary);
+}
+
+/* ============================================
+ * NAV/TABS OVERRIDES
+ * ============================================ */
+
+.nav-tabs {
+  border-bottom-color: var(--border-light);
+}
+
+.nav-tabs .nav-link {
+  color: var(--text-secondary);
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+}
+
+.nav-tabs .nav-link:hover {
+  color: var(--text-primary);
+  border-color: transparent;
+  background: var(--bg-secondary);
+}
+
+.nav-tabs .nav-link.active {
+  color: var(--color-primary);
+  border-color: var(--border-light) var(--border-light) white;
+  font-weight: var(--font-medium);
+}
+
+.nav-pills .nav-link {
+  border-radius: var(--radius-md);
+}
+
+.nav-pills .nav-link.active {
+  background-color: var(--color-primary);
+}
+
+/* ============================================
+ * DROPDOWN OVERRIDES
+ * ============================================ */
+
+.dropdown-menu {
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+}
+
+.dropdown-item {
+  padding: var(--space-2) var(--space-4);
+  transition: var(--transition-colors);
+}
+
+.dropdown-item:hover,
+.dropdown-item:focus {
+  background: var(--bg-secondary);
+}
+
+/* ============================================
+ * SCORE-SPECIFIC CLASSES
+ * For friction score display
+ * ============================================ */
+
+/* Score colors using design tokens */
+.score-high,
+.score-green {
+  color: var(--score-green);
+}
+
+.score-medium,
+.score-yellow {
+  color: var(--score-yellow);
+}
+
+.score-low,
+.score-red {
+  color: var(--score-red);
+}
+
+.bg-score-high,
+.bg-score-green {
+  background-color: var(--score-green-100);
+  border-color: var(--score-green);
+}
+
+.bg-score-medium,
+.bg-score-yellow {
+  background-color: var(--score-yellow-100);
+  border-color: var(--score-yellow);
+}
+
+.bg-score-low,
+.bg-score-red {
+  background-color: var(--score-red-100);
+  border-color: var(--score-red);
+}
+
+/* Score badge variant */
+.badge-score {
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--radius-full);
+  font-weight: var(--font-semibold);
+}
+
+.badge-score.high {
+  background: var(--score-green-100);
+  color: var(--score-green-text);
+}
+
+.badge-score.medium {
+  background: var(--score-yellow-100);
+  color: var(--score-yellow-text);
+}
+
+.badge-score.low {
+  background: var(--score-red-100);
+  color: var(--score-red-text);
+}
+
+/* ============================================
+ * LUCIDE ICON SIZING
+ * Consistent icon sizes with Bootstrap text
+ * ============================================ */
+
+/* Default icon size */
+[data-lucide] {
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.125em;
+  stroke-width: 2;
+}
+
+/* Icon sizes */
+.icon-xs [data-lucide],
+[data-lucide].icon-xs {
+  width: 14px;
+  height: 14px;
+}
+
+.icon-sm [data-lucide],
+[data-lucide].icon-sm {
+  width: 16px;
+  height: 16px;
+}
+
+.icon-md [data-lucide],
+[data-lucide].icon-md {
+  width: 20px;
+  height: 20px;
+}
+
+.icon-lg [data-lucide],
+[data-lucide].icon-lg {
+  width: 24px;
+  height: 24px;
+}
+
+.icon-xl [data-lucide],
+[data-lucide].icon-xl {
+  width: 32px;
+  height: 32px;
+}
+
+/* ============================================
+ * ANIMATION COMPATIBILITY
+ * Ensure animations work with Bootstrap
+ * ============================================ */
+
+/* Override Bootstrap's reduced motion handling to use ours */
+@media (prefers-reduced-motion: reduce) {
+  .fade {
+    transition: none;
+  }
+
+  .collapsing {
+    transition: none;
+  }
+}

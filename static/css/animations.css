@@ -1,0 +1,532 @@
+/**
+ * Friktionskompasset Animations
+ * Nordic Clarity Design System
+ *
+ * Smooth, purposeful animations that enhance UX
+ * All animations respect prefers-reduced-motion
+ */
+
+/* ============================================
+ * KEYFRAME DEFINITIONS
+ * ============================================ */
+
+/* Fade In - Simple opacity transition */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Fade In Up - Subtle entrance from below */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Fade In Down - Subtle entrance from above */
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Slide Up - More pronounced vertical movement */
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Slide Down - For dropdowns */
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Slide In Left */
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Slide In Right */
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Scale In - Zoom entrance */
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Scale In Big - For modals */
+@keyframes scaleInBig {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Pop In - Playful bounce effect */
+@keyframes popIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  70% {
+    transform: scale(1.05);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Pulse - Attention getter */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+/* Shimmer - Loading effect */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Spin - For loaders */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Bounce - Subtle bounce */
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+/* Shake - Error feedback */
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  10%, 30%, 50%, 70%, 90% {
+    transform: translateX(-5px);
+  }
+  20%, 40%, 60%, 80% {
+    transform: translateX(5px);
+  }
+}
+
+/* ============================================
+ * ANIMATION UTILITY CLASSES
+ * ============================================ */
+
+/* Base animation class */
+.animate {
+  animation-fill-mode: both;
+  animation-duration: 400ms;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Animation types */
+.animate-fade-in {
+  animation-name: fadeIn;
+}
+
+.animate-fade-in-up {
+  animation-name: fadeInUp;
+}
+
+.animate-fade-in-down {
+  animation-name: fadeInDown;
+}
+
+.animate-slide-up {
+  animation-name: slideUp;
+}
+
+.animate-slide-down {
+  animation-name: slideDown;
+}
+
+.animate-slide-in-left {
+  animation-name: slideInLeft;
+}
+
+.animate-slide-in-right {
+  animation-name: slideInRight;
+}
+
+.animate-scale-in {
+  animation-name: scaleIn;
+}
+
+.animate-pop-in {
+  animation-name: popIn;
+}
+
+.animate-pulse {
+  animation-name: pulse;
+  animation-duration: 2s;
+  animation-iteration-count: infinite;
+}
+
+.animate-spin {
+  animation-name: spin;
+  animation-duration: 1s;
+  animation-iteration-count: infinite;
+  animation-timing-function: linear;
+}
+
+.animate-bounce {
+  animation-name: bounce;
+  animation-duration: 1s;
+  animation-iteration-count: infinite;
+}
+
+.animate-shake {
+  animation-name: shake;
+  animation-duration: 500ms;
+}
+
+/* Animation durations */
+.animate-fast {
+  animation-duration: 200ms;
+}
+
+.animate-normal {
+  animation-duration: 400ms;
+}
+
+.animate-slow {
+  animation-duration: 600ms;
+}
+
+.animate-slower {
+  animation-duration: 1000ms;
+}
+
+/* Animation delays */
+.animate-delay-100 {
+  animation-delay: 100ms;
+}
+
+.animate-delay-200 {
+  animation-delay: 200ms;
+}
+
+.animate-delay-300 {
+  animation-delay: 300ms;
+}
+
+.animate-delay-400 {
+  animation-delay: 400ms;
+}
+
+.animate-delay-500 {
+  animation-delay: 500ms;
+}
+
+.animate-delay-700 {
+  animation-delay: 700ms;
+}
+
+.animate-delay-1000 {
+  animation-delay: 1000ms;
+}
+
+/* ============================================
+ * STAGGER REVEAL SYSTEM
+ * Apply .stagger-reveal to parent container
+ * Children will animate in sequence
+ * ============================================ */
+
+.stagger-reveal > * {
+  opacity: 0;
+  animation: fadeInUp 500ms ease-out forwards;
+}
+
+.stagger-reveal > *:nth-child(1) { animation-delay: 0ms; }
+.stagger-reveal > *:nth-child(2) { animation-delay: 50ms; }
+.stagger-reveal > *:nth-child(3) { animation-delay: 100ms; }
+.stagger-reveal > *:nth-child(4) { animation-delay: 150ms; }
+.stagger-reveal > *:nth-child(5) { animation-delay: 200ms; }
+.stagger-reveal > *:nth-child(6) { animation-delay: 250ms; }
+.stagger-reveal > *:nth-child(7) { animation-delay: 300ms; }
+.stagger-reveal > *:nth-child(8) { animation-delay: 350ms; }
+.stagger-reveal > *:nth-child(9) { animation-delay: 400ms; }
+.stagger-reveal > *:nth-child(10) { animation-delay: 450ms; }
+.stagger-reveal > *:nth-child(n+11) { animation-delay: 500ms; }
+
+/* Faster stagger variant */
+.stagger-reveal-fast > * {
+  opacity: 0;
+  animation: fadeInUp 300ms ease-out forwards;
+}
+
+.stagger-reveal-fast > *:nth-child(1) { animation-delay: 0ms; }
+.stagger-reveal-fast > *:nth-child(2) { animation-delay: 30ms; }
+.stagger-reveal-fast > *:nth-child(3) { animation-delay: 60ms; }
+.stagger-reveal-fast > *:nth-child(4) { animation-delay: 90ms; }
+.stagger-reveal-fast > *:nth-child(5) { animation-delay: 120ms; }
+.stagger-reveal-fast > *:nth-child(6) { animation-delay: 150ms; }
+.stagger-reveal-fast > *:nth-child(n+7) { animation-delay: 180ms; }
+
+/* ============================================
+ * HOVER EFFECTS
+ * ============================================ */
+
+/* Lift on hover - for cards */
+.hover-lift {
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg, 0 10px 15px -3px rgb(0 0 0 / 0.1));
+}
+
+/* Subtle lift - less dramatic */
+.hover-lift-sm {
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+
+.hover-lift-sm:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md, 0 4px 6px -1px rgb(0 0 0 / 0.1));
+}
+
+/* Scale on hover */
+.hover-scale {
+  transition: transform 200ms ease;
+}
+
+.hover-scale:hover {
+  transform: scale(1.02);
+}
+
+/* Glow on hover */
+.hover-glow {
+  transition: box-shadow 200ms ease;
+}
+
+.hover-glow:hover {
+  box-shadow: 0 0 20px rgba(79, 70, 229, 0.3);
+}
+
+/* Icon rotate on hover (for parent hover) */
+.group:hover .group-hover-rotate {
+  transform: rotate(90deg);
+}
+
+.group-hover-rotate {
+  transition: transform 200ms ease;
+}
+
+/* ============================================
+ * PAGE TRANSITIONS
+ * ============================================ */
+
+/* Page content fade in */
+.page-enter {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.page-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 300ms ease, transform 300ms ease;
+}
+
+/* ============================================
+ * LOADING STATES
+ * ============================================ */
+
+/* Skeleton loading */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--gray-200, #e2e8f0) 25%,
+    var(--gray-100, #f1f5f9) 50%,
+    var(--gray-200, #e2e8f0) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: var(--radius-md, 0.5rem);
+}
+
+/* Loading spinner */
+.spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid var(--gray-200, #e2e8f0);
+  border-top-color: var(--color-primary, #4f46e5);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.spinner-sm {
+  width: 16px;
+  height: 16px;
+  border-width: 2px;
+}
+
+.spinner-lg {
+  width: 40px;
+  height: 40px;
+  border-width: 4px;
+}
+
+/* ============================================
+ * FOCUS STATES
+ * ============================================ */
+
+.focus-ring {
+  outline: none;
+  transition: box-shadow 150ms ease;
+}
+
+.focus-ring:focus-visible {
+  box-shadow: 0 0 0 3px var(--color-primary-200, #c7d2fe);
+}
+
+/* ============================================
+ * SCROLL-TRIGGERED ANIMATIONS
+ * Use with IntersectionObserver JS
+ * ============================================ */
+
+.reveal-on-scroll {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 600ms ease, transform 600ms ease;
+}
+
+.reveal-on-scroll.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.reveal-on-scroll-left {
+  opacity: 0;
+  transform: translateX(-30px);
+  transition: opacity 600ms ease, transform 600ms ease;
+}
+
+.reveal-on-scroll-left.is-visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.reveal-on-scroll-right {
+  opacity: 0;
+  transform: translateX(30px);
+  transition: opacity 600ms ease, transform 600ms ease;
+}
+
+.reveal-on-scroll-right.is-visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* ============================================
+ * REDUCED MOTION
+ * Respect user preferences - CRITICAL
+ * ============================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .stagger-reveal > *,
+  .stagger-reveal-fast > * {
+    opacity: 1;
+    animation: none;
+  }
+
+  .hover-lift:hover,
+  .hover-lift-sm:hover,
+  .hover-scale:hover {
+    transform: none;
+  }
+
+  .reveal-on-scroll,
+  .reveal-on-scroll-left,
+  .reveal-on-scroll-right {
+    opacity: 1;
+    transform: none;
+  }
+}
