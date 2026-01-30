@@ -607,6 +607,13 @@ Baseret på fuld teknisk audit. Se `docs/AUDIT_2025-12-20.md` for detaljer.
 
 _Ingen kendte bugs pt._
 
+### ✅ Fikset (2026-01-30)
+- [x] **CSP blokerede Chart.js** - Content Security Policy i `app_factory.py` manglede `cdn.jsdelivr.net` i `script-src`, så Chart.js blev blokeret og alle trend-grafer var tomme. Fixed ved at tilføje `https://cdn.jsdelivr.net` til CSP whitelist.
+- [x] **Trend chart Y-akse max:5** - Tre templates (`dashboard_v2.html`, `analyser.html`, `trend.html`) havde `max: 5` på Y-aksen (gammel 5-point skala). Fixed til `max: 7` for 7-point skala.
+- [x] **Trend chart JS crash på manglende `name` key** - `get_trend_data()` returnerer assessments uden `name` key, men JS chart-kode kaldte `c.name.substring()` uden null-check. Fixed med safe fallback i alle templates.
+- [x] **bcrypt vs scrypt password hashing** - `verify_password()` bruger `bcrypt.checkpw()`, men brugeroprettelse via `werkzeug.security.generate_password_hash()` producerer scrypt hashes. Dokumenteret i CLAUDE.md - brug altid `bcrypt.hashpw()` ved oprettelse af brugere.
+- [x] **Regression tests tilføjet** - 4 nye tests i `tests/test_analysis.py` for trend data format og 7-point skala validering.
+
 ### ✅ Fikset (2026-01-04)
 - [x] **Cross-customer unit aggregation bug** - Når "Alle kunder" var valgt i dropdown og bruger klikkede på "Social- og Sundhedsforvaltningen" (som eksisterer i både Herning og Esbjerg), blev børn fra BEGGE kunder vist. Fixed ved at tilføje `customer_id` filter til alle `full_path LIKE` joins i `admin_core.py`.
 
