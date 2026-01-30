@@ -60,19 +60,75 @@ def is_api_request():
 @csrf.exempt
 @api_or_admin_required
 def debug_trend():
-    """TEMPORARY: Debug trend data rendering."""
+    """TEMPORARY: Debug trend data rendering - renders the actual HTML."""
     from analysis import get_trend_data
     import json
     trend_data = get_trend_data()
-    # Also test what the template would see
-    has_assessments = bool(trend_data and trend_data.get('assessments'))
-    return jsonify({
-        'has_data': has_assessments,
-        'assessment_count': len(trend_data.get('assessments', [])),
-        'assessments': trend_data.get('assessments', [])[:2],
-        'fields': trend_data.get('fields', []),
-        'tojson_preview': json.dumps(trend_data.get('assessments', [])[:1])
-    })
+
+    # Render a minimal test page with the actual chart
+    html = f"""<!DOCTYPE html>
+<html><head>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head><body>
+<h2>Trend Debug</h2>
+<p>Assessments: {len(trend_data.get('assessments', []))}</p>
+<p>Has data: {bool(trend_data and trend_data.get('assessments'))}</p>
+<div style="width:600px;height:300px;border:1px solid red;">
+    <canvas id="trendChart"></canvas>
+</div>
+<pre id="raw">{json.dumps(trend_data.get('assessments', [])[:2], indent=2, ensure_ascii=False)}</pre>
+<script>
+try {{
+    const assessments = {json.dumps(trend_data.get('assessments', []), ensure_ascii=False)};
+    const fields = {json.dumps(trend_data.get('fields', []))};
+    const labels = assessments.map(c => {{
+        if (c.period) return c.period;
+        if (c.date) return c.date.substring(5);
+        if (c.name) return c.name.substring(0, 8);
+        return '?';
+    }});
+
+    const colors = {{
+        'MENING': '#8b5cf6',
+        'TRYGHED': '#22c55e',
+        'KAN': '#3b82f6',
+        'BESVÆR': '#ef4444'
+    }};
+
+    const datasets = fields.map(field => ({{
+        label: field,
+        data: assessments.map(c => c.scores[field] || null),
+        borderColor: colors[field] || '#6b7280',
+        backgroundColor: 'transparent',
+        borderWidth: 2,
+        tension: 0.3,
+        pointRadius: 3,
+        pointHoverRadius: 5
+    }}));
+
+    document.getElementById('raw').textContent += '\\n\\nLabels: ' + JSON.stringify(labels);
+    document.getElementById('raw').textContent += '\\nDatasets: ' + JSON.stringify(datasets.map(d => ({{label: d.label, data: d.data}})));
+
+    new Chart(document.getElementById('trendChart'), {{
+        type: 'line',
+        data: {{ labels, datasets }},
+        options: {{
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {{
+                y: {{ min: 1, max: 7, ticks: {{ stepSize: 1 }} }},
+                x: {{ ticks: {{ font: {{ size: 9 }} }} }}
+            }},
+            plugins: {{ legend: {{ display: true }} }}
+        }}
+    }});
+    document.getElementById('raw').textContent += '\\n\\nChart rendered OK!';
+}} catch(e) {{
+    document.getElementById('raw').textContent += '\\n\\nJS ERROR: ' + e.message + '\\n' + e.stack;
+}}
+</script>
+</body></html>"""
+    return html, 200, {'Content-Type': 'text/html'}
 
 
 @dev_tools_bp.route('/admin/seed-translations', methods=['GET', 'POST'])
