@@ -56,30 +56,6 @@ def is_api_request():
 
 
 
-@dev_tools_bp.route('/admin/debug-tlund', methods=['GET'])
-@csrf.exempt
-@api_or_admin_required
-def debug_tlund():
-    """TEMPORARY DEBUG"""
-    from werkzeug.security import check_password_hash
-    with get_db() as db:
-        u = db.execute('SELECT id, username, email, role, password_hash, is_active FROM users WHERE email = ?',
-                       ('tlund@elearningspecialist.com',)).fetchone()
-        if not u:
-            return jsonify({'found': False})
-        pw_ok = check_password_hash(u['password_hash'], 'TempPass2026!')
-        return jsonify({
-            'found': True,
-            'id': u['id'],
-            'username': u['username'],
-            'email': u['email'],
-            'role': u['role'],
-            'is_active': u['is_active'],
-            'pw_hash_prefix': u['password_hash'][:30],
-            'pw_check': pw_ok
-        })
-
-
 @dev_tools_bp.route('/admin/seed-translations', methods=['GET', 'POST'])
 @api_or_admin_required
 def admin_seed_translations():
