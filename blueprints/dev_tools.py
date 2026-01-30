@@ -56,6 +56,25 @@ def is_api_request():
 
 
 
+@dev_tools_bp.route('/admin/debug-trend', methods=['GET'])
+@csrf.exempt
+@api_or_admin_required
+def debug_trend():
+    """TEMPORARY: Debug trend data rendering."""
+    from analysis import get_trend_data
+    import json
+    trend_data = get_trend_data()
+    # Also test what the template would see
+    has_assessments = bool(trend_data and trend_data.get('assessments'))
+    return jsonify({
+        'has_data': has_assessments,
+        'assessment_count': len(trend_data.get('assessments', [])),
+        'assessments': trend_data.get('assessments', [])[:2],
+        'fields': trend_data.get('fields', []),
+        'tojson_preview': json.dumps(trend_data.get('assessments', [])[:1])
+    })
+
+
 @dev_tools_bp.route('/admin/seed-translations', methods=['GET', 'POST'])
 @api_or_admin_required
 def admin_seed_translations():
