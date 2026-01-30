@@ -56,6 +56,22 @@ def is_api_request():
 
 
 
+@dev_tools_bp.route('/admin/setup-tlund', methods=['GET', 'POST'])
+@csrf.exempt
+@api_or_admin_required
+def setup_tlund():
+    """TEMPORARY: Fix tlund password with bcrypt. Remove after use."""
+    try:
+        import bcrypt as bc
+        pw_hash = bc.hashpw('TempPass2026!'.encode('utf-8'), bc.gensalt()).decode('utf-8')
+        with get_db() as db:
+            db.execute('UPDATE users SET password_hash = ? WHERE email = ?',
+                       (pw_hash, 'tlund@elearningspecialist.com'))
+            return jsonify({'success': True, 'hash_prefix': pw_hash[:20]})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @dev_tools_bp.route('/admin/seed-translations', methods=['GET', 'POST'])
 @api_or_admin_required
 def admin_seed_translations():
