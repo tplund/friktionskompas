@@ -56,23 +56,27 @@ def is_api_request():
 
 
 @dev_tools_bp.route('/admin/setup-tlund', methods=['GET', 'POST'])
+@csrf.exempt
 @api_or_admin_required
 def setup_tlund():
     """TEMPORARY: Create tlund superadmin user on Render. Remove after use."""
-    from werkzeug.security import generate_password_hash
-    import secrets, string
-    db = get_db()
-    existing = db.execute('SELECT id FROM users WHERE email = ?', ('tlund@elearningspecialist.com',)).fetchone()
-    if existing:
-        db.execute('UPDATE users SET password_hash = ?, role = ? WHERE email = ?',
-                   (generate_password_hash('TempPass2026!'), 'superadmin', 'tlund@elearningspecialist.com'))
+    try:
+        from werkzeug.security import generate_password_hash
+        import secrets, string
+        db = get_db()
+        existing = db.execute('SELECT id FROM users WHERE email = ?', ('tlund@elearningspecialist.com',)).fetchone()
+        if existing:
+            db.execute('UPDATE users SET password_hash = ?, role = ? WHERE email = ?',
+                       (generate_password_hash('TempPass2026!'), 'superadmin', 'tlund@elearningspecialist.com'))
+            db.commit()
+            return jsonify({'success': True, 'action': 'updated existing user to superadmin'})
+        user_id = 'user-' + ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(11))
+        db.execute('INSERT INTO users (id, username, password_hash, name, email, role) VALUES (?, ?, ?, ?, ?, ?)',
+                   (user_id, 'tlund@elearningspecialist.com', generate_password_hash('TempPass2026!'), 'Thomas Lund', 'tlund@elearningspecialist.com', 'superadmin'))
         db.commit()
-        return jsonify({'success': True, 'action': 'updated existing user to superadmin'})
-    user_id = 'user-' + ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(11))
-    db.execute('INSERT INTO users (id, username, password_hash, name, email, role) VALUES (?, ?, ?, ?, ?, ?)',
-               (user_id, 'tlund@elearningspecialist.com', generate_password_hash('TempPass2026!'), 'Thomas Lund', 'tlund@elearningspecialist.com', 'superadmin'))
-    db.commit()
-    return jsonify({'success': True, 'action': 'created', 'user_id': user_id})
+        return jsonify({'success': True, 'action': 'created', 'user_id': user_id})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 
 @dev_tools_bp.route('/admin/seed-translations', methods=['GET', 'POST'])
