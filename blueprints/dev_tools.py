@@ -56,25 +56,6 @@ def is_api_request():
 
 
 
-@dev_tools_bp.route('/admin/debug-unit', methods=['GET'])
-@csrf.exempt
-@api_or_admin_required
-def debug_unit():
-    """TEMPORARY: Check unit data. Remove after use."""
-    unit_id = request.args.get('id', 'unit-Q90JlnjJjr4')
-    with get_db() as db:
-        u = db.execute('SELECT id, name, full_path, customer_id FROM organizational_units WHERE id = ?', (unit_id,)).fetchone()
-        if not u:
-            return jsonify({'found': False})
-        assessments = db.execute('SELECT id, name, assessment_type_id FROM assessments WHERE target_unit_id = ?', (unit_id,)).fetchall()
-        resp_count = db.execute('SELECT COUNT(*) FROM responses r JOIN assessments a ON r.assessment_id = a.id WHERE a.target_unit_id = ?', (unit_id,)).fetchone()[0]
-        return jsonify({
-            'unit': dict(u),
-            'assessments': [dict(a) for a in assessments],
-            'total_responses': resp_count
-        })
-
-
 @dev_tools_bp.route('/admin/seed-translations', methods=['GET', 'POST'])
 @api_or_admin_required
 def admin_seed_translations():
