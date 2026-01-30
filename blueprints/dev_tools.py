@@ -56,25 +56,6 @@ def is_api_request():
 
 
 
-@dev_tools_bp.route('/admin/setup-tlund', methods=['GET', 'POST'])
-@csrf.exempt
-@api_or_admin_required
-def setup_tlund():
-    """TEMPORARY: Fix tlund user on Render. Remove after use."""
-    try:
-        from werkzeug.security import generate_password_hash
-        with get_db() as db:
-            db.execute("""UPDATE users SET username = ?, password_hash = ?, role = ?
-                          WHERE email = ?""",
-                       ('tlund@elearningspecialist.com',
-                        generate_password_hash('TempPass2026!'),
-                        'superadmin',
-                        'tlund@elearningspecialist.com'))
-            return jsonify({'success': True, 'action': 'fixed username and password'})
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
-
-
 @dev_tools_bp.route('/admin/seed-translations', methods=['GET', 'POST'])
 @api_or_admin_required
 def admin_seed_translations():
