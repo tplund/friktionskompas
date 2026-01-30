@@ -605,6 +605,16 @@ pw_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-
 ```
 Brug ALDRIG `werkzeug.security.generate_password_hash()` - det genererer scrypt-hashes som `verify_password()` ikke kan verificere!
 
+### Bug: Chart.js blokeret af Content Security Policy (2026-01-30)
+**Symptom:** Trend-grafer var tomme på alle sider - ingen JS-fejl synlig uden DevTools
+**Årsag:** CSP i `app_factory.py` tillod scripts fra `unpkg.com` men IKKE fra `cdn.jsdelivr.net`, som Chart.js loades fra. Browseren blokerede Chart.js lydløst.
+**Fix:** Tilføjet `https://cdn.jsdelivr.net` til `script-src` i CSP-headeren.
+
+**VIGTIGT:** Når du tilføjer nye CDN-scripts, HUSK at opdatere CSP i `app_factory.py`:
+```python
+"script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://unpkg.com https://cdn.jsdelivr.net; "
+```
+
 ### Bug: Render restore-db-from-backup finder ikke backup-filen (2026-01-30)
 **Symptom:** `restore-db-from-backup` endpoint returnerer 404 selvom `db_backup.b64` er committed
 **Årsag:** Render builder kopierer repo-filer til build-mappen, men persistent disk er mounted separat på `/var/data`. Filen ligger i build-dir, men endpoint leder i forkert sti.
