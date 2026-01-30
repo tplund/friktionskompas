@@ -765,7 +765,9 @@ const fields = {{ trend_data.fields | tojson }};
 const labels = assessments.map(c => {
     // Vis periode hvis den findes, ellers dato
     if (c.period) return c.period;
-    return c.date ? c.date.substring(5) : c.name.substring(0, 8);
+    if (c.date) return c.date.substring(5);
+    if (c.name) return c.name.substring(0, 8);
+    return '?';
 });
 
 const colors = {
