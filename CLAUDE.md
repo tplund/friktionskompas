@@ -582,6 +582,71 @@ else:
 
 **Regressionstest:** `test_vary_testdata_must_invert_reverse_scored()` i `tests/test_analysis.py`
 
+### Bug: Trend-chart Y-akse max:5 i stedet for max:7 (2026-01-30)
+**Symptom:** Trend-grafer på `/admin` og `/admin/analyser` viste tomt indhold
+**Årsag:** Chart.js Y-akse var konfigureret med `max: 5` (gammel 5-point skala), men systemet bruger 7-point skala. Scores over 5 blev renderet udenfor grafen.
+
+**Fix:** Rettet `max: 5` → `max: 7` i tre templates:
+- `templates/admin/analyser.html`
+- `templates/admin/dashboard_v2.html`
+- `templates/admin/trend.html`
+
+**HUSK:** Ved tilføjelse af nye Chart.js-grafer, brug ALTID `max: 7` for score-akser!
+
+### Bug: Password hash brugte scrypt i stedet for bcrypt (2026-01-30)
+**Symptom:** Login med korrekt password gav "Forkert brugernavn eller password"
+**Årsag:** Bruger blev oprettet med `werkzeug.security.generate_password_hash()` (scrypt), men `verify_password()` i `db_multitenant.py` bruger `bcrypt.checkpw()`.
+**Fix:** Generér altid password-hashes med `bcrypt.hashpw()`, IKKE `werkzeug.security.generate_password_hash()`.
+
+**VIGTIGT:** Systemet bruger **bcrypt** til password-hashing:
+```python
+import bcrypt
+pw_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+```
+Brug ALDRIG `werkzeug.security.generate_password_hash()` - det genererer scrypt-hashes som `verify_password()` ikke kan verificere!
+
+### Bug: Render restore-db-from-backup finder ikke backup-filen (2026-01-30)
+**Symptom:** `restore-db-from-backup` endpoint returnerer 404 selvom `db_backup.b64` er committed
+**Årsag:** Render builder kopierer repo-filer til build-mappen, men persistent disk er mounted separat på `/var/data`. Filen ligger i build-dir, men endpoint leder i forkert sti.
+**Workaround:** Brug midlertidige API-endpoints til at ændre data direkte på Render i stedet for DB-restore.
+
+---
+
+## 🔄 FREMTIDIG MIGRERING: Render → Azure (PARKERET)
+
+**Status:** Parkeret (2026-01-30). Demo virker, ingen ændringer planlagt. Genoptag ved traction.
+
+**Baggrund:** Render har følgende begrænsninger med SQLite + persistent disk:
+1. **DB-synkronisering** kræver workarounds (base64 via git, midlertidige endpoints)
+2. **502 Bad Gateway** under deploys (2-3 min cold start)
+3. **Ingen direkte DB-adgang** - kan ikke SSH ind og køre SQL
+4. **Persistent disk** er bundet til én instans, ingen automatisk backup
+
+**Azure App Service plan (når det bliver aktuelt):**
+- App Service B1: ~$13/måned
+- Azure Database for PostgreSQL Flexible (Burstable B1ms): ~$13/måned
+- **Total: ~$25-30/måned** (vs Render ~$8/måned)
+
+**Migrering kræver:**
+1. SQLite → PostgreSQL migrering (schema + data)
+2. Ændre `get_db()` til PostgreSQL connection pool (psycopg2/asyncpg)
+3. Tilpasse SQL-queries (SQLite-specifikke ting som `||` for concat, `PRAGMA`, etc.)
+4. Azure App Service setup med GitHub Actions deploy
+5. DNS-ændring i Cloudflare (CNAME til Azure)
+6. Environment variables flyttes til Azure App Configuration
+
+**Fordele ved Azure:**
+- Managed PostgreSQL med automatisk backup og point-in-time restore
+- Zero-downtime deploys (deployment slots)
+- SSH direkte til container
+- Bedre logging og monitoring
+- Ingen persistent disk-problemer
+
+**Beslutning:** Vent til der er traction. Demo fungerer fint på Render. Migrer når:
+- Der kommer betalende kunder
+- DB-synkronisering bliver et dagligt problem
+- Performance krav stiger
+
 ---
 
 ## ⚠️ KENDTE PROBLEMER - TJEK FØR DEPLOY
