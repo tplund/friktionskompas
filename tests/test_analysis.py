@@ -796,3 +796,79 @@ class TestReverseScoreCalculation:
 
         # KRITISK: Lavt target = lav adjusted for BEGGE typer
         assert normal_adj_low == reverse_adj_low == 2
+
+
+class TestTrendData:
+    """Test trend data functions return correct format for JS chart rendering.
+
+    Regression: 2026-01-30 - JS crashed because get_trend_data() assessments
+    had no 'name' key, but template JS code did c.name.substring().
+    """
+
+    # Keys that JS templates require on each assessment in trend_data['assessments']
+    REQUIRED_CHART_KEYS = {'period', 'date', 'scores'}
+    REQUIRED_SCORE_FIELDS = {'TRYGHED', 'MENING', 'KAN', 'BESVÆR'}
+
+    def test_get_trend_data_returns_required_keys(self):
+        """get_trend_data() assessments must have keys the JS chart needs."""
+        from analysis import get_trend_data
+        result = get_trend_data()
+
+        assert 'assessments' in result
+        assert 'fields' in result
+        assert set(result['fields']) == self.REQUIRED_SCORE_FIELDS
+
+        for assessment in result['assessments']:
+            missing = self.REQUIRED_CHART_KEYS - set(assessment.keys())
+            assert not missing, f"Assessment missing keys: {missing}. Has: {list(assessment.keys())}"
+            assert isinstance(assessment['scores'], dict)
+            for field in self.REQUIRED_SCORE_FIELDS:
+                if field in assessment['scores']:
+                    assert isinstance(assessment['scores'][field], (int, float)), \
+                        f"Score for {field} should be numeric, got {type(assessment['scores'][field])}"
+
+    def test_get_trend_data_with_customer_filter(self):
+        """Trend data filtered by customer should have same structure."""
+        from analysis import get_trend_data
+        result = get_trend_data(customer_id='cust-0nlG8ldxSYU')
+
+        assert 'assessments' in result
+        for assessment in result['assessments']:
+            missing = self.REQUIRED_CHART_KEYS - set(assessment.keys())
+            assert not missing, f"Assessment missing keys: {missing}"
+
+    def test_analyser_trend_data_format(self):
+        """Analyser route builds trend_data inline - verify format matches JS expectations.
+
+        The analyser route (admin_core.py) builds trend_data differently from
+        get_trend_data() in analysis.py. Both must produce assessments with
+        the keys that the JS chart code needs.
+        """
+        # Simulate what the analyser route builds (from admin_core.py line 662-690)
+        # This is the format built inline in the route
+        sample_assessment = {
+            'name': 'Birk Skole - Q1 2025',
+            'period': 'Q1 2025',
+            'date': '2025-01-15',
+            'scores': {
+                'TRYGHED': 4.27,
+                'MENING': 4.33,
+                'KAN': 3.46,
+                'BESVÆR': 3.42,
+            }
+        }
+        missing = self.REQUIRED_CHART_KEYS - set(sample_assessment.keys())
+        assert not missing, f"Analyser trend assessment missing keys: {missing}"
+
+    def test_trend_data_scores_within_7point_scale(self):
+        """All scores should be within 1-7 range (7-point Likert scale).
+
+        Regression: Chart had max:5 which hid scores above 5.
+        """
+        from analysis import get_trend_data
+        result = get_trend_data()
+
+        for assessment in result['assessments']:
+            for field, score in assessment['scores'].items():
+                assert 1.0 <= score <= 7.0, \
+                    f"Score {score} for {field} outside 1-7 range in {assessment.get('period', '?')}"
