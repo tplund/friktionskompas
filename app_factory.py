@@ -230,7 +230,7 @@ def _register_middleware(app):
         """Add security headers to all responses"""
         response.headers['Content-Security-Policy'] = (
             "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://unpkg.com; "
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://unpkg.com https://cdn.jsdelivr.net; "
             "style-src 'self' 'unsafe-inline' https://unpkg.com; "
             "img-src 'self' data: https:; "
             "font-src 'self' https://unpkg.com; "
