@@ -27,18 +27,13 @@
     <meta name="twitter:description" content="{% block twitter_description %}Find og fjern de friktioner der dræner din energi.{% endblock %}">
     <meta name="twitter:image" content="{{ request.url_root if request is defined else '/' }}static/og-image.svg">
 
-    {# ====== Google Consent Mode v2 - MUST be BEFORE GTM ====== #}
-    <script src="/static/js/cookie-consent.js"></script>
-    <script>CookieConsent.initConsentMode();</script>
-
-    {# ====== Google Tag Manager ====== #}
-    {# TODO: Replace GTM-XXXXXXX with actual container ID #}
-    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-    })(window,document,'script','dataLayer','GTM-XXXXXXX');</script>
-    {# End Google Tag Manager #}
+    {# ====== Friction Compass Tracking (analytics + cookie consent) ====== #}
+    {% set host = request.host if request is defined else 'friktionskompasset.dk' %}
+    {% if 'frictioncompass.com' in host %}
+    <script src="https://track.frictioncompass.com/t.js" defer></script>
+    {% else %}
+    <script src="https://track.friktionskompasset.dk/t.js" defer></script>
+    {% endif %}
 
     {# Page-specific head content #}
     {% block head %}{% endblock %}
@@ -107,23 +102,12 @@
     </style>
 </head>
 <body>
-    {# Google Tag Manager (noscript) #}
-    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-XXXXXXX"
-    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
-    {# End Google Tag Manager (noscript) #}
-
     {# Skip link for accessibility #}
     <a href="#main-content" class="skip-link">
         {{ 'Spring til hovedindhold' if (get_user_language() if get_user_language is defined else 'da') == 'da' else 'Skip to main content' }}
     </a>
 
     {% block body %}{% endblock %}
-
-    {# Initialize Cookie Consent Banner #}
-    <script>
-        const userLang = document.documentElement.lang || 'da';
-        CookieConsent.init(userLang);
-    </script>
 
     {# Page-specific scripts #}
     {% block scripts %}{% endblock %}

@@ -245,29 +245,5 @@
 
     {{ cookie_consent_init() }}
 
-    <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Track form submission
-        var form = document.querySelector('form');
-        if (form) {
-            form.addEventListener('submit', function() {
-                if (typeof Analytics !== 'undefined') {
-                    Analytics.signUp('email');
-                }
-            });
-        }
-
-        // Track OAuth button clicks
-        document.querySelectorAll('.oauth-btn').forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                var method = this.classList.contains('google') ? 'google' :
-                            this.classList.contains('microsoft') ? 'microsoft' : 'oauth';
-                if (typeof Analytics !== 'undefined') {
-                    Analytics.signUp(method);
-                }
-            });
-        });
-    });
-    </script>
 </body>
 </html>

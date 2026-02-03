@@ -555,7 +555,7 @@
             <div>
                 <div class="footer-section-title">{{ t('landing.footer.legal') }}</div>
                 <ul class="footer-links">
-                    <li><a href="#" onclick="CookieConsent.showSettings('{{ get_user_language() }}'); return false;">{{ t('landing.footer.privacy_settings') }}</a></li>
+                    <li><a href="/privacy">{{ t('landing.footer.privacy_settings') }}</a></li>
                 </ul>
             </div>
         </div>
@@ -564,54 +564,6 @@
             <span>{{ t('landing.footer.made_with_love') }}</span>
         </div>
     </footer>
-
-    {{ cookie_consent_init() }}
-
-    <!-- Analytics tracking for landing page -->
-    <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Track CTA clicks
-        document.querySelectorAll('a.btn').forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                var href = this.getAttribute('href');
-                var text = this.textContent.trim();
-                var location = this.closest('.hero') ? 'hero' :
-                              this.closest('.cta-section') ? 'cta_section' :
-                              this.closest('.business-section') ? 'business' :
-                              this.closest('footer') ? 'footer' : 'unknown';
-
-                if (typeof Analytics !== 'undefined') {
-                    Analytics.ctaClick(href, text, location);
-                }
-            });
-        });
-
-        // Track scroll depth
-        var scrollMilestones = [25, 50, 75, 100];
-        var trackedMilestones = {};
-
-        function checkScrollDepth() {
-            var scrollTop = window.scrollY;
-            var docHeight = document.documentElement.scrollHeight - window.innerHeight;
-            var scrollPercent = Math.round((scrollTop / docHeight) * 100);
-
-            scrollMilestones.forEach(function(milestone) {
-                if (scrollPercent >= milestone && !trackedMilestones[milestone]) {
-                    trackedMilestones[milestone] = true;
-                    if (typeof Analytics !== 'undefined') {
-                        Analytics.scrollDepth(milestone);
-                    }
-                }
-            });
-        }
-
-        var scrollTimeout;
-        window.addEventListener('scroll', function() {
-            clearTimeout(scrollTimeout);
-            scrollTimeout = setTimeout(checkScrollDepth, 100);
-        });
-    });
-    </script>
 
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>

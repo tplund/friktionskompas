@@ -670,7 +670,7 @@
         <div class="footer">
             <a href="/help">Hjælp</a>
             <span class="separator">·</span>
-            <a href="#" onclick="CookieConsent.showSettings('da'); return false;">Privatlivsindstillinger</a>
+            <a href="/privacy">Privatlivsindstillinger</a>
             <span class="separator">·</span>
             <a href="/login">Log ind</a>
         </div>
@@ -733,12 +733,6 @@
         // ========================================
         document.getElementById('start-btn').addEventListener('click', async () => {
             const context = document.getElementById('context-select').value;
-
-            // Track profile start
-            if (typeof Analytics !== 'undefined') {
-                Analytics.profileStart('screening', 'direct');
-            }
-            window._profileStartTime = Date.now();
 
             // Start session
             ProfilStorage.startSession(context);
@@ -869,13 +863,6 @@
 
                 // Save result
                 ProfilStorage.completeSession(result);
-
-                // Track profile completion
-                if (typeof Analytics !== 'undefined') {
-                    const duration = window._profileStartTime ?
-                        Math.round((Date.now() - window._profileStartTime) / 1000) : null;
-                    Analytics.profileComplete('screening', duration, result.summary);
-                }
 
                 // Show result
                 loadingScreen.classList.add('hidden');
@@ -1056,36 +1043,6 @@
 
         // Show stats in console
         console.log('ProfilStorage stats:', ProfilStorage.getStats());
-    </script>
-
-    <!-- Cookie Consent (script loaded via gtm_head macro) -->
-    <script>
-        // Initialize cookie consent with current language
-        const userLang = document.documentElement.lang || 'da';
-        CookieConsent.init(userLang);
-
-        // Listen for consent changes
-        window.addEventListener('cookieConsentGiven', function(e) {
-            if (!e.detail.functional) {
-                // User rejected functional cookies - disable profil storage
-                console.log('Functional cookies rejected - profil data will not be stored');
-                // Show message to user
-                const msg = userLang === 'da'
-                    ? 'Du har fravalgt lagring af profildata. Dine resultater vil ikke blive gemt.'
-                    : 'You have declined data storage. Your results will not be saved.';
-                alert(msg);
-            }
-        });
-
-        // Check consent before using ProfilStorage
-        const originalStartSession = ProfilStorage.startSession;
-        ProfilStorage.startSession = function(context) {
-            if (!CookieConsent.hasConsent('functional')) {
-                console.warn('ProfilStorage: No consent for functional cookies');
-                // Still allow the session, but warn user
-            }
-            return originalStartSession.call(ProfilStorage, context);
-        };
     </script>
 </body>
 </html>
